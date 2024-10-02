@@ -1,0 +1,1 @@
+python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:1 --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension 17 --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_2024_08_13_194604_outputD17 --learning-rate 1e-4
