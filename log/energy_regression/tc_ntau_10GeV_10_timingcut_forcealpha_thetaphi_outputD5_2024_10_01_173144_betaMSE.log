@@ -1111,3 +1111,16 @@ test   L_V                   = +15.1545 (91.8%)
   L_E = +0.0838 (0.5%)
 Returning 17.500411987304688
 Training epoch 15
+test   L_V                   = +14.9181 (91.7%)
+    L_V_attractive      = +6.5758 (40.4%)
+    L_V_repulsive       = +8.3424 (51.3%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.2617 (7.8%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.3272 (2.0%)
+    L_beta_track        = +0.9345 (5.7%)
+      L_beta_norms_term   = -0.0621 (-0.4%)
+      L_beta_logbeta_term = +0.3893 (2.4%)
+  L_E = +0.0826 (0.5%)
+Returning 17.26239776611328
+Training epoch 16

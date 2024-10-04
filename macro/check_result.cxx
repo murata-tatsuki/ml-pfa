@@ -68,7 +68,7 @@ void check_result(){
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10.root");
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit.root");
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE.root");
-    filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
+    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
     filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
 
     if(hyper_parameter){
