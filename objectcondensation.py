@@ -1134,6 +1134,8 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
                     print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
             else:
                 unassigned = np.append(unassigned,i)
+    else: 
+        unassigned = np.arange(n_points)
 
     # Now merge the rest of the points, highest beta first
     # Only assign previously unassigned points (no overwriting)
