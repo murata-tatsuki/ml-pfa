@@ -1,5 +1,2 @@
-tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2024_10_01_170155_betaMSE
 tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2024_10_01_173144_betaMSE
 はiutで実行したもの
-
-10/1ののこりのものは bepp gpuでやったけどなんかエラー出てる(python周りだと思うんだけど...)
