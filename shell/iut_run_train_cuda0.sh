@@ -17,9 +17,9 @@ DATE=`date '+%Y_%m_%d_%H%M%S'`
 ### output dimention tuning
 output_coordinate=8   # output coordinate dimension """""""+1"""""""
 # outputD=$((output_coordinate+1))
-outputD=3
-ncuda=2     #1  # 0 or 1
-sample=ntau_10GeV_10      # ntau_10GeV_10   uds91   mix
+outputD=5
+ncuda=0     #1  # 0 or 1
+sample=ntau_10GeV_10      # ntau_10GeV_10   uds91   mix   ntau_10to100GeV_10
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension 4 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD4.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension 5 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5.log
 ## ntau
@@ -42,9 +42,9 @@ lr=5e-4
 
 
 # python train.py -i /data/suehara/gravnet_ilc/data/uds91/train -ii /data/suehara/gravnet_ilc/data/uds91/validation --thetaphi --cuda cuda:1 --epochs 20 --beta-track --force-track-alpha --batch-size 5 > log/uds91_timingcut_forcealpha_thetaphi.log
-# python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 1 --output-dimension ${outputD} --ckptdir checkpoint/iut/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_ntau10to100GeV_10 > log/iut/output_dimension/tc_ntau10to100GeV_10_outputD${outputD}_${DATE}.log
+python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 1 --output-dimension ${outputD} --ckptdir checkpoint/iut/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_ntau10to100GeV_10 > log/iut/output_dimension/tc_ntau10to100GeV_10_outputD${outputD}_${DATE}.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/data/ntau_10to100GeV_10/validation --thetaphi --cuda cuda:1 --epochs 20 --beta-track --force-track-alpha --batch-size 1
 
 
 ## test
-python train.py -i /data/suehara/gravnet_ilc/data/uds91/train -ii /data/suehara/gravnet_ilc/data/uds91/validation --thetaphi --cuda cuda:1 --epochs 1 --beta-track --force-track-alpha --batch-size 5 --ckptdir checkpoint/test
+# python train.py -i /data/suehara/gravnet_ilc/data/uds91/train -ii /data/suehara/gravnet_ilc/data/uds91/validation --thetaphi --cuda cuda:1 --epochs 1 --beta-track --force-track-alpha --batch-size 5 --ckptdir checkpoint/test
