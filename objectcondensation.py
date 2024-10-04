@@ -1121,17 +1121,19 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     # and attach other points to the closest condensation points (within distance td)
     unassigned = np.array([], dtype=np.int32)
     clustering = -1 * np.ones(n_points, dtype=np.int32)
-    for i in np.arange(n_points):
-        x = X[i]
-        d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
-        argmin = np.argmin(d, axis=-1)
-        index_condpoint = indices_condpoints[argmin]
-        if (d[argmin] < td):
-            clustering[i] = index_condpoint
-            if debug:
-                print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
-        else:
-            unassigned = np.append(unassigned,i)
+
+    if any(select_condpoints):
+        for i in np.arange(n_points):
+            x = X[i]
+            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
+            argmin = np.argmin(d, axis=-1)
+            index_condpoint = indices_condpoints[argmin]
+            if (d[argmin] < td):
+                clustering[i] = index_condpoint
+                if debug:
+                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
+            else:
+                unassigned = np.append(unassigned,i)
 
     # Now merge the rest of the points, highest beta first
     # Only assign previously unassigned points (no overwriting)
