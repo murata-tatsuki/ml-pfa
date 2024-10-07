@@ -709,7 +709,8 @@ def calc_LV_Lbeta_Eregression(
     # ________________________________      ## need to modify
     # energy regression term
     L_E = 0.    
-    mse = torch.square(cluster_energy - mpc_energy)
+    mse = torch.square(cluster_energy - mpc_energy)                             ## betaMSE
+    # mse = torch.square(cluster_energy - mpc_energy)[index_alpha_track]        ## alphaMSE
     # print(mse)
     # print(mse[is_trk])
     # L_E = torch.sum(mse[is_trk]) / torch.numel(mse[is_trk])
