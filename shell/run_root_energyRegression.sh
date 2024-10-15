@@ -82,9 +82,25 @@ if "${energy_regression}"; then
 
   outD=$((D+1))
 fi
-echo ${outfile}
-python save_root_energyRegression.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar ${output_path}/${outfile} 0 500000 False 7 ${outD} False True
+
+# echo ${outfile}
+        ### test
+        # python save_root_energyRegression.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar test/test.root 0 100 False 7 ${outD} False True
+# python save_root_energyRegression.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar ${output_path}/${outfile} 0 500000 False 7 ${outD} False True
 # python save_root.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar ${output_path}/tc_${train_particle}_betaMSE_${D}D_49_${test_particle}.root 0 500000 False 8 ${D} False
+
+
+
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaMSE_coef1.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_08_22_123039_outputD5
+
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaMSE_coef6.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_01_173144_outputD5
+
+outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_coef50.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_11_105012_outputD5
+
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_49_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False 7 ${outD} False True
 
 
 ### learning rate

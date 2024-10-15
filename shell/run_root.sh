@@ -101,8 +101,9 @@ fi
 
 ## skimmed
 D=5
-python save_root.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_08_16_165355_outputD5_skimmed/ckpt_49_1.pth.tar output/test.root 0 500000 False 7 ${D} False
+# python save_root.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_08_16_165355_outputD5_skimmed/ckpt_49_1.pth.tar output/test.root 0 500000 False 7 ${D} False
 # python save_root.py /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/test ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_08_16_165355_outputD5_skimmed/ckpt_49_1.pth.tar output/skimmed/ntau_to_ntau/tc_${train_particle}_${D}D_49_${test_particle}.root 0 500000 False 7 ${D} False
+python save_root.py /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/test ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_10_05_061329_outputD5_skimmed/ckpt_49_1.pth.tar output/skimmed/new_clustering/ntau_to_ntau/tc_${train_particle}_${D}D_49_${test_particle}.root 0 500000 False 7 ${D} False
 
 ##### fine tuning 
 ## epoch=20

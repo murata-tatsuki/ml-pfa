@@ -111,8 +111,9 @@ def save_root(datapath, ckpt, outfileDir, nstart=0, nend=-1, timingCut=False, in
         --> save all labels
     """
     
-    for tbeta_now in range(0,10):
-        for td_now in range(1,10):
+    # for tbeta_now in range(0,10):
+    for tbeta_now in range(0,1):
+        for td_now in range(1,2):
             tbeta = tbeta_now / 10
             td = td_now / 10
             outfile = outfileDir + '/tbeta' + format(tbeta_now, '03') + 'td' + format(td_now, '02') + '0.root'

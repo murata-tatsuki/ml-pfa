@@ -115,6 +115,7 @@ class PredData:
     # edep_mc = np.array([0], dtype=np.float64)
     pred_edep = np.array([0], dtype=np.float64)
     pred_beta = np.array([0], dtype=np.float64)
+    pred_alpha = np.array([0], dtype=np.int32)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
@@ -132,6 +133,7 @@ class PredData:
         # t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
         t.Branch("pred_beta",this.pred_beta,"pred_beta/D")
+        t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
 
 def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False):
     debug = False
@@ -169,9 +171,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     """
     
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
-    for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax)):     ## これをpandoraについてもできるようにする
     #for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.7, td=0.5, nmax=nmax)):
+        # print(condensation_points)
 
         if i == nmax: break
 
@@ -363,6 +366,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d3.mcstatus[0] = my_label[8]
             d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
             d3.pred_beta[0] = prediction.pred_betas[ihit]
+            d3.pred_alpha[0] = condensation_points[ihit]
 
             if (not d3.mcid[0] == -1): # skip if track does not have hit
                 t3.Fill()

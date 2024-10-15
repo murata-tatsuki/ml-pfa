@@ -40,8 +40,7 @@ def main():
     parser.add_argument('--cuda', type=str, default='cuda')    
     parser.add_argument('--batch-size', type=int, default=100)    
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--epochs-nobeta', type=int, default=7)
-    parser.add_argument('--epochs-noLE', type=int, default=15)
+    parser.add_argument('--epochs-nobeta', type=int, default=7) ###　これでbeta有り無し変更
     parser.add_argument('--beta-track', action='store_true', help='Include L_beta_track term')    
     parser.add_argument('--beta-track-beginning', action='store_true', help='L_beta_track term from epoch 1')    
     parser.add_argument('--force-track-alpha', action='store_true', help='Force track as alpha (condensation point)')    
@@ -53,8 +52,6 @@ def main():
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)
     parser.add_argument('--weight-decay', type=float, default=1e-4)
-    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')    
-    parser.add_argument('--regression-coefficinet', type=float, default=1)                       ### energy regreiion scaling factor
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -70,8 +67,7 @@ def main():
     output_dimension = args.output_dimension
     lr_input = args.learning_rate
     weight_decay_input = args.weight_decay
-    er_coef = args.regression_coefficinet
-    print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
+    print(lr_input, weight_decay_input)
 
     shuffle = True
 
@@ -83,9 +79,9 @@ def main():
         print("If --no-split is specified, it is required to set --inputdir-validate")
         raise
 
-    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=False)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+        dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=False)
 
     if reduce_noise:
         dataset.reduce_noise = .70
@@ -100,21 +96,14 @@ def main():
     
     if (args.no_split):
         train_dataset = dataset
-        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=False)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune = dataset_tune
-            test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+            test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=False)
     else:
         train_dataset, test_dataset = dataset.split(.8)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
-    
-    if (args.regression_coefficinet and args.energy_regression is None):
-        print("If --regression-coefficinet is specified, it is required to set --energy-regression")
-        raise
-    if (args.energy_regression):
-        output_dimension += 1   # adding energy to model output
-    
     
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
@@ -153,7 +142,6 @@ def main():
         scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=400, t_mult=1.1, policy="cosine")
 
     loss_offset =1. # To prevent a negative loss from ever occuring
-
     train_accu=[]
     test_accu=[]
 
@@ -164,7 +152,7 @@ def main():
     #     assert all(t.device == device for t in [
     #         pred_betas, pred_cluster_space_coords, data.y, data.batch,
     #         ])
-    #     out_oc = oc.calc_LV_Lbeta_Eregression(
+    #     out_oc = oc.calc_LV_Lbeta(
     #         pred_betas,
     #         pred_cluster_space_coords,
     #         data.y.long(),
@@ -197,47 +185,23 @@ def main():
     def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
         device = out.device
         pred_betas = torch.sigmoid(out[:,0])
-        if args.energy_regression:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_energy = out[:,2]
-                pred_cluster_space_coords = out[:,3:]
-                assert(pred_charge_track_likeness.device == device)
-            else:
-                pred_charge_track_likeness = None
-                pred_cluster_energy = out[:,1]
-                pred_cluster_space_coords = out[:,2:]
+        if use_charge_track_likeness:
+            pred_charge_track_likeness = torch.sigmoid(out[:,1])
+            pred_cluster_space_coords = out[:,2:]
+            assert(pred_charge_track_likeness.device == device)
         else:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
-            else:
-                pred_charge_track_likeness = None
-                pred_cluster_space_coords = out[:,1:]
+            pred_charge_track_likeness = None
+            pred_cluster_space_coords = out[:,1:]
         cluster_track_index = data.y[:,1]
         assert all(t.device == device for t in [
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
-        true_energy=torch.square(data.label[:,4:8])
-        # print(true_energy)
-        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        # print(true_energy)
-        # print(data)
-        # print(data.x)
-        # print(data.y)
-        # print(data.feat)
-        # print(data.label[:,4:])
-        out_oc = oc.calc_LV_Lbeta_Eregression(
-        # out_oc = oc.calc_LV_Lbeta(
+        out_oc = oc.calc_LV_Lbeta(
             pred_betas,
-            pred_cluster_energy,
             pred_cluster_space_coords,
             pred_charge_track_likeness,
             data.y[:,0].long(),
-            true_energy,
             data.batch,
-            er_coef,
             return_components=return_components,
             beta_term_option='short-range-potential',
             beta_track_term=args.beta_track,
@@ -248,11 +212,11 @@ def main():
         if return_components:
             return out_oc
         else:
-            LV, Lbeta, LE = out_oc
+            LV, Lbeta = out_oc
             if i_epoch <= args.epochs_nobeta:
                 return LV + loss_offset
             else:
-                return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
+                return LV + Lbeta + loss_offset
 
     def train(epoch):
         print('Training epoch', epoch)
@@ -335,8 +299,7 @@ def main():
             loss_components[key] /= N_test
         # Compute total loss and do printout
         print('test ' + oc.formatted_loss_components_string(loss_components))
-        # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
+        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         print(f'Returning {test_loss}')
         return test_loss.item()
 
@@ -455,7 +418,7 @@ def debug():
         out = model(data.x, data.batch)
     pred_betas = torch.sigmoid(out[:,0])
     pred_cluster_space_coords = out[:,1:4]
-    out_oc = oc.calc_LV_Lbeta_Eregression(
+    out_oc = oc.calc_LV_Lbeta(
         pred_betas,
         pred_cluster_space_coords,
         data.y.long(),

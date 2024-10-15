@@ -18,6 +18,24 @@ void enregy_regression(){
   double MSE_Lbeta_betaMSE[50] = {1.1526, 1.6159, 1.9651, 2.2976, 2.6655, 3.0584, 3.4403, 3.8454, 0.8453, 0.4706, 0.4014, 0.3681, 0.3449, 0.3265, 0.3141, 0.3020, 0.2935, 0.2816, 0.2725, 0.2607, 0.2572, 0.2590, 0.2455, 0.2336, 0.2302, 0.2431, 0.2355, 0.2395, 0.2260, 0.2125, 0.2230, 0.2222, 0.2200, 0.2160, 0.2104, 0.2118, 0.2129, 0.2091, 0.1987, 0.1988, 0.2072, 0.1934, 0.1947, 0.1902, 0.1982, 0.1929, 0.1907, 0.1903, 0.1768, 0.2006};
   double MSE_LE_betaMSE[50] = {0.2280, 0.0273, 0.0067, 0.0020, 0.0006, 0.0002, 0.0001, 0.0000, 0.0502, 0.0516, 0.0470, 0.0432, 0.0410, 0.0401, 0.0382, 0.0380, 0.0365, 0.0369, 0.0356, 0.0357, 0.0348, 0.0337, 0.0333, 0.0349, 0.0349, 0.0307, 0.0311, 0.0299, 0.0316, 0.0319, 0.0302, 0.0302, 0.0294, 0.0306, 0.0295, 0.0307, 0.0302, 0.0300, 0.0302, 0.0299, 0.0285, 0.0293, 0.0294, 0.0294, 0.0288, 0.0298, 0.0300, 0.0285, 0.0301, 0.0269};
 
+  double MSE_loss_betaMSE_coef6[50] = {45.523162841796875, 29.170654296875, 24.953847885131836, 22.73029899597168, 21.215028762817383, 20.213090896606445, 19.592994689941406, 19.18501853942871, 18.9909610748291, 18.708045959472656, 18.254316329956055, 17.96072006225586, 17.836084365844727, 17.76279067993164, 17.500411987304688, 17.26239776611328, 17.194969177246094, 17.17937660217285, 17.170303344726562, 16.983570098876953, 16.97284507751465, 16.83309555053711, 16.7728214263916, 16.901193618774414, 16.531118392944336, 16.430856704711914, 16.339473724365234, 16.2949275970459, 16.159093856811523, 16.05787467956543, 16.053281784057617, 15.859077453613281, 15.712313652038574, 15.77773666381836, 15.580877304077148, 15.61557674407959, 15.399999618530273, 15.35806655883789, 15.230298042297363, 15.12829303741455, 15.035481452941895, 15.076218605041504, 15.039176940917969, 14.985945701599121};
+  double MSE_LV_betaMSE_coef6[50] = {43.0476, 26.6405, 22.2167, 19.7252, 17.9217, 16.5839, 15.6199, 14.8310, 15.6266, 15.8182, 15.6978, 15.5644, 15.4780, 15.4197, 15.1545, 14.9181, 14.8557, 14.8441, 14.8340, 14.6489, 14.6400, 14.5016, 14.4416, 14.5745, 14.2010, 14.1038, 14.0137, 13.9691, 13.8372, 13.7399, 13.7355, 13.5413, 13.3949, 13.4641, 13.2671, 13.3031, 13.0895, 13.0512, 12.9240, 12.8232, 12.7336, 12.7716, 12.7390, 12.6827};
+  double MSE_Lbeta_betaMSE_coef6[50] = {1.1190, 1.4561, 1.7112, 1.9939, 2.2884, 2.6270, 2.9718, 3.3534, 2.3594, 1.8729, 1.5072, 1.3172, 1.2723, 1.2564, 1.2621, 1.2617, 1.2574, 1.2538, 1.2555, 1.2543, 1.2530, 1.2511, 1.2517, 1.2458, 1.2502, 1.2472, 1.2460, 1.2461, 1.2413, 1.2360, 1.2363, 1.2366, 1.2359, 1.2311, 1.2320, 1.2302, 1.2283, 1.2239, 1.2234, 1.2218, 1.2178, 1.2219, 1.2160, 1.2202};
+  double MSE_LE_betaMSE_coef6[50] = {0.3565, 0.0741, 0.0259, 0.0112, 0.0049, 0.0023, 0.0013, 0.0007, 0.0049, 0.0169, 0.0494, 0.0792, 0.0858, 0.0867, 0.0838, 0.0826, 0.0819, 0.0815, 0.0808, 0.0804, 0.0798, 0.0804, 0.0796, 0.0809, 0.0799, 0.0799, 0.0798, 0.0797, 0.0807, 0.0820, 0.0815, 0.0812, 0.0815, 0.0825, 0.0818, 0.0822, 0.0823, 0.0829, 0.0829, 0.0832, 0.0841, 0.0827, 0.0842, 0.0830};
+
+  // double MSE_loss_alphaMSE[50] = 
+  // double MSE_LV_alphaMSE[50] = 
+  // double MSE_Lbeta_alphaMSE[50] = 
+  // double MSE_LE_alphaMSE[50] = 
+
+  double MSE_loss_alphaMSE_coef50[50] = {3038.703369140625, 1667.14892578125, 1352.57421875, 1241.76953125, 1151.004638671875, 1083.629638671875, 1033.70068359375, 992.0989990234375, 1014.9844970703125, 1052.620849609375, 1038.692626953125, 1019.0940551757812, 1016.7367553710938, 1002.1033935546875, 1009.4244384765625, 1005.3365478515625, 1006.2903442382812, 1003.4176025390625, 999.839111328125, 1005.2637939453125, 999.4617919921875, 993.4464721679688, 988.9075317382812, 984.8981323242188, 977.6432495117188, 981.4059448242188, 977.9452514648438, 973.2946166992188, 960.6795043945312, 968.637451171875, 957.34423828125, 950.5226440429688, 951.2075805664062, 936.0706176757812, 930.0562133789062, 922.6559448242188, 922.9110717773438, 916.404052734375, 909.7439575195312, 911.1571655273438, 909.7235107421875, 901.2788696289062, 896.088134765625, 890.708740234375, 889.408203125, 887.8229370117188, 887.50390625, 876.7739868164062, 880.1360473632812, 877.02490234375};
+  double MSE_LV_alphaMSE_coef50[50] = {3036.6550, 1664.8143, 1349.9705, 1238.9019, 1147.8812, 1080.2365, 1030.0026, 988.1266, 1011.5967, 1049.6832, 1036.0469, 1016.5139, 1014.1717, 999.5453, 1006.8829, 1002.7932, 1003.7549, 1000.8849, 997.3114, 1002.7403, 996.9354, 990.9162, 986.3754, 982.3670, 975.1159, 978.8814, 975.4241, 970.7679, 958.1560, 966.1194, 954.8237, 948.0015, 948.6927, 933.5500, 927.5345, 920.1378, 920.3961, 913.8883, 907.2303, 908.6485, 907.2104, 898.7635, 893.5780, 888.2050, 886.8995, 885.3223, 885.0033, 874.2698, 877.6326, 874.5220};
+  double MSE_Lbeta_alphaMSE_coef50[50] = {1.0432, 1.3330, 1.6032, 1.8674, 2.1233, 2.3932, 2.6981, 2.9724, 2.3877, 1.9374, 1.6453, 1.5796, 1.5645, 1.5575, 1.5410, 1.5428, 1.5349, 1.5322, 1.5272, 1.5230, 1.5258, 1.5297, 1.5317, 1.5306, 1.5268, 1.5241, 1.5206, 1.5262, 1.5230, 1.5176, 1.5200, 1.5206, 1.5144, 1.5201, 1.5212, 1.5177, 1.5144, 1.5153, 1.5132, 1.5082, 1.5127, 1.5149, 1.5096, 1.5032, 1.5082, 1.5000, 1.5001, 1.5036, 1.5028, 1.5024};
+  double MSE_LE_alphaMSE_coef50[50] = {0.0051, 0.0016, 0.0006, 0.0003, 0.0001, 0.0001, 0.0000, 0.0000, 0.0001, 0.0002, 0.0005, 0.0006, 0.0006, 0.0006, 0.0006, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005, 0.0005};
+
+
+
+
 
   TGraph *g_MSE_loss = new TGraph();
   TGraph *g_MSE_LV = new TGraph();
@@ -25,6 +43,7 @@ void enregy_regression(){
   TGraph *g_MSE_LE = new TGraph();
   g_MSE_loss->GetXaxis()->SetTitle("epoch"); 
   g_MSE_loss->GetYaxis()->SetTitle("loss"); 
+  g_MSE_loss->SetTitle("tracker MSE"); 
   g_MSE_loss->SetMinimum(0); 
   g_MSE_loss->SetMaximum(6); 
   g_MSE_loss->SetLineColor(1); 
@@ -48,6 +67,7 @@ void enregy_regression(){
   TGraph *g_MSE_LE_betaMSE = new TGraph();
   g_MSE_loss_betaMSE->GetXaxis()->SetTitle("epoch"); 
   g_MSE_loss_betaMSE->GetYaxis()->SetTitle("loss"); 
+  g_MSE_loss_betaMSE->SetTitle("beta * MSE"); 
   g_MSE_loss_betaMSE->SetMinimum(0); 
   g_MSE_loss_betaMSE->SetMaximum(6); 
   g_MSE_loss_betaMSE->SetLineColor(1); 
@@ -64,6 +84,54 @@ void enregy_regression(){
   legend_betaMSE->SetFillColor(0);
 
 
+
+  TGraph *g_MSE_loss_betaMSE_coef6 = new TGraph();
+  TGraph *g_MSE_LV_betaMSE_coef6 = new TGraph();
+  TGraph *g_MSE_Lbeta_betaMSE_coef6 = new TGraph();
+  TGraph *g_MSE_LE_betaMSE_coef6 = new TGraph();
+  g_MSE_loss_betaMSE_coef6->GetXaxis()->SetTitle("epoch"); 
+  g_MSE_loss_betaMSE_coef6->GetYaxis()->SetTitle("loss"); 
+  g_MSE_loss_betaMSE_coef6->SetTitle("beta*MSE coefficient 6"); 
+  // g_MSE_loss_betaMSE_coef6->SetMinimum(0); 
+  // g_MSE_loss_betaMSE_coef6->SetMaximum(6); 
+  g_MSE_loss_betaMSE_coef6->SetLineColor(1); 
+  g_MSE_LV_betaMSE_coef6->SetLineColor(2); 
+  g_MSE_Lbeta_betaMSE_coef6->SetLineColor(3); 
+  g_MSE_LE_betaMSE_coef6->SetLineColor(4); 
+
+  TLegend *legend_betaMSE_coef6 = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_betaMSE_coef6->AddEntry( g_MSE_loss_betaMSE_coef6, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  legend_betaMSE_coef6->AddEntry( g_MSE_LV_betaMSE_coef6, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  legend_betaMSE_coef6->AddEntry( g_MSE_Lbeta_betaMSE_coef6, "L_beta", "l") ;
+  legend_betaMSE_coef6->AddEntry( g_MSE_LE_betaMSE_coef6, "L_E", "l") ;
+  legend_betaMSE_coef6->AddEntry( g5, "total loss w/o L_E", "l") ;
+  legend_betaMSE_coef6->SetFillColor(0);
+
+
+
+  TGraph *g_MSE_loss_alphaMSE_coef50 = new TGraph();
+  TGraph *g_MSE_LV_alphaMSE_coef50 = new TGraph();
+  TGraph *g_MSE_Lbeta_alphaMSE_coef50 = new TGraph();
+  TGraph *g_MSE_LE_alphaMSE_coef50 = new TGraph();
+  g_MSE_loss_alphaMSE_coef50->GetXaxis()->SetTitle("epoch"); 
+  g_MSE_loss_alphaMSE_coef50->GetYaxis()->SetTitle("loss"); 
+  g_MSE_loss_alphaMSE_coef50->SetTitle("alpha*MSE coefficient 50"); 
+  // g_MSE_loss_alphaMSE_coef50->SetMinimum(0); 
+  // g_MSE_loss_alphaMSE_coef50->SetMaximum(6); 
+  g_MSE_loss_alphaMSE_coef50->SetLineColor(1); 
+  g_MSE_LV_alphaMSE_coef50->SetLineColor(2); 
+  g_MSE_Lbeta_alphaMSE_coef50->SetLineColor(3); 
+  g_MSE_LE_alphaMSE_coef50->SetLineColor(4); 
+
+  TLegend *legend_alphaMSE_coef50 = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_alphaMSE_coef50->AddEntry( g_MSE_loss_alphaMSE_coef50, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  legend_alphaMSE_coef50->AddEntry( g_MSE_LV_alphaMSE_coef50, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  legend_alphaMSE_coef50->AddEntry( g_MSE_Lbeta_alphaMSE_coef50, "L_alpha", "l") ;
+  legend_alphaMSE_coef50->AddEntry( g_MSE_LE_alphaMSE_coef50, "L_E", "l") ;
+  legend_alphaMSE_coef50->AddEntry( g5, "total loss w/o L_E", "l") ;
+  legend_alphaMSE_coef50->SetFillColor(0);
+
+
   for(int i=0;i<50;i++){
     g5->SetPoint(i,i,returning5[i]);
 
@@ -76,6 +144,16 @@ void enregy_regression(){
     g_MSE_LV_betaMSE->SetPoint(i,i,MSE_LV_betaMSE[i]);
     g_MSE_Lbeta_betaMSE->SetPoint(i,i,MSE_Lbeta_betaMSE[i]);
     g_MSE_LE_betaMSE->SetPoint(i,i,MSE_LE_betaMSE[i]);
+
+    g_MSE_loss_betaMSE_coef6->SetPoint(i,i,MSE_loss_betaMSE_coef6[i]);
+    g_MSE_LV_betaMSE_coef6->SetPoint(i,i,MSE_LV_betaMSE_coef6[i]);
+    g_MSE_Lbeta_betaMSE_coef6->SetPoint(i,i,MSE_Lbeta_betaMSE_coef6[i]);
+    g_MSE_LE_betaMSE_coef6->SetPoint(i,i,MSE_LE_betaMSE_coef6[i]);
+
+    g_MSE_loss_alphaMSE_coef50->SetPoint(i,i,MSE_loss_alphaMSE_coef50[i]);
+    g_MSE_LV_alphaMSE_coef50->SetPoint(i,i,MSE_LV_alphaMSE_coef50[i]);
+    g_MSE_Lbeta_alphaMSE_coef50->SetPoint(i,i,MSE_Lbeta_alphaMSE_coef50[i]);
+    g_MSE_LE_alphaMSE_coef50->SetPoint(i,i,MSE_LE_alphaMSE_coef50[i]);
   }
 
   g_MSE_loss->Draw();
@@ -94,6 +172,26 @@ void enregy_regression(){
   g_MSE_Lbeta_betaMSE->Draw("same");
   g_MSE_LE_betaMSE->Draw("same");
   legend_betaMSE->Draw();
+
+
+  TCanvas *c3 = new TCanvas("c3","c3",1);
+  c3->cd();
+  g_MSE_loss_betaMSE_coef6->Draw();
+  g5->Draw("same");
+  g_MSE_LV_betaMSE_coef6->Draw("same");
+  g_MSE_Lbeta_betaMSE_coef6->Draw("same");
+  g_MSE_LE_betaMSE_coef6->Draw("same");
+  legend_betaMSE_coef6->Draw();
+
+
+  TCanvas *c4 = new TCanvas("c4","c4",1);
+  c4->cd();
+  g_MSE_loss_alphaMSE_coef50->Draw();
+  g5->Draw("same");
+  g_MSE_LV_alphaMSE_coef50->Draw("same");
+  g_MSE_Lbeta_alphaMSE_coef50->Draw("same");
+  g_MSE_LE_alphaMSE_coef50->Draw("same");
+  legend_alphaMSE_coef50->Draw();
 
 
 }
