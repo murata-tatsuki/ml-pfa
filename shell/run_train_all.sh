@@ -1,8 +1,57 @@
 #!/bin/sh
 
+sample=uds91      # ntau_10GeV_10   uds91   mix   ntau_10to100GeV_10
+ncuda=0     #1  # 0 or 1
+
+outputD=5   # output coordinate dimension """""""+1"""""""
+skimmed=true
+
+energy=false
+beta=false      ## loss term w/ beta * MSE
+alpha=false     ## loss term w/ only alpha MSE
+coef=10         ## coefficient of energy loss term
+
+
 cd ..
 
+# nepoch=50
 DATE=`date '+%Y_%m_%d_%H%M%S'`
+
+data_path=/data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10
+if [ ${sample} = "uds91" ]; then
+  data_path=/data/suehara/mldata/pfa/uds91
+elif [ ${sample} = "mix" ]; then
+  data_path=/data/suehara/mldata/pfa/murata/mix_samples
+elif [ ${sample} = "ntau_10to100GeV_10" ]; then
+  data_path=/data/suehara/gravnet_ilc/data/ntau_10to100GeV_10
+fi
+suf=""
+if "${skimmed}"; then
+  data_path=/data/suehara/mldata/pfa/murata/skimmed/${sample}
+  if [ ${sample} = "mix" -o ${sample} = "ntau_10to100GeV_10" ]; then
+    data_path=""
+  fi
+  suf=_skimmed
+fi
+
+
+ckp_path=checkpoint/output_dimensions
+log_path=log/output_dimension
+if "${energy}"; then
+  ckp_path=checkpoint/energy_regression
+  log_path=log/energy_regression
+fi
+ckp=ckpts_gravnet_new02_${DATE}_outputD${outputD}${suf}
+log=tc_${sample}_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}${suf}.log
+
+energy_log=tc_${sample}_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}${suf}_betaMSE.log
+
+
+if "${energy}"; then
+  python train_energyRegression.py -i ${data_path}/train -ii ${${data_path}}/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir ${ckp_path}/${ckp} --energy-regression --regression-coefficinet ${coef} > ${log_path}/${energy_log}
+else
+  python train.py -i ${data_path}/train -ii ${data_path}/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir ${ckp_path}/${ckp} > ${log_path}/${log}
+fi
 
 
 #python train.py -i mydata/ntau_one --epochs=1
@@ -16,13 +65,12 @@ DATE=`date '+%Y_%m_%d_%H%M%S'`
 
 ### output dimention tuning
 outputD=5   # output coordinate dimension """""""+1"""""""
-ncuda=0     #1  # 0 or 1
+ncuda=1     #1  # 0 or 1
 sample=ntau_10GeV_10      # ntau_10GeV_10   uds91   mix
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension 4 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD4.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension 5 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5.log
-
 ## ntau
-# python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD} > log/output_dimension/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
+# python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD} > log/output_dimension/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 ## ntau skimmed
 # python train.py -i /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/train -ii /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/validation --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_skimmed > log/output_dimension/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_skimmed.log
 # python train.py -i /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/train -ii /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_skimmed > log/output_dimension/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_skimmed.log
@@ -35,19 +83,18 @@ sample=ntau_10GeV_10      # ntau_10GeV_10   uds91   mix
 ## mix sample
 # python train.py -i /data/suehara/mldata/pfa/murata/mix_samples/train -ii /data/suehara/mldata/pfa/murata/mix_samples/validation --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD} > log/output_dimension/tc_${sample}_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 
+
+
 ### learning rate w/ output dimensions
 lr=2e-5
 lr=5e-5
 lr=1e-4
 lr=5e-4
+lr=1e-3
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension ${outputD} --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate ${lr} > log/output_dimension/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_lr${lr}_${DATE}.log
 
 
-### energy regression
-# python train_energyRegression.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --regression-coefficinet 50 > log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_betaMSE.log
-# python train_energyRegression.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression > log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_alphaMSE.log
-python train_energyRegression.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression > log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_betaE.log
-
+# python train_energyRegression.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --regression-coefficinet 6 > log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_betaMSE.log
 
 
 # python train.py -i /data/suehara/gravnet_ilc/data/uds91/train -ii /data/suehara/gravnet_ilc/data/uds91/validation --thetaphi --cuda cuda:1 --epochs 20 --beta-track --force-track-alpha --batch-size 5 > log/uds91_timingcut_forcealpha_thetaphi.log

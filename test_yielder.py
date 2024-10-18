@@ -97,18 +97,21 @@ class TestYielder:
 
     def iter_clustering(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):
         for event, prediction in self.iter_pred(nmax, pandora, energyRegression):
-            clustering = cluster(event, prediction, tbeta, td, clustering_td_momentum)
+            clustering, condensation_points = cluster(event, prediction, tbeta, td, clustering_td_momentum)
             pandora_clustering = np.array(event.pand, dtype=int).flatten() + 1 if pandora else None
-            yield event, prediction, clustering, pandora_clustering
+            yield event, prediction, clustering, pandora_clustering, condensation_points
 
     def iter_matches(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):
-        for event, prediction, clustering, pandora_clustering in self.iter_clustering(tbeta, td, nmax, pandora, energyRegression, clustering_td_momentum):
+        for event, prediction, clustering, pandora_clustering, condensation_points in self.iter_clustering(tbeta, td, nmax, pandora, energyRegression, clustering_td_momentum):
             if not pandora:
                 matches = make_matches(event, prediction, clustering=clustering)
             else:
                 matches = make_matches(event, prediction, clustering=pandora_clustering)
             cluster = clustering if not pandora else pandora_clustering
-            yield event, prediction, cluster, matches
+            if energyRegression:
+                yield event, prediction, cluster, matches, condensation_points 
+            else:
+                yield event, prediction, cluster, matches
 
 
 class TestYielderEM(TestYielder):

@@ -6,8 +6,8 @@ const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
-const string test_particle_type = "uds";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
+const string test_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
 
 
 const bool hyper_parameter = false;
@@ -19,7 +19,7 @@ const int epoch = 25;       // 20   25
 const int train_epoch = epoch*2-1;
 
 
-void check_result(){ 
+void energy_regression(){ 
     int rawfilenum = 1;
 
     if(hyper_parameter && fine_tuning){ // condition check
@@ -32,51 +32,13 @@ void check_result(){
     int entry_max[rawfilenum];
     int total_entry_max=0;
     string picDirectory;
-    // filein[0] = new TFile("../output/test_pandora.root");
-    // filein[0] = new TFile("../output/test/test_100_pandora.root");
-    // filein[0] = new TFile("../output/test/test_100_.root");
-    // filein[0] = new TFile("../output/test.root");
-
-    // filein[0] = new TFile("../output/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_49.root");
-    // filein[0] = new TFile("../output/ntau_to_uds/gravnet/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_49_usd.root");
-    // filein[0] = new TFile("../output/ntau_to_ntau/pandora/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_49.root");
-    // filein[0] = new TFile("../output/ntau_to_ntau/gravnet/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_49.root");
-    // filein[0] = new TFile("../output/uds_to_uds/gravnet/tc_usd91_timingcut_forcealpha_thetaphi_19_usd.root");
-    // filein[0] = new TFile("../output/uds_to_uds/pandora/tc_usd91_timingcut_forcealpha_thetaphi_19_usd.root");
-    // filein[0] = new TFile("../output/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/hyper_parameter/dimensions/uds_to_uds/tc_uds91_timingcut_forcealpha_thetaphi_5D_49_uds.root");
-    // filein[0] = new TFile("../output/skimmed/ntau_to_ntau/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10.root");
-    // // // // // // // // // // filein[0] = new TFile("../output/skimmed/uds_to_uds/tc_uds91_5D_49_uds91.root");
-
-        // new clustering
-    // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_3D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_4D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_9D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_17D_49_ntau_10GeV_10.root");
     
-    // learning rate
-    // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr1e-4.root");
-    // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr5e-5.root");
-    // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr2e-5.root");
-    // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr9e-6.root");
-
-    // pandora
-    filein[0] = new TFile("../output/skimmed/ntau_to_ntau/pandora/tc_ntau_timingcut_forcealpha_thetaphi_49_ntau.root");
-    // filein[0] = new TFile("../output/skimmed/uds_to_uds/pandora/tc_uds_timingcut_forcealpha_thetaphi_49_uds.root");
-
     // energy regression
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_edit.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_edit_energyTree.root");
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit.root");
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE.root");
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
-    // energy tree
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_betaMSE_coef1.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_betaMSE_coef6.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_coef50.root");
-
+    filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
 
     if(hyper_parameter){
         const string rootDir = train_particle_type == "uds91" ? "uds_to_uds/" : "";

@@ -42,7 +42,7 @@ lr=5e-4
 
 
 # python train.py -i /data/suehara/gravnet_ilc/data/uds91/train -ii /data/suehara/gravnet_ilc/data/uds91/validation --thetaphi --cuda cuda:1 --epochs 20 --beta-track --force-track-alpha --batch-size 5 > log/uds91_timingcut_forcealpha_thetaphi.log
-python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 1 --output-dimension ${outputD} --ckptdir checkpoint/iut/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_ntau10to100GeV_10 > log/iut/output_dimension/tc_ntau10to100GeV_10_outputD${outputD}_${DATE}.log
+python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:0 --epochs 50 --beta-track --force-track-alpha --batch-size 1 --output-dimension ${outputD} --ckptdir checkpoint/iut/output_dimensions/ckpts_gravnet_new02_${DATE}_outputD${outputD}_ntau10to100GeV_10 > log/iut/output_dimension/tc_ntau10to100GeV_10_outputD${outputD}_${DATE}.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/data/ntau_10to100GeV_10/validation --thetaphi --cuda cuda:1 --epochs 20 --beta-track --force-track-alpha --batch-size 1
 
 

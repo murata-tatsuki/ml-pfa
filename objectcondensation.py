@@ -375,7 +375,7 @@ def calc_LV_Lbeta_Eregression(
     beta: torch.Tensor, cluster_energy: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
     charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option
     cluster_index_per_event: torch.Tensor, # Truth hit->cluster index
-    mpc_energy: torch.Tensor, # mc truth energy
+    mcp_energy: torch.Tensor, # mc truth energy
     batch: torch.Tensor,
     # From here on just parameters
     qmin: float = 1.,
@@ -709,13 +709,18 @@ def calc_LV_Lbeta_Eregression(
     # ________________________________      ## need to modify
     # energy regression term
     L_E = 0.    
-    mse = torch.square(cluster_energy - mpc_energy)
+    mse = torch.square(cluster_energy - mcp_energy)                             ## betaMSE
+    # mse = torch.square(cluster_energy - mcp_energy)[index_alpha_track]        ## alphaMSE
     # print(mse)
     # print(mse[is_trk])
     # L_E = torch.sum(mse[is_trk]) / torch.numel(mse[is_trk])
-    L_E = torch.dot(mse,beta) / torch.numel(mse) * er_coef
+    # L_E = torch.dot(mse,beta) / torch.numel(mse)                                              ## betaMSE
+    # L_E = torch.dot(mse[index_alpha_track],beta[index_alpha_track]) / torch.numel(mse)        ## alphaMSE
+    # L_E = mse[index_alpha_track]                                                              ## alphaMSE     no beta
+    L_E = torch.norm(cluster_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
     # LEloss = torch.nn.MSELoss()
-    # L_E += LEloss(cluster_energy, mpc_energy)
+    # L_E += LEloss(cluster_energy, mcp_energy)
+    L_E = L_E * er_coef
 
 
     # ________________________________
@@ -1106,6 +1111,11 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     n_points = betas.shape[0]
     select_condpoints = betas > tbeta
 
+    # 
+    condensation_points = np.zeros(n_points, dtype=np.int32)
+    # condensation_points[select_condpoints] = 1
+
+
     # Get indices passing the threshold
     # Order them by decreasing beta value
     indices_condpoints = np.nonzero(select_condpoints)[0]
@@ -1142,6 +1152,7 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     # Points unassigned at the end are bkg (-1)
 
     for index_condpoint in indices_condpoints2:
+        # condensation_points[index_condpoint] = 1
         d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
         assigned_to_this_cluster = unassigned[d < td]
         clustering[assigned_to_this_cluster] = index_condpoint
@@ -1181,7 +1192,117 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     for k,v in remapCharged.items():
         clustering[clustering==k] = v
 
-    return clustering
+    # print(betas.shape[0])
+    # print(betas)
+    # print(clustering)
+    condensation_points_beta, condensation_points_index = scatter_max(torch.from_numpy(betas.astype(np.long)), torch.from_numpy(clustering.astype(np.long)))
+    # print(type(condensation_points_index), condensation_points_index)
+    condensation_points_index = condensation_points_index.detach().numpy()
+    # print(type(condensation_points_index), condensation_points_index)
+    # print(condensation_points_index[condensation_points_index < betas.shape[0]])
+    condensation_points[condensation_points_index[condensation_points_index < betas.shape[0]]] = 1
+    # print(type(condensation_points), condensation_points)
+
+    return clustering, condensation_points
+
+def get_clustering_np_new2(event, betas: np.array, X: np.array, charged_hits: np.array,
+        tbeta: float=.7, td: float=0.5) -> np.array:
+    """
+    (Modified object condensation code that do not merge high beta objects, but merges everything else)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+
+    modified indices_condpoints2 loop to only merge to the unassigned points 
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+
+    # 
+    condensation_points = np.zeros(n_points, dtype=np.int32)
+    condensation_points[select_condpoints] = 1
+
+
+    # Get indices passing the threshold
+    # Order them by decreasing beta value
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+
+    # Create indices not passing the threshold (to be merged later)
+    indices_condpoints2 = np.nonzero(~select_condpoints)[0]
+    indices_condpoints2 = indices_condpoints2[np.argsort(-betas[~select_condpoints])]
+
+
+    debug = False
+    # First look at condensation points with beta higher than the threshold (tbeta)
+    # and attach other points to the closest condensation points (within distance td)
+    unassigned = np.array([], dtype=np.int32)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+
+    if any(select_condpoints):
+        for i in np.arange(n_points):
+            x = X[i]
+            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
+            argmin = np.argmin(d, axis=-1)
+            index_condpoint = indices_condpoints[argmin]
+            if (d[argmin] < td):
+                clustering[i] = index_condpoint
+                if debug:
+                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
+            else:
+                unassigned = np.append(unassigned,i)
+    else: 
+        unassigned = np.arange(n_points)
+
+    # Now merge the rest of the points, highest beta first
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+
+    for index_condpoint in indices_condpoints2:
+        if np.any(unassigned==index_condpoint): continue
+        # condensation_points[index_condpoint] = 1
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_cluster = unassigned[d < td]
+        clustering[assigned_to_this_cluster] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+
+    return clustering, condensation_points
+
 
 
 def get_clustering(betas: torch.Tensor, X: torch.Tensor, tbeta=.1, td=1.):
