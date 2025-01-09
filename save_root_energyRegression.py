@@ -31,6 +31,8 @@ class Data:
     matched_ncluster = np.array([0], dtype=np.int32)
     matched_cluster = np.array([0], dtype=np.int32)
     pred_edep = np.array([0], dtype=np.float64)
+    cond_beta = np.array([0], dtype=np.float64)
+    cond_track = np.array([0], dtype=np.int32)
 
 
     def setup_branch(this,t):
@@ -53,6 +55,8 @@ class Data:
         t.Branch("matched_ncluster",this.matched_ncluster,"matched_ncluster/I")
         t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
+        t.Branch("cond_track",this.cond_track,"cond_track/I")
 
 #   ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
 #   ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
@@ -116,6 +120,7 @@ class PredData:
     pred_edep = np.array([0], dtype=np.float64)
     pred_beta = np.array([0], dtype=np.float64)
     pred_alpha = np.array([0], dtype=np.int32)
+    trackness = np.array([0], dtype=np.int32)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
@@ -134,8 +139,9 @@ class PredData:
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
         t.Branch("pred_beta",this.pred_beta,"pred_beta/D")
         t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
+        t.Branch("trackness",this.trackness,"trackness/I")
 
-def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False):
+def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
     debug = False
 
     print(f"save_root()...")
@@ -154,10 +160,14 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     d3.setup_branch(t3)
 
     thetaphi = True if input_dim == 7 else False
+    if momentum:
+        input_dim += 3 
+        if momentumAmp:
+            input_dim += 1
     print(f"Loading model from checkpoint {ckpt}")
     model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
-    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora)
+    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
     yielder = TestYielder(model=model, dataset=dataset)
 
     nmax = None if nend==-1 else nend-nstart+1
@@ -171,7 +181,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     """
     
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
-    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.3, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax)):     ## これをpandoraについてもできるようにする
     #for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.7, td=0.5, nmax=nmax)):
         # print(condensation_points)
@@ -227,8 +239,24 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             match_label = event.label[pattern_mcid]
             match_feat = event.feat[pattern_mcid]
             match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
+            match_track = match_feat[:,5].detach().numpy().astype(np.int32)
+            # match_pdg = match_label[:,2].detach().numpy().astype(np.int32)
+            # print("pdg", match_pdg)
+            # print("track", match_track)
             edep_sum = np.sum(match_edep)
-            ncluster = len(match_label)
+            ncluster = len(pattern_mcid)
+
+            if not pandora:
+                predicted_beta = prediction.pred_betas[pattern_mcid]
+                predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+                cond_trackness = cond_tracknesses[0]
+                predicted_beta = -np.sort(-predicted_beta)
+                # print(predicted_beta[0], cond_trackness)
+            else:
+                predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                cond_trackness = 0
 
             edep_reco = 0
             edep_match = 0
@@ -249,7 +277,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
             # for MC particle, take any element from the match because they should be the same
             my_label = match_label[0]
-            pred_edep = 0
+            pred_edep = predicted_energy[0]                                  ## alpha
+            # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
 
             # Set values for TTree and fill
             d.event[0] = i
@@ -271,6 +300,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d.matched_ncluster[0] = matched_ncluster
             d.matched_cluster[0] = matched_cluster
             d.pred_edep[0] = pred_edep
+            d.cond_beta[0] = predicted_beta[0]
+            d.cond_track[0] = cond_trackness
 
             if (not d.mcid[0] == -1): # skip if track does not have hit
                 t.Fill()
@@ -334,53 +365,56 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
 
         # making predicted trees
-        for ihit in range(n_hits):
+        if not pandora:
+            for ihit in range(n_hits):
 
-            '''
-            '''
+                '''
+                '''
 
-            # pattern_mcid = (event.y[:,0]==id)
-            # match_label = event.label[pattern_mcid]
-            # match_feat = event.feat[pattern_mcid]
-            # match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-            # edep_sum = np.sum(match_edep)
-            # ncluster = len(match_label)
+                # pattern_mcid = (event.y[:,0]==id)
+                # match_label = event.label[pattern_mcid]
+                # match_feat = event.feat[pattern_mcid]
+                # match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
+                # edep_sum = np.sum(match_edep)
+                # ncluster = len(match_label)
 
-            # for MC particle, take any element from the match because they should be the same
-            my_label = event.label[ihit]
-            pred_edep = 0
-            pred_beta = 0
+                # for MC particle, take any element from the match because they should be the same
+                my_label = event.label[ihit]
+                my_feat = event.feat[ihit]
+                pred_edep = 0
+                pred_beta = 0
 
-            # Set values for TTree and fill
-            d3.event[0] = i
-            d3.hitid[0] = my_label[0]
-            d3.mcid[0] = my_label[1]
-            d3.truthid[0] = id
-            d3.mcpdg[0] = my_label[2]
-            d3.mccharge[0] = my_label[3]
-            d3.mcmass[0] = my_label[4]
-            d3.mcpx[0] = my_label[5]
-            d3.mcpy[0] = my_label[6]
-            d3.mcpz[0] = my_label[7]
-            d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
-            d3.mcstatus[0] = my_label[8]
-            d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
-            d3.pred_beta[0] = prediction.pred_betas[ihit]
-            d3.pred_alpha[0] = condensation_points[ihit]
+                # Set values for TTree and fill
+                d3.event[0] = i
+                d3.hitid[0] = my_label[0]
+                d3.mcid[0] = my_label[1]
+                d3.truthid[0] = id
+                d3.mcpdg[0] = my_label[2]
+                d3.mccharge[0] = my_label[3]
+                d3.mcmass[0] = my_label[4]
+                d3.mcpx[0] = my_label[5]
+                d3.mcpy[0] = my_label[6]
+                d3.mcpz[0] = my_label[7]
+                d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
+                d3.mcstatus[0] = my_label[8]
+                d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
+                d3.pred_beta[0] = prediction.pred_betas[ihit]
+                d3.pred_alpha[0] = condensation_points[ihit]
+                d3.trackness[0] = my_feat[5]
 
-            if (not d3.mcid[0] == -1): # skip if track does not have hit
-                t3.Fill()
+                if (not d3.mcid[0] == -1): # skip if track does not have hit
+                    t3.Fill()
 
 
     print(f"Saving to {outfile}")
     file.Write()
     
 def main():
-    if (len(sys.argv) != 11):
-        print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression")
+    if (len(sys.argv) != 14):
+        print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
         return
     
-    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]))
+    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]), momentum=strtobool(sys.argv[11]), momentumAmp=strtobool(sys.argv[12]), mctpe=strtobool(sys.argv[13]))
 
 if __name__=='__main__':
     main()
