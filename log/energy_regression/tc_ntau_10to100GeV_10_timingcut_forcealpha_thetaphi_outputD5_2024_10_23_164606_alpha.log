@@ -1,0 +1,1028 @@
+['train_energyRegression.py', '-i', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train', '-ii', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '50', '--beta-track', '--force-track-alpha', '--batch-size', '20', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2024_10_23_164606_outputD5', '--energy-regression', '--betaE-alpha', 'alpha']
+Using device:  cuda:0
+learning rate : 9e-06 ,  weght decay : 0.0001 , regression coefficient : 1
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train'
+filenames=['/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_10.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_100.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1000.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1010.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1020.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1030.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1040.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1050.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1060.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1070.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1080.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1090.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_110.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1100.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1110.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1120.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1130.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1140.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1150.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1160.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1170.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1180.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1190.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_120.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1200.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1210.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1220.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1230.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1240.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1250.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1260.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1270.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1280.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1290.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_130.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1300.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1310.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1320.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1330.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1340.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1350.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1360.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1370.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1380.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1390.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_140.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1400.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1410.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1420.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1430.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1440.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1450.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1460.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1470.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1480.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1490.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_150.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1500.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1510.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1520.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1530.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1540.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1550.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1560.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1570.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1580.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1590.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_160.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1600.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1610.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1620.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1630.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1640.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1650.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1660.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1670.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1680.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1690.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_170.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1700.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1710.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1720.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1730.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1740.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1750.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1760.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1770.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1780.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1790.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_180.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1800.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1810.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1820.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1830.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1840.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1850.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1860.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1870.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1880.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1890.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_190.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1900.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1910.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1920.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1930.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1940.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1950.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1960.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1970.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1980.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1990.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_20.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_200.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2000.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2010.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2020.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2030.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2040.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2050.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2060.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2070.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2080.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2090.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_210.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2100.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2110.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2120.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2130.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2140.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2150.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2160.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2170.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2180.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2190.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_220.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2200.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2210.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2220.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2230.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2240.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2250.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2260.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2270.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2280.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2290.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_230.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2300.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2310.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2320.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2330.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2340.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2350.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2360.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2370.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2380.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2390.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_240.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2400.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2410.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2420.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2430.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2440.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2450.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2460.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2470.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2480.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2490.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_250.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2500.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2510.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2520.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2530.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2540.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2550.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2560.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2570.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2580.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2590.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_260.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2600.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2610.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2620.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2630.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2640.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2650.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2660.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2670.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2680.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2690.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_270.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2700.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2710.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2720.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2730.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2740.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2750.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2760.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2770.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2780.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2790.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_280.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2800.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2810.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2820.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2830.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2840.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2850.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2860.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2870.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2880.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2890.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_290.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2900.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2910.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2920.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2930.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2940.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2950.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2960.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2970.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2980.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2990.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_30.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_300.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3000.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3010.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3020.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3030.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3040.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3050.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3060.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3070.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3080.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3090.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_310.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3100.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3110.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3120.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3130.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3140.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3150.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3160.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3170.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3180.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3190.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_320.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_330.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_340.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_350.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_360.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_370.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_380.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_390.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_40.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_400.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_4000.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_410.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_420.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_430.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_440.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_450.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_460.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_470.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_480.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_490.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_50.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_500.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_510.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_520.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_530.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_540.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_550.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_560.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_570.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_580.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_590.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_60.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_600.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_610.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_620.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_630.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_640.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_650.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_660.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_670.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_680.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_690.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_70.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_700.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_710.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_720.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_730.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_740.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_750.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_760.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_770.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_780.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_790.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_80.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_800.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_810.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_820.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_830.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_840.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_850.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_860.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_870.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_880.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_890.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_90.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_900.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_910.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_920.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_930.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_940.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_950.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_960.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_970.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_980.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_990.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_10.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_100.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1000.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1010.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1020.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1030.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1040.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1050.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1060.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1070.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1080.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1090.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_110.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1100.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1110.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1120.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1130.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1140.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1150.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1160.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1170.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1180.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1190.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_120.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1200.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1210.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1220.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1230.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1240.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1250.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1260.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1270.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1280.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1290.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_130.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1300.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1310.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1320.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1330.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1340.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1350.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1360.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1370.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1380.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1390.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_140.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1400.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1410.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1420.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1430.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1440.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1450.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1460.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1470.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1480.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1490.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_150.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1500.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1510.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1520.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1530.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1540.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1550.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1560.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1570.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1580.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1590.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_160.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1600.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1610.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1620.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1630.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1640.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1650.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1660.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1670.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1680.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1690.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_170.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1700.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1710.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1720.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1730.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1740.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1750.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1760.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1770.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1780.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1790.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_180.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1800.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1810.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1820.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1830.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1840.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1850.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1860.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1870.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1880.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1890.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_190.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1900.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1910.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1920.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1930.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1940.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1950.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1960.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1970.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1980.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_1990.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_20.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_200.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2000.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2010.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2020.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2030.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2040.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2050.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2060.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2070.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2080.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2090.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_210.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2100.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2110.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2120.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2130.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2140.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2150.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2160.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2170.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2180.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2190.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_220.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2200.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2210.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2220.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2230.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2240.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2250.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2260.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2270.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2280.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2290.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_230.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2300.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2310.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2320.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2330.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2340.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2350.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2360.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2370.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2380.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2390.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_240.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2400.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2410.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2420.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2430.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2440.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2450.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2460.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2470.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2480.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2490.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_250.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2500.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2510.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2520.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2530.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2540.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2550.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2560.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2570.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2580.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2590.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_260.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2600.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2610.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2620.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2630.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2640.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2650.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2660.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2670.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2680.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2690.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_270.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2700.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2710.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2720.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2730.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2740.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2750.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2760.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2770.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2780.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2790.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_280.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2800.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2810.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2820.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2830.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2840.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2850.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2860.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2870.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2880.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2890.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_290.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2900.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2910.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2920.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2930.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2940.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2950.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2960.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2970.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2980.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_2990.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_30.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_300.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3000.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3010.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3020.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3030.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3040.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3050.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3060.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3070.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3080.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3090.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_310.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3100.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3110.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3120.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3130.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3140.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3150.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3160.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3170.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3180.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_3190.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_320.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_330.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_340.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_350.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_360.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_370.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_380.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_390.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_40.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_400.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_4000.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_410.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_420.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_430.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_440.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_450.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_460.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_470.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_480.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_490.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_50.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_500.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_510.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_520.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_530.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_540.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_550.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_560.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_570.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_580.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_590.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_60.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_600.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_610.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_620.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_630.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_640.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_650.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_660.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_670.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_680.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_690.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_70.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_700.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_710.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_720.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_730.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_740.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_750.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_760.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_770.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_780.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_790.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_80.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_800.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_810.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_820.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_830.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_840.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_850.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_860.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_870.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_880.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_890.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_90.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_900.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_910.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_920.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_930.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_940.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_950.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_960.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_970.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_980.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/train/ntau_10to100GeV_10_990.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation'
+filenames=['/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3200.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3210.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3220.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3230.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3240.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3250.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3260.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3270.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3280.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3290.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3300.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3310.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3320.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3330.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3340.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3350.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3360.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3370.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3380.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3390.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3400.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3410.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3420.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3430.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3440.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3450.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3460.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3470.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3480.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3490.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3500.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3510.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3520.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3530.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3540.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3550.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3560.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3570.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3580.h5', '/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3590.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3200.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3210.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3220.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3230.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3240.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3250.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3260.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3270.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3280.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3290.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3300.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3310.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3320.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3330.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3340.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3350.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3360.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3370.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3380.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3390.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3400.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3410.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3420.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3430.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3440.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3450.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3460.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3470.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3480.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3490.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3500.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3510.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3520.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3530.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3540.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3550.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3560.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3570.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3580.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/validation/ntau_10to100GeV_10_3590.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  79999
+Validating dataset size:  10000
+Batch size:  20
+Loading GravnetModel
+Hello
+Training epoch 0
+test   L_V                   = +1.9909 (0.0%)
+    L_V_attractive      = +0.9560 (0.0%)
+    L_V_repulsive       = +1.0350 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1826 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2662 (0.0%)
+    L_beta_track        = +0.9164 (0.0%)
+      L_beta_norms_term   = -0.0358 (-0.0%)
+      L_beta_logbeta_term = +0.3020 (0.0%)
+  L_E = +6933.5947 (100.0%)
+Returning 6937.7685546875
+Training epoch 1
+test   L_V                   = +1.3321 (0.0%)
+    L_V_attractive      = +0.7078 (0.0%)
+    L_V_repulsive       = +0.6243 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.4064 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.4588 (0.0%)
+    L_beta_track        = +0.9475 (0.0%)
+      L_beta_norms_term   = -0.0151 (-0.0%)
+      L_beta_logbeta_term = +0.4740 (0.0%)
+  L_E = +6877.7031 (100.0%)
+Returning 6881.44140625
+Training epoch 2
+test   L_V                   = +1.1248 (0.0%)
+    L_V_attractive      = +0.6083 (0.0%)
+    L_V_repulsive       = +0.5165 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.6371 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.6602 (0.0%)
+    L_beta_track        = +0.9769 (0.0%)
+      L_beta_norms_term   = -0.0070 (-0.0%)
+      L_beta_logbeta_term = +0.6673 (0.0%)
+  L_E = +6774.7124 (100.0%)
+Returning 6778.47412109375
+Training epoch 3
+test   L_V                   = +1.0333 (0.0%)
+    L_V_attractive      = +0.5574 (0.0%)
+    L_V_repulsive       = +0.4759 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.8353 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.8458 (0.0%)
+    L_beta_track        = +0.9895 (0.0%)
+      L_beta_norms_term   = -0.0036 (-0.0%)
+      L_beta_logbeta_term = +0.8494 (0.0%)
+  L_E = +6766.0664 (100.0%)
+Returning 6769.93505859375
+Training epoch 4
+test   L_V                   = +0.9693 (0.0%)
+    L_V_attractive      = +0.5293 (0.0%)
+    L_V_repulsive       = +0.4400 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.0094 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.0143 (0.0%)
+    L_beta_track        = +0.9951 (0.0%)
+      L_beta_norms_term   = -0.0018 (-0.0%)
+      L_beta_logbeta_term = +1.0161 (0.0%)
+  L_E = +6762.9072 (100.0%)
+Returning 6766.8857421875
+Training epoch 5
+test   L_V                   = +0.9348 (0.0%)
+    L_V_attractive      = +0.5246 (0.0%)
+    L_V_repulsive       = +0.4102 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.1995 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.2017 (0.0%)
+    L_beta_track        = +0.9978 (0.0%)
+      L_beta_norms_term   = -0.0008 (-0.0%)
+      L_beta_logbeta_term = +1.2025 (0.0%)
+  L_E = +6753.4453 (100.0%)
+Returning 6757.57958984375
+Training epoch 6
+test   L_V                   = +0.9143 (0.0%)
+    L_V_attractive      = +0.5089 (0.0%)
+    L_V_repulsive       = +0.4054 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.3881 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.3890 (0.0%)
+    L_beta_track        = +0.9990 (0.0%)
+      L_beta_norms_term   = -0.0004 (-0.0%)
+      L_beta_logbeta_term = +1.3894 (0.0%)
+  L_E = +6776.9102 (100.0%)
+Returning 6781.21240234375
+Training epoch 7
+test   L_V                   = +0.8880 (0.0%)
+    L_V_attractive      = +0.4948 (0.0%)
+    L_V_repulsive       = +0.3932 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.5854 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.5858 (0.0%)
+    L_beta_track        = +0.9995 (0.0%)
+      L_beta_norms_term   = -0.0002 (-0.0%)
+      L_beta_logbeta_term = +1.5860 (0.0%)
+  L_E = +6785.0459 (99.9%)
+Returning 6789.51904296875
+Training epoch 8
+test   L_V                   = +1.5503 (0.0%)
+    L_V_attractive      = +0.8382 (0.0%)
+    L_V_repulsive       = +0.7121 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.6850 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.0604 (0.0%)
+    L_beta_track        = +0.6246 (0.0%)
+      L_beta_norms_term   = -0.1261 (-0.0%)
+      L_beta_logbeta_term = +0.1865 (0.0%)
+  L_E = +6875.1973 (100.0%)
+Returning 6878.4326171875
+Training epoch 9
+test   L_V                   = +1.8869 (0.0%)
+    L_V_attractive      = +0.9758 (0.0%)
+    L_V_repulsive       = +0.9111 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.6135 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.0208 (0.0%)
+    L_beta_track        = +0.5927 (0.0%)
+      L_beta_norms_term   = -0.1541 (-0.0%)
+      L_beta_logbeta_term = +0.1749 (0.0%)
+  L_E = +6889.4971 (100.0%)
+Returning 6892.99755859375
+Training epoch 10
+test   L_V                   = +1.9424 (0.0%)
+    L_V_attractive      = +1.0417 (0.0%)
+    L_V_repulsive       = +0.9007 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.6009 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.0132 (0.0%)
+    L_beta_track        = +0.5878 (0.0%)
+      L_beta_norms_term   = -0.1596 (-0.0%)
+      L_beta_logbeta_term = +0.1727 (0.0%)
+  L_E = +6879.0947 (100.0%)
+Returning 6882.63818359375
+Training epoch 11
+test   L_V                   = +1.9766 (0.0%)
+    L_V_attractive      = +1.0871 (0.0%)
+    L_V_repulsive       = +0.8895 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.5926 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.0072 (0.0%)
+    L_beta_track        = +0.5855 (0.0%)
+      L_beta_norms_term   = -0.1630 (-0.0%)
+      L_beta_logbeta_term = +0.1702 (0.0%)
+  L_E = +6872.6733 (100.0%)
+Returning 6876.24267578125
+Training epoch 12
+test   L_V                   = +2.0149 (0.0%)
+    L_V_attractive      = +1.0394 (0.0%)
+    L_V_repulsive       = +0.9755 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.5740 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = -0.0097 (-0.0%)
+    L_beta_track        = +0.5837 (0.0%)
+      L_beta_norms_term   = -0.1779 (-0.0%)
+      L_beta_logbeta_term = +0.1682 (0.0%)
+  L_E = +6859.2358 (100.0%)
+Returning 6862.82470703125
+Training epoch 13
+test   L_V                   = +2.0214 (0.0%)
+    L_V_attractive      = +1.1006 (0.0%)
+    L_V_repulsive       = +0.9208 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.5750 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = -0.0080 (-0.0%)
+    L_beta_track        = +0.5830 (0.0%)
+      L_beta_norms_term   = -0.1754 (-0.0%)
+      L_beta_logbeta_term = +0.1674 (0.0%)
+  L_E = +6854.0693 (100.0%)
+Returning 6857.66552734375
+Training epoch 14
+test   L_V                   = +1.9612 (0.0%)
+    L_V_attractive      = +1.0349 (0.0%)
+    L_V_repulsive       = +0.9262 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.5694 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = -0.0143 (-0.0%)
+    L_beta_track        = +0.5837 (0.0%)
+      L_beta_norms_term   = -0.1815 (-0.0%)
+      L_beta_logbeta_term = +0.1672 (0.0%)
+  L_E = +6861.9180 (100.0%)
+Returning 6865.44873046875
+Training epoch 15
+test   L_V                   = +1.9703 (0.0%)
+    L_V_attractive      = +1.0991 (0.0%)
+    L_V_repulsive       = +0.8712 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.5736 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = -0.0092 (-0.0%)
+    L_beta_track        = +0.5829 (0.0%)
+      L_beta_norms_term   = -0.1769 (-0.0%)
+      L_beta_logbeta_term = +0.1677 (0.0%)
+  L_E = +6863.2715 (100.0%)
+Returning 6866.8154296875
+Training epoch 16
+test   L_V                   = +3.8399 (0.1%)
+    L_V_attractive      = +1.9153 (0.1%)
+    L_V_repulsive       = +1.9246 (0.1%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.4809 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.5060 (0.0%)
+    L_beta_track        = +0.9749 (0.0%)
+      L_beta_norms_term   = -0.0196 (-0.0%)
+      L_beta_logbeta_term = +0.5255 (0.0%)
+  L_E = +3290.0908 (99.8%)
+Returning 3296.41162109375
+Training epoch 17
+test   L_V                   = +3.4127 (0.1%)
+    L_V_attractive      = +1.8081 (0.1%)
+    L_V_repulsive       = +1.6046 (0.1%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.2124 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2952 (0.0%)
+    L_beta_track        = +0.9172 (0.0%)
+      L_beta_norms_term   = -0.0310 (-0.0%)
+      L_beta_logbeta_term = +0.3262 (0.0%)
+  L_E = +3140.5469 (99.9%)
+Returning 3146.171875
+Training epoch 18
+test   L_V                   = +3.1802 (0.1%)
+    L_V_attractive      = +1.7594 (0.1%)
+    L_V_repulsive       = +1.4208 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1589 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2679 (0.0%)
+    L_beta_track        = +0.8909 (0.0%)
+      L_beta_norms_term   = -0.0323 (-0.0%)
+      L_beta_logbeta_term = +0.3002 (0.0%)
+  L_E = +3020.1877 (99.9%)
+Returning 3025.52685546875
+Training epoch 19
+test   L_V                   = +3.0109 (0.1%)
+    L_V_attractive      = +1.6626 (0.1%)
+    L_V_repulsive       = +1.3483 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1066 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2451 (0.0%)
+    L_beta_track        = +0.8614 (0.0%)
+      L_beta_norms_term   = -0.0340 (-0.0%)
+      L_beta_logbeta_term = +0.2792 (0.0%)
+  L_E = +2899.9260 (99.9%)
+Returning 2905.04345703125
+Training epoch 20
+test   L_V                   = +2.9043 (0.1%)
+    L_V_attractive      = +1.6578 (0.1%)
+    L_V_repulsive       = +1.2465 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0558 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2226 (0.0%)
+    L_beta_track        = +0.8333 (0.0%)
+      L_beta_norms_term   = -0.0357 (-0.0%)
+      L_beta_logbeta_term = +0.2582 (0.0%)
+  L_E = +2779.8076 (99.9%)
+Returning 2784.767822265625
+Training epoch 21
+test   L_V                   = +2.8416 (0.1%)
+    L_V_attractive      = +1.6535 (0.1%)
+    L_V_repulsive       = +1.1880 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0134 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2153 (0.0%)
+    L_beta_track        = +0.7980 (0.0%)
+      L_beta_norms_term   = -0.0368 (-0.0%)
+      L_beta_logbeta_term = +0.2521 (0.0%)
+  L_E = +2712.4683 (99.9%)
+Returning 2717.3232421875
+Training epoch 22
+test   L_V                   = +2.7929 (0.1%)
+    L_V_attractive      = +1.6473 (0.1%)
+    L_V_repulsive       = +1.1455 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9982 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2138 (0.0%)
+    L_beta_track        = +0.7844 (0.0%)
+      L_beta_norms_term   = -0.0364 (-0.0%)
+      L_beta_logbeta_term = +0.2502 (0.0%)
+  L_E = +2646.4287 (99.9%)
+Returning 2651.2197265625
+Training epoch 23
+test   L_V                   = +2.9035 (0.1%)
+    L_V_attractive      = +1.7189 (0.1%)
+    L_V_repulsive       = +1.1846 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9592 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2090 (0.0%)
+    L_beta_track        = +0.7502 (0.0%)
+      L_beta_norms_term   = -0.0367 (-0.0%)
+      L_beta_logbeta_term = +0.2458 (0.0%)
+  L_E = +2587.4783 (99.9%)
+Returning 2592.341064453125
+Training epoch 24
+test   L_V                   = +2.8997 (0.1%)
+    L_V_attractive      = +1.7317 (0.1%)
+    L_V_repulsive       = +1.1680 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9428 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2075 (0.0%)
+    L_beta_track        = +0.7353 (0.0%)
+      L_beta_norms_term   = -0.0364 (-0.0%)
+      L_beta_logbeta_term = +0.2439 (0.0%)
+  L_E = +2599.3345 (99.9%)
+Returning 2604.177001953125
+Training epoch 25
+test   L_V                   = +2.8004 (0.1%)
+    L_V_attractive      = +1.7219 (0.1%)
+    L_V_repulsive       = +1.0785 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9363 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1997 (0.0%)
+    L_beta_track        = +0.7366 (0.0%)
+      L_beta_norms_term   = -0.0377 (-0.0%)
+      L_beta_logbeta_term = +0.2374 (0.0%)
+  L_E = +2528.3230 (99.9%)
+Returning 2533.0595703125
+Training epoch 26
+test   L_V                   = +2.8589 (0.1%)
+    L_V_attractive      = +1.7434 (0.1%)
+    L_V_repulsive       = +1.1155 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9317 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2032 (0.0%)
+    L_beta_track        = +0.7285 (0.0%)
+      L_beta_norms_term   = -0.0372 (-0.0%)
+      L_beta_logbeta_term = +0.2404 (0.0%)
+  L_E = +2492.9182 (99.8%)
+Returning 2497.708740234375
+Training epoch 27
+test   L_V                   = +2.9402 (0.1%)
+    L_V_attractive      = +1.8087 (0.1%)
+    L_V_repulsive       = +1.1315 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9058 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1966 (0.0%)
+    L_beta_track        = +0.7092 (0.0%)
+      L_beta_norms_term   = -0.0382 (-0.0%)
+      L_beta_logbeta_term = +0.2348 (0.0%)
+  L_E = +2477.0322 (99.8%)
+Returning 2481.878173828125
+Training epoch 28
+test   L_V                   = +2.7213 (0.1%)
+    L_V_attractive      = +1.6458 (0.1%)
+    L_V_repulsive       = +1.0754 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9266 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1991 (0.0%)
+    L_beta_track        = +0.7275 (0.0%)
+      L_beta_norms_term   = -0.0380 (-0.0%)
+      L_beta_logbeta_term = +0.2371 (0.0%)
+  L_E = +2448.8745 (99.9%)
+Returning 2453.5224609375
+Training epoch 29
+test   L_V                   = +2.7509 (0.1%)
+    L_V_attractive      = +1.6979 (0.1%)
+    L_V_repulsive       = +1.0530 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9247 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1992 (0.0%)
+    L_beta_track        = +0.7256 (0.0%)
+      L_beta_norms_term   = -0.0373 (-0.0%)
+      L_beta_logbeta_term = +0.2365 (0.0%)
+  L_E = +2449.5808 (99.9%)
+Returning 2454.256591796875
+Training epoch 30
+test   L_V                   = +2.7328 (0.1%)
+    L_V_attractive      = +1.6981 (0.1%)
+    L_V_repulsive       = +1.0347 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9155 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2005 (0.0%)
+    L_beta_track        = +0.7150 (0.0%)
+      L_beta_norms_term   = -0.0363 (-0.0%)
+      L_beta_logbeta_term = +0.2368 (0.0%)
+  L_E = +2422.4155 (99.8%)
+Returning 2427.06396484375
+Training epoch 31
+test   L_V                   = +2.6505 (0.1%)
+    L_V_attractive      = +1.5815 (0.1%)
+    L_V_repulsive       = +1.0691 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9219 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1973 (0.0%)
+    L_beta_track        = +0.7247 (0.0%)
+      L_beta_norms_term   = -0.0376 (-0.0%)
+      L_beta_logbeta_term = +0.2349 (0.0%)
+  L_E = +2379.7644 (99.9%)
+Returning 2384.3369140625
+Training epoch 32
+test   L_V                   = +2.7051 (0.1%)
+    L_V_attractive      = +1.6650 (0.1%)
+    L_V_repulsive       = +1.0401 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9010 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1916 (0.0%)
+    L_beta_track        = +0.7094 (0.0%)
+      L_beta_norms_term   = -0.0385 (-0.0%)
+      L_beta_logbeta_term = +0.2301 (0.0%)
+  L_E = +2350.9785 (99.8%)
+Returning 2355.584716796875
+Training epoch 33
+test   L_V                   = +2.7166 (0.1%)
+    L_V_attractive      = +1.6805 (0.1%)
+    L_V_repulsive       = +1.0361 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8954 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1887 (0.0%)
+    L_beta_track        = +0.7067 (0.0%)
+      L_beta_norms_term   = -0.0392 (-0.0%)
+      L_beta_logbeta_term = +0.2280 (0.0%)
+  L_E = +2338.0195 (99.8%)
+Returning 2342.631591796875
+Training epoch 34
+test   L_V                   = +2.7361 (0.1%)
+    L_V_attractive      = +1.6549 (0.1%)
+    L_V_repulsive       = +1.0813 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8891 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1860 (0.0%)
+    L_beta_track        = +0.7031 (0.0%)
+      L_beta_norms_term   = -0.0407 (-0.0%)
+      L_beta_logbeta_term = +0.2267 (0.0%)
+  L_E = +2269.0554 (99.8%)
+Returning 2273.6806640625
+Training epoch 35
+test   L_V                   = +2.7126 (0.1%)
+    L_V_attractive      = +1.6722 (0.1%)
+    L_V_repulsive       = +1.0404 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8852 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1867 (0.0%)
+    L_beta_track        = +0.6985 (0.0%)
+      L_beta_norms_term   = -0.0411 (-0.0%)
+      L_beta_logbeta_term = +0.2278 (0.0%)
+  L_E = +2258.3789 (99.8%)
+Returning 2262.9765625
+Training epoch 36
+test   L_V                   = +2.7613 (0.1%)
+    L_V_attractive      = +1.7015 (0.1%)
+    L_V_repulsive       = +1.0598 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8755 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1842 (0.0%)
+    L_beta_track        = +0.6913 (0.0%)
+      L_beta_norms_term   = -0.0419 (-0.0%)
+      L_beta_logbeta_term = +0.2262 (0.0%)
+  L_E = +2237.2866 (99.8%)
+Returning 2241.92333984375
+Training epoch 37
+test   L_V                   = +2.6276 (0.1%)
+    L_V_attractive      = +1.6177 (0.1%)
+    L_V_repulsive       = +1.0099 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8901 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1875 (0.0%)
+    L_beta_track        = +0.7027 (0.0%)
+      L_beta_norms_term   = -0.0422 (-0.0%)
+      L_beta_logbeta_term = +0.2297 (0.0%)
+  L_E = +2178.3459 (99.8%)
+Returning 2182.86376953125
+Training epoch 38
+test   L_V                   = +2.8308 (0.1%)
+    L_V_attractive      = +1.7846 (0.1%)
+    L_V_repulsive       = +1.0462 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8591 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1816 (0.0%)
+    L_beta_track        = +0.6775 (0.0%)
+      L_beta_norms_term   = -0.0430 (-0.0%)
+      L_beta_logbeta_term = +0.2246 (0.0%)
+  L_E = +2170.3564 (99.8%)
+Returning 2175.04638671875
+Training epoch 39
+test   L_V                   = +2.7598 (0.1%)
+    L_V_attractive      = +1.7152 (0.1%)
+    L_V_repulsive       = +1.0446 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8700 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1829 (0.0%)
+    L_beta_track        = +0.6871 (0.0%)
+      L_beta_norms_term   = -0.0428 (-0.0%)
+      L_beta_logbeta_term = +0.2258 (0.0%)
+  L_E = +2157.9795 (99.8%)
+Returning 2162.609375
+Training epoch 40
+test   L_V                   = +2.7503 (0.1%)
+    L_V_attractive      = +1.7419 (0.1%)
+    L_V_repulsive       = +1.0084 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8551 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1765 (0.0%)
+    L_beta_track        = +0.6786 (0.0%)
+      L_beta_norms_term   = -0.0436 (-0.0%)
+      L_beta_logbeta_term = +0.2202 (0.0%)
+  L_E = +2106.6914 (99.8%)
+Returning 2111.296875
+Training epoch 41
+test   L_V                   = +2.6598 (0.1%)
+    L_V_attractive      = +1.6635 (0.1%)
+    L_V_repulsive       = +0.9963 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8689 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1791 (0.0%)
+    L_beta_track        = +0.6899 (0.0%)
+      L_beta_norms_term   = -0.0441 (-0.0%)
+      L_beta_logbeta_term = +0.2231 (0.0%)
+  L_E = +2096.0847 (99.8%)
+Returning 2100.613525390625
+Training epoch 42
+test   L_V                   = +2.6201 (0.1%)
+    L_V_attractive      = +1.6413 (0.1%)
+    L_V_repulsive       = +0.9788 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8660 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1782 (0.0%)
+    L_beta_track        = +0.6879 (0.0%)
+      L_beta_norms_term   = -0.0442 (-0.0%)
+      L_beta_logbeta_term = +0.2224 (0.0%)
+  L_E = +2078.7209 (99.8%)
+Returning 2083.20703125
+Training epoch 43
+test   L_V                   = +2.7308 (0.1%)
+    L_V_attractive      = +1.7229 (0.1%)
+    L_V_repulsive       = +1.0078 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8531 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1765 (0.0%)
+    L_beta_track        = +0.6766 (0.0%)
+      L_beta_norms_term   = -0.0447 (-0.0%)
+      L_beta_logbeta_term = +0.2212 (0.0%)
+  L_E = +2058.9456 (99.8%)
+Returning 2063.529541015625
+Training epoch 44
+test   L_V                   = +2.5770 (0.1%)
+    L_V_attractive      = +1.6195 (0.1%)
+    L_V_repulsive       = +0.9575 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8648 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1768 (0.0%)
+    L_beta_track        = +0.6881 (0.0%)
+      L_beta_norms_term   = -0.0449 (-0.0%)
+      L_beta_logbeta_term = +0.2217 (0.0%)
+  L_E = +2026.4944 (99.8%)
+Returning 2030.9361572265625
+Training epoch 45
+test   L_V                   = +2.6003 (0.1%)
+    L_V_attractive      = +1.6371 (0.1%)
+    L_V_repulsive       = +0.9632 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8655 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1770 (0.0%)
+    L_beta_track        = +0.6885 (0.0%)
+      L_beta_norms_term   = -0.0448 (-0.0%)
+      L_beta_logbeta_term = +0.2219 (0.0%)
+  L_E = +2023.4799 (99.8%)
+Returning 2027.9456787109375
+Training epoch 46
+test   L_V                   = +2.6681 (0.1%)
+    L_V_attractive      = +1.6907 (0.1%)
+    L_V_repulsive       = +0.9774 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8570 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1753 (0.0%)
+    L_beta_track        = +0.6817 (0.0%)
+      L_beta_norms_term   = -0.0459 (-0.0%)
+      L_beta_logbeta_term = +0.2212 (0.0%)
+  L_E = +2014.6373 (99.8%)
+Returning 2019.1624755859375
+Training epoch 47
+test   L_V                   = +2.6685 (0.1%)
+    L_V_attractive      = +1.6747 (0.1%)
+    L_V_repulsive       = +0.9938 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8576 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1731 (0.0%)
+    L_beta_track        = +0.6845 (0.0%)
+      L_beta_norms_term   = -0.0470 (-0.0%)
+      L_beta_logbeta_term = +0.2202 (0.0%)
+  L_E = +1994.2500 (99.8%)
+Returning 1998.776123046875
+Training epoch 48
+test   L_V                   = +2.5936 (0.1%)
+    L_V_attractive      = +1.6131 (0.1%)
+    L_V_repulsive       = +0.9804 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8605 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1766 (0.0%)
+    L_beta_track        = +0.6839 (0.0%)
+      L_beta_norms_term   = -0.0461 (-0.0%)
+      L_beta_logbeta_term = +0.2227 (0.0%)
+  L_E = +1987.1562 (99.8%)
+Returning 1991.6103515625
+Training epoch 49
+test   L_V                   = +2.6405 (0.1%)
+    L_V_attractive      = +1.6699 (0.1%)
+    L_V_repulsive       = +0.9706 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8545 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1740 (0.0%)
+    L_beta_track        = +0.6805 (0.0%)
+      L_beta_norms_term   = -0.0465 (-0.0%)
+      L_beta_logbeta_term = +0.2205 (0.0%)
+  L_E = +1983.4861 (99.8%)
+Returning 1987.981201171875

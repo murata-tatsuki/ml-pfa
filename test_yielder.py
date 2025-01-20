@@ -56,49 +56,56 @@ class TestYielder:
                 # print(f"{data.x=}")
                 #print(f"{data.batch=}")
 
-                #_,pass_noise_filter,out_gravnet = self.model(data.x, data.batch) #NoiseFilter
-                out_gravnet = self.model(data.x, data.batch) #w/o NoiseFilter
-                #pass_noise_filter = pass_noise_filter.numpy() #NoiseFilter
-                pred_betas = torch.sigmoid(out_gravnet[:,0]).numpy()
+                if not pandora:
+                    #_,pass_noise_filter,out_gravnet = self.model(data.x, data.batch) #NoiseFilter
+                    out_gravnet = self.model(data.x, data.batch) #w/o NoiseFilter
+                    #pass_noise_filter = pass_noise_filter.numpy() #NoiseFilter
+                    pred_betas = torch.sigmoid(out_gravnet[:,0]).numpy()
 
-                if (not energyRegression):
-                    if (self.use_charge_track_likeness):
-                        pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
-                        pred_cluster_space_coords = out_gravnet[:,2:].numpy()
-                        pred_cluster_energy = None
-                    else:
-                        pred_charge_track_likeness = None
-                        pred_cluster_space_coords = out_gravnet[:,1:].numpy()
-                        pred_cluster_energy = None
+                    if (not energyRegression):
+                        if (self.use_charge_track_likeness):
+                            pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
+                            pred_cluster_space_coords = out_gravnet[:,2:].numpy()
+                            pred_cluster_energy = None
+                        else:
+                            pred_charge_track_likeness = None
+                            pred_cluster_space_coords = out_gravnet[:,1:].numpy()
+                            pred_cluster_energy = None
 
-                    #prediction = Prediction(pass_noise_filter, pred_betas, pred_cluster_space_coords)
+                        #prediction = Prediction(pass_noise_filter, pred_betas, pred_cluster_space_coords)
 
-                    # add track hits info
-                    charged_hits = event.x[:,4]
-                else :
-                    if (self.use_charge_track_likeness):
-                        pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
-                        pred_cluster_energy = out_gravnet[:,2].numpy()
-                        pred_cluster_space_coords = out_gravnet[:,3:].numpy()
-                    else:
-                        pred_charge_track_likeness = None
-                        pred_cluster_energy = out_gravnet[:,1].numpy()
-                        pred_cluster_space_coords = out_gravnet[:,2:].numpy()
-                    # add track hits info
-                    charged_hits = event.x[:,4]
+                        # add track hits info
+                        charged_hits = event.x[:,4]
+                    else :
+                        if (self.use_charge_track_likeness):
+                            pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
+                            pred_cluster_energy = out_gravnet[:,2].numpy()
+                            pred_cluster_space_coords = out_gravnet[:,3:].numpy()
+                        else:
+                            pred_charge_track_likeness = None
+                            pred_cluster_energy = out_gravnet[:,1].numpy()
+                            pred_cluster_space_coords = out_gravnet[:,2:].numpy()
+                        # add track hits info
+                        charged_hits = event.x[:,4]
 
-                # print("*******************")
-                # for i,x in enumerate(charged_hits):
-                #     print(f"[{i:03}] charged_hits={x:03}")
+                    # print("*******************")
+                    # for i,x in enumerate(charged_hits):
+                    #     print(f"[{i:03}] charged_hits={x:03}")
 
-                prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_cluster_energy) #w/o noise
+                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_cluster_energy) #w/o noise
+                else:
+                    prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2]) #w/o noise
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
                 yield event, prediction
 
     def iter_clustering(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):
         for event, prediction in self.iter_pred(nmax, pandora, energyRegression):
-            clustering, condensation_points = cluster(event, prediction, tbeta, td, clustering_td_momentum)
-            pandora_clustering = np.array(event.pand, dtype=int).flatten() + 1 if pandora else None
+            if not pandora:
+                clustering, condensation_points = cluster(event, prediction, tbeta, td, clustering_td_momentum)
+            else:
+                clustering = None
+                condensation_points = None
+            pandora_clustering = np.array(event.pand[:,0], dtype=int).flatten() + 1 if pandora else None
             yield event, prediction, clustering, pandora_clustering, condensation_points
 
     def iter_matches(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):

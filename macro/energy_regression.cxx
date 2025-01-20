@@ -6,60 +6,136 @@ const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
 const bool saving_canvas = false;
-const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
-const string test_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const bool pandora = false;
+
+const bool momentum_input = true;
 
 
-const bool hyper_parameter = false;
+const string ab = "alpha";                                // alpha       betaE
+const bool modi = true;
+const string lossF = "alphaTrackModifying_LE16";               // alphaTrackModifying       alphaTrackModifyingCharge0     alphaTrackModifyingAll0       alphaModifying       alphaTrackModifying_LE16
+const string testMCdetect = "testDetected";                       // testMCTruth       testDetected 
+const bool trainMCdetect = false;                            // momenta of virtual hit are MC truth or detected
+const bool reduced_samples = true;
+const bool epochs = false;
+const string lossF_epochs = "alphaTrackModifying_LE16";               // alphaTrackModifying       alphaTrackModifying_coef005_LE16     alphaTrackModifying_coef005     alphaTrackModifying_LE16        alphaModifying
+const int nepoch = 59;
+
+const bool energyByPass = false;
+
+const bool filepath_ = true;
+
+
+
+
+
 const int dimension = 5;    // output dimensions  (one for beta, others are for coordinates)
-// 8が先
+const bool hyper_parameter = false;
 
-const bool fine_tuning = false;
-const int epoch = 25;       // 20   25
-const int train_epoch = epoch*2-1;
+// const bool fine_tuning = false;
+// const int epoch = 25;       // 20   25
+// const int train_epoch = epoch*2-1;
+
+const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : 100;
+const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 
 
 void energy_regression(){ 
     int rawfilenum = 1;
 
-    if(hyper_parameter && fine_tuning){ // condition check
-        cout << "something wrong with setting boolian " << endl;
-        abort();
-    }
+    // if(hyper_parameter && fine_tuning){ // condition check
+    //     cout << "something wrong with setting boolian " << endl;
+    //     abort();
+    // }
 
     TFile *filein[rawfilenum];
     TTree *tree[rawfilenum];
+    TTree *tree_pred[rawfilenum];
     int entry_max[rawfilenum];
     int total_entry_max=0;
-    string picDirectory;
+    string picDirectory = "../pic/energy_regression";
+    double scaling = 1;
+    string fileName = "";
     
     // energy regression
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE.root");
-    // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
-    filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_MSE_edit_energyTree.root");
+    if(!pandora){
+        if(!momentum_input){
+            // if(ab=="betaE") fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_betaE.root");
+            // if(ab=="alpha") fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_%s_5D_49_%s_alphaMSE.root",train_particle_type.c_str(),test_particle_type.c_str());
+            // if(ab=="betaE") fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_betaE_fixloss.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_uds91_5D_49_uds91_alphaMSE.root");
 
-    if(hyper_parameter){
-        const string rootDir = train_particle_type == "uds91" ? "uds_to_uds/" : "";
-        filein[0] = new TFile(Form("../output/hyper_parameter/dimensions/%stc_%s_timingcut_forcealpha_thetaphi_%dD_49_%s.root",rootDir.c_str(),train_particle_type.c_str(),dimension,test_particle_type.c_str()));
-        picDirectory = Form("../pic/output_dimension/D%d",dimension);
-    }
-    if(fine_tuning){
-        filein[0] = new TFile(Form("../output/fine_tuning/tc_ntau_10GeV_10_uds_timingcut_forcealpha_thetaphi_%d_%s.root",train_epoch,test_particle_type.c_str()));
-        picDirectory = Form("../pic/fine_tuning");
-    }
+            fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_%s_5D_49_%s_alphaMSE.root",train_particle_type.c_str(),test_particle_type.c_str());
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_uds91_5D_49_uds91_alphaMSE.root");
+        } else {
+            if(!modi){
+            // cout << Form("../output/energy_regression/new_clustering/energyTree/tc_%s_5D_49_%s_alphaMSE_momentum.root",train_particle_type.c_str(),test_particle_type.c_str()) << endl;
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_%s_5D_49_%s_alphaMSE_momentum.root",train_particle_type.c_str(),test_particle_type.c_str());
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_momentum.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_momentum_momentumAmp.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_%s_5D_49_%s_alphaMSE_momentum_restartPeriod50.root",train_particle_type.c_str(),test_particle_type.c_str());
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_momentum_restartPeriod50_coef001.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_17_ntau_10GeV_10_alphaMSE_momentum_restartPeriod50_coef001.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_momentum_restartPeriod30_coef01.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_alphaMSE_momentum_restartPeriod30_coef05.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alphaTrack_momentum_restartPeriod30.root");
+            
+            // long task
+            fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_499_ntau_10GeV_10_alphaTrack_momentum_restartPeriod30.root");
 
+
+                // adjustment 
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alphaTrack_momentum_restartPeriod30_trueloss_detectecprediction.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alpha_momentum_restartPeriod30_trueloss_detectecprediction.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alphaTrack_momentum_restartPeriod30_trueloss_backup.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alpha_momentum_restartPeriod30_trueloss.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alphaTrack_momentum_restartPeriod30_detectedloss.root");
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_alpha_momentum_restartPeriod30_detectedloss.root");
+            scaling = 1;
+            // fileName = Form("../output/energy_regression/new_clustering/energyTree/tc_ntau_10GeV_10_5D_14_ntau_10GeV_10_alphaMSE_momentum_restartPeriod50_condbeta_tbeta060.root");
+
+            // modifing
+            } else {
+                string trainOption = trainMCdetect ? "_virtualhitTrueMomentum" : "";
+                string trainOptionPic = trainMCdetect ? "virtualhitTrueMomentum/" : "";
+                picDirectory = Form("../pic/energy_regression/restartPeriod/30/modifying/%s%s",trainOptionPic.c_str(), lossF.c_str());
+                fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum%s/%s_%s.root",trainOption.c_str(),lossF.c_str(),testMCdetect.c_str());
+
+                if(epochs){
+                    string reducedOption = reduced_samples ? "reduced/" : "";
+                    picDirectory = Form("../pic/energy_regression/restartPeriod/30/modifying/%s%s%s/%d",trainOptionPic.c_str(),reducedOption.c_str(),lossF_epochs.c_str(),nepoch);
+                    fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum%s/epochs/%s%s/%s_epoch%d.root",trainOption.c_str(),reducedOption.c_str(),lossF_epochs.c_str(),testMCdetect.c_str(),nepoch);
+                }
+            }
+
+            if(energyByPass){
+                fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaTrackModifyingCharge0_EBranch_testDetected.root");
+            }
+        }
+    } else {
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/pandora/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_pandora.root");
+    }
+    if(filepath_){
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaTrackModifying_LE16_beta06d05_testDetected.root");
+    }
+    filein[0] = new TFile(Form("%s",fileName.c_str()));
+    cout << fileName << endl;
     cout << picDirectory << endl;
 
     for(int i=0; i<rawfilenum; i++){
         tree[i] = (TTree*) filein[i]->Get("t");
         entry_max[i] = tree[i]->GetEntries();
+        tree_pred[i] = (TTree*) filein[i]->Get("prediction");
     }
 
 
-    int event, hitid, mcid, truthid, mcpdg, mccharge, mcstatus, ncluster, matched_ncluster, matched_cluster;
-    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match;
+    int event, hitid, mcid, truthid, mcpdg, mccharge, mcstatus, ncluster, matched_ncluster, matched_cluster, cond_track;
+    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match, pred_edep, cond_beta, pred_alpha;
+
+    int _event, _hitid, _mcid, _truthid, _mcpdg, _mccharge, _mcstatus, _ncluster, _matched_ncluster, _matched_cluster, _pred_alpha;
+    double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_beta;
 
 
 
@@ -70,15 +146,18 @@ void energy_regression(){
     // string particleNames[3] = {"electron", "pion", "gamma"};
     string particleNames[3] = {"electron", "pion", "photon"};
     vector<int> particledgValues = {11,-11, 211,-211, 22};
-    // map<int,int> pdgParticle;
-    // pdgParticle[11] = 0;
-    // pdgParticle[-11] = 0;
-    // pdgParticle[211] = 1;
-    // pdgParticle[-211] = 1;
-    // pdgParticle[22] = 2;
+
+    double Eres_range = 1.5;
+    int Eres_nbin = 1200;
+    double E_res_binWidth = Eres_range*2/Eres_nbin;
+    double Eres_fit_range = 0.5;
+    int Eres_fitbin_lower = Eres_range>Eres_fit_range ? (Eres_range-Eres_fit_range)/E_res_binWidth : 0;
+    int Eres_fitbin_upper = Eres_range>Eres_fit_range ? Eres_nbin - (Eres_range-Eres_fit_range)/E_res_binWidth : -1;
+    int rebin_factor = 0.025 / E_res_binWidth;
     
     const int nParticle = 3;
     const int nEnergy = 10;
+    const double energy_interval = energyMaximum / nEnergy;
     TH1F *purity[nParticle];
     TH1F *purity_energy[nParticle][nEnergy];
     TH1F *purity_energy_normalize[nParticle][nEnergy];
@@ -87,6 +166,19 @@ void energy_regression(){
     TH1F *efficiency_energy[nParticle][nEnergy];
     TH1F *efficiency_energy_normalize[nParticle][nEnergy];
     TH2F *efficiency2d[nParticle];
+    TH1F *energy[nParticle];
+    TH1F *MCtruth_energy[nParticle];
+    TH1F *energy_diff[nParticle];
+    TH1F *energy_diff_per_energy[nParticle][nEnergy];
+    TH2F *energy2d[nParticle];
+    TH1F *energy_resolution[nParticle];
+    TH1F *energy_resolution_per_energy[nParticle][nEnergy];
+    TH2F *condbeta_vs_Ediff[nParticle];
+    TH2F *condbeta_vs_mcen[nParticle];
+    TH2F *condbeta_vs_Ediff_track[nParticle];
+    TH2F *condbeta_vs_mcen_track[nParticle];
+    TH2F *condbeta_vs_Ediff_nottrack[nParticle];
+    TH2F *condbeta_vs_mcen_nottrack[nParticle];
     for(int ip=0;ip<nParticle;ip++){
         purity[ip] = new TH1F(Form("purity_%d",ip), Form("%s purity (MC energy>1 GeV)",particleNames[ip].c_str()), 101,0,1.01);
         purity[ip]->SetXTitle("purity (edep_match/edep_reco)");
@@ -98,6 +190,31 @@ void energy_regression(){
         efficiency2d[ip] = new TH2F(Form("efficiency2d_%d",ip), Form("%s efficiency",particleNames[ip].c_str()), 101,0,1.01, 24,0,12);
         efficiency2d[ip]->SetXTitle("efficiency (edep_match/edep)");
         efficiency2d[ip]->SetYTitle("MC energy (edep)");
+        energy[ip] = new TH1F(Form("energy_%d",ip), Form("%s predicted energy (MC energy>1 GeV)",particleNames[ip].c_str()), energyMax*10,0,energyMax);
+        MCtruth_energy[ip] = new TH1F(Form("MCtruth_energy_%d",ip), Form("%s MCtruth energy",particleNames[ip].c_str()), energyMax*10,0,energyMax);
+        energy_diff[ip] = new TH1F(Form("energy_diff_%d",ip), Form("%s (MC energy>1 GeV);predicted energy - MC truth energy",particleNames[ip].c_str()), energyMax*10,-energyMax/2,energyMax/2);
+        energy2d[ip] = new TH2F(Form("energy2d_%d",ip), Form("%s energy",particleNames[ip].c_str()), energyMax*10,0,energyMax, energyMax*10,0,energyMax);
+        energy2d[ip]->SetXTitle("MC truth energy");
+        energy2d[ip]->SetYTitle("predicted energy");
+        condbeta_vs_Ediff[ip] = new TH2F(Form("condbeta_vs_Ediff_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
+        condbeta_vs_Ediff[ip]->SetXTitle("condensation beta");
+        condbeta_vs_Ediff[ip]->SetYTitle("predicted energy - true energy");
+        condbeta_vs_mcen[ip] = new TH2F(Form("condbeta_vs_mcen_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*10,0,energyMax);
+        condbeta_vs_mcen[ip]->SetXTitle("condensation beta");
+        condbeta_vs_mcen[ip]->SetYTitle("true energy");
+        condbeta_vs_Ediff_track[ip] = new TH2F(Form("condbeta_vs_Ediff_track_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
+        condbeta_vs_Ediff_track[ip]->SetXTitle("condensation beta");
+        condbeta_vs_Ediff_track[ip]->SetYTitle("predicted energy - true energy");
+        condbeta_vs_mcen_track[ip] = new TH2F(Form("condbeta_vs_mcen_track_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*10,0,energyMax);
+        condbeta_vs_mcen_track[ip]->SetXTitle("condensation beta");
+        condbeta_vs_mcen_track[ip]->SetYTitle("true energy");
+        condbeta_vs_Ediff_nottrack[ip] = new TH2F(Form("condbeta_vs_Ediff_nottrack_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
+        condbeta_vs_Ediff_nottrack[ip]->SetXTitle("condensation beta");
+        condbeta_vs_Ediff_nottrack[ip]->SetYTitle("predicted energy - true energy");
+        condbeta_vs_mcen_nottrack[ip] = new TH2F(Form("condbeta_vs_mcen_nottrack_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*10,0,energyMax);
+        condbeta_vs_mcen_nottrack[ip]->SetXTitle("condensation beta");
+        condbeta_vs_mcen_nottrack[ip]->SetYTitle("true energy");
+        energy_resolution[ip] = new TH1F(Form("energy_resolution_%d",ip), Form("%s (truth energy>1 GeV);(predicted - truth) / truth",particleNames[ip].c_str()), energyMax*10,-energyMax/2,energyMax/2);
         for(int ie=0;ie<nEnergy;ie++){
             string title = ie==0 ? Form("%s purity",particleNames[ip].c_str()) : Form("%s purity %d-%d GeV",particleNames[ip].c_str(),ie,ie+1);
             purity_energy[ip][ie] = new TH1F(Form("purity_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
@@ -109,6 +226,13 @@ void energy_regression(){
             efficiency_energy[ip][ie]->SetXTitle("efficiency (edep_match/edep)");
             efficiency_energy_normalize[ip][ie] = new TH1F(Form("efficiency_normalize_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
             efficiency_energy_normalize[ip][ie]->SetXTitle("efficiency (edep_match/edep)");
+
+            title = ie==0 ? Form("%s ;predicted energy - MC truth energy",particleNames[ip].c_str()) : Form("%s (%d-%d GeV);predicted energy - MC truth energy",particleNames[ip].c_str(),(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
+            // energy_diff_per_energy[ip][ie] = new TH1F(Form("energy_diff_per_energy%d_%d",ip,ie), title.c_str(), 120,-6,6);
+            energy_diff_per_energy[ip][ie] = new TH1F(Form("energy_diff_per_energy%d_%d",ip,ie), title.c_str(), Eres_nbin,-Eres_range,Eres_range);
+            title = ie==0 ? Form("%s ;(predicted - truth) / truth",particleNames[ip].c_str()) : Form("%s (%d-%d GeV);(predicted - truth) / truth",particleNames[ip].c_str(),(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
+            // energy_resolution_per_energy[ip][ie] = new TH1F(Form("energy_resolution_per_energy_%d_%d",ip,ie), title.c_str(), 120,-6,6);
+            energy_resolution_per_energy[ip][ie] = new TH1F(Form("energy_resolution_per_energy_%d_%d",ip,ie), title.c_str(), Eres_nbin,-Eres_range,Eres_range);
         }
     }
 
@@ -117,7 +241,6 @@ void energy_regression(){
     for(int irawfile=0; irawfile<rawfilenum; irawfile++){
         if(rawfilenum>1) cout << irawfile << "/" << rawfilenum << endl;
 
-        // ssa
         tree[irawfile]->SetBranchAddress("event", &event);
         tree[irawfile]->SetBranchAddress("hitid", &hitid);
         tree[irawfile]->SetBranchAddress("mcid", &mcid);
@@ -126,26 +249,20 @@ void energy_regression(){
         tree[irawfile]->SetBranchAddress("edep", &edep);
         tree[irawfile]->SetBranchAddress("edep_reco", &edep_reco);
         tree[irawfile]->SetBranchAddress("edep_match", &edep_match);
+        tree[irawfile]->SetBranchAddress("pred_edep", &pred_edep);
+        tree[irawfile]->SetBranchAddress("cond_beta", &cond_beta);
+        tree[irawfile]->SetBranchAddress("cond_track", &cond_track);
 
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             tree[irawfile]->GetEntry(ientry);
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
-            if(edep>10){
-                // cout << "edep>10  event:" << event << "  hitid:" << hitid << "  edep:" << edep << endl;
-                // continue;
-            }
             auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
             if(result == particledgValues.end()) continue;
             int itr = distance(particledgValues.begin(), result) / 2;
 
             double pur = edep_match / edep_reco;
             double eff = edep_match / edep;
-            // cout << itr << ", " << edep << ", " << edep_match << ", " << edep_reco << ", " << pur << ", " << eff << ", " << endl;
-            if(pur<0.1){
-                // cout << "pur<0.1  event:" << event << "  hitid:" << hitid << "  itr:" << itr << ", " << edep << ", " << edep_match << ", " << edep_reco << ", " << pur << ", " << eff << ",   " << (int)edep << endl;
-                // continue;
-            }
 
             if(edep>1) purity[itr]->Fill(pur);
             purity2d[itr]->Fill(pur,edep);
@@ -157,14 +274,55 @@ void energy_regression(){
             }
             if(edep>1) efficiency[itr]->Fill(eff);
             efficiency2d[itr]->Fill(eff,edep);
-        }
-    }
 
-    // efficiency[0]->Draw();
-    // purity_energy[0][0]->Draw();
+            energy[itr]->Fill(pred_edep/scaling);
+            MCtruth_energy[itr]->Fill(mcen);
+            energy_diff[itr]->Fill(pred_edep/scaling - mcen);
+            energy2d[itr]->Fill(mcen,pred_edep/scaling);
+            energy_resolution[itr]->Fill( (pred_edep/scaling - mcen) / mcen );
+
+            int itr_energy = mcen / energy_interval;
+            // cout << itr_energy << ", " << mcen << ", " << energy_interval << endl;
+            if(itr_energy<nEnergy && pred_edep>0.1){
+                energy_diff_per_energy[itr][itr_energy]->Fill(pred_edep/scaling - mcen);
+                energy_resolution_per_energy[itr][itr_energy]->Fill( (pred_edep/scaling - mcen) / mcen );
+            }
+
+            condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
+            if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep-mcen);
+            else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep-mcen);
+            condbeta_vs_mcen[itr]->Fill(cond_beta,mcen);
+            if(cond_track==1) condbeta_vs_mcen_track[itr]->Fill(cond_beta,mcen);
+            else condbeta_vs_mcen_nottrack[itr]->Fill(cond_beta,mcen);
+        }
+
+      
+        // tree_pred[irawfile]->SetBranchAddress("event", &_event);
+        // tree_pred[irawfile]->SetBranchAddress("hitid", &_hitid);
+        // tree_pred[irawfile]->SetBranchAddress("mcid", &_mcid);
+        tree_pred[irawfile]->SetBranchAddress("mcpdg", &_mcpdg);
+        tree_pred[irawfile]->SetBranchAddress("mcen", &_mcen);
+        // tree_pred[irawfile]->SetBranchAddress("edep", &_edep);
+        tree_pred[irawfile]->SetBranchAddress("pred_edep", &_pred_edep);
+        tree_pred[irawfile]->SetBranchAddress("pred_beta", &_pred_beta);
+        tree_pred[irawfile]->SetBranchAddress("pred_alpha", &_pred_alpha);
+        for(int ientry=0; ientry<tree_pred[irawfile]->GetEntries(); ientry++){
+            tree_pred[irawfile]->GetEntry(ientry);
+            if(_pred_alpha==1) continue;
+
+            auto result = find(particledgValues.begin(), particledgValues.end(), _mcpdg);
+            if(result == particledgValues.end()) continue;
+            int itr = distance(particledgValues.begin(), result) / 2;
+            // if(_pred_alpha==1) condbeta_vs_Ediff[itr]->Fill(_pred_beta,_pred_edep-_mcen);
+            // if(_pred_alpha==1) condbeta_vs_mcen[itr]->Fill(_pred_beta,_mcen);
+        }
+      
+
+
+    }
     
 
-
+    
     // gStyle->SetStatX(0.35);
     gStyle->SetOptStat("rme");
     gStyle->SetStatX(0.55);
@@ -183,7 +341,7 @@ void energy_regression(){
         else purity[ip-nParticle]->Draw();
     }
 
-
+  /*
     TCanvas *compare2d = new TCanvas("compare2d","compare2d",1);
     compare2d->Divide(nParticle,2);
     for(int ip=0;ip<nParticle*2;ip++){
@@ -267,18 +425,253 @@ void energy_regression(){
             }
         }
     }
+  */
+
+    TCanvas *canvas_energy = new TCanvas("canvas_energy","canvas_energy",1);
+    canvas_energy->Divide(nParticle,2);
+    canvas_energy->cd();
+    for(int ip=0;ip<nParticle*2;ip++){
+        canvas_energy->cd(ip+1);
+        // gPad->SetLogy();
+        // if(ip<nParticle) energy[ip]->Draw();
+        if(ip<nParticle){
+            // gStyle->SetOptStat(0);
+            energy2d[ip]->SetStats(0);
+            energy2d[ip]->Draw("colz");
+        }
+        else {
+            gPad->SetLogy();
+            energy_diff[ip-nParticle]->SetStats(0);
+            energy_diff[ip-nParticle]->Draw();
+        }
+        // else MCtruth_energy[ip-nParticle]->Draw();
+    }
+
+
+    TLegend *legend[nParticle];
+    TLegend *legend_resolution[nParticle];
+    int Ymaximum[nParticle];
+    int Ymaximum_resolution[nParticle];
+    for(int ip=0;ip<nParticle;ip++){
+        Ymaximum[ip] = 0;    
+        Ymaximum_resolution[ip] = 0;
+        for(int ie=0;ie<nEnergy;ie++){
+            Ymaximum[ip] = energy_diff_per_energy[ip][ie]->GetMaximum() > Ymaximum[ip] ? energy_diff_per_energy[ip][ie]->GetMaximum() : Ymaximum[ip];
+            Ymaximum_resolution[ip] = energy_resolution_per_energy[ip][ie]->GetMaximum() > Ymaximum_resolution[ip] ? energy_resolution_per_energy[ip][ie]->GetMaximum() : Ymaximum_resolution[ip];
+        }
+    }
+    TCanvas *canvas_energy_scan = new TCanvas("canvas_energy_scan","canvas_energy_scan",1);
+    canvas_energy_scan->Divide(nParticle,2);
+    canvas_energy_scan->cd();
+    for(int ip=0;ip<nParticle;ip++){
+        legend[ip] = new TLegend( 0.1, 0.6, 0.5, 0.9) ;
+        canvas_energy_scan->cd(ip+1);
+        // gPad->SetLogy();
+        for(int ie=0;ie<nEnergy;ie++){
+            // string drawOption = ie==0 ? "" : "same";
+            legend[ip]->AddEntry(energy_diff_per_energy[ip][ie], Form("%d-%d GeV mean:%f StdDev:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), energy_diff_per_energy[ip][ie]->GetMean(), energy_diff_per_energy[ip][ie]->GetStdDev()) , "l");
+            string drawOption = ie==0 ? "HIST" : "same HIST";
+            int colorId = ie<9 ? ie+1 : ie+2;
+            energy_diff_per_energy[ip][ie]->SetLineColor(colorId);
+            energy_diff_per_energy[ip][ie]->SetMarkerColor(colorId);
+            energy_diff_per_energy[ip][ie]->SetMaximum(Ymaximum[ip]*1.3);
+            // energy_diff_per_energy[ip][ie]->Scale(1./efficiency_energy[ip][ie]->GetEntries());
+            energy_diff_per_energy[ip][ie]->SetStats(0);
+            energy_diff_per_energy[ip][ie]->Draw(drawOption.c_str());
+        }
+        legend[ip]->SetTextSize(0.03);
+        legend[ip]->SetFillStyle(0);
+        legend[ip]->Draw("same");
+
+        legend_resolution[ip] = new TLegend( 0.1, 0.6, 0.5, 0.9) ;
+        canvas_energy_scan->cd(ip+nParticle+1);
+        for(int ie=0;ie<nEnergy;ie++){
+            // string drawOption_legend = ie==0 ? "" : "same";
+            legend_resolution[ip]->AddEntry(energy_resolution_per_energy[ip][ie], Form("%d-%d GeV mean:%f StdDev:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), energy_resolution_per_energy[ip][ie]->GetMean(), energy_resolution_per_energy[ip][ie]->GetStdDev()) , "l");
+            // double res = energy_resolution_per_energy[ip][ie]->GetStdDev() / energy_resolution_per_energy[ip][ie]->GetMean();
+
+            string drawOption = ie==0 ? "HIST" : "same HIST";
+            int colorId = ie<9 ? ie+1 : ie+2;
+            energy_resolution_per_energy[ip][ie]->SetLineColor(colorId);
+            energy_resolution_per_energy[ip][ie]->SetMarkerColor(colorId);
+            energy_resolution_per_energy[ip][ie]->SetMaximum(Ymaximum_resolution[ip]*1.3);
+            // energy_resolution_per_energy[ip][ie]->Scale(1./efficiency_energy[ip][ie]->GetEntries());
+            energy_resolution_per_energy[ip][ie]->SetStats(0);
+            energy_resolution_per_energy[ip][ie]->Draw(drawOption.c_str());
+        }
+        legend_resolution[ip]->SetTextSize(0.03);
+        legend_resolution[ip]->SetFillStyle(0);
+        legend_resolution[ip]->Draw("same");
+    }
+
+
+    TCanvas *canvas_energy_resolution_scan = new TCanvas("canvas_energy_resolution_scan","canvas_energy_resolution_scan",1400,500);
+    canvas_energy_resolution_scan->Divide(nParticle,1);
+    // TCanvas *canvas_energy_resolution_scan = new TCanvas("canvas_energy_resolution_scan","canvas_energy_resolution_scan",1);
+    canvas_energy_resolution_scan->cd();
+    double resolution_rms[nParticle][nEnergy];
+    double resolution_sigma[nParticle][nEnergy];
+    double resolution_sigma_error[nParticle][nEnergy];
+    TF1 *gaus = new TF1("gaus", "gaus", -3,3);
+    TGraphErrors *energy_resolution_rms[nParticle];
+    TGraphErrors *energy_resolution_sigma[nParticle];
+    TLegend *legend_res = new TLegend( 0.5, 0.6, 0.9, 0.9);
+    // legend_res->AddEntry(energy_resolution_rms[0], Form("rms") , "l");
+    // legend_res->AddEntry(energy_resolution_sigma[0], Form("gaussian sigma") , "l");
+    for(int ip=0;ip<nParticle;ip++){
+        cout << particleNames[ip] << endl;
+        energy_resolution_rms[ip] = new TGraphErrors();
+        energy_resolution_rms[ip]->SetTitle(Form("%s",particleNames[ip].c_str()));
+        energy_resolution_rms[ip]->SetLineColor(kRed);
+        energy_resolution_rms[ip]->SetMarkerColor(kRed);
+        energy_resolution_rms[ip]->SetMaximum(0.5);
+        energy_resolution_rms[ip]->SetMinimum(0);
+        energy_resolution_sigma[ip] = new TGraphErrors();
+        energy_resolution_sigma[ip]->SetTitle(Form("%s",particleNames[ip].c_str()));
+        energy_resolution_sigma[ip]->SetLineColor(kBlue);
+        energy_resolution_sigma[ip]->SetMarkerColor(kBlue);
+        energy_resolution_sigma[ip]->SetMaximum(0.5);
+        energy_resolution_sigma[ip]->SetMinimum(0);
+        if(ip==0) { 
+            legend_res->AddEntry(energy_resolution_rms[0], Form("rms") , "l");
+            legend_res->AddEntry(energy_resolution_sigma[0], Form("gaussian sigma") , "l");
+        }
+        canvas_energy_resolution_scan->cd(ip+1);
+        for(int ie=0;ie<nEnergy;ie++){
+            // cout << energy_resolution_per_energy[ip][ie]->GetStdDev() << "    ";
+            energy_resolution_per_energy[ip][ie]->SetAxisRange(-Eres_fit_range,Eres_fit_range);
+            // cout << energy_resolution_per_energy[ip][ie]->GetStdDev() << endl;
+            resolution_rms[ip][ie] = energy_resolution_per_energy[ip][ie]->GetStdDev();
+            if(energy_resolution_per_energy[ip][ie]->Integral(Eres_fitbin_lower,Eres_fitbin_upper)>30){
+                // TH1F *histo_clone = (TH1F*) energy_resolution_per_energy[ip][ie]->Clone();
+                // int clonemaxbin = histo_clone->GetBinContent(histo_clone->GetMaximumBin());
+                // double clonebinwidth = histo_clone->GetBinWidth(1);
+                // while (clonemaxbin<30 || clonebinwidth>0.2) {
+                //     histo_clone->Rebin(30);
+                //     clonemaxbin = histo_clone->GetBinContent(histo_clone->GetMaximumBin());
+                //     clonebinwidth = histo_clone->GetBinWidth(1);
+                // }
+                // histo_clone->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+                energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+                resolution_sigma[ip][ie] = gaus->GetParameter(2);
+                resolution_sigma_error[ip][ie] = gaus->GetParError(2);
+            } else {
+                resolution_sigma[ip][ie] = -1;
+                resolution_sigma_error[ip][ie] = 0;
+            }
+
+            energy_resolution_rms[ip]->SetPoint(ie, (ie+0.5)*energy_interval, resolution_rms[ip][ie]);
+            energy_resolution_rms[ip]->SetPointError(ie, (0.5)*energy_interval, 0);
+            energy_resolution_sigma[ip]->SetPoint(ie, (ie+0.5)*energy_interval, resolution_sigma[ip][ie]);
+            energy_resolution_sigma[ip]->SetPointError(ie, (0.5)*energy_interval, resolution_sigma_error[ip][ie]);
+
+            // energy_resolution_per_energy[ip][ie]->SetAxisRange(-Eres_range,Eres_range);
+            // cout << "   " << resolution_rms[ip][ie] << ", " << resolution_sigma[ip][ie] << endl;
+            if(ie>6){
+                string energy_range = Form("%d-%d GeV",(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
+                cout << "  " << energy_range << " : " << resolution_sigma[ip][ie] << endl;
+            }
+            // energy_resolution_per_energy[ip][ie]->Rebin(rebin_factor);
+            // energy_diff_per_energy[ip][ie]->Rebin(rebin_factor);
+       }
+        energy_resolution_rms[ip]->Draw("AP");
+        energy_resolution_sigma[ip]->Draw("P");
+        // legend_res->SetTextSize(0.03);
+        // legend_res->SetFillStyle(0);
+        legend_res->Draw("same");
+    }
+    
+
+    
 
 
 
+    TCanvas *canvas_beta_energy = new TCanvas("canvas_beta_energy","canvas_beta_energy",1);
+    canvas_beta_energy->Divide(nParticle,2);
+    canvas_beta_energy->cd();
+    for(int ip=0;ip<nParticle*2;ip++){
+        canvas_beta_energy->cd(ip+1);
+        // gPad->SetLogy();
+        // if(ip<nParticle) energy[ip]->Draw();
+        if(ip<nParticle){
+            // gStyle->SetOptStat(0);
+            condbeta_vs_Ediff[ip]->SetStats(0);
+            condbeta_vs_Ediff[ip]->Draw("colz");
+        }
+        else {
+            // gPad->SetLogy();
+            condbeta_vs_mcen[ip-nParticle]->SetStats(0);
+            condbeta_vs_mcen[ip-nParticle]->Draw("colz");
+        }
+        // else MCtruth_energy[ip-nParticle]->Draw();
+    }
+
+    TCanvas *canvas_beta_ediff = new TCanvas("canvas_beta_ediff","canvas_beta_ediff",1);
+    canvas_beta_ediff->Divide(nParticle,2);
+    canvas_beta_ediff->cd();
+    for(int ip=0;ip<nParticle*2;ip++){
+        canvas_beta_ediff->cd(ip+1);
+        // gPad->SetLogy();
+        // if(ip<nParticle) energy[ip]->Draw();
+        if(ip<nParticle){
+            // gStyle->SetOptStat(0);
+            condbeta_vs_Ediff_track[ip]->SetStats(0);
+            condbeta_vs_Ediff_track[ip]->Draw("colz");
+        }
+        else {
+            // gPad->SetLogy();
+            condbeta_vs_Ediff_nottrack[ip-nParticle]->SetStats(0);
+            condbeta_vs_Ediff_nottrack[ip-nParticle]->Draw("colz");
+        }
+        // else MCtruth_energy[ip-nParticle]->Draw();
+    }
+
+    TCanvas *canvas_beta_mcen = new TCanvas("canvas_beta_mcen","canvas_beta_mcen",1);
+    canvas_beta_mcen->Divide(nParticle,2);
+    canvas_beta_mcen->cd();
+    for(int ip=0;ip<nParticle*2;ip++){
+        canvas_beta_mcen->cd(ip+1);
+        // gPad->SetLogy();
+        // if(ip<nParticle) energy[ip]->Draw();
+        if(ip<nParticle){
+            // gStyle->SetOptStat(0);
+            condbeta_vs_mcen_track[ip]->SetStats(0);
+            condbeta_vs_mcen_track[ip]->Draw("colz");
+        }
+        else {
+            // gPad->SetLogy();
+            condbeta_vs_mcen_nottrack[ip-nParticle]->SetStats(0);
+            condbeta_vs_mcen_nottrack[ip-nParticle]->Draw("colz");
+        }
+        // else MCtruth_energy[ip-nParticle]->Draw();
+    }
+
+
+
+
+    
     if(saving_canvas){  // saving canvases
         string suffix = "";
+        string absuf = ab;
         if(hyper_parameter) suffix = Form("_%s",test_particle_type.c_str());
-        if(fine_tuning)     suffix = Form("_epoch%d_%s",epoch,test_particle_type.c_str());
+        // if(fine_tuning)     suffix = Form("_epoch%d_%s",epoch,test_particle_type.c_str());
+        if(momentum_input)     suffix = Form("_momentum");
+        if(modi){
+            absuf = "";
+            suffix = testMCdetect;
+        }
         
-        compare->SaveAs(Form("%s/efficiency_purity%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        compare2d->SaveAs(Form("%s/efficiency_purity_vs_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        compare_energy->SaveAs(Form("%s/per_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        compare_energy_normalized->SaveAs(Form("%s/per_energy_norm%s.pdf",picDirectory.c_str(),suffix.c_str()));
+        compare->SaveAs(Form("%s/efficiency_purity_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        // compare2d->SaveAs(Form("%s/efficiency_purity_vs_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
+        // compare_energy->SaveAs(Form("%s/per_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
+        // compare_energy_normalized->SaveAs(Form("%s/per_energy_norm%s.pdf",picDirectory.c_str(),suffix.c_str()));
+        canvas_energy->SaveAs(Form("%s/energy_truth_vs_pred_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        canvas_energy_scan->SaveAs(Form("%s/energy_scan_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        canvas_energy_resolution_scan->SaveAs(Form("%s/energy_resolution_scan_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        canvas_beta_energy->SaveAs(Form("%s/beta_vs_energy_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        canvas_beta_ediff->SaveAs(Form("%s/beta_vs_energy_ediff_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
+        canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen_%s%s.pdf",picDirectory.c_str(),absuf.c_str(),suffix.c_str()));
     }
+    
 
 }

@@ -14,6 +14,10 @@ import awkward as ak
 import tools.load_awkward as la
 import copy
 
+import matplotlib.pyplot as plt
+import scipy.stats
+
+
 """
 def get_dataset(timingCut=False):
     dataset = ilc_dataset(timingCut=timingCut, test_mode=True)
@@ -36,7 +40,7 @@ class ILCDataset(Dataset):
         reduce_noise (float): Randomly delete a fraction of noise. Useful
             to speed up training.
     """
-    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False):
+    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False):
         super(ILCDataset, self).__init__(path)
 
         self.flip = flip
@@ -46,6 +50,10 @@ class ILCDataset(Dataset):
         self.thetaphi = thetaphi
         self.test_mode = test_mode
         self.pandora = pandora
+        self.momentum = momentum
+        self.momentumAmp = momentumAmp
+        self.max_momentum = 1.0
+        self.mctpe = mctpe
 
         if(not recreate):
             print(f"ILCDataset: {path=}")
@@ -78,6 +86,11 @@ class ILCDataset(Dataset):
             self.ak_feats = self.ak_feats[ not_empty ]
             self.ak_labels = self.ak_labels[ not_empty ]
             if(pandora): self.ak_pandoras = self.ak_pandoras[ not_empty ]
+        
+        if self.momentum:
+            self.max_momentum = self.momentum_normalization(self.ak_feats)
+        # self.plotting(self.ak_feats, self.ak_labels)
+
 
         # TODO: implement update of ak with time cuts
 
@@ -136,11 +149,52 @@ class ILCDataset(Dataset):
 
         x = feat[:,np.r_[0:4,5:6] ] # 0,1,2,3,5
         y = label[:,1]
+        momenta = feat[:,7:10]/self.max_momentum # 7,8,9
+        momentaAmp = np.sqrt(np.sum(feat[:,7:10] ** 2, axis=1))/self.max_momentum
+        momentaAmp = momentaAmp.reshape(momentaAmp.shape[0],1)
+        ##### adding true mass
+        # momentaSqSum = np.sum(feat[:,7:10] ** 2, axis=1)
+        # momentaSqSum = momentaSqSum.reshape(momentaSqSum.shape[0],1)
+        # mass = label[:,4] ** 2
+        # mass = np.where(momentaSqSum == 0, 0, mass)
+        # momentaAmp = np.sqrt(momentaSqSum + mass)/self.max_momentum
+        #####
+        ################# MC truth
+        # momenta = label[:,5:8]/self.max_momentum 
+        # momentaAmp = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
+        # momentaAmp = momentaAmp.reshape(momentaAmp.shape[0],1) 
+        #################
+        # momenta = feat[:,7:10] # 7,8,9
+        # momenta = np.sign(momenta) * np.log10(np.abs(momenta)+1)
 
         #if self.flip and np.mean(x[:,4]) < 0:
             # Negative endcap: Flip z-dependent coordinates
             #x[:,1] *= -1 # eta
         #    x[:,3] *= -1 # z
+        # mcenergy = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
+        # mcenergy = mcenergy.reshape(mcenergy.shape[0],1) 
+        # trackbools = feat[:,5]
+        # for i, (moment, energy) in enumerate(zip(momentaAmp, mcenergy)):
+        #     if moment[0] != 0:
+        #     # if trackbools[i][0] == 3:
+        #         print(moment[0]*self.max_momentum, ", " , energy[0])
+
+
+        ### virtual hit だけ MC truthを入れる
+        if self.mctpe:
+            vitualHit = feat[:,5]
+            vitualHit_momenta = vitualHit
+            vitualHit_momenta = np.reshape(vitualHit_momenta, (vitualHit_momenta.shape[0],1))
+            vitualHit_momenta = np.concatenate([vitualHit_momenta, vitualHit_momenta, vitualHit_momenta], axis=1)
+            momenta_MCT = label[:,5:8]/self.max_momentum 
+            momenta_MCT = np.where(vitualHit_momenta==0, 0, momenta_MCT)
+            momentaAmp_MCT = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
+            momentaAmp_MCT = np.where(vitualHit==0, 0, momentaAmp_MCT)
+            momentaAmp_MCT = momentaAmp_MCT.reshape(momentaAmp_MCT.shape[0],1)/self.max_momentum
+
+            momenta = momenta_MCT
+            momentaAmp = momentaAmp_MCT
+
 
         if self.thetaphi:
             # psum = np.linalg.norm(x[:,1:3],axis=1)
@@ -155,12 +209,29 @@ class ILCDataset(Dataset):
             x = np.append(x, theta.reshape(-1,1), axis=1)
             x = np.append(x, phi.reshape(-1,1), axis=1)
         #print(f'x.isnan: {np.count_nonzero(np.isnan(x))}')
-        
+
+        if self.momentum:
+            x = np.append(x, momenta, axis=1)
+            if self.momentumAmp:
+                x = np.append(x, momentaAmp, axis=1)
+
+
         x[:,0] = self.shaper_tanh(x[:, 0]-0.01,1.0,1.0,0.0,0.0) #Energy
         x[:,1] = x[:, 1]/2000 #x
         x[:,2] = x[:, 2]/2000 #y
         x[:,3] = x[:, 3]/2000 #z
         #x = np.delete(x,4,1) #Delete Time
+
+        ## excluding hits without mcid
+        mcids = label[:,1]
+        x = x[mcids!=-1,:]
+        y = y[mcids!=-1]
+        if (self.pandora):
+            pand = pand[mcids!=-1,:]
+        else:
+            feat = feat[mcids!=-1,:]
+            label = label[mcids!=-1,:]
+        ##
 
         """
         if self.reduce_noise:
@@ -234,7 +305,8 @@ class ILCDataset(Dataset):
                 y = torch.from_numpy(y[order]).type(torch.int),
                 feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
                 label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-                pand = pand_inst[:,2],
+                pand = pand_inst[:,2:5],
+                # pandora_prediction = pand_inst[:,3:5],
             )
         else:
             data = Data(
@@ -245,7 +317,54 @@ class ILCDataset(Dataset):
             )
 
         return data
-    
+
+    @staticmethod
+    def momentum_normalization(ak_feats):
+        # print(ak.to_numpy(ak_feats[:][:,:]).shape)
+        flat = np.ndarray([])
+        flat_log = np.array([])
+        max_momentum = 0
+        for index, ak_feat in enumerate(ak_feats):
+            feat_t = ak.to_numpy(ak_feat[:,7:10])
+            max_momentum = np.nanmax(np.abs(feat_t)) if max_momentum < np.nanmax(np.abs(feat_t)) else max_momentum
+            if np.any(feat_t>400):
+                print(index, feat_t.shape, feat_t, feat_t[feat_t>400])
+            # print(feat_t)
+            # flat = np.append(flat, feat_t[np.all(feat_t==0,axis=1),:],axis=0) if index != 0 else feat_t
+            flat = np.append(flat, feat_t[feat_t!=0].flatten())
+            # momenta = feat_t[feat_t!=0].flatten()
+            # flat_log = np.append(flat_log, np.sign(momenta) * np.log10(np.abs(momenta)+1))
+        print(flat.shape)
+        std = np.std(flat)
+        print(std)
+        # plt.hist(flat,bins=10000)
+        # plt.hist(flat_log,bins=10000)
+        # plt.show()
+        print("maximum momentum : ",  max_momentum)
+        print("momentum stdDev: ",  std)
+
+        return 3
+        # return std
+        # return max_momentum
+
+    @staticmethod
+    def plotting(ak_feats, ak_labels):
+        momentum = np.ndarray([])
+        energy = np.ndarray([])
+        for (ak_feat, ak_label) in zip(ak_feats, ak_labels):
+            feat_momentums = ak.to_numpy(ak_feat[:,7:10])
+            label_Es = ak.to_numpy(ak_label[:,4:8])
+            feat_momentums = np.sum(feat_momentums ** 2, axis=1)
+            label_Es = np.sum(label_Es ** 2, axis=1)
+
+            momentum = np.append(momentum, feat_momentums.flatten())
+            energy = np.append(energy, label_Es.flatten())
+        plt.scatter(momentum, energy)
+        plt.show()
+
+        return 0
+
+
     def __len__(self):
         return ak.num(self.ak_feats,axis=0)
     def len(self):

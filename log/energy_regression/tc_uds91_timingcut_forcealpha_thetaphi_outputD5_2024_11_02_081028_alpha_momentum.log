@@ -1,0 +1,967 @@
+['train_energyRegression.py', '-i', '/data/suehara/gravnet_ilc/data/uds91/train', '-ii', '/data/suehara/gravnet_ilc/data/uds91/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '50', '--beta-track', '--force-track-alpha', '--batch-size', '20', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2024_11_02_081028_outputD5', '--energy-regression', '--betaE-alpha', 'alpha', '--momentum']
+Using device:  cuda:0
+learning rate : 9e-06 ,  weght decay : 0.0001 , regression coefficient : 1
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/gravnet_ilc/data/uds91/train'
+filenames=['/data/suehara/gravnet_ilc/data/uds91/train/uds91_1.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_10.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_100.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_101.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_102.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_103.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_104.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_105.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_106.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_107.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_11.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_110.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_111.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_112.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_113.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_114.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_115.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_116.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_117.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_12.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_120.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_121.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_122.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_123.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_124.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_125.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_126.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_127.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_13.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_130.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_131.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_132.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_133.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_134.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_135.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_136.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_137.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_14.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_140.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_141.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_142.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_143.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_144.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_145.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_146.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_147.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_15.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_150.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_151.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_152.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_153.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_154.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_155.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_156.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_157.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_16.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_160.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_161.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_162.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_163.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_164.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_165.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_166.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_167.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_17.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_170.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_171.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_172.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_173.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_174.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_175.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_176.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_177.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_180.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_181.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_182.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_183.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_184.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_185.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_186.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_187.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_190.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_191.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_192.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_193.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_194.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_195.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_196.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_197.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_2.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_20.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_200.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_201.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_202.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_203.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_204.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_205.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_206.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_207.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_21.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_210.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_211.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_212.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_213.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_214.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_215.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_216.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_217.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_22.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_220.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_221.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_222.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_223.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_224.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_225.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_226.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_227.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_23.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_230.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_231.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_232.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_233.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_234.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_235.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_236.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_237.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_24.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_240.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_241.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_242.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_243.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_244.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_245.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_246.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_247.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_25.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_250.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_251.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_252.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_253.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_254.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_255.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_256.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_257.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_26.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_260.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_261.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_262.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_263.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_264.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_265.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_266.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_267.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_27.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_270.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_271.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_272.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_273.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_274.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_275.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_276.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_277.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_280.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_281.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_282.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_283.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_284.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_285.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_286.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_287.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_290.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_291.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_292.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_293.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_294.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_295.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_296.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_297.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_3.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_30.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_300.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_31.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_32.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_33.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_34.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_35.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_36.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_37.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_4.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_40.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_41.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_42.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_43.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_44.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_45.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_46.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_47.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_5.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_50.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_51.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_52.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_53.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_54.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_55.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_56.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_57.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_6.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_60.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_61.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_62.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_63.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_64.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_65.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_66.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_67.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_7.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_70.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_71.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_72.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_73.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_74.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_75.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_76.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_77.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_80.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_81.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_82.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_83.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_84.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_85.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_86.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_87.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_90.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_91.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_92.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_93.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_94.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_95.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_96.h5', '/data/suehara/gravnet_ilc/data/uds91/train/uds91_97.h5']
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_1.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_10.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_100.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_101.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_102.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_103.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_104.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_105.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_106.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_107.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_11.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_110.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_111.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_112.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_113.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_114.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_115.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_116.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_117.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_12.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_120.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_121.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_122.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_123.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_124.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_125.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_126.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_127.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_13.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_130.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_131.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_132.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_133.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_134.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_135.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_136.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_137.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_14.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_140.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_141.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_142.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_143.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_144.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_145.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_146.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_147.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_15.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_150.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_151.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_152.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_153.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_154.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_155.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_156.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_157.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_16.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_160.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_161.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_162.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_163.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_164.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_165.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_166.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_167.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_17.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_170.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_171.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_172.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_173.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_174.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_175.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_176.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_177.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_180.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_181.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_182.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_183.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_184.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_185.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_186.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_187.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_190.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_191.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_192.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_193.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_194.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_195.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_196.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_197.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_2.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_20.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_200.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_201.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_202.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_203.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_204.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_205.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_206.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_207.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_21.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_210.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_211.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_212.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_213.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_214.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_215.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_216.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_217.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_22.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_220.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_221.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_222.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_223.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_224.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_225.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_226.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_227.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_23.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_230.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_231.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_232.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_233.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_234.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_235.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_236.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_237.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_24.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_240.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_241.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_242.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_243.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_244.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_245.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_246.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_247.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_25.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_250.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_251.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_252.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_253.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_254.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_255.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_256.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_257.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_26.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_260.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_261.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_262.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_263.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_264.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_265.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_266.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_267.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_27.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_270.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_271.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_272.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_273.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_274.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_275.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_276.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_277.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_280.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_281.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_282.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_283.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_284.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_285.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_286.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_287.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_290.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_291.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_292.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_293.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_294.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_295.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_296.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_297.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_3.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_30.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_300.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_31.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_32.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_33.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_34.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_35.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_36.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_37.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_4.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_40.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_41.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_42.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_43.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_44.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_45.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_46.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_47.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_5.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_50.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_51.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_52.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_53.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_54.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_55.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_56.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_57.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_6.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_60.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_61.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_62.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_63.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_64.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_65.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_66.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_67.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_7.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_70.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_71.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_72.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_73.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_74.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_75.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_76.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_77.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_80.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_81.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_82.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_83.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_84.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_85.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_86.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_87.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_90.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_91.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_92.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_93.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_94.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_95.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_96.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/train/uds91_97.h5'
+Making ak_feats...
+Making ak_labels...
+20915 (1841, 3) [[ 0.          0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.          0.          0.        ]
+ ...
+ [ 7.53552177  5.95136439  2.93961024]
+ [-0.06994681  0.3079608   0.05115156]
+ [-0.14216251  0.0966949   0.22199467]] [416.43702859 442.82525403]
+38339 (1720, 3) [[ 0.          0.          0.        ]
+ [ 0.          0.          0.        ]
+ [ 0.          0.          0.        ]
+ ...
+ [ 0.1570335  -0.51817287 -3.33802676]
+ [-0.72659752 -0.20588009 -4.29235942]
+ [-1.05010213 -1.07667565 -9.73012158]] [1214.94857199]
+53057 (2309, 3) [[ 0.00000000e+00  0.00000000e+00  0.00000000e+00]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00]
+ ...
+ [-1.44674593e-02  2.06153341e-01  7.33276652e-02]
+ [ 1.07723407e-01  1.61895312e-01  1.71539987e-01]
+ [-1.45485995e-01 -1.99675488e-02 -5.28134627e-05]] [1792.14164451  868.01869013]
+(4256191,)
+2.9279435604970723
+maximum momentum :  1792.1416445068446
+momentum stdDev:  2.9279435604970723
+ILCDataset: path='/data/suehara/gravnet_ilc/data/uds91/validation'
+filenames=['/data/suehara/gravnet_ilc/data/uds91/validation/uds91_108.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_118.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_128.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_138.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_148.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_158.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_168.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_178.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_18.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_188.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_198.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_208.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_218.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_228.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_238.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_248.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_258.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_268.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_278.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_28.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_288.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_298.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_38.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_48.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_58.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_68.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_78.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_8.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_88.h5', '/data/suehara/gravnet_ilc/data/uds91/validation/uds91_98.h5']
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_108.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_118.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_128.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_138.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_148.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_158.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_168.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_178.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_18.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_188.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_198.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_208.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_218.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_228.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_238.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_248.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_258.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_268.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_278.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_28.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_288.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_298.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_38.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_48.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_58.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_68.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_78.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_8.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_88.h5'
+Reading file: file='/data/suehara/gravnet_ilc/data/uds91/validation/uds91_98.h5'
+Making ak_feats...
+Making ak_labels...
+(530899,)
+2.6490937345552155
+maximum momentum :  163.71862949822733
+momentum stdDev:  2.6490937345552155
+Training dataset size:  59990
+Validating dataset size:  7500
+Batch size:  20
+Loading GravnetModel
+Hello
+Training epoch 0
+test   L_V                   = +7.3000 (0.4%)
+    L_V_attractive      = +2.4348 (0.1%)
+    L_V_repulsive       = +4.8652 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0915 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1936 (0.0%)
+    L_beta_track        = +0.8978 (0.0%)
+      L_beta_norms_term   = -0.0433 (-0.0%)
+      L_beta_logbeta_term = +0.2369 (0.0%)
+  L_E = +1947.8107 (99.6%)
+Returning 1957.2021484375
+Training epoch 1
+test   L_V                   = +3.1941 (0.2%)
+    L_V_attractive      = +1.5222 (0.1%)
+    L_V_repulsive       = +1.6719 (0.1%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.3867 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.4182 (0.0%)
+    L_beta_track        = +0.9685 (0.0%)
+      L_beta_norms_term   = -0.0149 (-0.0%)
+      L_beta_logbeta_term = +0.4330 (0.0%)
+  L_E = +2013.7966 (99.8%)
+Returning 2019.37744140625
+Training epoch 2
+test   L_V                   = +2.2412 (0.1%)
+    L_V_attractive      = +1.3122 (0.1%)
+    L_V_repulsive       = +0.9289 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.5049 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.5306 (0.0%)
+    L_beta_track        = +0.9743 (0.0%)
+      L_beta_norms_term   = -0.0079 (-0.0%)
+      L_beta_logbeta_term = +0.5385 (0.0%)
+  L_E = +2017.4905 (99.8%)
+Returning 2022.236572265625
+Training epoch 3
+test   L_V                   = +1.9001 (0.1%)
+    L_V_attractive      = +1.1668 (0.1%)
+    L_V_repulsive       = +0.7333 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.6299 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.6474 (0.0%)
+    L_beta_track        = +0.9825 (0.0%)
+      L_beta_norms_term   = -0.0048 (-0.0%)
+      L_beta_logbeta_term = +0.6522 (0.0%)
+  L_E = +2034.4393 (99.8%)
+Returning 2038.9693603515625
+Training epoch 4
+test   L_V                   = +1.6612 (0.1%)
+    L_V_attractive      = +1.0157 (0.0%)
+    L_V_repulsive       = +0.6455 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.7207 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.7339 (0.0%)
+    L_beta_track        = +0.9868 (0.0%)
+      L_beta_norms_term   = -0.0032 (-0.0%)
+      L_beta_logbeta_term = +0.7371 (0.0%)
+  L_E = +2049.7336 (99.8%)
+Returning 2054.115478515625
+Training epoch 5
+test   L_V                   = +1.5316 (0.1%)
+    L_V_attractive      = +0.9580 (0.0%)
+    L_V_repulsive       = +0.5736 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.8337 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.8424 (0.0%)
+    L_beta_track        = +0.9913 (0.0%)
+      L_beta_norms_term   = -0.0020 (-0.0%)
+      L_beta_logbeta_term = +0.8444 (0.0%)
+  L_E = +2054.4766 (99.8%)
+Returning 2058.841796875
+Training epoch 6
+test   L_V                   = +1.4561 (0.1%)
+    L_V_attractive      = +0.9065 (0.0%)
+    L_V_repulsive       = +0.5496 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.9507 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.9564 (0.0%)
+    L_beta_track        = +0.9943 (0.0%)
+      L_beta_norms_term   = -0.0012 (-0.0%)
+      L_beta_logbeta_term = +0.9576 (0.0%)
+  L_E = +2076.4551 (99.8%)
+Returning 2080.86181640625
+Training epoch 7
+test   L_V                   = +1.4150 (0.1%)
+    L_V_attractive      = +0.8988 (0.0%)
+    L_V_repulsive       = +0.5162 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.0864 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.0899 (0.1%)
+    L_beta_track        = +0.9965 (0.0%)
+      L_beta_norms_term   = -0.0007 (-0.0%)
+      L_beta_logbeta_term = +1.0906 (0.1%)
+  L_E = +2062.4597 (99.8%)
+Returning 2066.961181640625
+Training epoch 8
+test   L_V                   = +1.5689 (0.1%)
+    L_V_attractive      = +1.0107 (0.1%)
+    L_V_repulsive       = +0.5583 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0992 (0.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2357 (0.0%)
+    L_beta_track        = +0.8635 (0.0%)
+      L_beta_norms_term   = -0.0280 (-0.0%)
+      L_beta_logbeta_term = +0.2637 (0.0%)
+  L_E = +2015.2560 (99.9%)
+Returning 2018.924072265625
+Training epoch 9
+test   L_V                   = +1.6320 (0.1%)
+    L_V_attractive      = +1.0604 (0.1%)
+    L_V_repulsive       = +0.5716 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0009 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1961 (0.0%)
+    L_beta_track        = +0.8048 (0.0%)
+      L_beta_norms_term   = -0.0377 (-0.0%)
+      L_beta_logbeta_term = +0.2338 (0.0%)
+  L_E = +2020.1200 (99.9%)
+Returning 2023.7529296875
+Training epoch 10
+test   L_V                   = +1.7000 (0.1%)
+    L_V_attractive      = +1.1005 (0.1%)
+    L_V_repulsive       = +0.5995 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9517 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1790 (0.0%)
+    L_beta_track        = +0.7727 (0.0%)
+      L_beta_norms_term   = -0.0428 (-0.0%)
+      L_beta_logbeta_term = +0.2219 (0.0%)
+  L_E = +2019.9231 (99.9%)
+Returning 2023.5748291015625
+Training epoch 11
+test   L_V                   = +1.7433 (0.1%)
+    L_V_attractive      = +1.1113 (0.1%)
+    L_V_repulsive       = +0.6321 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9316 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1731 (0.0%)
+    L_beta_track        = +0.7584 (0.0%)
+      L_beta_norms_term   = -0.0466 (-0.0%)
+      L_beta_logbeta_term = +0.2197 (0.0%)
+  L_E = +2000.9795 (99.9%)
+Returning 2004.6544189453125
+Training epoch 12
+test   L_V                   = +1.7726 (0.1%)
+    L_V_attractive      = +1.1380 (0.1%)
+    L_V_repulsive       = +0.6346 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9155 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1647 (0.0%)
+    L_beta_track        = +0.7508 (0.0%)
+      L_beta_norms_term   = -0.0494 (-0.0%)
+      L_beta_logbeta_term = +0.2141 (0.0%)
+  L_E = +2011.7683 (99.9%)
+Returning 2015.4564208984375
+Training epoch 13
+test   L_V                   = +1.7707 (0.1%)
+    L_V_attractive      = +1.1220 (0.1%)
+    L_V_repulsive       = +0.6488 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9100 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1607 (0.0%)
+    L_beta_track        = +0.7494 (0.0%)
+      L_beta_norms_term   = -0.0519 (-0.0%)
+      L_beta_logbeta_term = +0.2125 (0.0%)
+  L_E = +1995.6525 (99.9%)
+Returning 1999.333251953125
+Training epoch 14
+test   L_V                   = +1.7774 (0.1%)
+    L_V_attractive      = +1.1343 (0.1%)
+    L_V_repulsive       = +0.6430 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9006 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1558 (0.0%)
+    L_beta_track        = +0.7448 (0.0%)
+      L_beta_norms_term   = -0.0543 (-0.0%)
+      L_beta_logbeta_term = +0.2100 (0.0%)
+  L_E = +1996.8021 (99.9%)
+Returning 2000.4801025390625
+Training epoch 15
+test   L_V                   = +1.7764 (0.1%)
+    L_V_attractive      = +1.1420 (0.1%)
+    L_V_repulsive       = +0.6344 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8970 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1535 (0.0%)
+    L_beta_track        = +0.7434 (0.0%)
+      L_beta_norms_term   = -0.0560 (-0.0%)
+      L_beta_logbeta_term = +0.2095 (0.0%)
+  L_E = +1982.9435 (99.9%)
+Returning 1986.6168212890625
+Training epoch 16
+test   L_V                   = +3.4632 (0.5%)
+    L_V_attractive      = +1.7899 (0.3%)
+    L_V_repulsive       = +1.6733 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.2883 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.3714 (0.1%)
+    L_beta_track        = +0.9169 (0.1%)
+      L_beta_norms_term   = -0.0289 (-0.0%)
+      L_beta_logbeta_term = +0.4003 (0.1%)
+  L_E = +710.7438 (99.3%)
+Returning 716.4953002929688
+Training epoch 17
+test   L_V                   = +2.8518 (0.4%)
+    L_V_attractive      = +1.5130 (0.2%)
+    L_V_repulsive       = +1.3389 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1846 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2902 (0.0%)
+    L_beta_track        = +0.8944 (0.1%)
+      L_beta_norms_term   = -0.0316 (-0.0%)
+      L_beta_logbeta_term = +0.3218 (0.0%)
+  L_E = +676.9266 (99.4%)
+Returning 681.9630126953125
+Training epoch 18
+test   L_V                   = +2.6272 (0.4%)
+    L_V_attractive      = +1.4120 (0.2%)
+    L_V_repulsive       = +1.2152 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1556 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2725 (0.0%)
+    L_beta_track        = +0.8831 (0.1%)
+      L_beta_norms_term   = -0.0308 (-0.0%)
+      L_beta_logbeta_term = +0.3033 (0.0%)
+  L_E = +648.3228 (99.4%)
+Returning 653.1055297851562
+Training epoch 19
+test   L_V                   = +2.5263 (0.4%)
+    L_V_attractive      = +1.3981 (0.2%)
+    L_V_repulsive       = +1.1282 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1410 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2678 (0.0%)
+    L_beta_track        = +0.8732 (0.1%)
+      L_beta_norms_term   = -0.0295 (-0.0%)
+      L_beta_logbeta_term = +0.2973 (0.0%)
+  L_E = +655.8800 (99.4%)
+Returning 660.5472412109375
+Training epoch 20
+test   L_V                   = +2.4681 (0.4%)
+    L_V_attractive      = +1.3963 (0.2%)
+    L_V_repulsive       = +1.0718 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1267 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2649 (0.0%)
+    L_beta_track        = +0.8618 (0.1%)
+      L_beta_norms_term   = -0.0280 (-0.0%)
+      L_beta_logbeta_term = +0.2928 (0.0%)
+  L_E = +647.6944 (99.4%)
+Returning 652.2891235351562
+Training epoch 21
+test   L_V                   = +2.4483 (0.4%)
+    L_V_attractive      = +1.4058 (0.2%)
+    L_V_repulsive       = +1.0425 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1009 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2554 (0.0%)
+    L_beta_track        = +0.8456 (0.1%)
+      L_beta_norms_term   = -0.0287 (-0.0%)
+      L_beta_logbeta_term = +0.2841 (0.0%)
+  L_E = +638.1319 (99.4%)
+Returning 642.68115234375
+Training epoch 22
+test   L_V                   = +2.4086 (0.4%)
+    L_V_attractive      = +1.3773 (0.2%)
+    L_V_repulsive       = +1.0313 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0919 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2515 (0.0%)
+    L_beta_track        = +0.8403 (0.1%)
+      L_beta_norms_term   = -0.0289 (-0.0%)
+      L_beta_logbeta_term = +0.2804 (0.0%)
+  L_E = +632.6937 (99.4%)
+Returning 637.1942138671875
+Training epoch 23
+test   L_V                   = +2.3839 (0.4%)
+    L_V_attractive      = +1.4080 (0.2%)
+    L_V_repulsive       = +0.9759 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0793 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2524 (0.0%)
+    L_beta_track        = +0.8269 (0.1%)
+      L_beta_norms_term   = -0.0275 (-0.0%)
+      L_beta_logbeta_term = +0.2799 (0.0%)
+  L_E = +614.1321 (99.4%)
+Returning 618.5952758789062
+Training epoch 24
+test   L_V                   = +2.4446 (0.4%)
+    L_V_attractive      = +1.4154 (0.2%)
+    L_V_repulsive       = +1.0292 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0579 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2423 (0.0%)
+    L_beta_track        = +0.8156 (0.1%)
+      L_beta_norms_term   = -0.0300 (-0.0%)
+      L_beta_logbeta_term = +0.2723 (0.0%)
+  L_E = +622.0871 (99.4%)
+Returning 626.5895385742188
+Training epoch 25
+test   L_V                   = +2.4304 (0.4%)
+    L_V_attractive      = +1.4623 (0.2%)
+    L_V_repulsive       = +0.9681 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0523 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2423 (0.0%)
+    L_beta_track        = +0.8100 (0.1%)
+      L_beta_norms_term   = -0.0294 (-0.0%)
+      L_beta_logbeta_term = +0.2717 (0.0%)
+  L_E = +607.8533 (99.4%)
+Returning 612.3359375
+Training epoch 26
+test   L_V                   = +2.4255 (0.4%)
+    L_V_attractive      = +1.4113 (0.2%)
+    L_V_repulsive       = +1.0142 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0482 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2404 (0.0%)
+    L_beta_track        = +0.8078 (0.1%)
+      L_beta_norms_term   = -0.0300 (-0.0%)
+      L_beta_logbeta_term = +0.2704 (0.0%)
+  L_E = +625.5187 (99.4%)
+Returning 629.9923706054688
+Training epoch 27
+test   L_V                   = +2.4895 (0.4%)
+    L_V_attractive      = +1.5154 (0.3%)
+    L_V_repulsive       = +0.9741 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0307 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2350 (0.0%)
+    L_beta_track        = +0.7957 (0.1%)
+      L_beta_norms_term   = -0.0300 (-0.0%)
+      L_beta_logbeta_term = +0.2650 (0.0%)
+  L_E = +599.3123 (99.4%)
+Returning 603.8324584960938
+Training epoch 28
+test   L_V                   = +2.4456 (0.4%)
+    L_V_attractive      = +1.4513 (0.2%)
+    L_V_repulsive       = +0.9943 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0320 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2370 (0.0%)
+    L_beta_track        = +0.7950 (0.1%)
+      L_beta_norms_term   = -0.0306 (-0.0%)
+      L_beta_logbeta_term = +0.2676 (0.0%)
+  L_E = +598.8206 (99.4%)
+Returning 603.2981567382812
+Training epoch 29
+test   L_V                   = +2.3896 (0.4%)
+    L_V_attractive      = +1.4422 (0.2%)
+    L_V_repulsive       = +0.9474 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0423 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2394 (0.0%)
+    L_beta_track        = +0.8030 (0.1%)
+      L_beta_norms_term   = -0.0301 (-0.0%)
+      L_beta_logbeta_term = +0.2695 (0.0%)
+  L_E = +591.5674 (99.4%)
+Returning 595.9993286132812
+Training epoch 30
+test   L_V                   = +2.4692 (0.4%)
+    L_V_attractive      = +1.4882 (0.2%)
+    L_V_repulsive       = +0.9811 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0220 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2341 (0.0%)
+    L_beta_track        = +0.7879 (0.1%)
+      L_beta_norms_term   = -0.0307 (-0.0%)
+      L_beta_logbeta_term = +0.2648 (0.0%)
+  L_E = +595.9910 (99.4%)
+Returning 600.4822387695312
+Training epoch 31
+test   L_V                   = +2.3898 (0.4%)
+    L_V_attractive      = +1.4258 (0.2%)
+    L_V_repulsive       = +0.9640 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0350 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2350 (0.0%)
+    L_beta_track        = +0.7999 (0.1%)
+      L_beta_norms_term   = -0.0310 (-0.0%)
+      L_beta_logbeta_term = +0.2661 (0.0%)
+  L_E = +590.4323 (99.4%)
+Returning 594.8571166992188
+Training epoch 32
+test   L_V                   = +2.3865 (0.4%)
+    L_V_attractive      = +1.4075 (0.2%)
+    L_V_repulsive       = +0.9790 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0313 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2327 (0.0%)
+    L_beta_track        = +0.7987 (0.1%)
+      L_beta_norms_term   = -0.0317 (-0.0%)
+      L_beta_logbeta_term = +0.2644 (0.0%)
+  L_E = +597.6414 (99.4%)
+Returning 602.0592651367188
+Training epoch 33
+test   L_V                   = +2.3834 (0.4%)
+    L_V_attractive      = +1.4452 (0.2%)
+    L_V_repulsive       = +0.9383 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0270 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2333 (0.0%)
+    L_beta_track        = +0.7938 (0.1%)
+      L_beta_norms_term   = -0.0310 (-0.0%)
+      L_beta_logbeta_term = +0.2643 (0.0%)
+  L_E = +588.0107 (99.4%)
+Returning 592.4212036132812
+Training epoch 34
+test   L_V                   = +2.4477 (0.4%)
+    L_V_attractive      = +1.4450 (0.2%)
+    L_V_repulsive       = +1.0027 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0133 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2279 (0.0%)
+    L_beta_track        = +0.7854 (0.1%)
+      L_beta_norms_term   = -0.0322 (-0.0%)
+      L_beta_logbeta_term = +0.2600 (0.0%)
+  L_E = +593.0129 (99.4%)
+Returning 597.4739379882812
+Training epoch 35
+test   L_V                   = +2.2941 (0.4%)
+    L_V_attractive      = +1.3638 (0.2%)
+    L_V_repulsive       = +0.9303 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0394 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2359 (0.0%)
+    L_beta_track        = +0.8035 (0.1%)
+      L_beta_norms_term   = -0.0315 (-0.0%)
+      L_beta_logbeta_term = +0.2674 (0.0%)
+  L_E = +580.7008 (99.4%)
+Returning 585.0343017578125
+Training epoch 36
+test   L_V                   = +2.3572 (0.4%)
+    L_V_attractive      = +1.4067 (0.2%)
+    L_V_repulsive       = +0.9505 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0268 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2301 (0.0%)
+    L_beta_track        = +0.7967 (0.1%)
+      L_beta_norms_term   = -0.0314 (-0.0%)
+      L_beta_logbeta_term = +0.2615 (0.0%)
+  L_E = +578.9847 (99.4%)
+Returning 583.3685913085938
+Training epoch 37
+test   L_V                   = +2.3700 (0.4%)
+    L_V_attractive      = +1.4413 (0.3%)
+    L_V_repulsive       = +0.9286 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0183 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2280 (0.0%)
+    L_beta_track        = +0.7903 (0.1%)
+      L_beta_norms_term   = -0.0313 (-0.0%)
+      L_beta_logbeta_term = +0.2593 (0.0%)
+  L_E = +571.4188 (99.4%)
+Returning 575.8070068359375
+Training epoch 38
+test   L_V                   = +2.3615 (0.4%)
+    L_V_attractive      = +1.4293 (0.2%)
+    L_V_repulsive       = +0.9322 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0193 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2287 (0.0%)
+    L_beta_track        = +0.7906 (0.1%)
+      L_beta_norms_term   = -0.0318 (-0.0%)
+      L_beta_logbeta_term = +0.2604 (0.0%)
+  L_E = +572.9057 (99.4%)
+Returning 577.2864990234375
+Training epoch 39
+test   L_V                   = +2.3680 (0.4%)
+    L_V_attractive      = +1.4058 (0.2%)
+    L_V_repulsive       = +0.9622 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0204 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2290 (0.0%)
+    L_beta_track        = +0.7914 (0.1%)
+      L_beta_norms_term   = -0.0323 (-0.0%)
+      L_beta_logbeta_term = +0.2613 (0.0%)
+  L_E = +573.3777 (99.4%)
+Returning 577.7661743164062
+Training epoch 40
+test   L_V                   = +2.3423 (0.4%)
+    L_V_attractive      = +1.4155 (0.3%)
+    L_V_repulsive       = +0.9268 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0151 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2276 (0.0%)
+    L_beta_track        = +0.7875 (0.1%)
+      L_beta_norms_term   = -0.0321 (-0.0%)
+      L_beta_logbeta_term = +0.2597 (0.0%)
+  L_E = +558.7317 (99.4%)
+Returning 563.0890502929688
+Training epoch 41
+test   L_V                   = +2.3058 (0.4%)
+    L_V_attractive      = +1.3971 (0.2%)
+    L_V_repulsive       = +0.9086 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0269 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2316 (0.0%)
+    L_beta_track        = +0.7953 (0.1%)
+      L_beta_norms_term   = -0.0315 (-0.0%)
+      L_beta_logbeta_term = +0.2631 (0.0%)
+  L_E = +568.2971 (99.4%)
+Returning 572.6296997070312
+Training epoch 42
+test   L_V                   = +2.3566 (0.4%)
+    L_V_attractive      = +1.4243 (0.3%)
+    L_V_repulsive       = +0.9323 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0125 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2267 (0.0%)
+    L_beta_track        = +0.7858 (0.1%)
+      L_beta_norms_term   = -0.0321 (-0.0%)
+      L_beta_logbeta_term = +0.2588 (0.0%)
+  L_E = +564.7865 (99.4%)
+Returning 569.1556396484375
+Training epoch 43
+test   L_V                   = +2.3523 (0.4%)
+    L_V_attractive      = +1.4477 (0.3%)
+    L_V_repulsive       = +0.9046 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0088 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2241 (0.0%)
+    L_beta_track        = +0.7847 (0.1%)
+      L_beta_norms_term   = -0.0320 (-0.0%)
+      L_beta_logbeta_term = +0.2560 (0.0%)
+  L_E = +547.6623 (99.4%)
+Returning 552.0233764648438
+Training epoch 44
+test   L_V                   = +2.3304 (0.4%)
+    L_V_attractive      = +1.4215 (0.2%)
+    L_V_repulsive       = +0.9089 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0156 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2266 (0.0%)
+    L_beta_track        = +0.7890 (0.1%)
+      L_beta_norms_term   = -0.0318 (-0.0%)
+      L_beta_logbeta_term = +0.2584 (0.0%)
+  L_E = +568.2745 (99.4%)
+Returning 572.6204833984375
+Training epoch 45
+test   L_V                   = +2.2914 (0.4%)
+    L_V_attractive      = +1.3706 (0.2%)
+    L_V_repulsive       = +0.9208 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0236 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2282 (0.0%)
+    L_beta_track        = +0.7954 (0.1%)
+      L_beta_norms_term   = -0.0324 (-0.0%)
+      L_beta_logbeta_term = +0.2606 (0.0%)
+  L_E = +558.9327 (99.4%)
+Returning 563.247802734375
+Training epoch 46
+test   L_V                   = +2.2675 (0.4%)
+    L_V_attractive      = +1.3553 (0.2%)
+    L_V_repulsive       = +0.9122 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0333 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2341 (0.0%)
+    L_beta_track        = +0.7992 (0.1%)
+      L_beta_norms_term   = -0.0308 (-0.0%)
+      L_beta_logbeta_term = +0.2650 (0.0%)
+  L_E = +562.5088 (99.4%)
+Returning 566.8095703125
+Training epoch 47
+test   L_V                   = +2.2622 (0.4%)
+    L_V_attractive      = +1.3982 (0.3%)
+    L_V_repulsive       = +0.8639 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0253 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2305 (0.0%)
+    L_beta_track        = +0.7948 (0.1%)
+      L_beta_norms_term   = -0.0308 (-0.0%)
+      L_beta_logbeta_term = +0.2613 (0.0%)
+  L_E = +549.2846 (99.4%)
+Returning 553.5720825195312
+Training epoch 48
+test   L_V                   = +2.2724 (0.4%)
+    L_V_attractive      = +1.3822 (0.2%)
+    L_V_repulsive       = +0.8902 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0187 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2244 (0.0%)
+    L_beta_track        = +0.7942 (0.1%)
+      L_beta_norms_term   = -0.0323 (-0.0%)
+      L_beta_logbeta_term = +0.2568 (0.0%)
+  L_E = +550.3607 (99.4%)
+Returning 554.6517333984375
+Training epoch 49
+test   L_V                   = +2.3057 (0.4%)
+    L_V_attractive      = +1.3780 (0.3%)
+    L_V_repulsive       = +0.9277 (0.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0063 (0.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2209 (0.0%)
+    L_beta_track        = +0.7854 (0.1%)
+      L_beta_norms_term   = -0.0329 (-0.0%)
+      L_beta_logbeta_term = +0.2538 (0.0%)
+  L_E = +542.7485 (99.4%)
+Returning 547.0604248046875

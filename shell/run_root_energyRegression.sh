@@ -3,17 +3,20 @@
 cd ..
 
 
-train_particle=ntau_10GeV_10    # ntau_10GeV_10      uds91
-test_particle=ntau_10GeV_10     # ntau_10GeV_10      uds91
+train_particle=ntau_10GeV_10    # ntau_10GeV_10      uds91    ntau_10to100GeV_10
+test_particle=${train_particle}     # ntau_10GeV_10      uds91    ntau_10to100GeV_10
 
 energy_regression=true
 energy_regression_betaMSE=false
+testSuffix=""
 
 
 
 test_path=/data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test
 if [ ${test_particle} = "uds91" ]; then
   test_path=/data/suehara/mldata/pfa/uds91/test
+elif [ ${test_particle} = "ntau_10to100GeV_10" ]; then
+  test_path=/data/suehara/mldata/pfa/murata/ntau_10to100GeV_10_lessSample/test
 fi
 checkpoint_path=/home/murata/master/checkpoint
 
@@ -89,51 +92,165 @@ fi
 # python save_root_energyRegression.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar ${output_path}/${outfile} 0 500000 False 7 ${outD} False True
 # python save_root.py ${test_path} ${cp_path[${D}]}/ckpt_49_1.pth.tar ${output_path}/tc_${train_particle}_betaMSE_${D}D_49_${test_particle}.root 0 500000 False 8 ${D} False
 
-
-
+# epoch=14
+epoch=49
+input_dim=7
+momentum=False
+momentumAmp=False
+MCTpe=False
 # outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaMSE_coef1.root
 # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_08_22_123039_outputD5
 
 # outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaMSE_coef6.root
 # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_01_173144_outputD5
 
-outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_coef50.root
-checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_11_105012_outputD5
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaE_positive.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_15_183822_outputD5
 
-# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_49_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False 7 ${outD} False True
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_betaE_fixloss.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_22_173630_outputD5
 
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_16_112733_outputD5
 
-### learning rate
-lr=1e-4      #    1e-4   2e-5    5e-5    9e-6 (default) 
-D=5
-output_path=output/hyper_parameter/learning_rate
+# train_particle=uds91
+# test_particle=uds91
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_26_122011_outputD5
 
-cp_path_lr=${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_Jun22_0937_D5
-if [ ${lr} = "2e-5" ]; then
-  cp_path_lr=${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_07_100401_outputD5 
-elif [ ${lr} = "5e-5" ]; then
-  cp_path_lr=${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_10_070602_outputD5 
-elif [ ${lr} = "1e-4" ]; then
-  cp_path_lr=${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_13_052149_outputD5 
+# train_particle=ntau_10to100GeV_10
+# test_particle=ntau_10to100GeV_10
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_23_164606_outputD5
+
+## momentum
+momentum=True
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alpha_momentum.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_10_23_120737_outputD5
+
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_momentum.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_02_080848_outputD5
+
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE_momentum_restartPeriod50_condbeta_tbeta060.root
+outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE_momentum_restartPeriod50_condbeta_tbeta030.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_12_163532_outputD5
+
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_momentum_restartPeriod30.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_13_165313_outputD5
+
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE_momentum_restartPeriod50_coef001.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_19_151106_outputD5
+
+# epoch=59
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE_momentum_restartPeriod30_coef05.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_22_144756_outputD5
+
+# epoch=59
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaMSE_momentum_restartPeriod30_coef01.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_22_144847_outputD5
+
+epoch=59
+momentumAmp=True
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaTrack_momentum_restartPeriod30_trueloss.root
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaTrack_momentum_restartPeriod30_trueloss_truemomentum.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_26_174035_outputD5
+
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alpha_momentum_restartPeriod30_trueloss_detectecprediction.root
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alpha_momentum_restartPeriod30_trueloss.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_12_03_113656_outputD5
+
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaTrack_momentum_restartPeriod30_detectedloss.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_12_04_131221_outputD5
+
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alpha_momentum_restartPeriod30_detectedloss.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_12_03_115021_outputD5
+
+mkdir -p ${output_path}/energyTree/restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum_virtualhitTrueMomentum
+MCTpe=False
+if [ ${MCTpe} = "True" ]; then
+  testSuffix=_testMCTruth
+elif [ ${MCTpe} = "False" ]; then
+  testSuffix=_testDetected
 fi
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}/trash/alphaTrackModifying_momentum_virtualhitTrueMomentum.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_12_25_191117_outputD5
 
-# python save_root.py ${test_path} ${cp_path_lr}/ckpt_49_1.pth.tar ${output_path}/tc_${train_particle}_timingcut_forcealpha_thetaphi_${D}D_49_${test_particle}_lr${lr}.root 0 500000 False 7 ${D} False
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum_virtualhitTrueMomentum/alphaTrackModifyingCharge0${testSuffix}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_05_105638_outputD5
 
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum_virtualhitTrueMomentum/alphaTrackModifying${testSuffix}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_05_110056_outputD5
 
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum_virtualhitTrueMomentum/alphaTrackModifyingAll0${testSuffix}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_05_004402_outputD5
 
-##### fine tuning 
-## epoch=20
-# python save_root.py ${test_path} ${checkpoint_path}/fune_tuning/ckpts_gravnet_new02_Jun19_1813/ckpt_39_1.pth.tar output/fine_tuning/tc_ntau_10GeV_10_uds_timingcut_forcealpha_thetaphi_39_ntau_10GeV_10.root 0 500000 False 7 3 False
-# python save_root.py ${test_path} ${checkpoint_path}/fune_tuning/ckpts_gravnet_new02_Jun19_1813/ckpt_39_1.pth.tar output/fine_tuning/tc_ntau_10GeV_10_uds_timingcut_forcealpha_thetaphi_39_uds.root 0 500000 False 7 3 False
-## epoch=25
-# python save_root.py ${test_path} ${checkpoint_path}/fune_tuning/ckpts_gravnet_new02_Jun22_0946/ckpt_49_1.pth.tar output/fine_tuning/tc_ntau_10GeV_10_uds_timingcut_forcealpha_thetaphi_49_ntau_10GeV_10.root 0 500000 False 7 3 False
-# python save_root.py ${test_path} ${checkpoint_path}/fune_tuning/ckpts_gravnet_new02_Jun22_0946/ckpt_49_1.pth.tar output/fine_tuning/tc_ntau_10GeV_10_uds_timingcut_forcealpha_thetaphi_49_uds.root 0 500000 False 7 3 False
-
-
-## test
-#python save_root.py test_ ${checkpoint_path}/ckpts_gravnet_new02_Apr23_1328/ckpt_49_1.pth.tar output/test_test.root 0 5000 False 7 3 True
-#python save_root.py test_100 ${checkpoint_path}/ckpts_gravnet_new02_Apr23_1328/ckpt_49_1.pth.tar output/test/test_100_.root 0 5000 False 7 3 False
-#python save_root.py test_ ${checkpoint_path}/ckpts_gravnet_new02_Apr23_1328/ckpt_49_1.pth.tar output/test/test_pandora.root 0 5000 False 7 3 True
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum_virtualhitTrueMomentum/alphaTrackModifyingAll0${testSuffix}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_13_122347_outputD5
 
 
-#python save_root.py /data/suehara/mldata/pfa/qq91sub/tc/test ${checkpoint_path}/ckpts_gravnet_new02_Apr23_1328/ckpt_49_1.pth.tar output/ntau_to_qq/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_49.root 0 100 False 7 3
+
+
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaTrackModifying${testSuffix}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_08_185604_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaTrackModifying_LE16_beta06d05${testSuffix}.root
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaTrackModifying_LE16_beta06d05${testSuffix}_test.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_13_122347_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_LE16_beta03d05${testSuffix}.root
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_LE16_beta06d05${testSuffix}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_14_174251_outputD5
+
+
+
+
+# train_particle=uds91
+# test_particle=uds91
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_momentum.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_02_081028_outputD5
+
+
+## momentum amplitude 
+# momentum=True
+# momentumAmp=True
+# outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_momentum_momentumAmp.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_06_184121_outputD5
+
+
+
+##### 500 epoch tau task
+# epoch=499
+# momentumAmp=False
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_alphaTrack_momentum_restartPeriod30.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_22_144511_outputD5
+
+
+
+# outfile=test.root
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} False True ${momentum} ${momentumAmp} ${MCTpe}
+
+python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
+
+
+
+
+## pandora energy prediction
+# test_path=/data/suehara/mldata/pfa/murata/skimmed/pandora/ntau_10GeV_10/test
+# output_path=output/energy_regression/new_clustering/energyTree/pandora
+# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_pandora.root
+
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} True True ${momentum} ${momentumAmp}
+
+
+
+
+
+
+outfile=test.root
+# python save_root_energyRegression.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 ${outD} False True ${momentum} ${momentumAmp}
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 ${outD} False True ${momentum} ${momentumAmp}
+
+
+
+

@@ -6,8 +6,9 @@ const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const string test_particle_type = "uds91";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string test_particle_type = train_particle_type;   // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string short_particle_type = train_particle_type == "ntau_10GeV_10" ? "ntau" : (train_particle_type == "uds91" ? "uds" : "ntau_10to100GeV_10");               // ntau    uds
 
 
 const bool hyper_parameter = false;
@@ -23,6 +24,7 @@ const bool tbeta_td_scan = true;
 const bool tbeta_td_scan_below01 = false; 
 const bool tbeta_td_scan_below01_add = false; 
 const bool new_clustering = true;
+const bool skimmed = true;
 
 
 const bool cout_eff_pur = true;
@@ -95,12 +97,16 @@ void tbeta_td_result(){
         for(int irawfile=0; irawfile<rawfilenum; irawfile++){
             int itbeta = irawfile / ndiameter;
             int itd = irawfile % ndiameter + 1;
-            string dir_opt = new_clustering ? "new_clustering/" : "";
+            string dir_opt = new_clustering ? (skimmed ? "skimmed/new_clustering/" : "new_clustering/") : "";
             if(tbeta_td_scan_below01) filein[irawfile] = new TFile(Form("../output/hyper_parameter/tbeta_td/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10/tbeta001td010/tbeta%03dtd%02d0.root",itbeta,itd));
             else {
-                filein[irawfile] = new TFile(Form("../output/%shyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta010td010/tbeta%02d0td%02d0.root",dir_opt.c_str(),train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
-                // filein[irawfile] = new TFile(Form("../output/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta%02d0td%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
-                // filein[irawfile] = new TFile(Form("../output/new_clustering/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta010td010/tbeta%03dtd%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
+                if(!skimmed){
+                    filein[irawfile] = new TFile(Form("../output/%shyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta010td010/tbeta%02d0td%02d0.root",dir_opt.c_str(),train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
+                    // filein[irawfile] = new TFile(Form("../output/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta%02d0td%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
+                    // filein[irawfile] = new TFile(Form("../output/new_clustering/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta010td010/tbeta%03dtd%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
+                } else {
+                    filein[irawfile] = new TFile(Form("../output/%shyper_parameter/tbeta_td/%s/tbeta010td010/tbeta%02d0td%02d0.root",dir_opt.c_str(),short_particle_type.c_str(),itbeta,itd));
+                }
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }

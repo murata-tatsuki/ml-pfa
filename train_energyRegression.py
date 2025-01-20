@@ -5,7 +5,7 @@ import torch
 from torch_geometric.loader import DataLoader
 import argparse
 
-import matplotlib.pylab as plt 
+import matplotlib.pylab as plt
 import numpy as np
 
 #from sklearn.metrics import accuracy_score
@@ -35,16 +35,16 @@ def main():
     parser.add_argument('--reduce-noise', action='store_true', help='Randomly kills 95% of noise')
     parser.add_argument('--timing-cut', action='store_true', help='Eliminate hits outside timing window (4-14 nsec)')
     parser.add_argument('--thetaphi', action='store_true', help='Input theta and phi made from px, py, pz')
-    parser.add_argument('--use-charged-cluster-loss', action='store_true', help='Turn on loss function for charged cluster matching')    
+    parser.add_argument('--use-charged-cluster-loss', action='store_true', help='Turn on loss function for charged cluster matching')
     parser.add_argument('--ckptdir', type=str)
-    parser.add_argument('--cuda', type=str, default='cuda')    
-    parser.add_argument('--batch-size', type=int, default=100)    
+    parser.add_argument('--cuda', type=str, default='cuda')
+    parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--epochs-nobeta', type=int, default=7)
     parser.add_argument('--epochs-noLE', type=int, default=15)
-    parser.add_argument('--beta-track', action='store_true', help='Include L_beta_track term')    
-    parser.add_argument('--beta-track-beginning', action='store_true', help='L_beta_track term from epoch 1')    
-    parser.add_argument('--force-track-alpha', action='store_true', help='Force track as alpha (condensation point)')    
+    parser.add_argument('--beta-track', action='store_true', help='Include L_beta_track term')
+    parser.add_argument('--beta-track-beginning', action='store_true', help='L_beta_track term from epoch 1')
+    parser.add_argument('--force-track-alpha', action='store_true', help='Force track as alpha (condensation point)')
     parser.add_argument('--output-dimension', type=int, default=3, help='Specify total output dimension (note that 1 dim each is used for beta and charged cluster loss)')
     parser.add_argument('-i', '--inputdir', type=str, required=True, help='Specify input directory for training (required)')
     parser.add_argument('--no-split', action='store_true', help='Do not split sample into training/validating')
@@ -53,8 +53,14 @@ def main():
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)
     parser.add_argument('--weight-decay', type=float, default=1e-4)
-    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')    
+    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--regression-coefficinet', type=float, default=1)                       ### energy regreiion scaling factor
+    parser.add_argument('--betaE-alpha', type=str, help='Specify L_E loss term')
+    parser.add_argument('--momentum', action='store_true', help='Add momentum to GNN input')
+    parser.add_argument('--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
+    parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
+    parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
+    parser.add_argument('--restart-period', type=int, default=400)
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -72,20 +78,26 @@ def main():
     weight_decay_input = args.weight_decay
     er_coef = args.regression_coefficinet
     print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
+    if args.mctpe:
+        print("momentum and energy of virtual hits are MC truth")
+    else:
+        print("momentum and energy of virtual hits are NOT MC truth")
+        print("using detected values")
+
 
     shuffle = True
 
     print(f'thetaphi at main: {args.thetaphi}')
-    
+
     print("Loading dataset...")
-    
+
     if (args.no_split and args.inputdir_validate is None):
         print("If --no-split is specified, it is required to set --inputdir-validate")
         raise
 
-    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+        dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
 
     if reduce_noise:
         dataset.reduce_noise = .70
@@ -97,25 +109,32 @@ def main():
         keep = .005
         print(f'Keeping only {100.*keep:.1f}% of events for debugging')
         dataset, _ = dataset.split(keep)
-    
+
     if (args.no_split):
         train_dataset = dataset
-        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune = dataset_tune
-            test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True)
+            test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
     else:
         train_dataset, test_dataset = dataset.split(.8)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
-    
+
     if (args.regression_coefficinet and args.energy_regression is None):
         print("If --regression-coefficinet is specified, it is required to set --energy-regression")
         raise
     if (args.energy_regression):
         output_dimension += 1   # adding energy to model output
-    
-    
+
+    additional_input_dimension = 0
+    if (args.momentum):
+        additional_input_dimension += 3   # adding momentum to model input
+        if (args.momentum_amp):
+            additional_input_dimension += 1     # adding momentum amplitude to model input
+
+
+
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
@@ -128,10 +147,16 @@ def main():
         print(f"Batch size:  {batch_size}")
         train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle)
         test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle)
-    
-    print(f"Loading GravnetModel")
-    from gravnet_model import GravnetModel
-    model = GravnetModel(input_dim=5+args.thetaphi*2, output_dim=output_dimension).to(device)
+
+    if not args.energy_branch:
+        print(f"Loading GravnetModel")
+        from gravnet_model import GravnetModel
+        model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+    else:
+        print(f"Loading GravnetModel with energy branch")
+        from gravnet_model import GravNetModelBranch
+        model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True).to(device)
+        print(model)
     #else:
     #    model = GravnetModel(input_dim=4, output_dim=3, k=50).to(device)
 
@@ -143,14 +168,15 @@ def main():
     #     model.load_state_dict(torch.load(ckpt, map_location=device)['model'])
 
     epoch_size = len(train_loader.dataset)
-    epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0 
+    epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
     epoch_size = epoch_size + epoch_size_tune
     #optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5, weight_decay=1e-4)
     # optimizer = torch.optim.AdamW(model.parameters(), lr=9.0e-6, weight_decay=1e-4)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
 
     if not args.settings_Sep01:
-        scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=400, t_mult=1.1, policy="cosine")
+        print("restart period : ", args.restart_period)
+        scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine")
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 
@@ -193,7 +219,7 @@ def main():
         data_para["data.y.long"]=data.y.long()
         data_para["data.x"]=data.x
         return data_para
-        
+
     def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
         device = out.device
         pred_betas = torch.sigmoid(out[:,0])
@@ -219,9 +245,16 @@ def main():
         assert all(t.device == device for t in [
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
-        true_energy=torch.square(data.label[:,4:8])
+        # true_energy=torch.square(data.label[:,4:8])
         # print(true_energy)
+        hitIds = data.label[:,0]
+        # print(hitIds.size()[0], hitIds[torch.where(hitIds==0)].size()[0])
+        # print(data.label[:,np.r_[0:1,4:8]])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+        # pred_cluster_energy = data.x[:,-1]
+        # print(true_energy, data.label[:,4:8])
+        # print(true_energy[torch.where(true_energy>0)].size()[0], true_energy.size()[0])
+        # print(true_energy, pred_cluster_energy)
         # print(true_energy)
         # print(data)
         # print(data.x)
@@ -237,22 +270,39 @@ def main():
             data.y[:,0].long(),
             true_energy,
             data.batch,
-            er_coef,
+            er_coef=er_coef,
             return_components=return_components,
             beta_term_option='short-range-potential',
             beta_track_term=args.beta_track,
             beta_track_term_beginning=args.beta_track_beginning,
             force_track_alpha=args.force_track_alpha,
             cluster_track_index=cluster_track_index,
+            betaE_alpha=args.betaE_alpha,
             )
         if return_components:
             return out_oc
         else:
-            LV, Lbeta, LE = out_oc
-            if i_epoch <= args.epochs_nobeta:
-                return LV + loss_offset
+            LV, Lbeta, LE, LE_charge = out_oc
+            # print(LE, true_energy, pred_cluster_energy)
+            # if i_epoch <= args.epochs_nobeta:
+            #     return LV + loss_offset
+            # else:
+            #     return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
+            return_loss = LV + loss_offset
+            if args.betaE_alpha == 'alpha_tracker_modifing_charged0':
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > 15:
+                    return_loss += LE
+                else: 
+                    return_loss += LE_charge
             else:
-                return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > args.epochs_noLE:
+                    return_loss += LE
+            return return_loss
+
 
     def train(epoch):
         print('Training epoch', epoch)
@@ -265,14 +315,16 @@ def main():
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
             pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
-                # print(i, len(data.x), len(data.y))
+                # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
+                # print(data.x[:,7:10])
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
                 result = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
+                # print("learning rate : ", optimizer.param_groups[0]["lr"])
                 optimizer.step()
                 if not args.settings_Sep01: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -282,8 +334,8 @@ def main():
             return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
         except Exception:
             print('Exception encountered:', data, 'i:', i)
-            raise    
-        
+            raise
+
     def train_tune(epoch):
         print('Training epoch', epoch)
         train_acc=0.
@@ -312,8 +364,8 @@ def main():
             return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
         except Exception:
             print('Exception encountered:', data, 'i:', i)
-            raise    
-        
+            raise
+
 
     def test(epoch):
         N_test = len(test_loader)
@@ -324,7 +376,7 @@ def main():
                 if not key in loss_components: loss_components[key] = 0.
                 loss_components[key] += value
         with torch.no_grad():
-            
+
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
@@ -349,7 +401,7 @@ def main():
                 if not key in loss_components: loss_components[key] = 0.
                 loss_components[key] += value
         with torch.no_grad():
-            
+
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
@@ -381,11 +433,16 @@ def main():
     epoch_history=[]
     train_acc_history=[]
     test_acc_history=[]
+    learning_rates=[]
+
     for i_epoch in range(n_epochs):
         train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
+        learning_rates.append(optimizer.param_groups[0]["lr"])
+        print("learning rate : ", learning_rates)
         train_loss_history.append(train_loss)
+        print("train loss : ", train_loss)
         write_checkpoint(i_epoch)
-        
+
         test_loss= test(i_epoch)
         #test_loss/=len(test_loader)
         test_loss_history.append(test_loss)
@@ -401,14 +458,15 @@ def main():
             i_epoch = ii_epoch + n_epochs   ## fine tuning用のepoch数指定 ここは今後inputに入れてもいい。現状はn_epochsを二回繰り返している
             train_loss,cluster_space_para,data_y,data,first_para=train_tune(i_epoch)
             train_loss_history.append(train_loss)
+            print("train loss : ", train_loss)
             write_checkpoint(i_epoch)
-            
+
             test_loss= test(i_epoch)
             #test_loss/=len(test_loader)
             test_loss_history.append(test_loss)
             if test_loss < min_loss:
                 min_loss = test_loss
-        
+
     data_y = data.y.long().cpu().numpy()
     # plot_history(train_loss_history,test_loss_history)
 
@@ -427,7 +485,7 @@ def check_plots(coords_list,data_y_list):
     for x1,y1,label1 in zip(coords_list[0:4000,0],coords_list[0:4000,1],label):
         ax.scatter(x1, y1,c=colorlabel(label1,label))
     plt.show()
-    
+
 # def coord_tsne(Coords,Tag):
 #     tsne = TSNE(n_components=2,random_state=41,learning_rate='auto')
 #     Coord_reduced = tsne.fit_transform(Coords)
@@ -461,7 +519,7 @@ def debug():
         data.y.long(),
         data.batch.long()
     )
-        
+
 def plot_history(train_loss_history,test_loss_history):
     loss_type = type(test_loss_history)
     if(loss_type is list):
@@ -481,7 +539,7 @@ def plot_acc_history(train_acc_history,test_acc_history):
         plt.title('accuracy')
         plt.legend(fontsize=14)
         plt.show()
-            
+
 def run_profile():
     from torch.profiler import profile, record_function, ProfilerActivity
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

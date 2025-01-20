@@ -390,6 +390,7 @@ def calc_LV_Lbeta_Eregression(
     force_track_alpha = False,
     cluster_track_index: torch.Tensor = torch.empty(0),
     er_coef: float = 1.,
+    betaE_alpha='betaE'
     ) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -709,15 +710,47 @@ def calc_LV_Lbeta_Eregression(
     # ________________________________      ## need to modify
     # energy regression term
     L_E = 0.    
-    mse = torch.square(cluster_energy - mcp_energy)                             ## betaMSE
-    # mse = torch.square(cluster_energy - mcp_energy)[index_alpha_track]        ## alphaMSE
+    L_E_charge = 0.
+    # mse = torch.square(cluster_energy - mcp_energy)                             ## betaMSE
+    # mse = torch.square(cluster_energy - mcp_energy)[index_alpha]        ## alphaMSE
     # print(mse)
     # print(mse[is_trk])
     # L_E = torch.sum(mse[is_trk]) / torch.numel(mse[is_trk])
     # L_E = torch.dot(mse,beta) / torch.numel(mse)                                              ## betaMSE
-    # L_E = torch.dot(mse[index_alpha_track],beta[index_alpha_track]) / torch.numel(mse)        ## alphaMSE
-    # L_E = mse[index_alpha_track]                                                              ## alphaMSE     no beta
-    L_E = torch.norm(cluster_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
+    # L_E = torch.dot(mse[index_alpha],beta[index_alpha]) / torch.numel(mse)        ## alphaMSE
+    if betaE_alpha == 'alpha':
+        mse = torch.square(cluster_energy - mcp_energy)
+        L_E = torch.sum(mse[index_alpha])                                                   ## alphaMSE     no beta
+    if betaE_alpha == 'alpha_tracker':
+        mse = torch.square(cluster_energy - mcp_energy)
+        L_E = torch.sum(mse[index_alpha_track])   
+    if betaE_alpha == 'alpha_modifing':
+        mse = torch.square(cluster_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E = torch.sum(mse[index_alpha])
+    if betaE_alpha == 'alpha_tracker_modifing':
+        mse = torch.square(cluster_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E = torch.sum(mse[index_alpha_track])   
+    if betaE_alpha == 'alpha_tracker_modifing_all0':
+        mse = torch.square(cluster_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E = torch.sum(mse[index_alpha])   
+    if betaE_alpha == 'alpha_tracker_modifing_charged0':
+        mse = torch.square(cluster_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E_charge = torch.sum(mse[index_alpha_track])   
+        L_E = torch.sum(mse[index_alpha])   
+    elif betaE_alpha == 'alpha_ratio':
+        mse = torch.square(cluster_energy - mcp_energy)
+        mse = mse[index_alpha]
+        # mse = torch.square((cluster_energy - mcp_energy)/mcp_energy)
+        energy2 = torch.square(mcp_energy)
+        energy2 = energy2[index_alpha]
+        L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
+    elif betaE_alpha == 'betaE':
+        # L_E = torch.norm(cluster_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
+        L_E = torch.sum(torch.square(cluster_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
     # LEloss = torch.nn.MSELoss()
     # L_E += LEloss(cluster_energy, mcp_energy)
     L_E = L_E * er_coef
@@ -738,13 +771,14 @@ def calc_LV_Lbeta_Eregression(
             L_beta_sig = L_beta_sig / batch_size,
             L_beta_track = L_beta_track / batch_size,
             L_E = L_E / batch_size,
+            L_E_charge = L_E_charge / batch_size,
             )
         if beta_term_option == 'short-range-potential':
             components['L_beta_norms_term'] = L_beta_norms_term / batch_size
             components['L_beta_logbeta_term'] = L_beta_logbeta_term / batch_size
     if DEBUG:
         debug(formatted_loss_components_string(components))
-    return components if return_components else (L_V/batch_size, L_beta/batch_size, L_E/batch_size)
+    return components if return_components else (L_V/batch_size, L_beta/batch_size, L_E/batch_size, L_E_charge/batch_size)
 
 
 def formatted_loss_components_string(components: dict) -> str:

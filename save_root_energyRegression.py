@@ -4,9 +4,11 @@ from distutils.util import strtobool
 #import evaluation_noNoise as ev
 import awkward as ak
 from model import get_model
+# from model import get_model_branch
 from dataset import ILCDataset
 from test_yielder import TestYielder
 from ROOT import TFile, TTree
+import argparse
 
 class Data:
     ''' TTree data for MCParticle
@@ -142,7 +144,13 @@ class PredData:
         t.Branch("trackness",this.trackness,"trackness/I")
 
 def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
+# def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args=Namespace(energy_regression=False)):
     debug = False
+    # pandora=args.pandora
+    # energyRegression=args.energy_regression
+    # momentum=args.momentum
+    # momentumAmp=args.momentum_amp
+    # mctpe=args.mctpe
 
     print(f"save_root()...")
     file = TFile(outfile,"recreate")
@@ -165,6 +173,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         if momentumAmp:
             input_dim += 1
     print(f"Loading model from checkpoint {ckpt}")
+    # if args.energy_branch:
+    #     model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
+    # else:
+    # model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
@@ -182,8 +194,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
     # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.3, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.3, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax)):     ## これをpandoraについてもできるようにする
     #for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.7, td=0.5, nmax=nmax)):
         # print(condensation_points)
@@ -408,13 +420,38 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
     print(f"Saving to {outfile}")
     file.Write()
+
+options = {'--mctpe'}
+
     
 def main():
-    if (len(sys.argv) != 14):
+    print(sys.argv)
+    if (len(sys.argv) < 9):
         print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
         return
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datapath')
+    parser.add_argument('ckpt')
+    parser.add_argument('outfile')
+    parser.add_argument('nstart', type=int)
+    parser.add_argument('nend', type=int)
+    parser.add_argument('timingCut')
+    parser.add_argument('input_dim', type=int)
+    parser.add_argument('output_dim', type=int)
+    parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
+    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
+    parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')
+    parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
+    parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
+    parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
+
+    args = parser.parse_args()
+    print(args, type(args))
     
-    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]), momentum=strtobool(sys.argv[11]), momentumAmp=strtobool(sys.argv[12]), mctpe=strtobool(sys.argv[13]))
+    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]), momentum=strtobool(sys.argv[11]), momentumAmp=strtobool(sys.argv[12]), mctpe=strtobool(sys.argv[13]))
+    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=args.pandora, energyRegression=args.energy_regression, momentum=args.momentum, momentumAmp=args.momentum_amp, mctpe=args.mctpe)
+    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args)
 
 if __name__=='__main__':
     main()

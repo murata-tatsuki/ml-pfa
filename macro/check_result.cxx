@@ -54,6 +54,7 @@ void check_result(){
     // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10.root");
     // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_9D_49_ntau_10GeV_10.root");
     // filein[0] = new TFile("../output/new_clustering/hyper_parameter/dimensions/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_17D_49_ntau_10GeV_10.root");
+    filein[0] = new TFile("../output/skimmed/new_clustering/hyper_parameter/tbeta_td/ntau/tbeta010td010/tbeta000td010.root");
     
     // learning rate
     // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr1e-4.root");
@@ -62,8 +63,9 @@ void check_result(){
     // filein[0] = new TFile("../output/hyper_parameter/learning_rate/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_5D_49_ntau_10GeV_10_lr9e-6.root");
 
     // pandora
-    filein[0] = new TFile("../output/skimmed/ntau_to_ntau/pandora/tc_ntau_timingcut_forcealpha_thetaphi_49_ntau.root");
+    // filein[0] = new TFile("../output/skimmed/ntau_to_ntau/pandora/tc_ntau_timingcut_forcealpha_thetaphi_49_ntau.root");
     // filein[0] = new TFile("../output/skimmed/uds_to_uds/pandora/tc_uds_timingcut_forcealpha_thetaphi_49_uds.root");
+    // filein[0] = new TFile("../output/energy_regression/new_clustering/energyTree/pandora/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_pandora.root");
 
     // energy regression
     // filein[0] = new TFile("../output/energy_regression/new_clustering/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10.root");
