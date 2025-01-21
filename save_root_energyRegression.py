@@ -3,8 +3,7 @@ import numpy as np
 from distutils.util import strtobool
 #import evaluation_noNoise as ev
 import awkward as ak
-from model import get_model
-# from model import get_model_branch
+from model import get_model, get_model_branch
 from dataset import ILCDataset
 from test_yielder import TestYielder
 from ROOT import TFile, TTree
@@ -143,14 +142,16 @@ class PredData:
         t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
         t.Branch("trackness",this.trackness,"trackness/I")
 
-def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
-# def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args=Namespace(energy_regression=False)):
+
+# def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
+def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
     debug = False
-    # pandora=args.pandora
-    # energyRegression=args.energy_regression
-    # momentum=args.momentum
-    # momentumAmp=args.momentum_amp
-    # mctpe=args.mctpe
+    pandora=args.pandora
+    energyRegression=args.energy_regression
+    momentum=args.momentum
+    momentumAmp=args.momentum_amp
+    mctpe=args.mctpe
+    energy_branch=args.energy_branch
 
     print(f"save_root()...")
     file = TFile(outfile,"recreate")
@@ -173,11 +174,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         if momentumAmp:
             input_dim += 1
     print(f"Loading model from checkpoint {ckpt}")
-    # if args.energy_branch:
-    #     model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
-    # else:
-    # model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
-    model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
+    if energy_branch:
+        model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
+    else:
+        model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
     yielder = TestYielder(model=model, dataset=dataset)
@@ -447,11 +447,10 @@ def main():
     parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
 
     args = parser.parse_args()
-    print(args, type(args))
     
     # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]), momentum=strtobool(sys.argv[11]), momentumAmp=strtobool(sys.argv[12]), mctpe=strtobool(sys.argv[13]))
-    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=args.pandora, energyRegression=args.energy_regression, momentum=args.momentum, momentumAmp=args.momentum_amp, mctpe=args.mctpe)
-    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args)
+    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=args.pandora, energyRegression=args.energy_regression, momentum=args.momentum, momentumAmp=args.momentum_amp, mctpe=args.mctpe)
+    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args=args)
 
 if __name__=='__main__':
     main()

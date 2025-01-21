@@ -203,6 +203,9 @@ outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_mom
 checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_14_174251_outputD5
 
 
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_EBranch_LE16_testDetected_17.root
+epoch=17
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_20_151235_outputD5
 
 
 # train_particle=uds91

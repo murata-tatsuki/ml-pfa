@@ -267,22 +267,7 @@ def main():
         assert all(t.device == device for t in [
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
-        # true_energy=torch.square(data.label[:,4:8])
-        # print(true_energy)
-        hitIds = data.label[:,0]
-        # print(hitIds.size()[0], hitIds[torch.where(hitIds==0)].size()[0])
-        # print(data.label[:,np.r_[0:1,4:8]])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        # pred_cluster_energy = data.x[:,-1]
-        # print(true_energy, data.label[:,4:8])
-        # print(true_energy[torch.where(true_energy>0)].size()[0], true_energy.size()[0])
-        # print(true_energy, pred_cluster_energy)
-        # print(true_energy)
-        # print(data)
-        # print(data.x)
-        # print(data.y)
-        # print(data.feat)
-        # print(data.label[:,4:])
         out_oc = oc.calc_LV_Lbeta_Eregression(
         # out_oc = oc.calc_LV_Lbeta(
             pred_betas,
@@ -338,13 +323,19 @@ def main():
             pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
+                startT = time.perf_counter()
                 data = data.to(device)
+                endT = time.perf_counter()
+                print("data.to(cuda)  : ", endT-startT)
                 # print(data.x[:,7:10])
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
                 result = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
+                startT = time.perf_counter()
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                endT = time.perf_counter()
+                print("train loss  : ", endT-startT)
                 loss.backward()
                 # print("learning rate : ", optimizer.param_groups[0]["lr"])
                 optimizer.step()
@@ -403,7 +394,10 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 result = model(data.x, data.batch)
+                startT = time.perf_counter()
                 update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                endT = time.perf_counter()
+                print("test loss  : ", endT-startT)
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test

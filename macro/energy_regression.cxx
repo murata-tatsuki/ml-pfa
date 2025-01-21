@@ -23,9 +23,9 @@ const bool epochs = false;
 const string lossF_epochs = "alphaTrackModifying_LE16";               // alphaTrackModifying       alphaTrackModifying_coef005_LE16     alphaTrackModifying_coef005     alphaTrackModifying_LE16        alphaModifying
 const int nepoch = 59;
 
-const bool energyByPass = false;
+const bool energyByPass = true;
 
-const bool filepath_ = true;
+const bool filepath_ = false;
 
 
 
@@ -118,7 +118,7 @@ void energy_regression(){
         fileName = Form("../output/energy_regression/new_clustering/energyTree/pandora/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_pandora.root");
     }
     if(filepath_){
-        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaTrackModifying_LE16_beta06d05_testDetected.root");
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaModifying_EBranch_LE16_testDetected_17.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
