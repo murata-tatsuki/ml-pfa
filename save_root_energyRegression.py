@@ -152,21 +152,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     momentumAmp=args.momentum_amp
     mctpe=args.mctpe
     energy_branch=args.energy_branch
-
-    print(f"save_root()...")
-    file = TFile(outfile,"recreate")
-
-    t = TTree("t","tree for MCParticle")
-    d = Data()
-    d.setup_branch(t)
-
-    t2 = TTree("reco","tree for reconstructed clusters")
-    d2 = RecoData()
-    d2.setup_branch(t2)
-
-    t3 = TTree("prediction","tree for model output")
-    d3 = PredData()
-    d3.setup_branch(t3)
+    assert(not (args.beta_d_scan and (".root" in outfile)))
 
     thetaphi = True if input_dim == 7 else False
     if momentum:
@@ -192,238 +178,259 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         --> save all labels
     """
     
-    #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
-    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.3, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax)):     ## これをpandoraについてもできるようにする
-    #for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.7, td=0.5, nmax=nmax)):
-        # print(condensation_points)
+    outfileDir = outfile
+    tbeta_list = [args.tbeta]
+    td_list = [args.td]
 
-        if i == nmax: break
+    if args.beta_d_scan:
+        tbeta_list = [i/10.0 for i in range(0,10)]
+        td_list = [i/10.0 for i in range(1,10)]
 
-        if i < 10 or i%100 == 0:
-            print("Event", i, "processing...")
 
-        #ak_feat = ak.from_numpy(event.feat.numpy())
-        #ak_label = ak.from_numpy(event.label.numpy())
-        #beta = np.expand_dims(prediction.pred_betas, axis=1)
-        #charge_track_likeness = np.expand_dims(prediction.pred_charge_track_likeness, axis=1)
-        #pred = np.concatenate((beta,prediction.pred_cluster_space_coords,charge_track_likeness), axis=1)
-        #ak_pred = ak.from_numpy(pred)
+    print(tbeta_list)
+    print(td_list)
+
+
+    for tbeta in tbeta_list:
+        for td in td_list:
+            tbeta_now = round(tbeta * 100)
+            td_now = round(td * 100)
+            # outfile = outfileDir + '/tbeta' + format(tbeta_now, '02') + '0td' + format(td_now, '02') + '0.root'
+            outfile = outfile if not args.beta_d_scan else outfileDir + '/tbeta' + format(tbeta_now, '03') + 'td' + format(td_now, '03') + '.root'
+
+            print("")
+            print(f"save_root()...  {outfile}")
+            print("")
+            file = TFile(outfile,"recreate")
             
-        matches12, matches21 = matches
-        if (debug):
-            print(f"=== reco --> mc ===")
-            for k,v in matches12.items():
-                print(f"{k}-->{v}")
-            print(f"=== mc --> reco ===")
-            for k,v in matches21.items():
-                print(f"{k}-->{v}")
 
-        all_truth_ids = list(set(np.unique(event.y[:,0])))
-        #all_hitid = list(set(np.unique(event.label[:,0]).astype(np.int32)))
-        all_mcid = list(set(np.unique(event.label[:,1]).astype(np.int32)))
-        all_cluster_ids = list(set(np.unique(clustering)))
-        assert( len(all_truth_ids) == len(all_mcid) )
-        assert( len(event.y[:,0]) == len(event.label[:,1]) )
-        n_hits = len(event.label[:,1])
+            t = TTree("t","tree for MCParticle")
+            d = Data()
+            d.setup_branch(t)
 
-        if (debug):
-            print(f"{all_truth_ids=}")
-            #print(f"{all_mcid=}")
-            print(f"{all_cluster_ids=}")
+            t2 = TTree("reco","tree for reconstructed clusters")
+            d2 = RecoData()
+            d2.setup_branch(t2)
 
-        # iterate over all mcid
-        for id in all_truth_ids:
+            t3 = TTree("prediction","tree for model output")
+            d3 = PredData()
+            d3.setup_branch(t3)
 
-            ''' Get energy in three different ways.
-                - edep:       sum the hits that come from the MC particle (Perfect PFA)
-                - edep_reco:  find the matching cluster and sum all the hits
-                              (including those that do and do not come from the MC particle)
-                - edep_match: find the matching cluster and sum those that come from the MC particle
-            '''
-            ncluster = 0
-            matched_ncluster = 0
-            matched_cluster = -1
+            # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+                if i == nmax: break
+                if i < 10 or i%100 == 0:
+                    print("Event", i, "processing...")
 
-            pattern_mcid = (event.y[:,0]==id)
-            match_label = event.label[pattern_mcid]
-            match_feat = event.feat[pattern_mcid]
-            match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-            match_track = match_feat[:,5].detach().numpy().astype(np.int32)
-            # match_pdg = match_label[:,2].detach().numpy().astype(np.int32)
-            # print("pdg", match_pdg)
-            # print("track", match_track)
-            edep_sum = np.sum(match_edep)
-            ncluster = len(pattern_mcid)
+                matches12, matches21 = matches
+                if (debug):
+                    print(f"=== reco --> mc ===")
+                    for k,v in matches12.items():
+                        print(f"{k}-->{v}")
+                    print(f"=== mc --> reco ===")
+                    for k,v in matches21.items():
+                        print(f"{k}-->{v}")
 
-            if not pandora:
-                predicted_beta = prediction.pred_betas[pattern_mcid]
-                predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
-                predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
-                cond_tracknesses = match_track[np.argsort(-predicted_beta)]
-                cond_trackness = cond_tracknesses[0]
-                predicted_beta = -np.sort(-predicted_beta)
-                # print(predicted_beta[0], cond_trackness)
-            else:
-                predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
-                cond_trackness = 0
+                all_truth_ids = list(set(np.unique(event.y[:,0])))
+                #all_hitid = list(set(np.unique(event.label[:,0]).astype(np.int32)))
+                all_mcid = list(set(np.unique(event.label[:,1]).astype(np.int32)))
+                all_cluster_ids = list(set(np.unique(clustering)))
+                assert( len(all_truth_ids) == len(all_mcid) )
+                assert( len(event.y[:,0]) == len(event.label[:,1]) )
+                n_hits = len(event.label[:,1])
 
-            edep_reco = 0
-            edep_match = 0
+                if (debug):
+                    print(f"{all_truth_ids=}")
+                    #print(f"{all_mcid=}")
+                    print(f"{all_cluster_ids=}")
 
-            if (id in matches12.keys()):
-                reco_match = matches12[id]
-                for rid in reco_match:
-                    if (matched_cluster == -1):
-                        matched_cluster = rid
-                    matched_ncluster += 1
-                    pattern_cluster = (clustering==rid)
+                # iterate over all mcid
+                for id in all_truth_ids:
+                
+                    ''' Get energy in three different ways.
+                        - edep:       sum the hits that come from the MC particle (Perfect PFA)
+                        - edep_reco:  find the matching cluster and sum all the hits
+                                      (including those that do and do not come from the MC particle)
+                        - edep_match: find the matching cluster and sum those that come from the MC particle
+                    '''
+                    ncluster = 0
+                    matched_ncluster = 0
+                    matched_cluster = -1
+
+                    pattern_mcid = (event.y[:,0]==id)
+                    match_label = event.label[pattern_mcid]
+                    match_feat = event.feat[pattern_mcid]
+                    match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
+                    match_track = match_feat[:,5].detach().numpy().astype(np.int32)
+                    # match_pdg = match_label[:,2].detach().numpy().astype(np.int32)
+                    # print("pdg", match_pdg)
+                    # print("track", match_track)
+                    edep_sum = np.sum(match_edep)
+                    ncluster = len(pattern_mcid)
+
+                    if not pandora:
+                        predicted_beta = prediction.pred_betas[pattern_mcid]
+                        predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                        predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                        cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+                        cond_trackness = cond_tracknesses[0]
+                        predicted_beta = -np.sort(-predicted_beta)
+                        # print(predicted_beta[0], cond_trackness)
+                    else:
+                        predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                        cond_trackness = 0
+
+                    edep_reco = 0
+                    edep_match = 0
+
+                    if (id in matches12.keys()):
+                        reco_match = matches12[id]
+                        for rid in reco_match:
+                            if (matched_cluster == -1):
+                                matched_cluster = rid
+                            matched_ncluster += 1
+                            pattern_cluster = (clustering==rid)
+                            pattern_cluster_feat = event.feat[pattern_cluster]
+                            pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
+                            edep_reco += np.sum(pattern_cluster_edep)
+                            pattern_mcid_cluster = np.logical_and(pattern_mcid, pattern_cluster)
+                            edep_mcid_cluster = event.feat[pattern_mcid_cluster][:,0].detach().numpy().astype(np.float64)
+                            edep_match += np.sum(edep_mcid_cluster)
+
+                    # for MC particle, take any element from the match because they should be the same
+                    my_label = match_label[0]
+                    pred_edep = predicted_energy[0]                                  ## alpha
+                    # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
+
+                    # Set values for TTree and fill
+                    d.event[0] = i
+                    d.hitid[0] = my_label[0]
+                    d.mcid[0] = my_label[1]
+                    d.truthid[0] = id
+                    d.mcpdg[0] = my_label[2]
+                    d.mccharge[0] = my_label[3]
+                    d.mcmass[0] = my_label[4]
+                    d.mcpx[0] = my_label[5]
+                    d.mcpy[0] = my_label[6]
+                    d.mcpz[0] = my_label[7]
+                    d.mcen[0] = np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2)
+                    d.mcstatus[0] = my_label[8]
+                    d.edep[0] = edep_sum
+                    d.edep_reco[0] = edep_reco
+                    d.edep_match[0] = edep_match
+                    d.ncluster[0] = ncluster
+                    d.matched_ncluster[0] = matched_ncluster
+                    d.matched_cluster[0] = matched_cluster
+                    d.pred_edep[0] = pred_edep
+                    d.cond_beta[0] = predicted_beta[0]
+                    d.cond_track[0] = cond_trackness
+
+                    if (not d.mcid[0] == -1): # skip if track does not have hit
+                        t.Fill()
+
+                # Iterate over reconstructed clusters
+                for cl in all_cluster_ids:
+                    break
+                    pattern_cluster = (clustering==cl)
                     pattern_cluster_feat = event.feat[pattern_cluster]
                     pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
-                    edep_reco += np.sum(pattern_cluster_edep)
-                    pattern_mcid_cluster = np.logical_and(pattern_mcid, pattern_cluster)
-                    edep_mcid_cluster = event.feat[pattern_mcid_cluster][:,0].detach().numpy().astype(np.float64)
-                    edep_match += np.sum(edep_mcid_cluster)
+                    edep_reco = np.sum(pattern_cluster_edep)
 
-            # for MC particle, take any element from the match because they should be the same
-            my_label = match_label[0]
-            pred_edep = predicted_energy[0]                                  ## alpha
-            # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
+                    # Get MC particle matching the cluster
+                    matched_mcp_found = False
+                    matched_mcp = -1
+                    edep_mcp = -1
+                    for m in matches21:
+                        if (m[0] == cl):
+                            matched_mcp_found = True
+                            matched_mcp = m[0][0]
 
-            # Set values for TTree and fill
-            d.event[0] = i
-            d.hitid[0] = my_label[0]
-            d.mcid[0] = my_label[1]
-            d.truthid[0] = id
-            d.mcpdg[0] = my_label[2]
-            d.mccharge[0] = my_label[3]
-            d.mcmass[0] = my_label[4]
-            d.mcpx[0] = my_label[5]
-            d.mcpy[0] = my_label[6]
-            d.mcpz[0] = my_label[7]
-            d.mcen[0] = np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2)
-            d.mcstatus[0] = my_label[8]
-            d.edep[0] = edep_sum
-            d.edep_reco[0] = edep_reco
-            d.edep_match[0] = edep_match
-            d.ncluster[0] = ncluster
-            d.matched_ncluster[0] = matched_ncluster
-            d.matched_cluster[0] = matched_cluster
-            d.pred_edep[0] = pred_edep
-            d.cond_beta[0] = predicted_beta[0]
-            d.cond_track[0] = cond_trackness
+                    edep_mcp = -1
+                    if (matched_mcp_found):
+                        pattern_mcp = (event.y[:,0]==matched_mcp)
+                        pattern_mcp_feat = event.feat[pattern_mcp]
+                        pattern_mcp_edep = pattern_mcp_feat[:,0].detach().numpy().astype(np.float64)
+                        edep_mcp = np.sum(pattern_mcp_edep)
 
-            if (not d.mcid[0] == -1): # skip if track does not have hit
-                t.Fill()
+                        pattern_mcp_match_label = event.label[pattern_mcp].detach().numpy().astype(np.float64)
+                        mcp_label = pattern_mcp_match_label[0]
 
-        # Iterate over reconstructed clusters
-        for cl in all_cluster_ids:
-            break
-            pattern_cluster = (clustering==cl)
-            pattern_cluster_feat = event.feat[pattern_cluster]
-            pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
-            edep_reco = np.sum(pattern_cluster_edep)
+                    d2.event[0] = i
+                    d2.cluster[0] = cl
 
-            # Get MC particle matching the cluster
-            matched_mcp_found = False
-            matched_mcp = -1
-            edep_mcp = -1
-            for m in matches21:
-                if (m[0] == cl):
-                    matched_mcp_found = True
-                    matched_mcp = m[0][0]
+                    d2.mcid[0] = -1
+                    d2.mcpdg[0] = -1
+                    d2.mccharge[0] = -1
+                    d2.mcmass[0] = -1
+                    d2.mcpx[0] = -1
+                    d2.mcpy[0] = -1
+                    d2.mcpz[0] = -1
+                    d2.mcen[0] = -1
+                    d2.mcstatus[0] = -1
+                    pred_edep = 0
 
-            edep_mcp = -1
-            if (matched_mcp_found):
-                pattern_mcp = (event.y[:,0]==matched_mcp)
-                pattern_mcp_feat = event.feat[pattern_mcp]
-                pattern_mcp_edep = pattern_mcp_feat[:,0].detach().numpy().astype(np.float64)
-                edep_mcp = np.sum(pattern_mcp_edep)
+                    if (matched_mcp_found):
+                        d2.mcid[0] = matched_mcp
+                        d2.mcpdg[0] = mcp_label[2]
+                        d2.mccharge[0] = mcp_label[3]
+                        d2.mcmass[0] = mcp_label[4]
+                        d2.mcpx[0] = mcp_label[5].astype(np.float64)
+                        d2.mcpy[0] = mcp_label[6]
+                        d2.mcpz[0] = mcp_label[7]
+                        d2.mcen[0] = np.sqrt(d2.mcmass[0]**2 + d2.mcpx[0]**2 + d2.mcpy[0]**2 + d2.mcpz[0]**2)
+                        d2.mcstatus[0] = mcp_label[8]
+                        d.pred_edep[0] = pred_edep
 
-                pattern_mcp_match_label = event.label[pattern_mcp].detach().numpy().astype(np.float64)
-                mcp_label = pattern_mcp_match_label[0]
-
-            d2.event[0] = i
-            d2.cluster[0] = cl
-
-            d2.mcid[0] = -1
-            d2.mcpdg[0] = -1
-            d2.mccharge[0] = -1
-            d2.mcmass[0] = -1
-            d2.mcpx[0] = -1
-            d2.mcpy[0] = -1
-            d2.mcpz[0] = -1
-            d2.mcen[0] = -1
-            d2.mcstatus[0] = -1
-            pred_edep = 0
-
-            if (matched_mcp_found):
-                d2.mcid[0] = matched_mcp
-                d2.mcpdg[0] = mcp_label[2]
-                d2.mccharge[0] = mcp_label[3]
-                d2.mcmass[0] = mcp_label[4]
-                d2.mcpx[0] = mcp_label[5].astype(np.float64)
-                d2.mcpy[0] = mcp_label[6]
-                d2.mcpz[0] = mcp_label[7]
-                d2.mcen[0] = np.sqrt(d2.mcmass[0]**2 + d2.mcpx[0]**2 + d2.mcpy[0]**2 + d2.mcpz[0]**2)
-                d2.mcstatus[0] = mcp_label[8]
-                d.pred_edep[0] = pred_edep
-
-            d2.edep_reco[0] = edep_reco
-            d2.edep_mc[0] = edep_mcp
-            t2.Fill()
+                    d2.edep_reco[0] = edep_reco
+                    d2.edep_mc[0] = edep_mcp
+                    t2.Fill()
 
 
-        # making predicted trees
-        if not pandora:
-            for ihit in range(n_hits):
+                # making predicted trees
+                if not pandora:
+                    for ihit in range(n_hits):
+                    
+                        '''
+                        '''
 
-                '''
-                '''
+                        # pattern_mcid = (event.y[:,0]==id)
+                        # match_label = event.label[pattern_mcid]
+                        # match_feat = event.feat[pattern_mcid]
+                        # match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
+                        # edep_sum = np.sum(match_edep)
+                        # ncluster = len(match_label)
 
-                # pattern_mcid = (event.y[:,0]==id)
-                # match_label = event.label[pattern_mcid]
-                # match_feat = event.feat[pattern_mcid]
-                # match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-                # edep_sum = np.sum(match_edep)
-                # ncluster = len(match_label)
+                        # for MC particle, take any element from the match because they should be the same
+                        my_label = event.label[ihit]
+                        my_feat = event.feat[ihit]
+                        pred_edep = 0
+                        pred_beta = 0
 
-                # for MC particle, take any element from the match because they should be the same
-                my_label = event.label[ihit]
-                my_feat = event.feat[ihit]
-                pred_edep = 0
-                pred_beta = 0
+                        # Set values for TTree and fill
+                        d3.event[0] = i
+                        d3.hitid[0] = my_label[0]
+                        d3.mcid[0] = my_label[1]
+                        d3.truthid[0] = id
+                        d3.mcpdg[0] = my_label[2]
+                        d3.mccharge[0] = my_label[3]
+                        d3.mcmass[0] = my_label[4]
+                        d3.mcpx[0] = my_label[5]
+                        d3.mcpy[0] = my_label[6]
+                        d3.mcpz[0] = my_label[7]
+                        d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
+                        d3.mcstatus[0] = my_label[8]
+                        d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
+                        d3.pred_beta[0] = prediction.pred_betas[ihit]
+                        d3.pred_alpha[0] = condensation_points[ihit]
+                        d3.trackness[0] = my_feat[5]
 
-                # Set values for TTree and fill
-                d3.event[0] = i
-                d3.hitid[0] = my_label[0]
-                d3.mcid[0] = my_label[1]
-                d3.truthid[0] = id
-                d3.mcpdg[0] = my_label[2]
-                d3.mccharge[0] = my_label[3]
-                d3.mcmass[0] = my_label[4]
-                d3.mcpx[0] = my_label[5]
-                d3.mcpy[0] = my_label[6]
-                d3.mcpz[0] = my_label[7]
-                d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
-                d3.mcstatus[0] = my_label[8]
-                d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
-                d3.pred_beta[0] = prediction.pred_betas[ihit]
-                d3.pred_alpha[0] = condensation_points[ihit]
-                d3.trackness[0] = my_feat[5]
-
-                if (not d3.mcid[0] == -1): # skip if track does not have hit
-                    t3.Fill()
+                        if (not d3.mcid[0] == -1): # skip if track does not have hit
+                            t3.Fill()
 
 
-    print(f"Saving to {outfile}")
-    file.Write()
+            print(f"Saving to {outfile}")
+            file.Write()
 
-options = {'--mctpe'}
-
-    
 def main():
     print(sys.argv)
     if (len(sys.argv) < 9):
@@ -445,6 +452,9 @@ def main():
     parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
     parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
+    parser.add_argument('--beta-d-scan', action='store_true', help='Turn on beta and diameter scan')
+    parser.add_argument('--tbeta', type=float, default=0.6)
+    parser.add_argument('--td', type=float, default=0.5)
 
     args = parser.parse_args()
     
