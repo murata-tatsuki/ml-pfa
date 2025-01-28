@@ -111,14 +111,17 @@ void energy_regression(){
             }
 
             if(energyByPass){
-                fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaTrackModifyingCharge0_EBranch_testDetected.root");
+                // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaTrackModifyingCharge0_EBranch_testDetected.root");
+                fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/energy_branch/alphaModifying_EBranch_LE16_005_testDetected.root");
+                // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/energy_branch/alphaModifying_EBranch_LE16_010_testDetected.root");
+                // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/energy_branch/alphaModifying_EBranch_LE16_testDetected.root");
             }
         }
     } else {
         fileName = Form("../output/energy_regression/new_clustering/energyTree/pandora/tc_ntau_10GeV_10_5D_49_ntau_10GeV_10_pandora.root");
     }
     if(filepath_){
-        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alphaModifying_EBranch_LE16_testDetected_17.root");
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum_virtualhitTrueMomentum/alphaTrackModifying_testMCTruth.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;

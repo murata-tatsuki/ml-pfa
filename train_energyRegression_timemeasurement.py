@@ -21,18 +21,15 @@ from lrscheduler import CyclicLRWithRestarts
 #from ReadText import ReadText
 import sys
 
-
-## calculation time measurement
-import time
-timeM = True
-startT = time.perf_counter()
-endT = time.perf_counter()
+## calculation for memory usage
+import psutil
 
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(True)
 
 def main():
     print(sys.argv)
+    print(os.cpu_count())
 
     #print("Parsing arguments")
     parser = argparse.ArgumentParser()
@@ -102,10 +99,7 @@ def main():
         print("If --no-split is specified, it is required to set --inputdir-validate")
         raise
 
-    startT = time.perf_counter()
     dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
-    endT = time.perf_counter()
-    print("training data sample ILDdataset : ", endT-startT)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
 
@@ -122,10 +116,7 @@ def main():
 
     if (args.no_split):
         train_dataset = dataset
-        startT = time.perf_counter()
         test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
-        endT = time.perf_counter()
-        print("validation data sample ILDdataset : ", endT-startT)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune = dataset_tune
             test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
@@ -151,29 +142,20 @@ def main():
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
-    startT = time.perf_counter()
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
-    endT = time.perf_counter()
-    print("train loader : ", endT-startT)
-    startT = time.perf_counter()
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle)
-    endT = time.perf_counter()
-    print("test loader  : ", endT-startT)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
 
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
         print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle)
+        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
 
     if not args.energy_branch:
         print(f"Loading GravnetModel")
         from gravnet_model import GravnetModel
-        startT = time.perf_counter()
         model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
-        endT = time.perf_counter()
-        print("test loader  : ", endT-startT)
     else:
         print(f"Loading GravnetModel with energy branch")
         from gravnet_model import GravNetModelBranch
@@ -204,26 +186,6 @@ def main():
 
     train_accu=[]
     test_accu=[]
-
-    # def loss_fn(out, data, s_c=1., return_components=False):
-    #     device = out.device
-    #     pred_betas = torch.sigmoid(out[:,0])
-    #     pred_cluster_space_coords = out[:,1:]
-    #     assert all(t.device == device for t in [
-    #         pred_betas, pred_cluster_space_coords, data.y, data.batch,
-    #         ])
-    #     out_oc = oc.calc_LV_Lbeta_Eregression(
-    #         pred_betas,
-    #         pred_cluster_space_coords,
-    #         data.y.long(),
-    #         data.batch,
-    #         return_components=return_components
-    #         )
-    #     if return_components:
-    #         return out_oc
-    #     else:
-    #         LV, Lbeta = out_oc
-    #         return LV + Lbeta + loss_offset
 
     def check_coords(out,data) :
         learning_para={}
@@ -268,8 +230,9 @@ def main():
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        out_oc = oc.calc_LV_Lbeta_Eregression(
+        # print("                            ", type(calc_LV_Lbeta_Eregression))  
         # out_oc = oc.calc_LV_Lbeta(
+        out_oc = oc.calc_LV_Lbeta_Eregression(
             pred_betas,
             pred_cluster_energy,
             pred_cluster_space_coords,
@@ -310,6 +273,77 @@ def main():
                     return_loss += LE
             return return_loss
 
+    def loss_fn_jit(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
+        device = out.device
+        pred_betas = torch.sigmoid(out[:,0])
+        if args.energy_regression:
+            if use_charge_track_likeness:
+                pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                pred_cluster_energy = out[:,2]
+                pred_cluster_space_coords = out[:,3:]
+                assert(pred_charge_track_likeness.device == device)
+            else:
+                pred_charge_track_likeness = None
+                pred_cluster_energy = out[:,1]
+                pred_cluster_space_coords = out[:,2:]
+        else:
+            if use_charge_track_likeness:
+                pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                pred_cluster_space_coords = out[:,2:]
+                assert(pred_charge_track_likeness.device == device)
+            else:
+                pred_charge_track_likeness = None
+                pred_cluster_space_coords = out[:,1:]
+        cluster_track_index = data.y[:,1]
+        assert all(t.device == device for t in [
+            pred_betas, pred_cluster_space_coords, data.y, data.batch,
+            ])
+        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+        # out_oc = oc.calc_LV_Lbeta(
+        # scripted_fn = torch.jit.script(oc.calc_LV_Lbeta_Eregression_jit)
+        out_oc = oc.calc_LV_Lbeta_Eregression_jit(
+            pred_betas,
+            pred_cluster_energy,
+            pred_cluster_space_coords,
+            pred_charge_track_likeness,
+            data.y[:,0].long(),
+            true_energy,
+            data.batch,
+            er_coef=er_coef,
+            return_components=return_components,
+            beta_term_option='short-range-potential',
+            beta_track_term=args.beta_track,
+            beta_track_term_beginning=args.beta_track_beginning,
+            force_track_alpha=args.force_track_alpha,
+            cluster_track_index=cluster_track_index,
+            betaE_alpha=args.betaE_alpha,
+            use_charged_cluster_likeness=use_charge_track_likeness
+            )
+        out_oc = oc.formatting_return(out_oc, return_components)
+        if return_components:
+            return out_oc
+        else:
+            LV, Lbeta, LE, LE_charge = out_oc
+            # print(LE, true_energy, pred_cluster_energy)
+            # if i_epoch <= args.epochs_nobeta:
+            #     return LV + loss_offset
+            # else:
+            #     return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
+            return_loss = LV + loss_offset
+            if args.betaE_alpha == 'alpha_tracker_modifing_charged0':
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > 15:
+                    return_loss += LE
+                else: 
+                    return_loss += LE_charge
+            else:
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > args.epochs_noLE:
+                    return_loss += LE
+            return return_loss
+
 
     def train(epoch):
         print('Training epoch', epoch)
@@ -317,27 +351,21 @@ def main():
         cluster_space_coords_list=[]
         data_y_list=[]
         model.train()
+        # print(train_loader.device)
         if not args.settings_Sep01: scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
             pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
-                startT = time.perf_counter()
                 data = data.to(device)
-                endT = time.perf_counter()
-                print("data.to(cuda)  : ", endT-startT)
-                # print(data.x[:,7:10])
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
-                result = model(data.x, data.batch)
+                result: torch.Tensor = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
-                startT = time.perf_counter()
-                loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                endT = time.perf_counter()
-                print("train loss  : ", endT-startT)
+                # loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
-                # print("learning rate : ", optimizer.param_groups[0]["lr"])
                 optimizer.step()
                 if not args.settings_Sep01: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -366,7 +394,8 @@ def main():
                 if i == 0 : first_para = check_data(data)
                 result = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
-                loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                # loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
                 optimizer.step()
                 if not args.settings_Sep01: scheduler.batch_step()
@@ -394,10 +423,8 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 result = model(data.x, data.batch)
-                startT = time.perf_counter()
-                update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                endT = time.perf_counter()
-                print("test loss  : ", endT-startT)
+                # update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
@@ -422,7 +449,8 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 result = model(data.x, data.batch)
-                update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                # update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
@@ -521,7 +549,7 @@ def debug():
         #'data/taus/26_nanoML_93.npz',
         # 'data/taus/142_nanoML_75.npz',
         ]
-    for data in DataLoader(dataset, batch_size=len(dataset), shuffle=False): break
+    for data in DataLoader(dataset, batch_size=len(dataset), shuffle=False, num_workers=16, pin_memory=True): break
     print(data.y.sum())
     model = GravnetModel(input_dim=9, output_dim=4)
     with torch.no_grad():
@@ -567,7 +595,7 @@ def run_profile():
     shuffle = True
     dataset = TauDataset('data/taus')
     dataset.npzs = dataset.npzs[:batch_size*n_batches]
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
     print(f'Running profiling for {len(dataset)} events, batch_size={batch_size}, {len(loader)} batches')
 
     model = GravnetModel(input_dim=9, output_dim=8).to(device)
@@ -584,7 +612,8 @@ def run_profile():
                 data = data.to(device)
                 optimizer.zero_grad()
                 result = model(data.x, data.batch)
-                loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
+                # loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
+                loss = loss_fn_jit(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
                 print(f'loss={float(loss)}')
                 loss.backward()
                 optimizer.step()
