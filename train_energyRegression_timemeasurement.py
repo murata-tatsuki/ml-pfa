@@ -230,8 +230,6 @@ def main():
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        # print("                            ", type(calc_LV_Lbeta_Eregression))  
-        # out_oc = oc.calc_LV_Lbeta(
         out_oc = oc.calc_LV_Lbeta_Eregression(
             pred_betas,
             pred_cluster_energy,
@@ -351,7 +349,6 @@ def main():
         cluster_space_coords_list=[]
         data_y_list=[]
         model.train()
-        # print(train_loader.device)
         if not args.settings_Sep01: scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))

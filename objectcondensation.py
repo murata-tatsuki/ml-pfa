@@ -1,6 +1,7 @@
 from typing import Tuple, Union, Dict
 import numpy as np
 import torch
+import torch.nn.functional
 from torch_scatter import scatter_max, scatter_add, scatter_mean
 
 
@@ -449,34 +450,6 @@ def calc_LV_Lbeta_Eregression(
     is_trk_cluster = is_trk.to(torch.float)
     is_trk_cluster_prev = is_trk_cluster.clone() #for debug
     
-    track_pos = torch.flatten( torch.argwhere(is_trk>0) )
-    for pos in track_pos:
-        cl = cluster_index_per_event[pos]
-        ba = batch[pos]
-        # check before pos
-        i=pos-1
-        while i>=0:
-            if cluster_index_per_event[i] != cl or batch[i] != ba:
-                break
-            is_trk_cluster[i] = 1
-            i -= 1
-        # check after pos
-        i=pos+1
-        while i<len(batch):
-            if cluster_index_per_event[i] != cl or batch[i] != ba:
-                break
-            is_trk_cluster[i] = 1
-            i += 1
-
-    ## removed to compile the function
-    # debug = False
-    # if debug is True:
-    #     for ba,cl,trk1,trk2 in zip(batch, cluster_index_per_event, is_trk_cluster_prev, is_trk_cluster):
-    #         b=ba.detach().cpu().item()
-    #         c=cl.detach().cpu().item()
-    #         t1=trk1.to(int).detach().cpu().item()
-    #         t2=trk2.to(int).detach().cpu().item()
-    #         print(f"{b=},{c=},{t1=},{t2=}")
 
     # Per-cluster boolean, indicating whether cluster is an object or noise
     is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
@@ -705,6 +678,36 @@ def calc_LV_Lbeta_Eregression(
     # L_charged_cluster term
     L_charged_cluster = 0.
     if charged_cluster_likeness is not None:
+
+        track_pos = torch.flatten( torch.argwhere(is_trk>0) )
+        for pos in track_pos:
+            cl = cluster_index_per_event[pos]
+            ba = batch[pos]
+            # check before pos
+            i=pos-1
+            while i>=0:
+                if cluster_index_per_event[i] != cl or batch[i] != ba:
+                    break
+                is_trk_cluster[i] = 1
+                i -= 1
+            # check after pos
+            i=pos+1
+            while i<len(batch):
+                if cluster_index_per_event[i] != cl or batch[i] != ba:
+                    break
+                is_trk_cluster[i] = 1
+                i += 1
+
+        ## removed to compile the function
+        # debug = False
+        # if debug is True:
+        #     for ba,cl,trk1,trk2 in zip(batch, cluster_index_per_event, is_trk_cluster_prev, is_trk_cluster):
+        #         b=ba.detach().cpu().item()
+        #         c=cl.detach().cpu().item()
+        #         t1=trk1.to(int).detach().cpu().item()
+        #         t2=trk2.to(int).detach().cpu().item()
+        #         print(f"{b=},{c=},{t1=},{t2=}")
+        
         L_charged_cluster = torch.nn.functional.binary_cross_entropy(input=charged_cluster_likeness,target=is_trk_cluster)
         #print(f"BCE:",L_charged_cluster)
         L_charged_cluster *= batch_size
@@ -1510,6 +1513,13 @@ def track_loop_jit(track_pos: torch.Tensor, cluster_index_per_event: torch.Tenso
     return is_trk_cluster
 
 
+torch.jit.script
+def L_E_loss(cluster_energy: torch.Tensor, mcp_energy: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+    cluster_energy_val = cluster_energy[index]
+    mcp_energy_val = mcp_energy[index]
+    return torch.nn.functional.mse_loss(input=cluster_energy_val, target=mcp_energy_val, reduction='none').sum()
+
+
 @torch.jit.script
 def calc_LV_Lbeta_Eregression_jit(
     beta: torch.Tensor, cluster_energy: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
@@ -1823,12 +1833,10 @@ def calc_LV_Lbeta_Eregression_jit(
         L_charged_cluster *= batch_size
     L_V += L_charged_cluster
 
-
     # ________________________________      ## need to modify
     # energy regression term
-    L_E = 0.    
-    L_E_charge = 0.
-    mse = torch.square(cluster_energy - mcp_energy)
+    L_E = torch.tensor(0).to(device)
+    L_E_charge = torch.tensor(0).to(device)
     # mse = torch.square(cluster_energy - mcp_energy)                             ## betaMSE
     # mse = torch.square(cluster_energy - mcp_energy)[index_alpha]        ## alphaMSE
     # print(mse)
@@ -1836,32 +1844,58 @@ def calc_LV_Lbeta_Eregression_jit(
     # L_E = torch.sum(mse[is_trk]) / torch.numel(mse[is_trk])
     # L_E = torch.dot(mse,beta) / torch.numel(mse)                                              ## betaMSE
     # L_E = torch.dot(mse[index_alpha],beta[index_alpha]) / torch.numel(mse)        ## alphaMSE
+    # L_Eloss = torch.nn.functional.MSELoss()
     if betaE_alpha == 'alpha':
-        L_E = torch.sum(mse[index_alpha]).detach()                                                   ## alphaMSE     no beta
+        L_E = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # L_E = torch.sum(mse[index_alpha])                                                   ## alphaMSE     no beta
     if betaE_alpha == 'alpha_tracker':
-        L_E = torch.sum(mse[index_alpha_track]).detach()
+        L_E = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha_track], mcp_energy[index_alpha_track], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # L_E = torch.sum(mse[index_alpha_track])
     if betaE_alpha == 'alpha_modifing':
-        mse = mse[torch.where(mcp_energy>0)[0]]
-        L_E = torch.sum(mse[index_alpha]).detach()
+        l_e_tensor = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha)
+        L_E = torch.sum(l_e_tensor)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha])
     if betaE_alpha == 'alpha_tracker_modifing':
-        mse = mse[torch.where(mcp_energy>0)[0]]
-        L_E = torch.sum(mse[index_alpha_track]).detach()
+        L_E = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha_track], mcp_energy[index_alpha_track], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha_track])
     if betaE_alpha == 'alpha_tracker_modifing_all0':
-        mse = mse[torch.where(mcp_energy>0)[0]]
-        L_E = torch.sum(mse[index_alpha]).detach()
+        L_E = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha])
     if betaE_alpha == 'alpha_tracker_modifing_charged0':
-        mse = mse[torch.where(mcp_energy>0)[0]]
-        L_E_charge = torch.sum(mse[index_alpha_track]).detach()
-        L_E = torch.sum(mse[index_alpha]).detach()
+        L_E = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha)
+        L_E_charge = L_E_loss(cluster_energy=cluster_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+        # L_E = torch.nn.functional.mse_loss(cluster_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # L_E_charge = torch.nn.functional.mse_loss(cluster_energy[index_alpha_track], mcp_energy[index_alpha_track], reduction='sum')
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E_charge = torch.sum(mse[index_alpha_track])
+        # L_E = torch.sum(mse[index_alpha])
     elif betaE_alpha == 'alpha_ratio':
-        mse = mse[index_alpha]
-        # mse = torch.square((cluster_energy - mcp_energy)/mcp_energy)
-        energy2 = torch.square(mcp_energy)
-        energy2 = energy2[index_alpha]
-        L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)]).detach()                                                   ## alpha_ratio
+        energy2 = torch.nn.functional.mse_loss(mcp_energy[index_alpha], mcp_energy[index_alpha], reduction='none')
+        mse = torch.nn.functional.mse_loss(cluster_energy[index_alpha], mcp_energy[index_alpha], reduction='none')
+        L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])
+        # mse = torch.square(cluster_energy - mcp_energy)
+        # mse = mse[index_alpha]
+        # # mse = torch.square((cluster_energy - mcp_energy)/mcp_energy)
+        # energy2 = torch.square(mcp_energy)
+        # energy2 = energy2[index_alpha]
+        # L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
     elif betaE_alpha == 'betaE':
         # L_E = torch.norm(cluster_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
-        L_E = torch.sum(torch.square(cluster_energy - beta * mcp_energy)) / torch.sum(beta*beta).detach()                   ## betaE
+        L_E = torch.sum(torch.square(cluster_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
     # LEloss = torch.nn.MSELoss()
     # L_E += LEloss(cluster_energy, mcp_energy)
     L_E = L_E * er_coef

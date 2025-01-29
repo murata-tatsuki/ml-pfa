@@ -138,15 +138,15 @@ def main():
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle)
 
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
         print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle)
+        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle)
 
     if not args.energy_branch:
         print(f"Loading GravnetModel")
@@ -245,8 +245,24 @@ def main():
         assert all(t.device == device for t in [
             pred_betas, pred_cluster_space_coords, data.y, data.batch,
             ])
+        # true_energy=torch.square(data.label[:,4:8])
+        # print(true_energy)
+        hitIds = data.label[:,0]
+        # print(hitIds.size()[0], hitIds[torch.where(hitIds==0)].size()[0])
+        # print(data.label[:,np.r_[0:1,4:8]])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+        # pred_cluster_energy = data.x[:,-1]
+        # print(true_energy, data.label[:,4:8])
+        # print(true_energy[torch.where(true_energy>0)].size()[0], true_energy.size()[0])
+        # print(true_energy, pred_cluster_energy)
+        # print(true_energy)
+        # print(data)
+        # print(data.x)
+        # print(data.y)
+        # print(data.feat)
+        # print(data.label[:,4:])
         out_oc = oc.calc_LV_Lbeta_Eregression(
+        # out_oc = oc.calc_LV_Lbeta(
             pred_betas,
             pred_cluster_energy,
             pred_cluster_space_coords,
@@ -287,78 +303,6 @@ def main():
                     return_loss += LE
             return return_loss
 
-    def loss_fn_jit(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
-        device = out.device
-        pred_betas = torch.sigmoid(out[:,0])
-        if args.energy_regression:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_energy = out[:,2]
-                pred_cluster_space_coords = out[:,3:]
-                assert(pred_charge_track_likeness.device == device)
-            else:
-                pred_charge_track_likeness = None
-                pred_cluster_energy = out[:,1]
-                pred_cluster_space_coords = out[:,2:]
-        else:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
-            else:
-                pred_charge_track_likeness = None
-                pred_cluster_space_coords = out[:,1:]
-        cluster_track_index = data.y[:,1]
-        assert all(t.device == device for t in [
-            pred_betas, pred_cluster_space_coords, data.y, data.batch,
-            ])
-        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        # out_oc = oc.calc_LV_Lbeta(
-        # scripted_fn = torch.jit.script(oc.calc_LV_Lbeta_Eregression_jit)
-        out_oc = oc.calc_LV_Lbeta_Eregression_jit(
-            pred_betas,
-            pred_cluster_energy,
-            pred_cluster_space_coords,
-            pred_charge_track_likeness,
-            data.y[:,0].long(),
-            true_energy,
-            data.batch,
-            er_coef=er_coef,
-            return_components=return_components,
-            beta_term_option='short-range-potential',
-            beta_track_term=args.beta_track,
-            beta_track_term_beginning=args.beta_track_beginning,
-            force_track_alpha=args.force_track_alpha,
-            cluster_track_index=cluster_track_index,
-            betaE_alpha=args.betaE_alpha,
-            use_charged_cluster_likeness=use_charge_track_likeness
-            )
-        out_oc = oc.formatting_return(out_oc, return_components)
-        if return_components:
-            return out_oc
-        else:
-            LV, Lbeta, LE, LE_charge = out_oc
-            # print(LE, true_energy, pred_cluster_energy)
-            # if i_epoch <= args.epochs_nobeta:
-            #     return LV + loss_offset
-            # else:
-            #     return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
-            return_loss = LV + loss_offset
-            if args.betaE_alpha == 'alpha_tracker_modifing_charged0':
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > 15:
-                    return_loss += LE
-                else:
-                    return_loss += LE_charge
-            else:
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > args.epochs_noLE:
-                    return_loss += LE
-            return return_loss
-
-
 
     def train(epoch):
         print('Training epoch', epoch)
@@ -373,13 +317,14 @@ def main():
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
+                # print(data.x[:,7:10])
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
-                result: torch.Tensor = model(data.x, data.batch)
+                result = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
+                # print("learning rate : ", optimizer.param_groups[0]["lr"])
                 optimizer.step()
                 if not args.settings_Sep01: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -437,7 +382,6 @@ def main():
                 data = data.to(device)
                 result = model(data.x, data.batch)
                 update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
@@ -462,8 +406,7 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 result = model(data.x, data.batch)
-                # update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
@@ -624,8 +567,7 @@ def run_profile():
                 data = data.to(device)
                 optimizer.zero_grad()
                 result = model(data.x, data.batch)
-                # loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
-                loss = loss_fn_jit(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
+                loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
                 print(f'loss={float(loss)}')
                 loss.backward()
                 optimizer.step()

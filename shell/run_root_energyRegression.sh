@@ -212,6 +212,10 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_20_1
 # outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/energy_branch/alphaModifying_EBranch_LE16_010_testDetected.root
 # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_22_123626_outputD5
 
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_LE16_010_testDetected.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_28_183009_outputD5
+
+
 
 # train_particle=uds91
 # test_particle=uds91
@@ -238,6 +242,7 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_20_1
 # outfile=test.root
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} False True ${momentum} ${momentumAmp} ${MCTpe}
 
+python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
 
