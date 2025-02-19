@@ -48,7 +48,10 @@ void reading_log(){
 
   // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2024_11_22_144511_alpha_momentum.log");  // long tau task
   // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_08_185604_alpha_tracker_modifing_momentum.log");  // 読み込むファイルのパスを指定
-  ifstream file("../log/energy_regression/reduced_samples/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_09_173804_alpha_tracker_modifing_momentum.log");  // 読み込むファイルのパスを指定
+  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_161918_alpha_momentum.log");  // 読み込むファイルのパスを指定
+  ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_10_170311_alpha_tracker_momentum.log");  // 読み込むファイルのパスを指定
+  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_07_150149_alpha_momentum.log");  // 読み込むファイルのパスを指定
+  // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_164401_alpha_momentum.log");  // 読み込むファイルのパスを指定
   string line;
 
   while(getline(file, line)){  // 1行ずつ読み込む

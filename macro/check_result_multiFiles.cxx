@@ -18,7 +18,7 @@ const int dimensions[5] = {3, 4, 5, 9, 17};   // {3, 4, 5, 9, 17};
 const bool jet_result = false;  // if true, tau train, jet test results are also drawn
 
 // conditions
-const bool saving_canvas = true;
+const bool saving_canvas = false;
 // const string test_particle_type = "uds";      // ntau_10GeV_10    uds   ntau_10to100GeV_10
 
 

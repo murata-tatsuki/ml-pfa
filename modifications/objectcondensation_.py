@@ -719,9 +719,9 @@ def calc_LV_Lbeta_Eregression(
 
 
     # ________________________________      ## need to modify
-    # energy regression term condensation point energy
+    # energy regression term
     # L_E = torch.tensor(0).to(device)
-    L_E_cond = torch.tensor(0).to(device)
+    L_E_tracker = torch.tensor(0).to(device)
     L_E_charge = torch.tensor(0).to(device)
     # mse = torch.square(tracker_energy - mcp_energy)                             ## betaMSE
     # mse = torch.square(tracker_energy - mcp_energy)[index_alpha]        ## alphaMSE
@@ -732,43 +732,46 @@ def calc_LV_Lbeta_Eregression(
     # L_E = torch.dot(mse[index_alpha],beta[index_alpha]) / torch.numel(mse)        ## alphaMSE
     if LE_track == 'alpha':
         mse = torch.square(tracker_energy - mcp_energy)
-        L_E_cond = torch.sum(mse[index_alpha])                                                   ## alphaMSE     no beta
+        L_E_tracker = torch.sum(mse[index_alpha])                                                   ## alphaMSE     no beta
     if LE_track == 'alpha_tracker':
         mse = torch.square(tracker_energy - mcp_energy)
-        L_E_cond = torch.sum(mse[index_alpha_track])
+        L_E_tracker = torch.sum(mse[index_alpha_track])   
     if LE_track == 'alpha_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
-        L_E_cond = torch.sum(mse[index_alpha])
+        L_E_tracker = torch.sum(mse[index_alpha])
     if LE_track == 'alpha_sqrtdiv':
         mse = torch.square(tracker_energy - mcp_energy)/mcp_energy
-        L_E_cond = torch.sum(mse[index_alpha])
+        L_E_tracker = torch.sum(mse[index_alpha])
     if LE_track == 'alpha_tracker_sqrtdiv':
         mse = torch.square(tracker_energy - mcp_energy)/mcp_energy
-        L_E_cond = torch.sum(mse[index_alpha_track])
+        L_E_tracker = torch.sum(mse[index_alpha_track])
     if LE_track == 'alpha_tracker_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
-        L_E_cond = torch.sum(mse[index_alpha_track])
+        L_E_tracker = torch.sum(mse[index_alpha_track])   
     if LE_track == 'alpha_tracker_modifing_all0':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
-        L_E_cond = torch.sum(mse[index_alpha])
+        L_E_tracker = torch.sum(mse[index_alpha])   
     if LE_track == 'alpha_tracker_modifing_charged0':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
-        L_E_charge = torch.sum(mse[index_alpha_track])
-        L_E_cond = torch.sum(mse[index_alpha])
+        L_E_charge = torch.sum(mse[index_alpha_track])   
+        L_E_tracker = torch.sum(mse[index_alpha])   
     elif LE_track == 'alpha_ratio':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[index_alpha]
         # mse = torch.square((tracker_energy - mcp_energy)/mcp_energy)
         energy2 = torch.square(mcp_energy)
         energy2 = energy2[index_alpha]
-        L_E_cond = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
+        L_E_tracker = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
     elif LE_track == 'betaE':
         # L_E = torch.norm(tracker_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
-        L_E_cond = torch.sum(torch.square(tracker_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
+        L_E_tracker = torch.sum(torch.square(tracker_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
+    # LEloss = torch.nn.MSELoss()
+    # L_E += LEloss(tracker_energy, mcp_energy)
+    # L_E = L_E_tracker
 
     ## cluster energy (neutral particle energy regression) truth are Edep/sum(Edep) * Emc sumasion is for a truth cluser
     L_E_cluster = torch.tensor(0).to(device)
@@ -796,9 +799,9 @@ def calc_LV_Lbeta_Eregression(
     # L_E += L_E_cluster
 
     L_E_charge = L_E_charge * er_coef
-    L_E_cond = L_E_cond * er_coef
+    L_E_tracker = L_E_tracker * er_coef
     L_E_cluster = L_E_cluster * er_coef
-    L_E = L_E_cond + L_E_cluster
+    L_E = L_E_tracker + L_E_cluster
 
 
     # ________________________________
@@ -818,7 +821,7 @@ def calc_LV_Lbeta_Eregression(
             L_beta_track = L_beta_track / batch_size,
             L_E = L_E / batch_size,
             L_E_charge = L_E_charge / batch_size,
-            L_E_cond = L_E_cond / batch_size,
+            L_E_tracker = L_E_tracker / batch_size,
             L_E_cluster = L_E_cluster / batch_size,
             )
         if beta_term_option == 'short-range-potential':
@@ -826,7 +829,7 @@ def calc_LV_Lbeta_Eregression(
             components['L_beta_logbeta_term'] = L_beta_logbeta_term / batch_size
     if DEBUG:
         debug(formatted_loss_components_string(components))
-    return L_V/batch_size, L_beta/batch_size, L_E/batch_size, L_E_charge/batch_size, components
+    return components if return_components else L_V/batch_size, L_beta/batch_size, L_E/batch_size, L_E_charge/batch_size, components
 
 
 def formatted_loss_components_string(components: dict) -> str:
@@ -859,7 +862,7 @@ def formatted_loss_components_string(components: dict) -> str:
         s += (
             '\n  L_E   = {L_E}'
             '\n    L_E_charge = {L_E_charge}'
-            '\n    L_E_cond = {L_E_cond}'
+            '\n    L_E_tracker = {L_E_tracker}'
             '\n    L_E_cluster = {L_E_cluster}'
             .format(**{k : fkey(k) for k in components})
             )
@@ -895,7 +898,7 @@ def formatted_loss_components_string_train(components: dict) -> str:
         s += (
             '\n train  L_E   = {L_E}'
             '\n train    L_E_charge = {L_E_charge}'
-            '\n train    L_E_cond = {L_E_cond}'
+            '\n train    L_E_tracker = {L_E_tracker}'
             '\n train    L_E_cluster = {L_E_cluster}'
             .format(**{k : fkey(k) for k in components})
             )

@@ -215,12 +215,108 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_20_1
 outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_LE16_010_testDetected.root
 checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_28_183009_outputD5
 
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_LE16_010_testDetected_notjit_fortest.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_29_093011_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alphaModifying_EBranch_LE16_005_testDetected_jit.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_29_175616_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alpha_LE16_010_gradually.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_04_173905_outputD5
 
 
-# train_particle=uds91
-# test_particle=uds91
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0
+
+
+
+##### cluster energy
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_testDetected_ERcluster.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_30_210728_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_testDetected_ERcluster_2025_01_31_155919.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_31_155919_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_testDetected_ERcluster_2025_02_02_015711.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_02_015711_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_testDetected_ERcluster_2025_02_02_162020.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_02_162020_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alphaSqrtdiv_LE16_010_ERcluster_2025_02_04_174502.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_04_174502_outputD5
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_05_143651.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_05_143651_outputD5
+
+iepoch=494
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_2025_02_05_143327/alphaTracker_LE16_010_ERcluster_2025_02_05_143327_${iepoch}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_05_143327_outputD5
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_${iepoch}.root
+outdir=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/tbeta_td_scan
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_150149_outputD5
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1 --beta-d-scan
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311_${iepoch}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_10_170311_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_sum_2025_02_14_101644/alpha_LE16_010_ERcluster_sum_2025_02_14_101644_${iepoch}.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_14_101644_outputD5
+python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
+
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
+
+
+
+## 500 epochs
+# iepoch=499
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alpha_EBranch_LE16_010_testDetected_${iepoch}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_30_160628_outputD5
+# outdir=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alpha_EBranch_LE16_010_testDetected_${iepoch}_tbeta_td_scan
+# mkdir -p ${output_path}/energyTree/${outdir}
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch --device cuda:1
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch --device cuda:1 --beta-d-scan
+
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alpha_LE16_010_testDetected_${iepoch}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_30_161918_outputD5
+# outdir=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/alpha_LE16_010_testDetected_${iepoch}_tbeta_td_scan
+# mkdir -p ${output_path}/energyTree/${outdir}
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1 --beta-d-scan
+
+
+
+train_particle=uds91
+test_particle=uds91
 # outfile=tc_${train_particle}_${D}D_49_${test_particle}_alphaMSE_momentum.root
 # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_11_02_081028_outputD5
+
+# iepoch=119
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_momentum/alpha_LE16_010_${iepoch}.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_30_164401_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_momentum/alpha_LE16_010_retrain_59.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_04_174146_outputD5
+
+# python save_root_energyRegression.py /data/suehara/mldata/pfa/murata/tc_uds_91/test ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1
+
+
+
+## ntau_10to100GeV
+train_particle=ntau_10to100GeV_10
+test_particle=ntau_10to100GeV_10
+# outfile=restartPeriod30/tc_${train_particle}_${D}D_momentum/alpha_LE16_010.root
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_31_185432_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_momentum/alpha_sqrtdiv_LE16_010_epoch30.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_04_184337_outputD5
+
+outfile=restartPeriod30/tc_${train_particle}_${D}D_momentum/alpha_sqrtdiv_LE16_010_lr1e-4.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_182522_outputD5
+
+# python save_root_energyRegression.py /data/suehara/mldata/pfa/murata/tc_ntau_10to100GeV_10/reduce/test ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1
+
 
 
 ## momentum amplitude 
@@ -242,8 +338,8 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_01_28_1
 # outfile=test.root
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} False True ${momentum} ${momentumAmp} ${MCTpe}
 
-python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
-# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
 
 
@@ -263,7 +359,8 @@ python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.
 outfile=test.root
 # python save_root_energyRegression.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 ${outD} False True ${momentum} ${momentumAmp}
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 ${outD} False True ${momentum} ${momentumAmp}
-# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar test/test.root 0 1 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
+# python save_root_energyRegression.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_${epoch}_1.pth.tar test/test.root 0 100 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1
+# python -m cProfile -o shell/making_root_gpu_batch20.prof save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar test/test.root 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1
 
 
 

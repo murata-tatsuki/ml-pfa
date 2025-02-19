@@ -11,7 +11,7 @@ import numpy as np
 #from sklearn.metrics import accuracy_score
 #import torch_cmspepr.objectcondensation as oc
 # import objectcondensation as oc
-import objectcondensation as oc
+import objectcondensation_ as oc
 #import torch.nn.functional as f
 
 #from gravnet_model import GravnetModel,GravnetModelWithNoiseFilter
@@ -325,6 +325,12 @@ def main():
         if return_components:
             return out_oc
         else:
+            # LV, Lbeta, LE, LE_charge = out_oc
+            # print(LE, true_energy, pred_tracker_energy)
+            # if i_epoch <= args.epochs_nobeta:
+            #     return LV + loss_offset
+            # else:
+            #     return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
             return_loss = LV + loss_offset
             if args.LE_track == 'alpha_tracker_modifing_charged0':
                 if i_epoch > args.epochs_nobeta:
@@ -465,7 +471,7 @@ def main():
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
                 # if i == 2: raise Exception
             # Divide by number of entries
-            layer_grads = np.mean(np.array(gradients), axis=0)
+            layer_grads = np.mean(np.array(gradients), axis=0)  
             print(layer_grads)
             for key in loss_components:
                 loss_components[key] /= N_train

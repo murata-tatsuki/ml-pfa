@@ -1,0 +1,1431 @@
+['train_energyRegression.py', '-i', '/data/suehara/mldata/pfa/murata/tc_uds_91/train', '-ii', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '60', '--beta-track', '--force-track-alpha', '--batch-size', '20', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2025_02_04_174146_outputD5', '--energy-regression', '--restart-period', '30', '--LE-track', 'alpha', '--momentum', '--momentum-amp', '--regression-coefficinet', '0.1']
+Using device:  cuda:0
+learning rate : 9e-06 ,  weght decay : 0.0001 , regression coefficient : 0.1
+momentum and energy of virtual hits are NOT MC truth
+using detected values
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/tc_uds_91/train'
+filenames=['/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_1.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_10.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_100.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_101.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_102.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_103.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_104.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_105.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_106.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_107.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_11.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_110.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_111.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_112.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_113.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_114.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_115.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_116.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_117.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_12.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_120.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_121.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_122.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_123.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_124.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_125.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_126.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_127.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_13.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_130.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_131.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_132.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_133.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_134.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_135.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_136.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_137.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_14.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_140.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_141.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_142.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_143.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_144.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_145.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_146.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_147.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_15.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_150.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_151.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_152.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_153.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_154.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_155.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_156.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_157.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_16.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_160.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_161.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_162.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_163.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_164.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_165.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_166.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_167.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_17.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_170.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_171.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_172.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_173.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_174.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_175.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_176.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_177.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_180.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_181.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_182.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_183.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_184.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_185.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_186.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_187.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_190.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_191.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_192.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_193.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_194.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_195.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_196.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_197.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_2.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_20.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_200.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_201.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_202.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_203.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_204.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_205.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_206.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_207.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_21.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_210.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_211.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_212.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_213.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_214.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_215.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_216.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_217.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_22.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_220.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_221.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_222.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_223.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_224.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_225.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_226.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_227.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_23.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_230.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_231.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_232.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_233.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_234.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_235.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_236.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_237.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_24.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_240.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_241.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_242.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_243.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_244.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_245.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_246.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_247.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_25.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_250.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_251.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_252.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_253.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_254.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_255.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_256.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_257.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_26.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_260.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_261.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_262.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_263.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_264.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_265.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_266.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_267.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_27.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_270.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_271.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_272.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_273.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_274.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_275.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_276.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_277.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_280.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_281.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_282.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_283.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_284.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_285.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_286.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_287.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_290.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_291.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_292.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_293.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_294.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_295.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_296.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_297.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_3.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_30.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_300.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_31.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_32.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_33.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_34.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_35.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_36.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_37.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_4.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_40.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_41.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_42.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_43.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_44.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_45.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_46.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_47.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_5.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_50.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_51.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_52.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_53.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_54.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_55.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_56.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_57.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_6.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_60.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_61.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_62.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_63.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_64.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_65.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_66.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_67.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_7.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_70.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_71.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_72.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_73.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_74.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_75.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_76.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_77.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_80.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_81.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_82.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_83.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_84.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_85.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_86.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_87.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_90.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_91.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_92.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_93.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_94.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_95.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_96.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_97.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_1.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_10.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_100.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_101.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_102.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_103.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_104.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_105.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_106.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_107.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_11.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_110.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_111.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_112.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_113.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_114.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_115.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_116.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_117.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_12.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_120.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_121.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_122.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_123.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_124.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_125.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_126.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_127.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_13.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_130.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_131.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_132.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_133.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_134.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_135.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_136.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_137.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_14.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_140.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_141.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_142.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_143.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_144.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_145.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_146.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_147.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_15.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_150.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_151.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_152.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_153.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_154.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_155.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_156.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_157.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_16.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_160.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_161.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_162.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_163.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_164.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_165.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_166.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_167.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_17.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_170.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_171.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_172.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_173.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_174.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_175.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_176.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_177.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_180.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_181.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_182.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_183.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_184.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_185.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_186.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_187.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_190.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_191.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_192.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_193.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_194.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_195.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_196.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_197.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_2.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_20.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_200.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_201.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_202.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_203.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_204.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_205.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_206.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_207.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_21.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_210.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_211.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_212.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_213.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_214.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_215.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_216.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_217.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_22.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_220.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_221.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_222.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_223.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_224.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_225.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_226.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_227.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_23.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_230.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_231.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_232.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_233.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_234.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_235.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_236.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_237.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_24.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_240.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_241.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_242.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_243.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_244.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_245.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_246.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_247.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_25.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_250.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_251.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_252.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_253.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_254.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_255.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_256.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_257.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_26.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_260.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_261.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_262.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_263.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_264.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_265.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_266.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_267.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_27.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_270.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_271.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_272.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_273.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_274.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_275.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_276.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_277.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_280.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_281.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_282.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_283.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_284.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_285.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_286.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_287.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_290.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_291.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_292.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_293.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_294.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_295.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_296.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_297.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_3.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_30.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_300.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_31.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_32.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_33.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_34.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_35.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_36.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_37.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_4.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_40.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_41.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_42.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_43.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_44.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_45.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_46.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_47.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_5.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_50.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_51.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_52.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_53.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_54.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_55.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_56.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_57.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_6.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_60.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_61.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_62.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_63.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_64.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_65.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_66.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_67.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_7.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_70.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_71.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_72.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_73.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_74.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_75.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_76.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_77.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_80.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_81.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_82.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_83.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_84.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_85.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_86.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_87.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_90.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_91.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_92.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_93.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_94.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_95.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_96.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/train/uds91_97.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/tc_uds_91/validation'
+filenames=['/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_108.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_118.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_128.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_138.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_148.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_158.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_168.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_178.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_18.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_188.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_198.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_208.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_218.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_228.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_238.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_248.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_258.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_268.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_278.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_28.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_288.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_298.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_38.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_48.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_58.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_68.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_78.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_8.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_88.h5', '/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_98.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_108.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_118.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_128.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_138.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_148.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_158.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_168.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_178.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_18.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_188.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_198.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_208.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_218.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_228.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_238.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_248.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_258.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_268.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_278.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_28.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_288.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_298.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_38.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_48.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_58.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_68.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_78.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_8.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_88.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/tc_uds_91/validation/uds91_98.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  59990
+Validating dataset size:  7500
+Batch size:  20
+Loading GravnetModel
+Hello
+restart period :  30
+Training epoch 0
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06]
+train loss :  7.074292182922363
+test   L_V                   = +5.5276 (6.9%)
+    L_V_attractive      = +1.8734 (2.3%)
+    L_V_repulsive       = +3.6542 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1536 (1.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2361 (0.3%)
+    L_beta_track        = +0.9175 (1.1%)
+      L_beta_norms_term   = -0.0482 (-0.1%)
+      L_beta_logbeta_term = +0.2843 (0.4%)
+  L_E   = +73.9060 (91.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +73.9060 (91.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 81.58720397949219
+Training epoch 1
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06]
+train loss :  3.5238144397735596
+test   L_V                   = +2.5800 (3.2%)
+    L_V_attractive      = +1.3049 (1.6%)
+    L_V_repulsive       = +1.2751 (1.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.3897 (1.7%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.4329 (0.5%)
+    L_beta_track        = +0.9567 (1.2%)
+      L_beta_norms_term   = -0.0139 (-0.0%)
+      L_beta_logbeta_term = +0.4469 (0.5%)
+  L_E   = +77.5740 (95.1%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +77.5740 (95.1%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 82.5436782836914
+Training epoch 2
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06]
+train loss :  2.8351147174835205
+test   L_V                   = +1.7995 (2.2%)
+    L_V_attractive      = +1.0198 (1.2%)
+    L_V_repulsive       = +0.7798 (0.9%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.5585 (1.9%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.5821 (0.7%)
+    L_beta_track        = +0.9763 (1.2%)
+      L_beta_norms_term   = -0.0071 (-0.0%)
+      L_beta_logbeta_term = +0.5893 (0.7%)
+  L_E   = +79.7035 (96.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +79.7035 (96.0%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 84.06149291992188
+Training epoch 3
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06]
+train loss :  2.711667537689209
+test   L_V                   = +1.5752 (1.9%)
+    L_V_attractive      = +0.9245 (1.1%)
+    L_V_repulsive       = +0.6507 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.7243 (2.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.7353 (0.9%)
+    L_beta_track        = +0.9890 (1.2%)
+      L_beta_norms_term   = -0.0040 (-0.0%)
+      L_beta_logbeta_term = +0.7393 (0.9%)
+  L_E   = +79.9234 (96.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +79.9234 (96.0%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 84.22291564941406
+Training epoch 4
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06]
+train loss :  2.8041634559631348
+test   L_V                   = +1.5000 (1.8%)
+    L_V_attractive      = +0.8834 (1.1%)
+    L_V_repulsive       = +0.6166 (0.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.8874 (2.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.8926 (1.1%)
+    L_beta_track        = +0.9948 (1.2%)
+      L_beta_norms_term   = -0.0024 (-0.0%)
+      L_beta_logbeta_term = +0.8949 (1.1%)
+  L_E   = +80.1335 (95.9%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +80.1335 (95.9%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 84.52083587646484
+Training epoch 5
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06]
+train loss :  2.5560340881347656
+test   L_V                   = +1.4375 (1.7%)
+    L_V_attractive      = +0.8390 (1.0%)
+    L_V_repulsive       = +0.5985 (0.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.0492 (2.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.0518 (1.3%)
+    L_beta_track        = +0.9973 (1.2%)
+      L_beta_norms_term   = -0.0014 (-0.0%)
+      L_beta_logbeta_term = +1.0533 (1.3%)
+  L_E   = +80.5469 (95.9%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +80.5469 (95.9%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 85.0335464477539
+Training epoch 6
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06]
+train loss :  2.7457385063171387
+test   L_V                   = +1.3798 (1.6%)
+    L_V_attractive      = +0.8153 (1.0%)
+    L_V_repulsive       = +0.5645 (0.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.2275 (2.7%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.2288 (1.5%)
+    L_beta_track        = +0.9987 (1.2%)
+      L_beta_norms_term   = -0.0008 (-0.0%)
+      L_beta_logbeta_term = +1.2296 (1.5%)
+  L_E   = +80.4275 (95.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +80.4275 (95.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 85.03480529785156
+Training epoch 7
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06]
+train loss :  2.466973066329956
+test   L_V                   = +1.3086 (1.5%)
+    L_V_attractive      = +0.7822 (0.9%)
+    L_V_repulsive       = +0.5264 (0.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.4300 (2.9%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.4306 (1.7%)
+    L_beta_track        = +0.9993 (1.2%)
+      L_beta_norms_term   = -0.0004 (-0.0%)
+      L_beta_logbeta_term = +1.4311 (1.7%)
+  L_E   = +80.7836 (95.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +80.7836 (95.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 85.52215576171875
+Training epoch 8
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06]
+train loss :  3.8699564933776855
+test   L_V                   = +1.5506 (2.2%)
+    L_V_attractive      = +0.9432 (1.3%)
+    L_V_repulsive       = +0.6075 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1208 (1.6%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2580 (0.4%)
+    L_beta_track        = +0.8628 (1.2%)
+      L_beta_norms_term   = -0.0317 (-0.0%)
+      L_beta_logbeta_term = +0.2897 (0.4%)
+  L_E   = +69.1023 (96.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +69.1023 (96.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 72.77368927001953
+Training epoch 9
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06]
+train loss :  3.6274242401123047
+test   L_V                   = +1.6027 (2.2%)
+    L_V_attractive      = +1.0080 (1.4%)
+    L_V_repulsive       = +0.5947 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0024 (1.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1993 (0.3%)
+    L_beta_track        = +0.8031 (1.1%)
+      L_beta_norms_term   = -0.0390 (-0.1%)
+      L_beta_logbeta_term = +0.2384 (0.3%)
+  L_E   = +68.9021 (96.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +68.9021 (96.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 72.50724792480469
+Training epoch 10
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06]
+train loss :  3.644315719604492
+test   L_V                   = +1.6562 (2.3%)
+    L_V_attractive      = +1.0412 (1.4%)
+    L_V_repulsive       = +0.6149 (0.9%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9477 (1.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1807 (0.3%)
+    L_beta_track        = +0.7670 (1.1%)
+      L_beta_norms_term   = -0.0421 (-0.1%)
+      L_beta_logbeta_term = +0.2229 (0.3%)
+  L_E   = +69.2691 (96.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +69.2691 (96.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 72.87297058105469
+Training epoch 11
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06]
+train loss :  3.6530277729034424
+test   L_V                   = +1.6658 (2.3%)
+    L_V_attractive      = +1.0554 (1.5%)
+    L_V_repulsive       = +0.6103 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9262 (1.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1749 (0.2%)
+    L_beta_track        = +0.7513 (1.0%)
+      L_beta_norms_term   = -0.0438 (-0.1%)
+      L_beta_logbeta_term = +0.2187 (0.3%)
+  L_E   = +69.6390 (96.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +69.6390 (96.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 73.23101806640625
+Training epoch 12
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06]
+train loss :  3.6040291786193848
+test   L_V                   = +1.7769 (2.5%)
+    L_V_attractive      = +1.1736 (1.6%)
+    L_V_repulsive       = +0.6033 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9188 (1.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1798 (0.2%)
+    L_beta_track        = +0.7390 (1.0%)
+      L_beta_norms_term   = -0.0426 (-0.1%)
+      L_beta_logbeta_term = +0.2224 (0.3%)
+  L_E   = +69.5205 (96.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +69.5205 (96.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 73.21621704101562
+Training epoch 13
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06]
+train loss :  3.878925323486328
+test   L_V                   = +1.6876 (2.3%)
+    L_V_attractive      = +1.0602 (1.5%)
+    L_V_repulsive       = +0.6274 (0.9%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8999 (1.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1627 (0.2%)
+    L_beta_track        = +0.7372 (1.0%)
+      L_beta_norms_term   = -0.0485 (-0.1%)
+      L_beta_logbeta_term = +0.2112 (0.3%)
+  L_E   = +69.9203 (96.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +69.9203 (96.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 73.5078125
+Training epoch 14
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06]
+train loss :  3.6443114280700684
+test   L_V                   = +1.6753 (2.3%)
+    L_V_attractive      = +1.0642 (1.5%)
+    L_V_repulsive       = +0.6111 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8931 (1.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1600 (0.2%)
+    L_beta_track        = +0.7331 (1.0%)
+      L_beta_norms_term   = -0.0490 (-0.1%)
+      L_beta_logbeta_term = +0.2089 (0.3%)
+  L_E   = +70.0706 (96.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +70.0706 (96.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 73.6390151977539
+Training epoch 15
+   LE_weight :  0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06]
+train loss :  3.4367074966430664
+test   L_V                   = +1.6815 (2.3%)
+    L_V_attractive      = +1.0719 (1.5%)
+    L_V_repulsive       = +0.6097 (0.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8868 (1.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1572 (0.2%)
+    L_beta_track        = +0.7296 (1.0%)
+      L_beta_norms_term   = -0.0497 (-0.1%)
+      L_beta_logbeta_term = +0.2069 (0.3%)
+  L_E   = +70.1628 (96.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +70.1628 (96.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 73.73107147216797
+Training epoch 16
+   LE_weight :  0.01 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06]
+train loss :  26.141016006469727
+test   L_V                   = +1.8666 (12.5%)
+    L_V_attractive      = +1.0794 (7.3%)
+    L_V_repulsive       = +0.7872 (5.3%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.2881 (8.7%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.3700 (2.5%)
+    L_beta_track        = +0.9182 (6.2%)
+      L_beta_norms_term   = -0.0205 (-0.1%)
+      L_beta_logbeta_term = +0.3904 (2.6%)
+  L_E   = +11.7189 (78.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +11.7189 (78.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 15.87368106842041
+Training epoch 17
+   LE_weight :  0.04 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06]
+train loss :  23.747655868530273
+test   L_V                   = +1.7029 (11.3%)
+    L_V_attractive      = +1.0200 (6.8%)
+    L_V_repulsive       = +0.6829 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.1636 (7.7%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2778 (1.8%)
+    L_beta_track        = +0.8857 (5.9%)
+      L_beta_norms_term   = -0.0311 (-0.2%)
+      L_beta_logbeta_term = +0.3089 (2.1%)
+  L_E   = +12.1655 (80.9%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +12.1655 (80.9%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.0319766998291
+Training epoch 18
+   LE_weight :  0.09 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06]
+train loss :  23.30843734741211
+test   L_V                   = +1.7948 (10.9%)
+    L_V_attractive      = +1.0756 (6.5%)
+    L_V_repulsive       = +0.7192 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0869 (6.6%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2296 (1.4%)
+    L_beta_track        = +0.8573 (5.2%)
+      L_beta_norms_term   = -0.0361 (-0.2%)
+      L_beta_logbeta_term = +0.2657 (1.6%)
+  L_E   = +13.5774 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.5774 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.459184646606445
+Training epoch 19
+   LE_weight :  0.16 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06]
+train loss :  25.209186553955078
+test   L_V                   = +1.8460 (11.0%)
+    L_V_attractive      = +1.0949 (6.5%)
+    L_V_repulsive       = +0.7511 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0503 (6.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2131 (1.3%)
+    L_beta_track        = +0.8372 (5.0%)
+      L_beta_norms_term   = -0.0392 (-0.2%)
+      L_beta_logbeta_term = +0.2523 (1.5%)
+  L_E   = +13.9395 (82.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.9395 (82.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.83575439453125
+Training epoch 20
+   LE_weight :  0.25 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06]
+train loss :  18.106855392456055
+test   L_V                   = +1.8751 (10.8%)
+    L_V_attractive      = +1.1440 (6.6%)
+    L_V_repulsive       = +0.7311 (4.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0304 (6.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2086 (1.2%)
+    L_beta_track        = +0.8218 (4.8%)
+      L_beta_norms_term   = -0.0397 (-0.2%)
+      L_beta_logbeta_term = +0.2483 (1.4%)
+  L_E   = +14.3898 (83.2%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.3898 (83.2%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.295320510864258
+Training epoch 21
+   LE_weight :  0.36 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06]
+train loss :  19.98471450805664
+test   L_V                   = +1.9244 (10.8%)
+    L_V_attractive      = +1.1549 (6.5%)
+    L_V_repulsive       = +0.7695 (4.3%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.0096 (5.7%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.2020 (1.1%)
+    L_beta_track        = +0.8076 (4.5%)
+      L_beta_norms_term   = -0.0406 (-0.2%)
+      L_beta_logbeta_term = +0.2426 (1.4%)
+  L_E   = +14.8425 (83.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.8425 (83.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.776477813720703
+Training epoch 22
+   LE_weight :  0.49 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06]
+train loss :  11.365673065185547
+test   L_V                   = +1.9522 (11.1%)
+    L_V_attractive      = +1.1626 (6.6%)
+    L_V_repulsive       = +0.7896 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9965 (5.6%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1986 (1.1%)
+    L_beta_track        = +0.7979 (4.5%)
+      L_beta_norms_term   = -0.0420 (-0.2%)
+      L_beta_logbeta_term = +0.2406 (1.4%)
+  L_E   = +14.6945 (83.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.6945 (83.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.64320945739746
+Training epoch 23
+   LE_weight :  0.64 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07]
+train loss :  13.553115844726562
+test   L_V                   = +1.9580 (11.0%)
+    L_V_attractive      = +1.1626 (6.5%)
+    L_V_repulsive       = +0.7954 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9892 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1965 (1.1%)
+    L_beta_track        = +0.7928 (4.4%)
+      L_beta_norms_term   = -0.0429 (-0.2%)
+      L_beta_logbeta_term = +0.2394 (1.3%)
+  L_E   = +14.9159 (83.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.9159 (83.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.863134384155273
+Training epoch 24
+   LE_weight :  0.81 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07]
+train loss :  31.845821380615234
+test   L_V                   = +1.9821 (11.0%)
+    L_V_attractive      = +1.1528 (6.4%)
+    L_V_repulsive       = +0.8293 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9841 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1957 (1.1%)
+    L_beta_track        = +0.7884 (4.4%)
+      L_beta_norms_term   = -0.0431 (-0.2%)
+      L_beta_logbeta_term = +0.2388 (1.3%)
+  L_E   = +15.0519 (83.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.0519 (83.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.0180721282959
+Training epoch 25
+   LE_weight :  1.0 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07]
+train loss :  29.810266494750977
+test   L_V                   = +1.9736 (11.0%)
+    L_V_attractive      = +1.1763 (6.5%)
+    L_V_repulsive       = +0.7973 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9816 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1947 (1.1%)
+    L_beta_track        = +0.7870 (4.4%)
+      L_beta_norms_term   = -0.0425 (-0.2%)
+      L_beta_logbeta_term = +0.2372 (1.3%)
+  L_E   = +15.0134 (83.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.0134 (83.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.96857452392578
+Training epoch 26
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07]
+train loss :  20.118694305419922
+test   L_V                   = +1.9793 (11.1%)
+    L_V_attractive      = +1.1778 (6.6%)
+    L_V_repulsive       = +0.8015 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9741 (5.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1916 (1.1%)
+    L_beta_track        = +0.7824 (4.4%)
+      L_beta_norms_term   = -0.0438 (-0.2%)
+      L_beta_logbeta_term = +0.2354 (1.3%)
+  L_E   = +14.9350 (83.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.9350 (83.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.888408660888672
+Training epoch 27
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07]
+train loss :  34.20192337036133
+test   L_V                   = +1.9729 (11.0%)
+    L_V_attractive      = +1.1877 (6.6%)
+    L_V_repulsive       = +0.7851 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9733 (5.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1928 (1.1%)
+    L_beta_track        = +0.7805 (4.3%)
+      L_beta_norms_term   = -0.0430 (-0.2%)
+      L_beta_logbeta_term = +0.2358 (1.3%)
+  L_E   = +15.0302 (83.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.0302 (83.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.976388931274414
+Training epoch 28
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07]
+train loss :  37.95355224609375
+test   L_V                   = +1.9730 (11.1%)
+    L_V_attractive      = +1.1772 (6.6%)
+    L_V_repulsive       = +0.7959 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9732 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1926 (1.1%)
+    L_beta_track        = +0.7806 (4.4%)
+      L_beta_norms_term   = -0.0435 (-0.2%)
+      L_beta_logbeta_term = +0.2362 (1.3%)
+  L_E   = +14.7613 (83.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.7613 (83.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.707544326782227
+Training epoch 29
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07]
+train loss :  33.930091857910156
+test   L_V                   = +1.9787 (11.1%)
+    L_V_attractive      = +1.1931 (6.7%)
+    L_V_repulsive       = +0.7856 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9748 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1933 (1.1%)
+    L_beta_track        = +0.7814 (4.4%)
+      L_beta_norms_term   = -0.0432 (-0.2%)
+      L_beta_logbeta_term = +0.2365 (1.3%)
+  L_E   = +14.8209 (83.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.8209 (83.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.774311065673828
+Training epoch 30
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06]
+train loss :  14.151361465454102
+test   L_V                   = +2.0695 (11.3%)
+    L_V_attractive      = +1.2307 (6.7%)
+    L_V_repulsive       = +0.8388 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9362 (5.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1829 (1.0%)
+    L_beta_track        = +0.7532 (4.1%)
+      L_beta_norms_term   = -0.0465 (-0.3%)
+      L_beta_logbeta_term = +0.2294 (1.3%)
+  L_E   = +15.3391 (83.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.3391 (83.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.34473419189453
+Training epoch 31
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06]
+train loss :  17.204633712768555
+test   L_V                   = +2.0834 (11.2%)
+    L_V_attractive      = +1.2436 (6.7%)
+    L_V_repulsive       = +0.8398 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9238 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1843 (1.0%)
+    L_beta_track        = +0.7395 (4.0%)
+      L_beta_norms_term   = -0.0458 (-0.2%)
+      L_beta_logbeta_term = +0.2301 (1.2%)
+  L_E   = +15.5156 (83.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.5156 (83.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.52281379699707
+Training epoch 32
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06]
+train loss :  19.0223388671875
+test   L_V                   = +2.0335 (11.1%)
+    L_V_attractive      = +1.2042 (6.6%)
+    L_V_repulsive       = +0.8293 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9161 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1814 (1.0%)
+    L_beta_track        = +0.7347 (4.0%)
+      L_beta_norms_term   = -0.0462 (-0.3%)
+      L_beta_logbeta_term = +0.2276 (1.2%)
+  L_E   = +15.3930 (83.9%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.3930 (83.9%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.342618942260742
+Training epoch 33
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06]
+train loss :  15.50105094909668
+test   L_V                   = +2.0319 (11.2%)
+    L_V_attractive      = +1.2436 (6.8%)
+    L_V_repulsive       = +0.7883 (4.3%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.9038 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1737 (1.0%)
+    L_beta_track        = +0.7301 (4.0%)
+      L_beta_norms_term   = -0.0476 (-0.3%)
+      L_beta_logbeta_term = +0.2213 (1.2%)
+  L_E   = +15.2281 (83.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.2281 (83.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.16376495361328
+Training epoch 34
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06]
+train loss :  13.088894844055176
+test   L_V                   = +2.0175 (11.0%)
+    L_V_attractive      = +1.2536 (6.8%)
+    L_V_repulsive       = +0.7638 (4.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8949 (4.9%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1675 (0.9%)
+    L_beta_track        = +0.7274 (4.0%)
+      L_beta_norms_term   = -0.0490 (-0.3%)
+      L_beta_logbeta_term = +0.2165 (1.2%)
+  L_E   = +15.4087 (84.1%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +15.4087 (84.1%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 19.321090698242188
+Training epoch 35
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06]
+train loss :  18.956523895263672
+test   L_V                   = +1.9875 (11.1%)
+    L_V_attractive      = +1.2316 (6.9%)
+    L_V_repulsive       = +0.7559 (4.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8955 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1686 (0.9%)
+    L_beta_track        = +0.7268 (4.1%)
+      L_beta_norms_term   = -0.0492 (-0.3%)
+      L_beta_logbeta_term = +0.2178 (1.2%)
+  L_E   = +14.9596 (83.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.9596 (83.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.842554092407227
+Training epoch 36
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06]
+train loss :  20.09278106689453
+test   L_V                   = +1.9848 (11.2%)
+    L_V_attractive      = +1.2051 (6.8%)
+    L_V_repulsive       = +0.7798 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8943 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1678 (0.9%)
+    L_beta_track        = +0.7265 (4.1%)
+      L_beta_norms_term   = -0.0503 (-0.3%)
+      L_beta_logbeta_term = +0.2181 (1.2%)
+  L_E   = +14.9134 (83.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.9134 (83.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.792564392089844
+Training epoch 37
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06]
+train loss :  11.378559112548828
+test   L_V                   = +1.9690 (11.2%)
+    L_V_attractive      = +1.2295 (7.0%)
+    L_V_repulsive       = +0.7395 (4.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8890 (5.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1633 (0.9%)
+    L_beta_track        = +0.7257 (4.1%)
+      L_beta_norms_term   = -0.0510 (-0.3%)
+      L_beta_logbeta_term = +0.2143 (1.2%)
+  L_E   = +14.7224 (83.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.7224 (83.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.58041763305664
+Training epoch 38
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06]
+train loss :  22.635276794433594
+test   L_V                   = +1.9581 (11.2%)
+    L_V_attractive      = +1.1833 (6.7%)
+    L_V_repulsive       = +0.7748 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8890 (5.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1632 (0.9%)
+    L_beta_track        = +0.7257 (4.1%)
+      L_beta_norms_term   = -0.0524 (-0.3%)
+      L_beta_logbeta_term = +0.2156 (1.2%)
+  L_E   = +14.6966 (83.8%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.6966 (83.8%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.543607711791992
+Training epoch 39
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06]
+train loss :  40.36195373535156
+test   L_V                   = +1.9978 (11.5%)
+    L_V_attractive      = +1.1977 (6.9%)
+    L_V_repulsive       = +0.8001 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8759 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1564 (0.9%)
+    L_beta_track        = +0.7195 (4.1%)
+      L_beta_norms_term   = -0.0542 (-0.3%)
+      L_beta_logbeta_term = +0.2106 (1.2%)
+  L_E   = +14.4734 (83.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.4734 (83.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.347150802612305
+Training epoch 40
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06]
+train loss :  10.941567420959473
+test   L_V                   = +1.9427 (11.3%)
+    L_V_attractive      = +1.1949 (7.0%)
+    L_V_repulsive       = +0.7478 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8808 (5.1%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1573 (0.9%)
+    L_beta_track        = +0.7235 (4.2%)
+      L_beta_norms_term   = -0.0549 (-0.3%)
+      L_beta_logbeta_term = +0.2122 (1.2%)
+  L_E   = +14.3595 (83.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.3595 (83.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.18300437927246
+Training epoch 41
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06]
+train loss :  51.8143310546875
+test   L_V                   = +1.9470 (11.0%)
+    L_V_attractive      = +1.2099 (6.8%)
+    L_V_repulsive       = +0.7370 (4.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8819 (5.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1599 (0.9%)
+    L_beta_track        = +0.7220 (4.1%)
+      L_beta_norms_term   = -0.0546 (-0.3%)
+      L_beta_logbeta_term = +0.2145 (1.2%)
+  L_E   = +14.9014 (84.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.9014 (84.0%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 18.730243682861328
+Training epoch 42
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06]
+train loss :  19.468936920166016
+test   L_V                   = +1.9363 (11.5%)
+    L_V_attractive      = +1.1923 (7.1%)
+    L_V_repulsive       = +0.7441 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8739 (5.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1533 (0.9%)
+    L_beta_track        = +0.7205 (4.3%)
+      L_beta_norms_term   = -0.0560 (-0.3%)
+      L_beta_logbeta_term = +0.2093 (1.2%)
+  L_E   = +14.0697 (83.4%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.0697 (83.4%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.879911422729492
+Training epoch 43
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06]
+train loss :  24.010860443115234
+test   L_V                   = +1.9288 (11.5%)
+    L_V_attractive      = +1.1707 (7.0%)
+    L_V_repulsive       = +0.7581 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8767 (5.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1549 (0.9%)
+    L_beta_track        = +0.7218 (4.3%)
+      L_beta_norms_term   = -0.0566 (-0.3%)
+      L_beta_logbeta_term = +0.2115 (1.3%)
+  L_E   = +14.0044 (83.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +14.0044 (83.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.809919357299805
+Training epoch 44
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06]
+train loss :  12.84685230255127
+test   L_V                   = +1.9222 (11.5%)
+    L_V_attractive      = +1.1814 (7.1%)
+    L_V_repulsive       = +0.7408 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8769 (5.2%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1544 (0.9%)
+    L_beta_track        = +0.7224 (4.3%)
+      L_beta_norms_term   = -0.0562 (-0.3%)
+      L_beta_logbeta_term = +0.2106 (1.3%)
+  L_E   = +13.9172 (83.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.9172 (83.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.716262817382812
+Training epoch 45
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06]
+train loss :  18.96572494506836
+test   L_V                   = +1.9137 (11.6%)
+    L_V_attractive      = +1.1795 (7.2%)
+    L_V_repulsive       = +0.7341 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8712 (5.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1508 (0.9%)
+    L_beta_track        = +0.7204 (4.4%)
+      L_beta_norms_term   = -0.0576 (-0.3%)
+      L_beta_logbeta_term = +0.2083 (1.3%)
+  L_E   = +13.6909 (83.1%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.6909 (83.1%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.475706100463867
+Training epoch 46
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06]
+train loss :  14.09227180480957
+test   L_V                   = +1.9263 (11.6%)
+    L_V_attractive      = +1.1892 (7.2%)
+    L_V_repulsive       = +0.7371 (4.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8716 (5.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1515 (0.9%)
+    L_beta_track        = +0.7201 (4.3%)
+      L_beta_norms_term   = -0.0568 (-0.3%)
+      L_beta_logbeta_term = +0.2084 (1.3%)
+  L_E   = +13.7791 (83.1%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.7791 (83.1%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.576995849609375
+Training epoch 47
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06]
+train loss :  23.402912139892578
+test   L_V                   = +1.9092 (11.6%)
+    L_V_attractive      = +1.1524 (7.0%)
+    L_V_repulsive       = +0.7568 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8683 (5.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1478 (0.9%)
+    L_beta_track        = +0.7205 (4.4%)
+      L_beta_norms_term   = -0.0588 (-0.4%)
+      L_beta_logbeta_term = +0.2066 (1.3%)
+  L_E   = +13.6567 (83.1%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.6567 (83.1%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.434131622314453
+Training epoch 48
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06]
+train loss :  16.253408432006836
+test   L_V                   = +1.9244 (11.8%)
+    L_V_attractive      = +1.1934 (7.3%)
+    L_V_repulsive       = +0.7310 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8692 (5.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1498 (0.9%)
+    L_beta_track        = +0.7194 (4.4%)
+      L_beta_norms_term   = -0.0573 (-0.4%)
+      L_beta_logbeta_term = +0.2072 (1.3%)
+  L_E   = +13.5161 (82.9%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.5161 (82.9%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.30968475341797
+Training epoch 49
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06]
+train loss :  15.100531578063965
+test   L_V                   = +1.9271 (11.9%)
+    L_V_attractive      = +1.1858 (7.3%)
+    L_V_repulsive       = +0.7412 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8635 (5.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1468 (0.9%)
+    L_beta_track        = +0.7167 (4.4%)
+      L_beta_norms_term   = -0.0587 (-0.4%)
+      L_beta_logbeta_term = +0.2054 (1.3%)
+  L_E   = +13.3782 (82.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.3782 (82.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 17.1686954498291
+Training epoch 50
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06]
+train loss :  15.831534385681152
+test   L_V                   = +1.9061 (11.9%)
+    L_V_attractive      = +1.1637 (7.3%)
+    L_V_repulsive       = +0.7423 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8666 (5.4%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1479 (0.9%)
+    L_beta_track        = +0.7186 (4.5%)
+      L_beta_norms_term   = -0.0584 (-0.4%)
+      L_beta_logbeta_term = +0.2064 (1.3%)
+  L_E   = +13.2146 (82.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.2146 (82.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.98722267150879
+Training epoch 51
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06]
+train loss :  21.985836029052734
+test   L_V                   = +1.8862 (11.9%)
+    L_V_attractive      = +1.1559 (7.3%)
+    L_V_repulsive       = +0.7304 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8682 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1490 (0.9%)
+    L_beta_track        = +0.7192 (4.5%)
+      L_beta_norms_term   = -0.0583 (-0.4%)
+      L_beta_logbeta_term = +0.2073 (1.3%)
+  L_E   = +13.1467 (82.7%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.1467 (82.7%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.901155471801758
+Training epoch 52
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06]
+train loss :  17.308853149414062
+test   L_V                   = +1.9139 (12.1%)
+    L_V_attractive      = +1.1515 (7.3%)
+    L_V_repulsive       = +0.7624 (4.8%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8649 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1477 (0.9%)
+    L_beta_track        = +0.7171 (4.5%)
+      L_beta_norms_term   = -0.0588 (-0.4%)
+      L_beta_logbeta_term = +0.2066 (1.3%)
+  L_E   = +13.0579 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.0579 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.836715698242188
+Training epoch 53
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06]
+train loss :  20.95015525817871
+test   L_V                   = +1.8961 (12.0%)
+    L_V_attractive      = +1.1715 (7.4%)
+    L_V_repulsive       = +0.7246 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8645 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1465 (0.9%)
+    L_beta_track        = +0.7181 (4.5%)
+      L_beta_norms_term   = -0.0586 (-0.4%)
+      L_beta_logbeta_term = +0.2051 (1.3%)
+  L_E   = +13.0444 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.0444 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.805015563964844
+Training epoch 54
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06]
+train loss :  14.687613487243652
+test   L_V                   = +1.8901 (11.9%)
+    L_V_attractive      = +1.1616 (7.3%)
+    L_V_repulsive       = +0.7285 (4.6%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8642 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1455 (0.9%)
+    L_beta_track        = +0.7188 (4.5%)
+      L_beta_norms_term   = -0.0593 (-0.4%)
+      L_beta_logbeta_term = +0.2048 (1.3%)
+  L_E   = +13.0973 (82.6%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.0973 (82.6%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.851655960083008
+Training epoch 55
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06, 1.0520637283945964e-06]
+train loss :  19.37527084350586
+test   L_V                   = +1.8833 (12.0%)
+    L_V_attractive      = +1.1688 (7.4%)
+    L_V_repulsive       = +0.7145 (4.5%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8675 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1480 (0.9%)
+    L_beta_track        = +0.7195 (4.6%)
+      L_beta_norms_term   = -0.0583 (-0.4%)
+      L_beta_logbeta_term = +0.2062 (1.3%)
+  L_E   = +13.0081 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +13.0081 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.758848190307617
+Training epoch 56
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06, 1.0520637283945964e-06, 8.064217789012431e-07]
+train loss :  15.80356502532959
+test   L_V                   = +1.9025 (12.2%)
+    L_V_attractive      = +1.1662 (7.5%)
+    L_V_repulsive       = +0.7363 (4.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8619 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1450 (0.9%)
+    L_beta_track        = +0.7168 (4.6%)
+      L_beta_norms_term   = -0.0595 (-0.4%)
+      L_beta_logbeta_term = +0.2046 (1.3%)
+  L_E   = +12.8785 (82.3%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +12.8785 (82.3%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.642887115478516
+Training epoch 57
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06, 1.0520637283945964e-06, 8.064217789012431e-07, 5.94682253485591e-07]
+train loss :  19.20077896118164
+test   L_V                   = +1.8934 (12.0%)
+    L_V_attractive      = +1.1585 (7.4%)
+    L_V_repulsive       = +0.7349 (4.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8632 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1450 (0.9%)
+    L_beta_track        = +0.7182 (4.6%)
+      L_beta_norms_term   = -0.0594 (-0.4%)
+      L_beta_logbeta_term = +0.2044 (1.3%)
+  L_E   = +12.9721 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +12.9721 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.728784561157227
+Training epoch 58
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06, 1.0520637283945964e-06, 8.064217789012431e-07, 5.94682253485591e-07, 4.1876269807847704e-07]
+train loss :  13.176067352294922
+test   L_V                   = +1.8909 (12.0%)
+    L_V_attractive      = +1.1520 (7.3%)
+    L_V_repulsive       = +0.7390 (4.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8653 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1458 (0.9%)
+    L_beta_track        = +0.7194 (4.6%)
+      L_beta_norms_term   = -0.0594 (-0.4%)
+      L_beta_logbeta_term = +0.2053 (1.3%)
+  L_E   = +12.9940 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +12.9940 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.750173568725586
+Training epoch 59
+   LE_weight :  1 ,   er_coef :  0.1
+learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06, 7.856994473374405e-06, 7.5276311982969185e-06, 7.165644372701505e-06, 6.7749999999999995e-06, 6.359978061687311e-06, 5.925125624968516e-06, 5.4752070241390275e-06, 5.015151661541058e-06, 4.55e-06, 4.084848338458943e-06, 3.6247929758609713e-06, 3.174874375031484e-06, 2.7400219383126896e-06, 2.3250000000000006e-06, 1.934355627298495e-06, 1.5723688017030824e-06, 1.243005526625595e-06, 9.498743750314843e-07, 6.961869531592477e-07, 4.847227134904256e-07, 3.1779850248656677e-07, 1.9724317673456467e-07, 1.2437756561118386e-07, 1e-07, 8.979850055450226e-06, 8.919582702819045e-06, 8.819743732584514e-06, 8.681237301921523e-06, 8.50531774651441e-06, 8.293578221098757e-06, 8.047936271605405e-06, 7.770616469567563e-06, 7.464130266056519e-06, 7.131253247591831e-06, 6.7749999999999995e-06, 6.398596807858395e-06, 6.005452436762526e-06, 5.5991272630169515e-06, 5.183301030316119e-06, 4.761739525415654e-06, 4.338260474584347e-06, 3.916698969683881e-06, 3.500872736983048e-06, 3.0945475632374738e-06, 2.7014031921416055e-06, 2.3250000000000006e-06, 1.9687467524081687e-06, 1.6358697339434817e-06, 1.3293835304324375e-06, 1.0520637283945964e-06, 8.064217789012431e-07, 5.94682253485591e-07, 4.1876269807847704e-07, 2.802562674154872e-07]
+train loss :  16.323923110961914
+test   L_V                   = +1.8894 (12.0%)
+    L_V_attractive      = +1.1567 (7.4%)
+    L_V_repulsive       = +0.7327 (4.7%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +0.8637 (5.5%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.1444 (0.9%)
+    L_beta_track        = +0.7193 (4.6%)
+      L_beta_norms_term   = -0.0593 (-0.4%)
+      L_beta_logbeta_term = +0.2037 (1.3%)
+  L_E   = +12.9503 (82.5%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_tracker = +12.9503 (82.5%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 16.703460693359375

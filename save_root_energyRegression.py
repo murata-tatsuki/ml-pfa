@@ -8,6 +8,7 @@ from dataset import ILCDataset
 from test_yielder import TestYielder
 from ROOT import TFile, TTree
 import argparse
+import torch
 
 class Data:
     ''' TTree data for MCParticle
@@ -32,6 +33,7 @@ class Data:
     matched_ncluster = np.array([0], dtype=np.int32)
     matched_cluster = np.array([0], dtype=np.int32)
     pred_edep = np.array([0], dtype=np.float64)
+    pred_edep_cluster = np.array([0], dtype=np.float64)
     cond_beta = np.array([0], dtype=np.float64)
     cond_track = np.array([0], dtype=np.int32)
 
@@ -56,6 +58,7 @@ class Data:
         t.Branch("matched_ncluster",this.matched_ncluster,"matched_ncluster/I")
         t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
         t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
         t.Branch("cond_track",this.cond_track,"cond_track/I")
 
@@ -82,6 +85,7 @@ class RecoData:
     edep_mc = np.array([0], dtype=np.float64)
     edep_match = np.array([0], dtype=np.float64)
     pred_edep = np.array([0], dtype=np.float64)
+    pred_edep_cluster = np.array([0], dtype=np.float64)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
@@ -100,6 +104,7 @@ class RecoData:
         t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
         t.Branch("edep_match",this.edep_match,"edep_match/D")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
 
 class PredData:
     ''' TTree data for predicted (output of GravNet)
@@ -119,6 +124,7 @@ class PredData:
     mcstatus = np.array([0], dtype=np.int32)
     # edep_mc = np.array([0], dtype=np.float64)
     pred_edep = np.array([0], dtype=np.float64)
+    pred_edep_cluster = np.array([0], dtype=np.float64)
     pred_beta = np.array([0], dtype=np.float64)
     pred_alpha = np.array([0], dtype=np.int32)
     trackness = np.array([0], dtype=np.int32)
@@ -138,6 +144,7 @@ class PredData:
         t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
         # t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("pred_edep_cluster",this.pred_edep,"pred_edep_cluster/D")
         t.Branch("pred_beta",this.pred_beta,"pred_beta/D")
         t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
         t.Branch("trackness",this.trackness,"trackness/I")
@@ -148,10 +155,13 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     debug = False
     pandora=args.pandora
     energyRegression=args.energy_regression
+    energyRegressionCluster=args.energy_regression_cluster
     momentum=args.momentum
     momentumAmp=args.momentum_amp
     mctpe=args.mctpe
     energy_branch=args.energy_branch
+    device=args.device
+    if 'cuda' in device: torch.cuda.set_device(device)
     assert(not (args.beta_d_scan and (".root" in outfile)))
 
     thetaphi = True if input_dim == 7 else False
@@ -159,14 +169,16 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         input_dim += 3 
         if momentumAmp:
             input_dim += 1
+    if energyRegressionCluster:
+        output_dim += 1
     print(f"Loading model from checkpoint {ckpt}")
     if energy_branch:
-        model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
+        model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
-        model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
+        model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
-    yielder = TestYielder(model=model, dataset=dataset)
+    yielder = TestYielder(model=model, dataset=dataset, device=device)
 
     nmax = None if nend==-1 else nend-nstart+1
     print("number of entry : ", nmax)
@@ -183,8 +195,15 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     td_list = [args.td]
 
     if args.beta_d_scan:
-        tbeta_list = [i/10.0 for i in range(0,10)]
+        tbeta_list = [i/10.0 for i in range(1,10)]
         td_list = [i/10.0 for i in range(1,10)]
+    if args.beta_d_scan:
+        tbeta_list_ = [i/10.0 for i in range(9,0,-2)]
+        td_list_ = [i/10.0 for i in range(9,0,-2)]
+
+    # if args.beta_d_scan:
+    #     tbeta_list = [i/10.0 for i in range(9,0,-2)]
+    #     td_list = [i/10.0 for i in range(9,0,-2)]
 
 
     print(tbeta_list)
@@ -217,7 +236,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d3.setup_branch(t3)
 
             # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, pandora=pandora, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
                 if i == nmax: break
                 if i < 10 or i%100 == 0:
                     print("Event", i, "processing...")
@@ -270,14 +289,15 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
                     if not pandora:
                         predicted_beta = prediction.pred_betas[pattern_mcid]
-                        predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                        predicted_energy = prediction.pred_tracker_energy[pattern_mcid]
                         predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                        predicted_energy_cluster = prediction.pred_cluster_energy[pattern_mcid] if energyRegressionCluster else -np.ones(1)
                         cond_tracknesses = match_track[np.argsort(-predicted_beta)]
                         cond_trackness = cond_tracknesses[0]
                         predicted_beta = -np.sort(-predicted_beta)
                         # print(predicted_beta[0], cond_trackness)
                     else:
-                        predicted_energy = prediction.pred_cluster_energy[pattern_mcid]
+                        predicted_energy = prediction.pred_tracker_energy[pattern_mcid]
                         cond_trackness = 0
 
                     edep_reco = 0
@@ -300,6 +320,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     # for MC particle, take any element from the match because they should be the same
                     my_label = match_label[0]
                     pred_edep = predicted_energy[0]                                  ## alpha
+                    pred_edep_cluster = np.sum(predicted_energy_cluster)
                     # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
 
                     # Set values for TTree and fill
@@ -322,6 +343,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d.matched_ncluster[0] = matched_ncluster
                     d.matched_cluster[0] = matched_cluster
                     d.pred_edep[0] = pred_edep
+                    d.pred_edep_cluster[0] = pred_edep_cluster
                     d.cond_beta[0] = predicted_beta[0]
                     d.cond_track[0] = cond_trackness
 
@@ -367,7 +389,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d2.mcpz[0] = -1
                     d2.mcen[0] = -1
                     d2.mcstatus[0] = -1
-                    pred_edep = 0
+                    d2.pred_edep[0] = 0
+                    d2.pred_edep_cluster[0] = 0
 
                     if (matched_mcp_found):
                         d2.mcid[0] = matched_mcp
@@ -379,7 +402,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d2.mcpz[0] = mcp_label[7]
                         d2.mcen[0] = np.sqrt(d2.mcmass[0]**2 + d2.mcpx[0]**2 + d2.mcpy[0]**2 + d2.mcpz[0]**2)
                         d2.mcstatus[0] = mcp_label[8]
-                        d.pred_edep[0] = pred_edep
+                        d2.pred_edep[0] = pred_edep
+                        d2.pred_edep_cluster[0] = pred_edep_cluster
 
                     d2.edep_reco[0] = edep_reco
                     d2.edep_mc[0] = edep_mcp
@@ -419,7 +443,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d3.mcpz[0] = my_label[7]
                         d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
                         d3.mcstatus[0] = my_label[8]
-                        d3.pred_edep[0] = prediction.pred_cluster_energy[ihit]
+                        d3.pred_edep[0] = prediction.pred_tracker_energy[ihit]
+                        d3.pred_edep_cluster[0] = prediction.pred_cluster_energy[ihit] if energyRegressionCluster else -1
                         d3.pred_beta[0] = prediction.pred_betas[ihit]
                         d3.pred_alpha[0] = condensation_points[ihit]
                         d3.trackness[0] = my_feat[5]
@@ -448,6 +473,7 @@ def main():
     parser.add_argument('output_dim', type=int)
     parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
+    parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
     parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')
     parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
@@ -455,6 +481,7 @@ def main():
     parser.add_argument('--beta-d-scan', action='store_true', help='Turn on beta and diameter scan')
     parser.add_argument('--tbeta', type=float, default=0.6)
     parser.add_argument('--td', type=float, default=0.5)
+    parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
 
     args = parser.parse_args()
     

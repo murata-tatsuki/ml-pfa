@@ -9,14 +9,15 @@ from clustering import cluster
 from matching import make_matches
 
 class TestYielder:
-    def __init__(self, model=None, dataset=None, ckpt=None, timingCut=False, use_charge_track_likeness=False):
+    def __init__(self, model=None, dataset=None, ckpt=None, device='cpu', timingCut=False, use_charge_track_likeness=False):
         self.model = get_model(jit=False) if model is None else model
         if ckpt:
-            model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+            model.load_state_dict(torch.load(ckpt, map_location=torch.device(device))['model'])
         self.dataset = dataset
         #self.dataset = get_dataset(timingCut=timingCut) if dataset is None else dataset
         self.use_charge_track_likeness = use_charge_track_likeness
         self.reset_loader()
+        self.device = device
 
     def reset_loader(self):
         self.loader = DataLoader(self.dataset, batch_size=1, shuffle=False)
@@ -29,7 +30,33 @@ class TestYielder:
         for i, data in enumerate(self.loader):
             if nmax is not None and i >= nmax:
                 break
+            # print(data.batch, torch.unique(data.batch))
             yield i, data
+
+    # def _iter_data(self, nmax=None):
+    #     if self.device=='cpu':
+    #         for i, data in enumerate(self.loader):
+    #             if nmax is not None and i >= nmax:
+    #                 break
+    #             print(data.batch, torch.unique(data.batch))
+    #             if self.device!='cpu': data.to(self.device)
+    #             out_gravnet = self.model(data.x, data.batch)
+    #             if self.device!='cpu':
+    #                 out_gravnet = out_gravnet.to('cpu')
+    #                 data = data.to('cpu')
+    #             yield i, data, out_gravnet
+    #     # else:
+    #     #     for i, data in enumerate(self.loader):
+    #     #         if nmax is not None and i >= nmax:
+    #     #             break
+    #     #         print(data.batch, torch.unique(data.batch))
+    #     #         # i,  self.iter_event(data):
+    #     #         # if self.device!='cpu': data.to(self.device)
+    #     #         # out_gravnet = self.model(data.x, data.batch)
+    #     #         # if self.device!='cpu':
+    #     #         #     out_gravnet = out_gravnet.to('cpu')
+    #     #         #     data = .to('cpu')
+    #     #              yield i, data, 
 
     def iter(self, nmax=None):
         for i, data in self._iter_data(nmax):
@@ -37,14 +64,25 @@ class TestYielder:
             if not self.event_filter(event): continue
             yield event
 
-    def iter_pred(self, nmax=None, pandora=False, energyRegression=False):
+    # def iter_event(self, data):
+    #     modelを計算して、batchの番号whereのものをyieldする
+    #     if self.device!='cpu': data.to(self.device)
+    #     out_gravnet = self.model(data.x, data.batch)
+    #     if self.device!='cpu': out_gravnet = out_gravnet.to('cpu')
+    #     print(data.batch, torch.unique(data.batch))
+    #     torch.unique(data.batch)
+    #     for batch_id in torch.unique(data.batch):
+    #         yield batch_id, out_gravnet
+
+    def iter_pred(self, nmax=None, pandora=False, energyRegression=False, energyRegressionCluster=False):
         with torch.no_grad():
             self.model.eval()
+            # for i, data, model_out in self._iter_data(nmax):
             for i, data in self._iter_data(nmax):
                 event = Event(data, pandora)
 
-                label=event.y
-                unique_label=np.unique(label)
+                # label=event.y
+                # unique_label=np.unique(label)
                 # print(f"true clusters = {len(unique_label)}")
                 #nclus = len(unique_label)
                 #if nclus == 1: continue
@@ -57,8 +95,11 @@ class TestYielder:
                 #print(f"{data.batch=}")
 
                 if not pandora:
+                    if self.device!='cpu': data.to(self.device)
                     #_,pass_noise_filter,out_gravnet = self.model(data.x, data.batch) #NoiseFilter
                     out_gravnet = self.model(data.x, data.batch) #w/o NoiseFilter
+                    if self.device!='cpu': out_gravnet = out_gravnet.to('cpu')
+                    # print(out_gravnet.size())
                     #pass_noise_filter = pass_noise_filter.numpy() #NoiseFilter
                     pred_betas = torch.sigmoid(out_gravnet[:,0]).numpy()
 
@@ -66,10 +107,12 @@ class TestYielder:
                         if (self.use_charge_track_likeness):
                             pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
                             pred_cluster_space_coords = out_gravnet[:,2:].numpy()
+                            pred_tracker_energy = None
                             pred_cluster_energy = None
                         else:
                             pred_charge_track_likeness = None
                             pred_cluster_space_coords = out_gravnet[:,1:].numpy()
+                            pred_tracker_energy = None
                             pred_cluster_energy = None
 
                         #prediction = Prediction(pass_noise_filter, pred_betas, pred_cluster_space_coords)
@@ -77,14 +120,28 @@ class TestYielder:
                         # add track hits info
                         charged_hits = event.x[:,4]
                     else :
-                        if (self.use_charge_track_likeness):
-                            pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
-                            pred_cluster_energy = out_gravnet[:,2].numpy()
-                            pred_cluster_space_coords = out_gravnet[:,3:].numpy()
+                        if (not energyRegressionCluster):
+                            if (self.use_charge_track_likeness):
+                                pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
+                                pred_tracker_energy = out_gravnet[:,2].numpy()
+                                pred_cluster_energy = None
+                                pred_cluster_space_coords = out_gravnet[:,3:].numpy()
+                            else:
+                                pred_charge_track_likeness = None
+                                pred_tracker_energy = out_gravnet[:,1].numpy()
+                                pred_cluster_energy = None
+                                pred_cluster_space_coords = out_gravnet[:,2:].numpy()
                         else:
-                            pred_charge_track_likeness = None
-                            pred_cluster_energy = out_gravnet[:,1].numpy()
-                            pred_cluster_space_coords = out_gravnet[:,2:].numpy()
+                            if (self.use_charge_track_likeness):
+                                pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
+                                pred_tracker_energy = out_gravnet[:,2].numpy()
+                                pred_cluster_energy = out_gravnet[:,3].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,4:].numpy()
+                            else:
+                                pred_charge_track_likeness = None
+                                pred_tracker_energy = out_gravnet[:,1].numpy()
+                                pred_cluster_energy = out_gravnet[:,2].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,2:].numpy()
                         # add track hits info
                         charged_hits = event.x[:,4]
 
@@ -92,14 +149,14 @@ class TestYielder:
                     # for i,x in enumerate(charged_hits):
                     #     print(f"[{i:03}] charged_hits={x:03}")
 
-                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_cluster_energy) #w/o noise
+                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy) #w/o noise
                 else:
-                    prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2]) #w/o noise
+                    prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None) #w/o noise
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
                 yield event, prediction
 
-    def iter_clustering(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):
-        for event, prediction in self.iter_pred(nmax, pandora, energyRegression):
+    def iter_clustering(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, energyRegressionCluster=False, clustering_td_momentum=False):
+        for event, prediction in self.iter_pred(nmax, pandora, energyRegression, energyRegressionCluster):
             if not pandora:
                 clustering, condensation_points = cluster(event, prediction, tbeta, td, clustering_td_momentum)
             else:
@@ -108,8 +165,8 @@ class TestYielder:
             pandora_clustering = np.array(event.pand[:,0], dtype=int).flatten() + 1 if pandora else None
             yield event, prediction, clustering, pandora_clustering, condensation_points
 
-    def iter_matches(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, clustering_td_momentum=False):
-        for event, prediction, clustering, pandora_clustering, condensation_points in self.iter_clustering(tbeta, td, nmax, pandora, energyRegression, clustering_td_momentum):
+    def iter_matches(self, tbeta=0.7, td=0.5, nmax=None, pandora=False, energyRegression=False, energyRegressionCluster=False, clustering_td_momentum=False):
+        for event, prediction, clustering, pandora_clustering, condensation_points in self.iter_clustering(tbeta, td, nmax, pandora, energyRegression, energyRegressionCluster, clustering_td_momentum):
             if not pandora:
                 matches = make_matches(event, prediction, clustering=clustering)
             else:
