@@ -17,7 +17,9 @@ import objectcondensation as oc
 #from gravnet_model import GravnetModel,GravnetModelWithNoiseFilter
 from dataset import ILCDataset
 from lrscheduler import CyclicLRWithRestarts
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
+from model import get_model, get_model_branch
 
 #from ReadText import ReadText
 import sys
@@ -66,6 +68,8 @@ def main():
     parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
     parser.add_argument('--restart-period', type=int, default=400)
     parser.add_argument('--jit', action='store_true', help='Use compiled python program')                                               ## not using now
+    parser.add_argument('--model-ckpt', type=str, default='', help='Use trained model parameters')
+    parser.add_argument('--ReduceLROnPlateau', action='store_true', help='Use ReduceLROnPlateau scheduler')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -166,7 +170,8 @@ def main():
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,num_workers=16, pin_memory=True)
 
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
@@ -175,15 +180,24 @@ def main():
         train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
         test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
 
-    if not args.energy_branch:
-        print(f"Loading GravnetModel")
-        from gravnet_model import GravnetModel
-        model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+    if args.model_ckpt=='':
+        if not args.energy_branch:
+            print(f"Loading GravnetModel")
+            from gravnet_model import GravnetModel
+            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+        else:
+            print(f"Loading GravnetModel with energy branch")
+            from gravnet_model import GravNetModelBranch
+            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True).to(device)
+            print(model)
     else:
-        print(f"Loading GravnetModel with energy branch")
-        from gravnet_model import GravNetModelBranch
-        model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True).to(device)
-        print(model)
+        print(f"Loading model from checkpoint {args.model_ckpt}")
+        if args.energy_branch:
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+        else:
+            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+
+
     #else:
     #    model = GravnetModel(input_dim=4, output_dim=3, k=50).to(device)
 
@@ -197,13 +211,16 @@ def main():
     epoch_size = len(train_loader.dataset)
     epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
     epoch_size = epoch_size + epoch_size_tune
-    #optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5, weight_decay=1e-4)
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=9.0e-6, weight_decay=1e-4)
+    
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
 
     if not args.settings_Sep01:
-        print("restart period : ", args.restart_period)
-        scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine")
+        if args.ReduceLROnPlateau:
+            print("use ReduceLROnPlateau scheduler")
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=3, threshold=0.01)
+        else:
+            print("restart period : ", args.restart_period)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine")
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 
@@ -425,8 +442,6 @@ def main():
                     return_loss += LE
             return return_loss
 
-
-
     def train(epoch):
         print('Training epoch', epoch)
         train_acc=0.
@@ -440,7 +455,8 @@ def main():
             for key, value in components.items():
                 if not key in loss_components: loss_components[key] = 0.
                 loss_components[key] += value
-        if not args.settings_Sep01: scheduler.step()
+        if not args.settings_Sep01: 
+            if not args.ReduceLROnPlateau: scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
             pbar.set_postfix({'loss': '?'})
@@ -458,7 +474,8 @@ def main():
                     update(components)
                 loss.backward()
                 optimizer.step()
-                if not args.settings_Sep01: scheduler.batch_step()
+                if not args.settings_Sep01: 
+                    if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
                 cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 data_y_list.append(learning_para["data.y.long"].tolist())
@@ -481,7 +498,8 @@ def main():
         cluster_space_coords_list=[]
         data_y_list=[]
         model.train()
-        if not args.settings_Sep01: scheduler.step()
+        if not args.settings_Sep01: 
+            if not args.ReduceLROnPlateau: scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader_tune, total=len(train_loader_tune))
             pbar.set_postfix({'loss': '?'})
@@ -495,7 +513,8 @@ def main():
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
                 optimizer.step()
-                if not args.settings_Sep01: scheduler.batch_step()
+                if not args.settings_Sep01: 
+                    if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
                 cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 data_y_list.append(learning_para["data.y.long"].tolist())
@@ -589,6 +608,8 @@ def main():
         write_checkpoint(i_epoch)
 
         test_loss= test(i_epoch)
+        if args.ReduceLROnPlateau:
+            if i_epoch > args.epochs_nobeta: scheduler.step(test_loss)
         #test_loss/=len(test_loader)
         test_loss_history.append(test_loss)
         if test_loss < min_loss:
@@ -606,7 +627,8 @@ def main():
             print("train loss : ", train_loss)
             write_checkpoint(i_epoch)
 
-            test_loss= test(i_epoch)
+            test_loss = test(i_epoch)
+            if args.ReduceLROnPlateau: scheduler.step(test_loss)
             #test_loss/=len(test_loader)
             test_loss_history.append(test_loss)
             if test_loss < min_loss:

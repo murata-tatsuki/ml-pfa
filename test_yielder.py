@@ -141,7 +141,7 @@ class TestYielder:
                                 pred_charge_track_likeness = None
                                 pred_tracker_energy = out_gravnet[:,1].numpy()
                                 pred_cluster_energy = out_gravnet[:,2].numpy()
-                                pred_cluster_space_coords = out_gravnet[:,2:].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,3:].numpy()
                         # add track hits info
                         charged_hits = event.x[:,4]
 
@@ -152,6 +152,7 @@ class TestYielder:
                     prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy) #w/o noise
                 else:
                     prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None) #w/o noise
+                    print(event.pand)
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
                 yield event, prediction
 
@@ -172,10 +173,7 @@ class TestYielder:
             else:
                 matches = make_matches(event, prediction, clustering=pandora_clustering)
             cluster = clustering if not pandora else pandora_clustering
-            if energyRegression:
-                yield event, prediction, cluster, matches, condensation_points 
-            else:
-                yield event, prediction, cluster, matches
+            yield event, prediction, cluster, matches, condensation_points 
 
 
 class TestYielderEM(TestYielder):

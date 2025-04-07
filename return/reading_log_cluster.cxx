@@ -12,6 +12,7 @@ vector<double> l_v;
 vector<double> l_beta;
 vector<double> l_e;
 vector<double> l_e_tracker;
+vector<double> l_e_cond;
 vector<double> l_e_cluster;
 vector<double> returning;
 vector<double> train_loss;
@@ -19,7 +20,11 @@ vector<double> train_l_v;
 vector<double> train_l_beta;
 vector<double> train_l_e;
 vector<double> train_l_e_tracker;
+vector<double> train_l_e_cond;
 vector<double> train_l_e_cluster;
+
+int epoch_noLE = -1;
+// int epoch_noLE = 15;
 
 
 vector<string> split(string str, char del) {
@@ -79,6 +84,13 @@ void getting_loss(string line, bool get_train){
       else train_l_e_tracker.push_back(stod(line));
     }
 
+    if(line.find("L_E_cond ")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      // cout << stod(line) << endl;
+      if(!get_train) l_e_cond.push_back(stod(line));
+      else train_l_e_cond.push_back(stod(line));
+    }
+
     // getting L_E_cluster
     if(line.find("L_E_cluster ")!=string::npos){
       line.erase(0,line.find("= ")+3);
@@ -105,10 +117,13 @@ void reading_log_cluster(){
 
   // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2024_11_22_144511_alpha_momentum.log");  // long tau task
   // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_08_185604_alpha_tracker_modifing_momentum.log");  // 読み込むファイルのパスを指定
-  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_161918_alpha_momentum.log");  // 読み込むファイルのパスを指定
-  ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_10_170311_alpha_tracker_momentum.log");  // 読み込むファイルのパスを指定
-  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_07_150149_alpha_momentum.log");  // 読み込むファイルのパスを指定
-  // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_164401_alpha_momentum.log");  // 読み込むファイルのパスを指定
+  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_161918_alpha_momentum.log");
+  // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_03_12_141129_alpha_tracker_momentum.log");
+  // ifstream file("../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_07_150149_alpha_momentum.log");
+  // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_164401_alpha_momentum.log");
+
+
+  ifstream file("../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_03_28_100354.log");
   string line;
   bool gradient_check = false;
 
@@ -210,10 +225,10 @@ void reading_log_cluster(){
   TGraph *g_LV = new TGraph();
   TGraph *g_Lbeta = new TGraph();
   TGraph *g_LE = new TGraph();
-  TGraph *g_LEtracker = new TGraph();
+  TGraph *g_LEcond = new TGraph();
   TGraph *g_LEcluster = new TGraph();
   g_loss->GetXaxis()->SetTitle("epoch"); 
-  g_loss->GetYaxis()->SetTitle("loss"); 
+  g_loss->GetYaxis()->SetTitle("validation loss"); 
   // g_loss->SetTitle("beta * E"); 
   g_loss->SetMinimum(0); 
   // g_loss->SetMaximum(6); 
@@ -223,7 +238,7 @@ void reading_log_cluster(){
   g_LV->GetYaxis()->SetTitle("loss"); 
   g_Lbeta->SetLineColor(3); 
   g_LE->SetLineColor(4); 
-  g_LEtracker->SetLineColor(7); 
+  g_LEcond->SetLineColor(7); 
   g_LEcluster->SetLineColor(9); 
 
   TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
@@ -231,7 +246,7 @@ void reading_log_cluster(){
   legend->AddEntry( g_LV, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
   legend->AddEntry( g_Lbeta, "L_beta", "l") ;
   legend->AddEntry( g_LE, "L_E", "l") ;
-  legend->AddEntry( g_LEtracker, "L_E_condpoint", "l") ;
+  legend->AddEntry( g_LEcond, "L_E_condpoint", "l") ;
   legend->AddEntry( g_LEcluster, "L_E_cluster", "l") ;
   // legend->AddEntry( g5, "total loss w/o L_E", "l") ;
   legend->SetFillColor(0);
@@ -244,12 +259,12 @@ void reading_log_cluster(){
   TGraph *g_train_LEtracker = new TGraph();
   TGraph *g_train_LEcluster = new TGraph();
   g_train_loss->GetXaxis()->SetTitle("epoch"); 
-  g_train_loss->GetYaxis()->SetTitle("loss"); 
+  g_train_loss->GetYaxis()->SetTitle("train loss"); 
   g_train_loss->SetMinimum(0); 
   g_train_loss->SetLineColor(1); 
   g_train_LV->SetLineColor(2); 
   g_train_LV->GetXaxis()->SetTitle("epoch"); 
-  g_train_LV->GetYaxis()->SetTitle("loss"); 
+  g_train_LV->GetYaxis()->SetTitle("train loss"); 
   g_train_Lbeta->SetLineColor(3); 
   g_train_LE->SetLineColor(4); 
   g_train_LEtracker->SetLineColor(7); 
@@ -265,24 +280,26 @@ void reading_log_cluster(){
   legend_train->SetFillColor(0);
 
   for(int i=0;i<nepoch;i++){
-    g_loss->SetPoint(i,i,i>15 ? returning[i] : returning[i] - l_e[i]);
+    g_loss->SetPoint(i,i,i>epoch_noLE ? returning[i] : returning[i] - l_e[i]);
     g_LV->SetPoint(i,i,l_v[i]);
     g_Lbeta->SetPoint(i,i,l_beta[i]);
-    if(i>15){
-      g_LE->SetPoint(i-16,i,l_e[i]);
-      g_LEtracker->SetPoint(i-16,i,l_e_tracker[i]);
-      // g_LEtracker->SetPoint(i,i,l_e_tracker[i]-l_e_cluster[i]);
-      g_LEcluster->SetPoint(i-16,i,l_e_cluster[i]);
+    if(i>epoch_noLE){
+      g_LE->SetPoint(i-epoch_noLE-1,i,l_e[i]);
+      if(l_e_tracker.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_tracker[i]);
+      if(l_e_cond.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_cond[i]);
+      // g_LEcond->SetPoint(i,i,l_e_tracker[i]-l_e_cluster[i]);
+      g_LEcluster->SetPoint(i-epoch_noLE-1,i,l_e_cluster[i]);
     }
 
     if(train_l_v.size()==0) continue;
-    g_train_loss->SetPoint(i,i,i>15 ? train_l_v[i]+train_l_beta[i]+train_l_e[i] : train_l_v[i]+train_l_beta[i]);
+    g_train_loss->SetPoint(i,i,i>epoch_noLE ? train_l_v[i]+train_l_beta[i]+train_l_e[i] : train_l_v[i]+train_l_beta[i]);
     g_train_LV->SetPoint(i,i,train_l_v[i]);
     g_train_Lbeta->SetPoint(i,i,train_l_beta[i]);
-    if(i>15){
-      g_train_LE->SetPoint(i-16,i,train_l_e[i]);
-      g_train_LEtracker->SetPoint(i-16,i,train_l_e_tracker[i]);
-      g_train_LEcluster->SetPoint(i-16,i,train_l_e_cluster[i]);
+    if(i>epoch_noLE){
+      g_train_LE->SetPoint(i-epoch_noLE-1,i,train_l_e[i]);
+      if(train_l_e_tracker.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_tracker[i]);
+      if(train_l_e_cond.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_cond[i]);
+      g_train_LEcluster->SetPoint(i-epoch_noLE-1,i,train_l_e_cluster[i]);
     }
   }
 
@@ -293,7 +310,7 @@ void reading_log_cluster(){
   g_LV->Draw("same");
   g_Lbeta->Draw("same");
   g_LE->Draw("same");
-  g_LEtracker->Draw("same");
+  g_LEcond->Draw("same");
   g_LEcluster->Draw("same");
   // legend->Draw();
 
@@ -306,7 +323,7 @@ void reading_log_cluster(){
   // g5->Draw("same");
   g_Lbeta->Draw("same");
   g_LE->Draw("same");
-  g_LEtracker->Draw("same");
+  g_LEcond->Draw("same");
   g_LEcluster->Draw("same");
   legend->Draw();
 

@@ -248,7 +248,7 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_04_1
 # outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_05_143651.root
 # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_05_143651_outputD5
 
-iepoch=494
+iepoch=499
 outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_2025_02_05_143327/alphaTracker_LE16_010_ERcluster_2025_02_05_143327_${iepoch}.root
 checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_05_143327_outputD5
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
@@ -263,9 +263,19 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_10_1
 
 outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_sum_2025_02_14_101644/alpha_LE16_010_ERcluster_sum_2025_02_14_101644_${iepoch}.root
 checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_14_101644_outputD5
-python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
+
+# # outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_sum_2025_02_20_165510/alpha_LE16_010_ERcluster_sum_2025_02_20_165510_${iepoch}.root
+# # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_20_165510_outputD5
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:0
 
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1
+
+
+
+##### cluster energy, but LE weight 0
+outfile=restartPeriod30/tc_${train_particle}_${D}D_${epoch}_${test_particle}_momentum/LEweight0/alpha_0_2025_02_19_1537484_${iepoch}_tbeta_td_scan
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_19_153748_outputD5
+# python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --device cuda:1 --beta-d-scan
 
 
 
@@ -345,11 +355,16 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
 
 ## pandora energy prediction
-# test_path=/data/suehara/mldata/pfa/murata/skimmed/pandora/ntau_10GeV_10/test
+train_particle=ntau_10GeV_10
+test_particle=ntau_10GeV_10
+test_path=/data/suehara/mldata/pfa/murata/skimmed/pandora/ntau_10GeV_10/test
 # output_path=output/energy_regression/new_clustering/energyTree/pandora
-# outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_pandora.root
+outfile=tc_${train_particle}_${D}D_${epoch}_${test_particle}_pandora_20250304.root
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_08_22_123039_outputD5
+epoch=49
 
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} True True ${momentum} ${momentumAmp}
+python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora --device cuda:1
 
 
 

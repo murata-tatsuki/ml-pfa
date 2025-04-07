@@ -29,7 +29,8 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     energy = []
 
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
-    for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
+    # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=1, nmax=nmax, pandora=pandora)):
 
         if i == nmax: break
 

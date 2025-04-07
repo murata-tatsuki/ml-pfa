@@ -28,6 +28,8 @@ const bool ECluster = true;
 
 const bool filepath_ = true;
 
+double beta_threshold = 1;
+
 
 
 
@@ -39,7 +41,7 @@ const bool hyper_parameter = false;
 // const int epoch = 25;       // 20   25
 // const int train_epoch = epoch*2-1;
 
-const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : 100;
+const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particle_type == "uds91" ? 50 : 100 );
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 
 
@@ -132,11 +134,26 @@ void energy_regression(){
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alpha_LE16_010_testDetected_ERcluster_2025_02_02_015711.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alphaSqrtdiv_LE16_010_ERcluster_2025_02_04_174502.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alpha_LE16_010_testDetected_499_tbeta_td_scan/tbeta090td030.root");
-        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_sum_2025_02_14_101644/alpha_LE16_010_ERcluster_sum_2025_02_14_101644_494.root");
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311_499.root");
+        // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/LEweight0/alpha_0_2025_02_19_1537484_499.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alpha_LE16_010_gradually.root");
-        // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_uds91_5D_momentum/alpha_LE16_010_retrain_59.root");
+        fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_uds91_5D_momentum/alpha_LE16_010_119.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10to100GeV_10_5D_momentum/alpha_sqrtdiv_LE16_010_lr1e-4.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10to100GeV_10_5D_momentum/alpha_LE16_010.root");
+
+
+        // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/tbeta_td_scan/tbeta090td040.root");
+        // fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_499_perfectClustering.root");
+        // fileName = Form("../output/energy_regression_1to1/tc_uds91_5D/cluster_energy_regression/fine_tuning_2025_03_12_141129/fine_tuning_2025_03_12_141129_epoch180_perfectClsutering.root");
+
+        fileName = Form("../output/energy_regression_new/tc_ntau_10GeV_10_5D/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311_499.root");
+        // fileName = Form("../output/energy_regression_new/tc_ntau_10GeV_10_5D/cluster_energy_regression/alphaTracker_LE16_010_ERcluster_sum_2025_02_10_170311/test.root");
+        // fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alphaTracker_LE16_010_22025_02_05_143327/tbeta_td_scan/tbeta090td040.root");
+        fileName = Form("../output/energy_regression_1to1/tc_uds91_5D/cluster_energy_regression/fine_tuning_2025_03_12_141129/tbeta_td_scan/tbeta090td040.root");
+        // fileName = Form("../output/energy_regression_new/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_499.root");
+        
+        fileName = Form("../output/regression/tc_ntau_10GeV_10_5D/no_E_regression/2025_03_25_141559_outputD5_epoch59_ReduceLROnPlateau.root");
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_499_perfectClustering.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
@@ -196,6 +213,8 @@ void energy_regression(){
     TH1F *energy_resolution_per_energy_cluster[nParticle][nEnergy];
     TH2F *eff_vs_Ediff[nParticle];
     TH2F *pur_vs_Ediff[nParticle];
+    TH2F *condbeta_vs_eff[nParticle];
+    TH2F *condbeta_vs_pur[nParticle];
     TH2F *condbeta_vs_Ediff[nParticle];
     TH2F *condbeta_vs_mcen[nParticle];
     TH2F *condbeta_vs_Ediff_track[nParticle];
@@ -228,6 +247,12 @@ void energy_regression(){
         pur_vs_Ediff[ip] = new TH2F(Form("pur_vs_Ediff%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
         pur_vs_Ediff[ip]->SetXTitle("purity");
         pur_vs_Ediff[ip]->SetYTitle("predicted cluster energy - true energy");
+        condbeta_vs_eff[ip] = new TH2F(Form("condbeta_vs_eff_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, 100,0,1);
+        condbeta_vs_eff[ip]->SetXTitle("condensation beta");
+        condbeta_vs_eff[ip]->SetYTitle("efficiency");
+        condbeta_vs_pur[ip] = new TH2F(Form("condbeta_vs_pur_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, 100,0,1);
+        condbeta_vs_pur[ip]->SetXTitle("condensation beta");
+        condbeta_vs_pur[ip]->SetYTitle("purity");
         condbeta_vs_Ediff[ip] = new TH2F(Form("condbeta_vs_Ediff_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
         condbeta_vs_Ediff[ip]->SetXTitle("condensation beta");
         condbeta_vs_Ediff[ip]->SetYTitle("predicted energy - true energy");
@@ -291,6 +316,7 @@ void energy_regression(){
             tree[irawfile]->GetEntry(ientry);
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
+            // if(cond_beta<beta_threshold) continue;
             auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
             if(result == particledgValues.end()) continue;
             int itr = distance(particledgValues.begin(), result) / 2;
@@ -300,12 +326,12 @@ void energy_regression(){
 
             if(edep>1) purity[itr]->Fill(pur);
             purity2d[itr]->Fill(pur,edep);
-            if(edep<10){
-                purity_energy[itr][(int)edep]->Fill(pur);
-                purity_energy_normalize[itr][(int)edep]->Fill(pur);
-                efficiency_energy[itr][(int)edep]->Fill(eff);
-                efficiency_energy_normalize[itr][(int)edep]->Fill(eff);
-            }
+            // if(edep<10){
+            //     purity_energy[itr][(int)edep]->Fill(pur);
+            //     purity_energy_normalize[itr][(int)edep]->Fill(pur);
+            //     efficiency_energy[itr][(int)edep]->Fill(eff);
+            //     efficiency_energy_normalize[itr][(int)edep]->Fill(eff);
+            // }
             if(edep>1) efficiency[itr]->Fill(eff);
             efficiency2d[itr]->Fill(eff,edep);
 
@@ -328,6 +354,8 @@ void energy_regression(){
 
             if(edep>1) eff_vs_Ediff[itr]->Fill(eff,pred_edep_cluster-mcen);
             if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster-mcen);
+            condbeta_vs_eff[itr]->Fill(cond_beta,eff);
+            condbeta_vs_pur[itr]->Fill(cond_beta,pur);
             condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
             if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep-mcen);
             else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep-mcen);
@@ -602,6 +630,24 @@ void energy_regression(){
             energy_resolution_per_energy[ip][ie]->SetAxisRange(-Eres_fit_range,Eres_fit_range);
             // cout << energy_resolution_per_energy[ip][ie]->GetStdDev() << endl;
             resolution_rms[ip][ie] = energy_resolution_per_energy[ip][ie]->GetStdDev();
+            // // // // // if(energy_resolution_per_energy[ip][ie]->Integral(Eres_fitbin_lower,Eres_fitbin_upper)>30){
+            // // // // //     // TH1F *histo_clone = (TH1F*) energy_resolution_per_energy[ip][ie]->Clone();
+            // // // // //     // int clonemaxbin = histo_clone->GetBinContent(histo_clone->GetMaximumBin());
+            // // // // //     // double clonebinwidth = histo_clone->GetBinWidth(1);
+            // // // // //     // while (clonemaxbin<30 || clonebinwidth>0.2) {
+            // // // // //     //     histo_clone->Rebin(30);
+            // // // // //     //     clonemaxbin = histo_clone->GetBinContent(histo_clone->GetMaximumBin());
+            // // // // //     //     clonebinwidth = histo_clone->GetBinWidth(1);
+            // // // // //     // }
+            // // // // //     // histo_clone->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+            // // // // //     if(ip==0) energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-0.2,0.2);
+            // // // // //     else energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+            // // // // //     resolution_sigma[ip][ie] = gaus->GetParameter(2);
+            // // // // //     resolution_sigma_error[ip][ie] = gaus->GetParError(2);
+            // // // // // } else {
+            // // // // //     resolution_sigma[ip][ie] = -1;
+            // // // // //     resolution_sigma_error[ip][ie] = 0;
+            // // // // // }
             if(energy_resolution_per_energy[ip][ie]->Integral(Eres_fitbin_lower,Eres_fitbin_upper)>30){
                 // TH1F *histo_clone = (TH1F*) energy_resolution_per_energy[ip][ie]->Clone();
                 // int clonemaxbin = histo_clone->GetBinContent(histo_clone->GetMaximumBin());
@@ -612,12 +658,20 @@ void energy_regression(){
                 //     clonebinwidth = histo_clone->GetBinWidth(1);
                 // }
                 // histo_clone->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
-                energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+                if(ip==0) energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-0.2,0.2);
+                // else energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-Eres_fit_range,Eres_fit_range);
+                else energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-0.1,0.1);
                 resolution_sigma[ip][ie] = gaus->GetParameter(2);
                 resolution_sigma_error[ip][ie] = gaus->GetParError(2);
             } else {
-                resolution_sigma[ip][ie] = -1;
-                resolution_sigma_error[ip][ie] = 0;
+                energy_resolution_per_energy[ip][ie]->Rebin(4);
+                energy_resolution_per_energy[ip][ie]->Fit("gaus","NQ","",-0.1,0.1);
+                resolution_sigma[ip][ie] = gaus->GetParameter(2);
+                resolution_sigma_error[ip][ie] = gaus->GetParError(2);
+                if(gaus->GetParameter(2)>0.2){
+                    resolution_sigma[ip][ie] = -1;
+                    resolution_sigma_error[ip][ie] = 0;
+                }
             }
 
             energy_resolution_rms[ip]->SetPoint(ie, (ie+0.5)*energy_interval, resolution_rms[ip][ie]);
@@ -633,13 +687,47 @@ void energy_regression(){
             }
             // energy_resolution_per_energy[ip][ie]->Rebin(rebin_factor);
             // energy_diff_per_energy[ip][ie]->Rebin(rebin_factor);
-       }
+        }
         energy_resolution_rms[ip]->Draw("AP");
         energy_resolution_sigma[ip]->Draw("P");
         // legend_res->SetTextSize(0.03);
         // legend_res->SetFillStyle(0);
         legend_res->Draw("same");
     }
+
+    // TCanvas *c_energy_scan = new TCanvas("c_energy_scan","c_energy_scan",1);
+    // c_energy_scan->cd();
+    // energy_resolution_sigma[0]->SetLineColor(kBlue);
+    // energy_resolution_sigma[0]->SetMarkerColor(kBlue);
+    // energy_resolution_sigma[1]->SetLineColor(kRed);
+    // energy_resolution_sigma[1]->SetMarkerColor(kRed);
+    // energy_resolution_sigma[2]->SetLineColor(kGreen);
+    // energy_resolution_sigma[2]->SetMarkerColor(kGreen);
+    // energy_resolution_sigma[0]->Draw("AP");
+    // for(int ip=1;ip<nParticle;ip++){
+    //     energy_resolution_sigma[ip]->Draw("P");
+    // }
+
+    TCanvas *canvas_beta_clustering = new TCanvas("canvas_beta_clustering","canvas_beta_clustering",1);
+    canvas_beta_clustering->Divide(nParticle,2);
+    canvas_beta_clustering->cd();
+    for(int ip=0;ip<nParticle*2;ip++){
+        canvas_beta_clustering->cd(ip+1);
+        // gPad->SetLogy();
+        // if(ip<nParticle) energy[ip]->Draw();
+        if(ip<nParticle){
+            // gStyle->SetOptStat(0);
+            condbeta_vs_eff[ip]->SetStats(0);
+            condbeta_vs_eff[ip]->Draw("colz");
+        }
+        else {
+            // gPad->SetLogy();
+            condbeta_vs_pur[ip-nParticle]->SetStats(0);
+            condbeta_vs_pur[ip-nParticle]->Draw("colz");
+        }
+        // else MCtruth_energy[ip-nParticle]->Draw();
+    }
+
 
 
     TCanvas *canvas_beta_energy = new TCanvas("canvas_beta_energy","canvas_beta_energy",1);

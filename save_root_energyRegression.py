@@ -36,6 +36,7 @@ class Data:
     pred_edep_cluster = np.array([0], dtype=np.float64)
     cond_beta = np.array([0], dtype=np.float64)
     cond_track = np.array([0], dtype=np.int32)
+    # sed_radiud = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
 
 
     def setup_branch(this,t):
@@ -242,6 +243,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     print("Event", i, "processing...")
 
                 matches12, matches21 = matches
+                # print("matches12", matches12)
+                # print("matches21", matches21)
                 if (debug):
                     print(f"=== reco --> mc ===")
                     for k,v in matches12.items():
@@ -299,6 +302,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     else:
                         predicted_energy = prediction.pred_tracker_energy[pattern_mcid]
                         cond_trackness = 0
+                        predicted_beta = np.zeros(1)
+                    
+                    sed_radiud = 0
 
                     edep_reco = 0
                     edep_match = 0
@@ -317,10 +323,27 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                             edep_mcid_cluster = event.feat[pattern_mcid_cluster][:,0].detach().numpy().astype(np.float64)
                             edep_match += np.sum(edep_mcid_cluster)
 
+                            # if not pandora:
+                            #     predicted_beta = prediction.pred_betas[pattern_cluster]
+                            #     predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            #     predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                            #     predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                            #     # print(pattern_cluster, )
+                            #     # match_track = match_track[pattern_cluster]
+                            #     # cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+                            #     # cond_trackness = cond_tracknesses[0]
+                            #     cond_trackness = 0
+                            #     predicted_beta = -np.sort(-predicted_beta)
+                            #     # print(predicted_beta[0], cond_trackness)
+                            # else:
+                            #     predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            #     cond_trackness = 0
+                            #     predicted_beta = np.zeros(1)
+
                     # for MC particle, take any element from the match because they should be the same
                     my_label = match_label[0]
                     pred_edep = predicted_energy[0]                                  ## alpha
-                    pred_edep_cluster = np.sum(predicted_energy_cluster)
+                    pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else 0
                     # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
 
                     # Set values for TTree and fill
@@ -346,6 +369,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d.pred_edep_cluster[0] = pred_edep_cluster
                     d.cond_beta[0] = predicted_beta[0]
                     d.cond_track[0] = cond_trackness
+                    # d.sed_radiud[0] = sed_radiud
 
                     if (not d.mcid[0] == -1): # skip if track does not have hit
                         t.Fill()

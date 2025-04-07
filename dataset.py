@@ -228,9 +228,8 @@ class ILCDataset(Dataset):
         y = y[mcids!=-1]
         if (self.pandora):
             pand = pand[mcids!=-1,:]
-        else:
-            feat = feat[mcids!=-1,:]
-            label = label[mcids!=-1,:]
+        feat = feat[mcids!=-1,:]
+        label = label[mcids!=-1,:]
         ##
 
         """

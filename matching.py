@@ -195,7 +195,7 @@ def group_matching2(i1s, i2s):
             match_dict_2_to_1[i2] = [i1]
         else:
             bisect.insort(match_dict_2_to_1[i2],i1)
-
+        
     #matches12 = [[k, v] for k, v in match_dict_1_to_2.items()]
     #matches21 = [[k, v] for k, v in match_dict_2_to_1.items()]
     #return matches12,matches21
