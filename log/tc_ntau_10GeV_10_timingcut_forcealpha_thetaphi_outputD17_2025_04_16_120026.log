@@ -1289,3 +1289,23 @@ train  L_V                   = +0.7110 (34.9%)
  train    L_E_cluster = +0.0000 (0.0%)
 learning rate :  [8.975622434388817e-06, 8.902756823265435e-06, 8.782201497513434e-06, 8.615277286509573e-06, 8.403813046840752e-06, 8.150125624968517e-06]
 train loss :  1.7168320417404175
+test   L_V                   = +0.6652 (32.7%)
+    L_V_attractive      = +0.2893 (14.2%)
+      L_V_attractive_charged      = +0.0007 (0.0%)
+      L_V_attractive_neutral      = +0.2886 (14.2%)
+    L_V_repulsive       = +0.3759 (18.5%)
+      L_V_repulsive_charged       = +0.0018 (0.1%)
+      L_V_repulsive_neutral       = +0.3741 (18.4%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.3710 (67.3%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.4227 (20.8%)
+    L_beta_track        = +0.9483 (46.6%)
+      L_beta_norms_term   = -0.0336 (-1.7%)
+      L_beta_logbeta_term = +0.4563 (22.4%)
+  L_E   = +0.0000 (0.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_cond = +0.0000 (0.0%)
+    L_E_cluster = +0.0000 (0.0%)
+Returning 3.0362415313720703
+Training epoch 6
