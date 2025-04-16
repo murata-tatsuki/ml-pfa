@@ -205,17 +205,6 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     if args.beta_d_scan:
         tbeta_list = [i/10.0 for i in range(1,10)]
         td_list = [i/10.0 for i in range(1,10)]
-    # if args.beta_d_scan:
-    #     tbeta_list_ = [i/10.0 for i in range(9,0,-2)]
-    #     td_list_ = [i/10.0 for i in range(9,0,-2)]
-    if args.beta_d_scan:
-        tbeta_list = [0.9]
-        td_list = [i/10.0 for i in range(1,10)]
-
-    # if args.beta_d_scan:
-    #     tbeta_list = [i/10.0 for i in range(9,0,-2)]
-    #     td_list = [i/10.0 for i in range(9,0,-2)]
-
 
     print(tbeta_list)
     print(td_list)
@@ -528,8 +517,6 @@ def main():
 
     args = parser.parse_args()
     
-    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=strtobool(sys.argv[9]), energyRegression=strtobool(sys.argv[10]), momentum=strtobool(sys.argv[11]), momentumAmp=strtobool(sys.argv[12]), mctpe=strtobool(sys.argv[13]))
-    # save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), pandora=args.pandora, energyRegression=args.energy_regression, momentum=args.momentum, momentumAmp=args.momentum_amp, mctpe=args.mctpe)
     save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args=args)
 
 if __name__=='__main__':

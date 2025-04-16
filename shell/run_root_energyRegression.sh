@@ -364,7 +364,7 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2024_08_22_1
 epoch=49
 
 # python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} True True ${momentum} ${momentumAmp}
-python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora --device cuda:1
+echo "python save_root_energyRegression.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora --device cuda:1"
 
 
 
