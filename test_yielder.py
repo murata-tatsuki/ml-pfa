@@ -152,7 +152,7 @@ class TestYielder:
                     prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy) #w/o noise
                 else:
                     prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None) #w/o noise
-                    print(event.pand)
+                    # print(event.pand)
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
                 yield event, prediction
 
