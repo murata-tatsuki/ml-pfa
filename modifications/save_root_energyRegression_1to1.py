@@ -315,9 +315,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         continue
                     cluster_match_ = cluster_match[np.argsort(cluster_match[:, 1])]
                     # print(cluster_match, cluster_match_)
-                    edep_reco = cluster_match_[-1,0]
-                    edep_match = cluster_match_[-1,1]
-                    pattern_cluster = (clustering==cluster_match_[-1,2])
+                    edep_reco = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,0]
+                    edep_match = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,1]
+                    pattern_cluster = pattern_mcid if args.truth_clustering else (clustering==cluster_match_[-1,2])
                     match_track = event.feat[pattern_cluster]
                     match_track = match_track[:,5].detach().numpy().astype(np.int32)
 
@@ -514,6 +514,7 @@ def main():
     parser.add_argument('--tbeta', type=float, default=0.9)
     parser.add_argument('--td', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
+    parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
 
     args = parser.parse_args()
     
