@@ -1,5 +1,8 @@
 #!/bin/sh
 
+### usage
+# python display_h5.py ${path to h5 file} ${path to html} ${first event number} ${last event number} ${virtual space coordinate dim}  (options )
+
 
 # python display_h5_240219_cluster.py ../h5/outfile_display_edit.h5 html/out_cluster.html 0 5
 # python display_h5_240219_cluster_pandora.py ../h5/outfile_display_pandora_uds.h5 html/out_cluster_pandora.html 0 1
@@ -25,4 +28,4 @@ momentumAmp=True
 # python display_h5.py ../h5/test.h5 html/test_2025_03_04_162442.html 0 1 ${virtual_space_coordinate_dim} --energy-regression --momentum --momentum-amp # > test.log
 
 
-python display_h5_240219_cluster_pandora.py ../h5/outfile_display_pandora_uds__.h5 html/out_cluster_pandora_use__.html 0 1
+# python display_h5_240219_cluster_pandora.py ../h5/outfile_display_pandora_uds__.h5 html/out_cluster_pandora_use__.html 0 1
