@@ -9,6 +9,10 @@
 using namespace std;
 
 vector<double> l_v;
+vector<double> l_v_att_charged;
+vector<double> l_v_att_neutral;
+vector<double> l_v_rep_charged;
+vector<double> l_v_rep_neutral;
 vector<double> l_beta;
 vector<double> l_e;
 vector<double> l_e_tracker;
@@ -17,6 +21,10 @@ vector<double> l_e_cluster;
 vector<double> returning;
 vector<double> train_loss;
 vector<double> train_l_v;
+vector<double> train_l_v_att_charged;
+vector<double> train_l_v_att_neutral;
+vector<double> train_l_v_rep_charged;
+vector<double> train_l_v_rep_neutral;
 vector<double> train_l_beta;
 vector<double> train_l_e;
 vector<double> train_l_e_tracker;
@@ -50,7 +58,7 @@ vector<string> split(string str, char del) {
 }
 
 void getting_loss(string line, bool get_train){
-  // getting  l_v
+    // getting  l_v
     if(line.find("L_V ")!=string::npos){
       // cout << line << endl;
       line.erase(0,line.find("= ")+3);
@@ -60,10 +68,37 @@ void getting_loss(string line, bool get_train){
       else train_l_v.push_back(stod(line));
     }
 
+    // getting  L_V_attractive_charged
+    if(line.find("L_V_attractive_charged ")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_v_att_charged.push_back(stod(line));
+      else train_l_v_att_charged.push_back(stod(line));
+    }
+
+    // getting  L_V_attractive_neutral
+    if(line.find("L_V_attractive_neutral ")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_v_att_neutral.push_back(stod(line));
+      else train_l_v_att_neutral.push_back(stod(line));
+    }
+
+    // getting  L_V_attractive_charged
+    if(line.find("L_V_repulsive_charged ")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_v_rep_charged.push_back(stod(line));
+      else train_l_v_rep_charged.push_back(stod(line));
+    }
+
+    // getting  L_V_attractive_neutral
+    if(line.find("L_V_repulsive_neutral ")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_v_rep_neutral.push_back(stod(line));
+      else train_l_v_rep_neutral.push_back(stod(line));
+    }
+
     // getting l_beta
     if(line.find("L_beta ")!=string::npos){
       line.erase(0,line.find("= ")+3);
-      // cout << stod(line) << endl;
       if(!get_train) l_beta.push_back(stod(line));
       else train_l_beta.push_back(stod(line));
     }
@@ -71,7 +106,6 @@ void getting_loss(string line, bool get_train){
     // getting l_e
     if(line.find("L_E ")!=string::npos){
       line.erase(0,line.find("= ")+3);
-      // cout << stod(line) << endl;
       if(!get_train) l_e.push_back(stod(line));
       else train_l_e.push_back(stod(line));
     }
@@ -79,14 +113,12 @@ void getting_loss(string line, bool get_train){
     // getting L_E_tracker
     if(line.find("L_E_tracker ")!=string::npos){
       line.erase(0,line.find("= ")+3);
-      // cout << stod(line) << endl;
       if(!get_train) l_e_tracker.push_back(stod(line));
       else train_l_e_tracker.push_back(stod(line));
     }
 
     if(line.find("L_E_cond ")!=string::npos){
       line.erase(0,line.find("= ")+3);
-      // cout << stod(line) << endl;
       if(!get_train) l_e_cond.push_back(stod(line));
       else train_l_e_cond.push_back(stod(line));
     }
@@ -94,7 +126,6 @@ void getting_loss(string line, bool get_train){
     // getting L_E_cluster
     if(line.find("L_E_cluster ")!=string::npos){
       line.erase(0,line.find("= ")+3);
-      // cout << stod(line) << endl;
       if(!get_train) l_e_cluster.push_back(stod(line));
       else train_l_e_cluster.push_back(stod(line));
     }
@@ -123,7 +154,7 @@ void reading_log_cluster(){
   // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_164401_alpha_momentum.log");
 
 
-  ifstream file("../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_03_28_100354.log");
+  ifstream file("../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_04_16_115502.log");
   string line;
   bool gradient_check = false;
 
@@ -223,6 +254,10 @@ void reading_log_cluster(){
 
   TGraph *g_loss = new TGraph();
   TGraph *g_LV = new TGraph();
+  TGraph *g_LV_att_charged = new TGraph();
+  TGraph *g_LV_att_neutral = new TGraph();
+  TGraph *g_LV_rep_charged = new TGraph();
+  TGraph *g_LV_rep_neutral = new TGraph();
   TGraph *g_Lbeta = new TGraph();
   TGraph *g_LE = new TGraph();
   TGraph *g_LEcond = new TGraph();
@@ -240,6 +275,10 @@ void reading_log_cluster(){
   g_LE->SetLineColor(4); 
   g_LEcond->SetLineColor(7); 
   g_LEcluster->SetLineColor(9); 
+  g_LV_att_charged->SetLineColor(1); 
+  g_LV_att_neutral->SetLineColor(2); 
+  g_LV_rep_charged->SetLineColor(3); 
+  g_LV_rep_neutral->SetLineColor(4); 
 
   TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -254,6 +293,10 @@ void reading_log_cluster(){
 
   TGraph *g_train_loss = new TGraph();
   TGraph *g_train_LV = new TGraph();
+  TGraph *g_train_LV_att_charged = new TGraph();
+  TGraph *g_train_LV_att_neutral = new TGraph();
+  TGraph *g_train_LV_rep_charged = new TGraph();
+  TGraph *g_train_LV_rep_neutral = new TGraph();
   TGraph *g_train_Lbeta = new TGraph();
   TGraph *g_train_LE = new TGraph();
   TGraph *g_train_LEtracker = new TGraph();
@@ -269,6 +312,10 @@ void reading_log_cluster(){
   g_train_LE->SetLineColor(4); 
   g_train_LEtracker->SetLineColor(7); 
   g_train_LEcluster->SetLineColor(9); 
+  g_train_LV_att_charged->SetLineColor(1); 
+  g_train_LV_att_neutral->SetLineColor(2); 
+  g_train_LV_rep_charged->SetLineColor(3); 
+  g_train_LV_rep_neutral->SetLineColor(4); 
 
   TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -282,6 +329,10 @@ void reading_log_cluster(){
   for(int i=0;i<nepoch;i++){
     g_loss->SetPoint(i,i,i>epoch_noLE ? returning[i] : returning[i] - l_e[i]);
     g_LV->SetPoint(i,i,l_v[i]);
+    g_LV_att_charged->SetPoint(i,i,l_v_att_charged[i]);
+    g_LV_att_neutral->SetPoint(i,i,l_v_att_neutral[i]);
+    g_LV_rep_charged->SetPoint(i,i,l_v_rep_charged[i]);
+    g_LV_rep_neutral->SetPoint(i,i,l_v_rep_neutral[i]);
     g_Lbeta->SetPoint(i,i,l_beta[i]);
     if(i>epoch_noLE){
       g_LE->SetPoint(i-epoch_noLE-1,i,l_e[i]);
@@ -294,6 +345,10 @@ void reading_log_cluster(){
     if(train_l_v.size()==0) continue;
     g_train_loss->SetPoint(i,i,i>epoch_noLE ? train_l_v[i]+train_l_beta[i]+train_l_e[i] : train_l_v[i]+train_l_beta[i]);
     g_train_LV->SetPoint(i,i,train_l_v[i]);
+    g_train_LV_att_charged->SetPoint(i,i,train_l_v_att_charged[i]);
+    g_train_LV_att_neutral->SetPoint(i,i,train_l_v_att_neutral[i]);
+    g_train_LV_rep_charged->SetPoint(i,i,train_l_v_rep_charged[i]);
+    g_train_LV_rep_neutral->SetPoint(i,i,train_l_v_rep_neutral[i]);
     g_train_Lbeta->SetPoint(i,i,train_l_beta[i]);
     if(i>epoch_noLE){
       g_train_LE->SetPoint(i-epoch_noLE-1,i,train_l_e[i]);
@@ -316,6 +371,7 @@ void reading_log_cluster(){
 
   TCanvas *c2 = new TCanvas("c2","c2",1);
   c2->cd();
+  c2->SetGrid();
   g_LV->SetMaximum(6); 
   g_LV->SetMinimum(0); 
   g_LV->Draw();
@@ -338,6 +394,7 @@ void reading_log_cluster(){
 
   TCanvas *c2_train = new TCanvas("c2_train","c2_train",1);
   c2_train->cd();
+  c2_train->SetGrid();
   g_train_LV->SetMaximum(6); 
   g_train_LV->SetMinimum(0); 
   g_train_LV->Draw();
@@ -412,6 +469,39 @@ void reading_log_cluster(){
     c_legend[idig]->Draw("same");
   }
   
+
+
+
+  TLegend *legend_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_LV->AddEntry( g_LV_att_charged, "attractive +-", "l");
+  legend_LV->AddEntry( g_LV_att_neutral, "attractive 0", "l");
+  legend_LV->AddEntry( g_LV_rep_charged, "repulsive +-", "l");
+  legend_LV->AddEntry( g_LV_rep_neutral, "repulsive 0", "l");
+  legend_LV->SetFillColor(0);
+  TCanvas *c_l_v = new TCanvas("c_l_v","c_l_v",1);
+  c_l_v->cd();
+  g_LV_rep_neutral->SetMinimum(0); 
+  g_LV_rep_neutral->Draw();
+  g_LV_att_charged->Draw("same");
+  g_LV_att_neutral->Draw("same");
+  g_LV_rep_charged->Draw("same");
+  legend_LV->Draw("same");
+
+
+  TLegend *legend_train_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_train_LV->AddEntry( g_train_LV_att_charged, "attractive +-", "l");
+  legend_train_LV->AddEntry( g_train_LV_att_neutral, "attractive 0", "l");
+  legend_train_LV->AddEntry( g_train_LV_rep_charged, "repulsive +-", "l");
+  legend_train_LV->AddEntry( g_train_LV_rep_neutral, "repulsive 0", "l");
+  legend_train_LV->SetFillColor(0);
+  TCanvas *c_l_v_train = new TCanvas("c_l_v_train","c_l_v_train",1);
+  c_l_v_train->cd();
+  g_train_LV_rep_neutral->SetMinimum(0); 
+  g_train_LV_rep_neutral->Draw();
+  g_train_LV_att_charged->Draw("same");
+  g_train_LV_att_neutral->Draw("same");
+  g_train_LV_rep_charged->Draw("same");
+  legend_train_LV->Draw("same");
 
 
 }

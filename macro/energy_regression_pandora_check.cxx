@@ -6,7 +6,7 @@ const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const bool pandora = true;
 
@@ -140,8 +140,13 @@ void energy_regression_pandora_check(){
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10to100GeV_10_5D_momentum/alpha_sqrtdiv_LE16_010_lr1e-4.root");
         // fileName = Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10to100GeV_10_5D_momentum/alpha_LE16_010.root");
         // fileName = Form("../output/energy_regression_1to1/pandora/tc_ntau_10GeV_10_5D_pandora_20250317.root");
-        fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_5D_pandora_20250317.root");
-        fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_5D_pandora_20250317_1tomany.root");
+        // fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_5D_pandora_20250317.root");
+        // fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_5D_pandora_20250317_1tomany.root");
+
+        // fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_pandora_20250422_1to1.root");
+        // fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_pandora_20250422_1tomany.root");
+        fileName = Form("../output/energy_regression_1to1/pandora/tc_ntau_10GeV_10_pandora_20250422_1to1.root");
+        // fileName = Form("../output/energy_regression_1to1/pandora/tc_ntau_10GeV_10_pandora_20250422_1tomany.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;

@@ -5,14 +5,10 @@ from distutils.util import strtobool
 import awkward as ak
 from model import get_model, get_model_branch
 from dataset import ILCDataset
-from test_yielder_ import TestYielder
+from test_yielder import TestYielder
 from ROOT import TFile, TTree
 import argparse
 import torch
-from sed import minimum_enclosing_sphere
-
-## 1 to 1 match to reco-cluster and true cluster
-## the largest edep_match reco-cluster is chosen
 
 class Data:
     ''' TTree data for MCParticle
@@ -40,7 +36,7 @@ class Data:
     pred_edep_cluster = np.array([0], dtype=np.float64)
     cond_beta = np.array([0], dtype=np.float64)
     cond_track = np.array([0], dtype=np.int32)
-    sed_radius = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
+    # sed_radiud = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
 
 
     def setup_branch(this,t):
@@ -66,7 +62,6 @@ class Data:
         t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
         t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
         t.Branch("cond_track",this.cond_track,"cond_track/I")
-        t.Branch("sed_radius",this.sed_radius,"sed_radius/D")
 
 #   ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
 #   ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
@@ -175,10 +170,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         input_dim += 3 
         if momentumAmp:
             input_dim += 1
-    if energyRegression:
+    if energyRegressionCluster:
         output_dim += 1
-        if energyRegressionCluster:
-            output_dim += 1
     print(f"Loading model from checkpoint {ckpt}")
     if energy_branch:
         model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
@@ -186,7 +179,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
-    yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora)
+    yielder = TestYielder(model=model, dataset=dataset, device=device)
 
     nmax = None if nend==-1 else nend-nstart+1
     print("number of entry : ", nmax)
@@ -201,11 +194,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     outfileDir = outfile
     tbeta_list = [args.tbeta]
     td_list = [args.td]
-
     if args.beta_d_scan:
-        tbeta_list = [i/10.0 for i in range(9,0,-1)]
-        td_list = [i/10.0 for i in range(9,0,-1)]
-
+        tbeta_list = [i/10.0 for i in range(1,10)]
+        td_list = [i/10.0 for i in range(1,10)]
     print(tbeta_list)
     print(td_list)
 
@@ -236,7 +227,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d3.setup_branch(t3)
 
             # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
+            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, pandora=pandora, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
                 if i == nmax: break
                 if i < 10 or i%100 == 0:
                     print("Event", i, "processing...")
@@ -282,24 +273,37 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     match_label = event.label[pattern_mcid]
                     match_feat = event.feat[pattern_mcid]
                     match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-                    # match_track = match_feat[:,5].detach().numpy().astype(np.int32)
+                    match_track = match_feat[:,5].detach().numpy().astype(np.int32)
                     # match_pdg = match_label[:,2].detach().numpy().astype(np.int32)
                     # print("pdg", match_pdg)
                     # print("track", match_track)
                     edep_sum = np.sum(match_edep)
                     ncluster = len(pattern_mcid)
+
+                    if not pandora:
+                        predicted_beta = prediction.pred_betas[pattern_mcid]
+                        predicted_energy = prediction.pred_tracker_energy[pattern_mcid]
+                        predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                        predicted_energy_cluster = prediction.pred_cluster_energy[pattern_mcid] if energyRegressionCluster else -np.ones(1)
+                        cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+                        cond_trackness = cond_tracknesses[0]
+                        predicted_beta = -np.sort(-predicted_beta)
+                        # print(predicted_beta[0], cond_trackness)
+                    else:
+                        predicted_energy = prediction.pred_tracker_energy[pattern_mcid]
+                        cond_trackness = 0
+                        predicted_beta = np.zeros(1)
                     
+                    sed_radiud = 0
+
                     edep_reco = 0
                     edep_match = 0
-                    cluster_match = []
 
                     if (id in matches12.keys()):
                         reco_match = matches12[id]
                         for rid in reco_match:
-                            edep_reco = 0
-                            edep_match = 0
-                            # if (matched_cluster == -1):
-                            matched_cluster = rid
+                            if (matched_cluster == -1):
+                                matched_cluster = rid
                             matched_ncluster += 1
                             pattern_cluster = (clustering==rid)
                             pattern_cluster_feat = event.feat[pattern_cluster]
@@ -308,48 +312,29 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                             pattern_mcid_cluster = np.logical_and(pattern_mcid, pattern_cluster)
                             edep_mcid_cluster = event.feat[pattern_mcid_cluster][:,0].detach().numpy().astype(np.float64)
                             edep_match += np.sum(edep_mcid_cluster)
-                            cluster_match.append([edep_reco, edep_match, rid])
-                    
-                    cluster_match = np.array(cluster_match)
-                    if cluster_match.shape[0]==0:
-                        continue
-                    cluster_match_ = cluster_match[np.argsort(cluster_match[:, 1])]
-                    # print(cluster_match, cluster_match_)
-                    edep_reco = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,0]
-                    edep_match = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,1]
-                    pattern_cluster = pattern_mcid if args.truth_clustering else (clustering==cluster_match_[-1,2])
-                    match_track = event.feat[pattern_cluster]
-                    match_track = match_track[:,5].detach().numpy().astype(np.int32)
 
-
-                    if not pandora:
-                        predicted_beta = prediction.pred_betas[pattern_cluster]
-                        if energyRegression:
-                            predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                            predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
-                            predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
-                        else:
-                            predicted_energy = np.zeros(1)
-                            predicted_energy_cluster = np.zeros(1)
-                        cond_tracknesses = match_track[np.argsort(-predicted_beta)]
-                        cond_trackness = cond_tracknesses[0]
-                        predicted_beta = -np.sort(-predicted_beta)
-                        # print(predicted_beta[0], cond_trackness)
-                    else:
-                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                        cond_trackness = 0
-                        predicted_beta = np.zeros(1)
+                            # if not pandora:
+                            #     predicted_beta = prediction.pred_betas[pattern_cluster]
+                            #     predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            #     predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                            #     predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                            #     # print(pattern_cluster, )
+                            #     # match_track = match_track[pattern_cluster]
+                            #     # cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+                            #     # cond_trackness = cond_tracknesses[0]
+                            #     cond_trackness = 0
+                            #     predicted_beta = -np.sort(-predicted_beta)
+                            #     # print(predicted_beta[0], cond_trackness)
+                            # else:
+                            #     predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            #     cond_trackness = 0
+                            #     predicted_beta = np.zeros(1)
 
                     # for MC particle, take any element from the match because they should be the same
                     my_label = match_label[0]
                     pred_edep = predicted_energy[0]                                  ## alpha
                     pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else 0
                     # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
-                    sed_radius=0
-                    # pred_cood = prediction.pred_cluster_spsace_coords[pattern_mcid]
-                    # print(type(pred_cood))
-                    # sed_center, sed_radius = minimum_enclosing_sphere(prediction.pred_cluster_space_coords[pattern_mcid])
-                    # print(prediction.pred_cluster_space_coords[pattern_mcid].shape, sed_center, _sed_radius, type(_sed_radius), _sed_radius.shape)
 
                     # Set values for TTree and fill
                     d.event[0] = i
@@ -374,10 +359,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d.pred_edep_cluster[0] = pred_edep_cluster
                     d.cond_beta[0] = predicted_beta[0]
                     d.cond_track[0] = cond_trackness
-                    d.sed_radius[0] = sed_radius
-
-                    if(sed_radius>3):
-                        print(i,sed_center, sed_radius, my_label[2],my_label[5],my_label[6],my_label[7],np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2))
+                    # d.sed_radiud[0] = sed_radiud
 
                     if (not d.mcid[0] == -1): # skip if track does not have hit
                         t.Fill()
@@ -475,8 +457,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d3.mcpz[0] = my_label[7]
                         d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
                         d3.mcstatus[0] = my_label[8]
-                        d3.pred_edep[0] = prediction.pred_tracker_energy[ihit] if energyRegression else -1
-                        d3.pred_edep_cluster[0] = prediction.pred_cluster_energy[ihit] if energyRegression and energyRegressionCluster else -1
+                        d3.pred_edep[0] = prediction.pred_tracker_energy[ihit]
+                        d3.pred_edep_cluster[0] = prediction.pred_cluster_energy[ihit] if energyRegressionCluster else -1
                         d3.pred_beta[0] = prediction.pred_betas[ihit]
                         d3.pred_alpha[0] = condensation_points[ihit]
                         d3.trackness[0] = my_feat[5]
@@ -511,11 +493,9 @@ def main():
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
     parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
     parser.add_argument('--beta-d-scan', action='store_true', help='Turn on beta and diameter scan')
-    parser.add_argument('--tbeta', type=float, default=0.9)
+    parser.add_argument('--tbeta', type=float, default=0.6)
     parser.add_argument('--td', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
-    parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
-    parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
 
     args = parser.parse_args()
     

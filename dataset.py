@@ -152,35 +152,7 @@ class ILCDataset(Dataset):
         momenta = feat[:,7:10]/self.max_momentum # 7,8,9
         momentaAmp = np.sqrt(np.sum(feat[:,7:10] ** 2, axis=1))/self.max_momentum
         momentaAmp = momentaAmp.reshape(momentaAmp.shape[0],1)
-        ##### adding true mass
-        # momentaSqSum = np.sum(feat[:,7:10] ** 2, axis=1)
-        # momentaSqSum = momentaSqSum.reshape(momentaSqSum.shape[0],1)
-        # mass = label[:,4] ** 2
-        # mass = np.where(momentaSqSum == 0, 0, mass)
-        # momentaAmp = np.sqrt(momentaSqSum + mass)/self.max_momentum
-        #####
-        ################# MC truth
-        # momenta = label[:,5:8]/self.max_momentum 
-        # momentaAmp = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
-        # momentaAmp = momentaAmp.reshape(momentaAmp.shape[0],1) 
-        #################
-        # momenta = feat[:,7:10] # 7,8,9
-        # momenta = np.sign(momenta) * np.log10(np.abs(momenta)+1)
 
-        #if self.flip and np.mean(x[:,4]) < 0:
-            # Negative endcap: Flip z-dependent coordinates
-            #x[:,1] *= -1 # eta
-        #    x[:,3] *= -1 # z
-        # mcenergy = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
-        # mcenergy = mcenergy.reshape(mcenergy.shape[0],1) 
-        # trackbools = feat[:,5]
-        # for i, (moment, energy) in enumerate(zip(momentaAmp, mcenergy)):
-        #     if moment[0] != 0:
-        #     # if trackbools[i][0] == 3:
-        #         print(moment[0]*self.max_momentum, ", " , energy[0])
-
-
-        ### virtual hit だけ MC truthを入れる
         if self.mctpe:
             vitualHit = feat[:,5]
             vitualHit_momenta = vitualHit
@@ -197,8 +169,6 @@ class ILCDataset(Dataset):
 
 
         if self.thetaphi:
-            # psum = np.linalg.norm(x[:,1:3],axis=1)
-            # pt = np.linalg.norm(x[:,1:2],axis=1)
             psum = np.linalg.norm(x[:,1:4],axis=1)
             pt = np.linalg.norm(x[:,1:3],axis=1)
             theta = np.arccos(x[:,3] / psum)
@@ -275,7 +245,6 @@ class ILCDataset(Dataset):
         #if self.reduce_noise: truth_cluster_props = truth_cluster_props[mask]
         #assert truth_cluster_props.shape == (x.shape[0], 5)
         order = cluster_index.argsort()
-        #print("order:", order)
         #print("cluster_index[order]", cluster_index[order])
         #print("x.shape", x.shape)
         #print("y.shape", y.shape)
@@ -290,7 +259,6 @@ class ILCDataset(Dataset):
         yclus = cluster_index
         ytrk = np.where(label[:,0]<0, 1, 0)
         y = np.stack( (yclus, ytrk), axis=1 )
-        # print("before ", pand)
 
         if (not self.test_mode):
             data = Data(

@@ -691,9 +691,10 @@ def calc_LV_Lbeta(
 
     assert is_sig.size()==is_trk.size()
     with torch.no_grad():
-        V_attractive_charged = scatter_add(V_attractive_all[is_trk].sum(dim=0), batch_object) / n_hits_per_event
+        is_trk_clu = get_clusters_with_track(cluster_index, is_trk)
+        V_attractive_charged = scatter_add(V_attractive_all[is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
         L_V_attractive_charged = V_attractive_charged.sum()
-        V_attractive_neutral = scatter_add(V_attractive_all[~is_trk].sum(dim=0), batch_object) / n_hits_per_event
+        V_attractive_neutral = scatter_add(V_attractive_all[~is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
         L_V_attractive_neutral = V_attractive_neutral.sum()
 
 
@@ -719,8 +720,8 @@ def calc_LV_Lbeta(
     L_V = L_V_attractive + L_V_repulsive
 
     with torch.no_grad():
-        L_V_repulsive_charged = (scatter_add(V_repulsive_all[is_trk].sum(dim=0), batch_object)/n_hits_per_event).sum()
-        L_V_repulsive_neutral = (scatter_add(V_repulsive_all[~is_trk].sum(dim=0), batch_object)/n_hits_per_event).sum()
+        L_V_repulsive_charged = (scatter_add(V_repulsive_all[is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
+        L_V_repulsive_neutral = (scatter_add(V_repulsive_all[~is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
 
 
     # ________________________________
@@ -1205,6 +1206,15 @@ def get_condpoints(betas: np.array, tbeta: float=.1) -> np.array:
     select_condpoints = betas > tbeta
     indices_condpoints = np.nonzero(select_condpoints)[0]
     return indices_condpoints
+
+def get_clusters_with_track(cluster_id: torch.Tensor, is_trk:torch.Tensor) -> torch.Tensor:
+    """
+    Returns the boolean tensor
+    true for the points which have track in MC 
+    """
+    clu_with_trk = cluster_id[is_trk]
+    return torch.isin(cluster_id, clu_with_trk)
+
 
 def get_clustering_np(event, betas: np.array, X: np.array, charged_hits: np.array, tbeta: float=.1, td: float=1.) -> np.array:
     """

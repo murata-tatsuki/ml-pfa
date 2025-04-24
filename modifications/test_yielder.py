@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from torch_geometric.loader import DataLoader
-from torch_geometric.data import Batch
 from model import get_model
 #from dataset import get_dataset
 from event import Event
@@ -17,13 +16,13 @@ class TestYielder:
         self.dataset = dataset
         #self.dataset = get_dataset(timingCut=timingCut) if dataset is None else dataset
         self.use_charge_track_likeness = use_charge_track_likeness
-        self.device = device
         self.reset_loader()
+        self.device = device
         self.pandora = pandora
 
     def reset_loader(self):
-        self.batch_size = 1 if self.device=='cpu' else 20
-        self.loader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False)
+        batch_size = 1 if device=='cpu' else 20
+        self.loader = DataLoader(self.dataset, batch_size=batch_size, shuffle=False)
 
     def event_filter(self, event):
         """Subclassable to make an event-level filter before any model inference (for speed)"""
@@ -31,35 +30,55 @@ class TestYielder:
 
     def _iter_data(self, nmax=None):
         for i, data in enumerate(self.loader):
-            if nmax is not None and i >= nmax: break
+            if nmax is not None and i >= nmax:
+                break
+            # print(data.batch, torch.unique(data.batch))
+            yield i, data
 
-            if self.device=='cpu':
-                data.to(self.device)
-                out_gravnet = self.model(data.x, data.batch).to(self.device) if not self.pandora else None
-                yield i, data, out_gravnet
-            else:
-                for event_number, event_data, event_out_gravnet in self.iter_event(i, data):
-                    event_num = event_number + i * self.batch_size
-                    yield event_num, event_data, event_out_gravnet
+    # def _iter_data_(self, nmax=None):
+    #     if self.device=='cpu':
+    #         for i, data in enumerate(self.loader):
+    #             if nmax is not None and i >= nmax:
+    #                 break
+    #             print(data.batch, torch.unique(data.batch))
+    #             data.to(self.device)
+    #             out_gravnet = self.model(data.x, data.batch)
+    #             out_gravnet.to(self.device)
+    #             yield i, data, out_gravnet
+    #     # else:
+    #     #     for i, data in enumerate(self.loader):
+    #     #         if nmax is not None and i >= nmax:
+    #     #             break
+    #     #         print(data.batch, torch.unique(data.batch))
+    #     #         # i,  self.iter_event(data):
+    #     #         # if self.device!='cpu': data.to(self.device)
+    #     #         # out_gravnet = self.model(data.x, data.batch)
+    #     #         # if self.device!='cpu':
+    #     #         #     out_gravnet = out_gravnet.to('cpu')
+    #     #         #     data = .to('cpu')
+    #     #              yield i, data, 
 
-    def iter_event(self, i, data):
-        data.to(self.device)
-        out_gravnet = self.model(data.x, data.batch).to(self.device) if not self.pandora else None
-        # data.to('cpu')
-        # out_gravnet.to('cpu')
-        data_list = data.to_data_list()
-        for batch_id, data_batch in zip(torch.unique(data.batch), data_list):
-            same_batch = data.batch==batch_id
-            out_gravnet_batch = out_gravnet[same_batch]
-            data_batch = Batch.from_data_list([data_batch])
-            yield i, data_batch, out_gravnet_batch
+    def iter(self, nmax=None):
+        for i, data in self._iter_data(nmax):
+            event = Event(data)
+            if not self.event_filter(event): continue
+            yield event
 
-    def iter_pred(self, nmax=None, energyRegression=False, energyRegressionCluster=False):
+    # def iter_event(self, data, pandora=False):
+    #     # modelを計算して、batchの番号whereのものをyieldする
+    #     if self.device!='cpu': data.to(self.device)
+    #     out_gravnet = self.model(data.x, data.batch)
+    #     if self.device!='cpu': out_gravnet = out_gravnet.to('cpu')
+    #     print(data.batch, torch.unique(data.batch))
+    #     torch.unique(data.batch)
+    #     for batch_id in torch.unique(data.batch):
+    #         yield batch_id, out_gravnet
+
+    def iter_pred(self, nmax=None, pandora=False, energyRegression=False, energyRegressionCluster=False):
         with torch.no_grad():
             self.model.eval()
-            for i, data, out_gravnet in self._iter_data(nmax):
-                data=data.to('cpu')
-                out_gravnet=out_gravnet.to('cpu')
+            # for i, data, model_out in self._iter_data(nmax):
+            for i, data in self._iter_data(nmax):
                 event = Event(data, self.pandora)
 
                 # label=event.y
@@ -67,7 +86,7 @@ class TestYielder:
                 # print(f"true clusters = {len(unique_label)}")
                 #nclus = len(unique_label)
                 #if nclus == 1: continue
-
+                
                 if not self.event_filter(event): continue
                 if len(data.x) < 50: continue
 
@@ -76,12 +95,11 @@ class TestYielder:
                 #print(f"{data.batch=}")
 
                 if not self.pandora:
-                    # if self.device!='cpu': data.to(self.device)
+                    if self.device!='cpu': data.to(self.device)
                     #_,pass_noise_filter,out_gravnet = self.model(data.x, data.batch) #NoiseFilter
-                    # out_gravnet = self.model(data.x, data.batch) #w/o NoiseFilter
-                    # if self.device!='cpu': 
-                    #     data.to('cpu')
-                    #     out_gravnet.to('cpu')
+                    out_gravnet = self.model(data.x, data.batch) #w/o NoiseFilter
+                    if self.device!='cpu': out_gravnet = out_gravnet.to('cpu')
+                    # print(out_gravnet.size())
                     #pass_noise_filter = pass_noise_filter.numpy() #NoiseFilter
                     pred_betas = torch.sigmoid(out_gravnet[:,0]).numpy()
 
@@ -149,7 +167,7 @@ class TestYielder:
             else:
                 matches = make_matches(event, prediction, clustering=pandora_clustering)
             cluster = clustering if not self.pandora else pandora_clustering
-            yield event, prediction, cluster, matches, condensation_points
+            yield event, prediction, cluster, matches, condensation_points 
 
 
 class TestYielderEM(TestYielder):
