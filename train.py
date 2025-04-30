@@ -70,7 +70,8 @@ def main():
     parser.add_argument('--jit', action='store_true', help='Use compiled python program')                                               ## not using now
     parser.add_argument('--model-ckpt', type=str, default='', help='Use trained model parameters')
     parser.add_argument('--ReduceLROnPlateau', action='store_true', help='Use ReduceLROnPlateau scheduler')
-    parser.add_argument('--qmin', type=float, default=1. ,help='')
+    parser.add_argument('--qmin', type=float, default=1., help='')
+    parser.add_argument('--min-lr', type=float, default=1e-7, help='')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -90,6 +91,7 @@ def main():
     weight_decay_input = args.weight_decay
     er_coef = args.regression_coefficinet
     qmin = args.qmin
+    min_lr=args.min_lr
     print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
     if args.mctpe:
         print("momentum and energy of virtual hits are MC truth")
@@ -192,8 +194,7 @@ def main():
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
         else:
             model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
-    model.summary()
-    
+
     epoch_size = len(train_loader.dataset)
     epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
     epoch_size = epoch_size + epoch_size_tune
@@ -208,7 +209,7 @@ def main():
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine")
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine", min_lr=min_lr)
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 

@@ -14,6 +14,7 @@ using namespace std;
 // change the fileName to the log file to analyze
 // root reading_log.cxx
 /////////////
+// displays loss and gradients variation  
 
 
 int epoch_noLE = -1;    // # of epoch energy regression term is activated   defalt:15
