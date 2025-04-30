@@ -66,10 +66,11 @@ def main():
     parser.add_argument('--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')                       ## not using now
     parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
-    parser.add_argument('--restart-period', type=int, default=400)
+    parser.add_argument('--restart-period', type=int, default=30)
     parser.add_argument('--jit', action='store_true', help='Use compiled python program')                                               ## not using now
     parser.add_argument('--model-ckpt', type=str, default='', help='Use trained model parameters')
     parser.add_argument('--ReduceLROnPlateau', action='store_true', help='Use ReduceLROnPlateau scheduler')
+    parser.add_argument('--qmin', type=float, default=1. ,help='')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -88,6 +89,7 @@ def main():
     lr_input = args.learning_rate
     weight_decay_input = args.weight_decay
     er_coef = args.regression_coefficinet
+    qmin = args.qmin
     print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
     if args.mctpe:
         print("momentum and energy of virtual hits are MC truth")
@@ -190,7 +192,8 @@ def main():
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
         else:
             model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
-
+    model.summary()
+    
     epoch_size = len(train_loader.dataset)
     epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
     epoch_size = epoch_size + epoch_size_tune
@@ -303,7 +306,8 @@ def main():
                 LE_track=args.LE_track,
                 Ecl_regression=args.energy_regression_cluster,
                 LE_cluster=args.LE_cluster,
-                pred_cluster_energy=pred_cluster_energy
+                pred_cluster_energy=pred_cluster_energy,
+                qmin=qmin,
                 )
         else:
             LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
@@ -319,6 +323,7 @@ def main():
                 beta_track_term_beginning=args.beta_track_beginning,
                 force_track_alpha=args.force_track_alpha,
                 cluster_track_index=cluster_track_index,
+                qmin=qmin,
                 )
         
         if return_components:

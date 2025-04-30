@@ -154,7 +154,7 @@ void reading_log_cluster(){
   // ifstream file("../log/energy_regression/tc_uds91_timingcut_forcealpha_thetaphi_outputD5_2025_01_30_164401_alpha_momentum.log");
 
 
-  ifstream file("../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_04_16_115502.log");
+  ifstream file("../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD17_2025_04_25_174831.log");
   string line;
   bool gradient_check = false;
 
@@ -480,6 +480,7 @@ void reading_log_cluster(){
   legend_LV->SetFillColor(0);
   TCanvas *c_l_v = new TCanvas("c_l_v","c_l_v",1);
   c_l_v->cd();
+  c_l_v->SetGrid();
   g_LV_rep_neutral->SetMinimum(0); 
   g_LV_rep_neutral->Draw();
   g_LV_att_charged->Draw("same");
@@ -496,6 +497,7 @@ void reading_log_cluster(){
   legend_train_LV->SetFillColor(0);
   TCanvas *c_l_v_train = new TCanvas("c_l_v_train","c_l_v_train",1);
   c_l_v_train->cd();
+  c_l_v_train->SetGrid();
   g_train_LV_rep_neutral->SetMinimum(0); 
   g_train_LV_rep_neutral->Draw();
   g_train_LV_att_charged->Draw("same");

@@ -135,9 +135,9 @@ alphbeta=alpha
 
 
 ## no energy regression 
-outputD=17
-ncuda=2
+outputD=5
+ncuda=0
 alphbeta=alpha
-python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/ckpts_gravnet_new02_${DATE}_outputD${outputD} --restart-period 250 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
+python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/no_energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --qmin 0.5 > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 50 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --ReduceLROnPlateau --energy-regression --momentum --momentum-amp --LE-track ${alphbeta} > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 # echo "python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 50 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --ReduceLROnPlateau --energy-regression --momentum --momentum-amp --LE-track ${alphbeta} > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log"
