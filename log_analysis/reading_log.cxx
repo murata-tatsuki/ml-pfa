@@ -21,7 +21,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // int epoch_noLE = 15;
 
 
-const string fileName = "../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD17_2025_04_25_174831.log";
+const string fileName = "../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_04_30_183812.log";
 
 
 
@@ -483,6 +483,7 @@ void reading_log(){
   c_l_v->cd();
   c_l_v->SetGrid();
   g_LV_rep_neutral->SetMinimum(0); 
+  g_LV_rep_neutral->SetMaximum(1); 
   g_LV_rep_neutral->Draw();
   g_LV_att_charged->Draw("same");
   g_LV_att_neutral->Draw("same");
@@ -500,6 +501,7 @@ void reading_log(){
   c_l_v_train->cd();
   c_l_v_train->SetGrid();
   g_train_LV_rep_neutral->SetMinimum(0); 
+  g_train_LV_rep_neutral->SetMaximum(1); 
   g_train_LV_rep_neutral->Draw();
   g_train_LV_att_charged->Draw("same");
   g_train_LV_att_neutral->Draw("same");
