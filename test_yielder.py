@@ -58,8 +58,9 @@ class TestYielder:
         with torch.no_grad():
             self.model.eval()
             for i, data, out_gravnet in self._iter_data(nmax):
-                data=data.to('cpu')
-                out_gravnet=out_gravnet.to('cpu')
+                if self.device!='cpu':
+                    data=data.to('cpu')
+                    out_gravnet=out_gravnet.to('cpu')
                 event = Event(data, self.pandora)
 
                 # label=event.y
