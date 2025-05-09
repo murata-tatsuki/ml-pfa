@@ -104,7 +104,7 @@ void tbeta_td_result_energy(){
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_uds91_5D/no_E_regression/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
 
 
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }

@@ -21,7 +21,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // int epoch_noLE = 15;
 
 
-const string fileName = "../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_04_30_183812.log";
+const string fileName = "../log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_05_05_122251.log";
 
 
 
@@ -327,6 +327,8 @@ void reading_log(){
   legend_train->AddEntry( g_train_LEcluster, "L_E_cluster", "l") ;
   legend_train->SetFillColor(0);
 
+  double minimum_loss = returning[0];
+  int minimum_loss_epoch = 0;
   for(int i=0;i<nepoch;i++){
     g_loss->SetPoint(i,i,i>epoch_noLE ? returning[i] : returning[i] - l_e[i]);
     g_LV->SetPoint(i,i,l_v[i]);
@@ -357,7 +359,13 @@ void reading_log(){
       if(train_l_e_cond.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_cond[i]);
       g_train_LEcluster->SetPoint(i-epoch_noLE-1,i,train_l_e_cluster[i]);
     }
+
+    if(minimum_loss>returning[i]){
+      minimum_loss = returning[i];
+      minimum_loss_epoch = i;
+    }
   }
+  cout << "epoch : " << minimum_loss_epoch << "  minimum loss : " << minimum_loss << endl;
 
   TCanvas *c1 = new TCanvas("c1","validation loss all range",1);
   c1->cd();

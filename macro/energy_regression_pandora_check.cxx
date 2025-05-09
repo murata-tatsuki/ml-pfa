@@ -147,6 +147,8 @@ void energy_regression_pandora_check(){
         fileName = Form("../output_old/energy_regression_1to1/pandora/tc_uds91_pandora_20250422_1tomany.root");
         // fileName = Form("../output_old/energy_regression_1to1/pandora/tc_ntau_10GeV_10_pandora_20250422_1to1.root");
         // fileName = Form("../output_old/energy_regression_1to1/pandora/tc_ntau_10GeV_10_pandora_20250422_1tomany.root");
+        
+        fileName = Form("../output/energy_regression_1to1/pandora/tc_uds91_pandora_20250502_1to1_notSkimmed.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;

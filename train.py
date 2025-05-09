@@ -263,6 +263,8 @@ def main():
                     pred_cluster_energy = out[:,2]
                     pred_cluster_space_coords = out[:,3:]
         else:
+            pred_tracker_energy = None
+            pred_cluster_energy = None
             if use_charge_track_likeness:
                 pred_charge_track_likeness = torch.sigmoid(out[:,1])
                 pred_cluster_space_coords = out[:,2:]

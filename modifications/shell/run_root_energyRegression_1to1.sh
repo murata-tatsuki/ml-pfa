@@ -426,9 +426,10 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
   epoch=49
   # mkdir -p ${output_path}
-  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora
+  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora
   # python save_root_1tomany.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outfile} 0 50000 False ${input_dim} ${outD} --pandora --device cuda:0
 ##
+
 
 
 ## w/o energy prediction
@@ -437,11 +438,9 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
   # test_path=/data/suehara/mldata/pfa/murata/skimmed/pandora/ntau_10GeV_10/test
   test_path=/data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test
   # outfile=tc_${train_particle}_${D}D_pandora_20250317.root
-  # checkpoint=${checkpoint_path_old}/ckpts_gravnet_new02_2025_04_16_115502_outputD5
-  checkpoint=${checkpoint_path}/no_energy_regression/ckpts_gravnet_new02_2025_04_30_125848_outputD5
+  checkpoint=${checkpoint_path_old}/ckpts_gravnet_new02_2025_04_16_115502_outputD5
   D=5
-  output_path=output/energy_regression_1to1/
-  outdir=tc_${train_particle}/${D}D/no_E_regression/tbeta_td_scan/qmin02
+  outdir=tc_${train_particle}/${D}D/no_E_regression/tbeta_td_scan
 
   # train_particle=uds91
   # test_particle=uds91
@@ -454,7 +453,7 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
   # outdir=tc_${train_particle}_${D}D/no_E_regression/tbeta_td_scan
 
   epoch=499
-  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:0 --beta-d-scan
+  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:0 --beta-d-scan
 ##
 
 

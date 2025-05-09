@@ -32,3 +32,8 @@ momentumAmp=True
 
 
 # python save_pred.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test checkpoint/energy_regression/ckpts_gravnet_new02_2025_02_10_170311_outputD5/ckpt_499_1.pth.tar h5/test.h5 0 1 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp #> log/h5/test_2025_01_30_161918.log
+
+
+outD=$((D))
+input_dim=7
+python save_pred.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test checkpoint_old/ckpts_gravnet_new02_2025_04_16_115502_outputD5/ckpt_499_1.pth.tar h5/default.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log

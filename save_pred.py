@@ -36,7 +36,7 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
-    yielder = TestYielder(model=model, dataset=dataset, device=device)
+    yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora)
     # dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora)
     # yielder = TestYielder(model=model, dataset=dataset)
 
@@ -52,7 +52,7 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
-    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=1, nmax=nmax, pandora=pandora, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=1, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
 
         if i == nmax: break
 
@@ -80,8 +80,8 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     
                     if not pandora:
                         predicted_beta = prediction.pred_betas[pattern_cluster]
-                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                        predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster] if energyRegression else -np.zeros(1)
+                        predicted_energy = predicted_energy[np.argsort(-predicted_beta)] if energyRegression else -np.zeros(1)
                         predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
                         # print(pattern_cluster, )
                         # match_track = match_track[pattern_cluster]

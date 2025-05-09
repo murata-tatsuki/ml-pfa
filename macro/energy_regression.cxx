@@ -28,7 +28,7 @@ const bool ECluster = true;
 
 const bool filepath_ = true;
 
-double beta_threshold = 1;
+double beta_threshold = 0;
 
 
 
@@ -154,6 +154,9 @@ void energy_regression(){
         
         fileName = Form("../output/regression/tc_ntau_10GeV_10_5D/no_E_regression/2025_03_25_141559_outputD5_epoch59_ReduceLROnPlateau.root");
         fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_499_perfectClustering.root");
+        
+        
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/qmin02/tbeta090td050.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
@@ -316,7 +319,7 @@ void energy_regression(){
             tree[irawfile]->GetEntry(ientry);
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
-            // if(cond_beta<beta_threshold) continue;
+            if(cond_beta<beta_threshold) continue;
             auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
             if(result == particledgValues.end()) continue;
             int itr = distance(particledgValues.begin(), result) / 2;
