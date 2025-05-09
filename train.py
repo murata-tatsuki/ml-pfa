@@ -289,45 +289,29 @@ def main():
         detected_energy = data.feat[:,0]
         LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
         er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
-        if args.energy_regression:
-            LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta_Eregression(
-                pred_betas,
-                pred_tracker_energy,
-                pred_cluster_space_coords,
-                pred_charge_track_likeness,
-                data.y[:,0].long(),
-                true_energy,
-                data.batch,
-                detected_energy,
-                er_coef=er_coef,
-                return_components=return_components,
-                beta_term_option='short-range-potential',
-                beta_track_term=args.beta_track,
-                beta_track_term_beginning=args.beta_track_beginning,
-                force_track_alpha=args.force_track_alpha,
-                cluster_track_index=cluster_track_index,
-                LE_track=args.LE_track,
-                Ecl_regression=args.energy_regression_cluster,
-                LE_cluster=args.LE_cluster,
-                pred_cluster_energy=pred_cluster_energy,
-                qmin=qmin,
-                )
-        else:
-            LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
-                pred_betas,
-                pred_cluster_space_coords,
-                pred_charge_track_likeness,
-                data.y[:,0].long(),
-                true_energy,
-                data.batch,
-                return_components=return_components,
-                beta_term_option='short-range-potential',
-                beta_track_term=args.beta_track,
-                beta_track_term_beginning=args.beta_track_beginning,
-                force_track_alpha=args.force_track_alpha,
-                cluster_track_index=cluster_track_index,
-                qmin=qmin,
-                )
+
+        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
+            pred_betas,
+            pred_cluster_space_coords,
+            pred_charge_track_likeness,
+            data.y[:,0].long(),
+            true_energy,
+            data.batch,
+            return_components=return_components,
+            beta_term_option='short-range-potential',
+            beta_track_term=args.beta_track,
+            beta_track_term_beginning=args.beta_track_beginning,
+            force_track_alpha=args.force_track_alpha,
+            cluster_track_index=cluster_track_index,
+            qmin=qmin,
+            tracker_energy = pred_tracker_energy,
+            detected_energy = detected_energy,
+            er_coef = er_coef,
+            LE_track=args.LE_track,
+            LE_cluster=args.LE_cluster,
+            Ecl_regression=args.energy_regression_cluster,
+            pred_cluster_energy = pred_cluster_energy,
+        )
         
         if return_components:
             return out_oc
