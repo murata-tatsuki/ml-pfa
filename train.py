@@ -4,7 +4,6 @@ import tqdm
 import torch
 from torch_geometric.loader import DataLoader
 import argparse
-
 import matplotlib.pylab as plt
 import numpy as np
 
@@ -14,7 +13,7 @@ import numpy as np
 import objectcondensation as oc
 #import torch.nn.functional as f
 
-#from gravnet_model import GravnetModel,GravnetModelWithNoiseFilter
+from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
 from dataset import ILCDataset
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -24,8 +23,391 @@ from model import get_model, get_model_branch
 #from ReadText import ReadText
 import sys
 
+# for distributed data parallel
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
+
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(True)
+
+def run_requirements(args):
+    if (args.no_split and args.inputdir_validate is None):
+        print("If --no-split is specified, it is required to set --inputdir-validate")
+        raise
+    if (args.regression_coefficinet and args.energy_regression is None):
+        print("If --regression-coefficinet is specified, it is required to set --energy-regression")
+        raise
+    if (args.energy_regression_cluster and args.energy_regression is None):
+        print("If --cluster-energy is specified, it is required to set --energy-regression")
+        raise
+
+def index_setup(args):
+    index_pred_tracker_energy = 0
+    index_pred_cluster_energy = 0
+    index_pred_cluster_space_coords = 0
+    if (args.energy_regression):
+        output_dimension += 1   # adding track energy to model output
+        index_pred_tracker_energy += 1
+        if (args.energy_regression_cluster):
+            output_dimension += 1   # adding cluster energy to model output
+            index_pred_cluster_energy += 2
+    if (args.use_charged_cluster_loss):
+        output_dimension += 1   # adding output dimension
+        index_pred_tracker_energy = index_pred_tracker_energy + 1 if index_pred_tracker_energy!=0 else 0
+        index_pred_cluster_energy = index_pred_cluster_energy + 1 if index_pred_cluster_energy!=0 else 0
+
+    additional_input_dimension = 0
+    if (args.momentum):
+        additional_input_dimension += 3   # adding momentum to model input
+        if (args.momentum_amp):
+            additional_input_dimension += 1     # adding momentum amplitude to model input
+    
+    return index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
+
+
+def setup_ddp(rank, world_size):
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+def cleanup():
+    dist.destroy_process_group()
+
+def run_ddp_training(rank, world_size, args):
+    setup_ddp(rank, world_size)
+    torch.cuda.set_device(rank)
+
+    device = torch.device(f"cuda:{rank}")
+    print(device)
+    run_requirements(args)
+    reduce_noise = args.reduce_noise
+    n_epochs = args.epochs
+    batch_size = args.batch_size
+    output_dimension = args.output_dimension
+    lr_input = args.learning_rate
+    weight_decay_input = args.weight_decay
+    er_coef = args.regression_coefficinet
+    qmin = args.qmin
+    min_lr=args.min_lr
+
+    batch_size = batch_size * world_size
+    lr_input = lr_input * world_size
+
+    shuffle = True
+
+    print(f'thetaphi at main: {args.thetaphi}')
+    print("Loading dataset...")
+    # Dataset
+    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+    if reduce_noise:
+        dataset.reduce_noise = .70
+        multiply_batch_size = 1
+        print(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
+        print(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
+        batch_size *= multiply_batch_size
+    if args.dry:
+        keep = .005
+        print(f'Keeping only {100.*keep:.1f}% of events for debugging')
+        dataset, _ = dataset.split(keep)
+    if (args.no_split):
+        train_dataset = dataset
+        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+    else:
+        train_dataset, test_dataset = dataset.split(.8)
+
+    index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
+
+    print(f"Training dataset size:  {len(train_dataset)}")
+    print(f"Validating dataset size:  {len(test_dataset)}")
+    print(f"Batch size:  {batch_size}")
+
+    # Sampler
+    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+
+    # Model setup
+    if args.model_ckpt=='':
+        if not args.energy_branch:
+            print(f"Loading GravnetModel")
+            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
+        else:
+            print(f"Loading GravnetModel with energy branch")
+            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
+            print(model)
+    else:
+        print(f"Loading model from checkpoint {args.model_ckpt}")
+        if args.energy_branch:
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+        else:
+            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+    model.to(rank)
+    model = DDP(model, device_ids=[rank])
+
+    # optimizer, scheduler setting
+    epoch_size = len(train_loader.dataset)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+    if not args.settings_Sep01:
+        if args.ReduceLROnPlateau:
+            print("use ReduceLROnPlateau scheduler")
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
+            nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
+            print("epochs to calculate patience ", nepoch_factor)
+        else:
+            print("restart period : ", args.restart_period)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine", min_lr=min_lr)
+    loss_offset =1. # To prevent a negative loss from ever occuring
+
+    def check_coords(out,data) :
+        learning_para={}
+        #pred_betas = torch.sigmoid(out[:,0])
+        pred_cluster_space_coords = out[:,1:]
+        #learning_para["pred_betas"] =pred_betas
+        learning_para["pred_cluster_space_coords"] =pred_cluster_space_coords
+        #print(f"coords_test_shape:{pred_cluster_space_coords.shape}")
+        learning_para["data.y.long"]=data.y.long()
+        learning_para["data.batch"] = data.batch
+        return learning_para
+
+    def check_data(data):
+        data_para={}
+        data_para["data.y.long"]=data.y.long()
+        data_para["data.x"]=data.x
+        return data_para
+
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
+        device = out.device
+
+        pred_betas = torch.sigmoid(out[:,0])
+        if args.energy_regression:
+            if not args.energy_regression_cluster:
+                if use_charge_track_likeness:
+                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                    pred_tracker_energy = out[:,2]
+                    pred_cluster_energy = None
+                    pred_cluster_space_coords = out[:,3:]
+                    assert(pred_charge_track_likeness.device == device)
+                else:
+                    pred_charge_track_likeness = None
+                    pred_tracker_energy = out[:,1]
+                    pred_cluster_energy = None
+                    pred_cluster_space_coords = out[:,2:]
+            else:
+                if use_charge_track_likeness:
+                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                    pred_tracker_energy = out[:,2]
+                    pred_cluster_energy = out[:,3]
+                    pred_cluster_space_coords = out[:,4:]
+                    assert(pred_charge_track_likeness.device == device)
+                else:
+                    pred_charge_track_likeness = None
+                    pred_tracker_energy = out[:,1]
+                    pred_cluster_energy = out[:,2]
+                    pred_cluster_space_coords = out[:,3:]
+        else:
+            pred_tracker_energy = None
+            pred_cluster_energy = None
+            if use_charge_track_likeness:
+                pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                pred_cluster_space_coords = out[:,2:]
+                assert(pred_charge_track_likeness.device == device)
+            else:
+                pred_charge_track_likeness = None
+                pred_cluster_space_coords = out[:,1:]
+        cluster_track_index = data.y[:,1]
+
+        assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
+        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+        detected_energy = data.feat[:,0]
+        LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
+        er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
+
+        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
+            pred_betas,
+            pred_cluster_space_coords,
+            pred_charge_track_likeness,
+            data.y[:,0].long(),
+            true_energy,
+            data.batch,
+            return_components=return_components,
+            beta_term_option='short-range-potential',
+            beta_track_term=args.beta_track,
+            beta_track_term_beginning=args.beta_track_beginning,
+            force_track_alpha=args.force_track_alpha,
+            cluster_track_index=cluster_track_index,
+            qmin=qmin,
+            tracker_energy = pred_tracker_energy,
+            detected_energy = detected_energy,
+            er_coef = er_coef,
+            LE_track=args.LE_track,
+            LE_cluster=args.LE_cluster,
+            Ecl_regression=args.energy_regression_cluster,
+            pred_cluster_energy = pred_cluster_energy,
+        )
+        
+        if return_components:
+            return out_oc
+        else:
+            return_loss = LV + loss_offset
+            if args.LE_track == 'alpha_tracker_modifing_charged0':
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > 15:
+                    return_loss += LE
+                else: 
+                    return_loss += LE_charge
+            else:
+                if i_epoch > args.epochs_nobeta:
+                    return_loss += Lbeta
+                if i_epoch > args.epochs_noLE:
+                    return_loss += LE
+            return return_loss, out_oc
+
+    def train(epoch):
+        train_acc=0.
+        cluster_space_coords_list=[]
+        data_y_list=[]
+        model.train()
+        N_train = len(train_loader)
+        loss_components={}
+        gradients=[]
+        def update(components):
+            for key, value in components.items():
+                if not key in loss_components: 
+                    loss_components[key] = value.detach().clone()
+                else:
+                    loss_components[key] += value.detach()
+        if not args.settings_Sep01: 
+            if not args.ReduceLROnPlateau: scheduler.step()
+        try:
+            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
+            pbar.set_postfix({'loss': '?'})
+            for i, data in enumerate(pbar):
+                # print(i, data.x.shape, data.y.shape)
+                data = data.to(device)
+                optimizer.zero_grad()
+                if i == 0 : first_para = check_data(data)
+                result: torch.Tensor = model(data.x, data.batch)
+                learning_para = check_coords(result,data)
+                if args.jit:
+                    raise
+                else:
+                    loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                    update(components)
+                loss.backward()
+                optimizer.step()
+                if not args.settings_Sep01: 
+                    if not args.ReduceLROnPlateau: scheduler.batch_step()
+                pbar.set_postfix({'loss': float(loss)})
+                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
+                data_y_list.append(learning_para["data.y.long"].tolist())
+                gradients.append([p.grad.norm().item() for p in model.parameters()])
+                # if i == 2: raise Exception
+            # Divide by number of entries
+            layer_grads = np.mean(np.array(gradients), axis=0)
+            for key in loss_components:
+                dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
+                loss_components[key] /= (world_size * N_train)  # 平均化
+            if rank == 0:
+                # print(f"Epoch {epoch} Loss terms:")
+                # for k, v in loss_components.items():
+                #     print(f"  {k}: {v.item():.6f}")
+                print('Training epoch', epoch)
+                print(layer_grads)  ## is NOT the mean of all GPUs
+                print(oc.formatted_loss_components_string_train(loss_components))
+                return_loss = loss_components["L_V"] + loss_offset
+                if args.LE_track == 'alpha_tracker_modifing_charged0':
+                    if i_epoch > args.epochs_nobeta:
+                        return_loss += loss_components["L_beta"]
+                    if i_epoch > 15:
+                        return_loss += loss_components["L_E"]
+                    else: 
+                        return_loss += loss_components["L_E_charge"]
+                else:
+                    if i_epoch > args.epochs_nobeta:
+                        return_loss += loss_components["L_beta"]
+                    if i_epoch > args.epochs_noLE:
+                        return_loss += loss_components["L_E"]
+            train_loss = return_loss.item() if rank == 0 else loss.item()
+            return train_loss,cluster_space_coords_list,data_y_list,data,first_para
+        except Exception:
+            print('Exception encountered:', data, 'i:', i)
+            raise
+
+    def test(epoch):
+        N_test = len(test_loader)
+        loss_components = {}
+        test_acc=0.
+        def update(components):
+            for key, value in components.items():
+                if not key in loss_components: 
+                    loss_components[key] = value.detach().clone()
+                else:
+                    loss_components[key] += value.detach()
+        with torch.no_grad():
+            model.eval()
+            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
+                data = data.to(device)
+                result = model(data.x, data.batch)
+                if args.jit:
+                    raise
+                else:
+                    update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+        # Divide by number of entries
+        for key in loss_components:
+            dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
+            loss_components[key] /= (world_size * N_test)  # 平均化
+        # Compute total loss and do printout
+        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
+        if rank == 0:
+            print('test ' + oc.formatted_loss_components_string(loss_components))
+            # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
+            print(f'Returning {test_loss}')
+        return test_loss.item()
+
+    ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
+    def write_checkpoint(checkpoint_number=None, best=False):
+        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
+        ckpt = osp.join(ckpt_dir, ckpt)
+        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
+        if not args.dry:
+            os.makedirs(ckpt_dir, exist_ok=True)
+            # m = torch.jit.script(model)
+            #torch.jit.save(m,ckpt)
+            torch.save(dict(model=model.module.state_dict()), ckpt)
+
+    min_loss = 1e9
+    train_loss_history=[]
+    test_loss_history=[]
+    epoch_history=[]
+    train_acc_history=[]
+    test_acc_history=[]
+    learning_rates=[]
+
+    for i_epoch in range(n_epochs):
+        train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
+        if rank == 0:
+            train_loss_history.append(train_loss)
+            learning_rates.append(optimizer.param_groups[0]["lr"])
+            print("learning rate : ", learning_rates)
+            print("train loss : ", train_loss)
+            write_checkpoint(i_epoch)
+
+        test_loss= test(i_epoch)
+        if args.ReduceLROnPlateau:
+            if i_epoch > nepoch_factor: scheduler.step(test_loss)
+        #test_loss/=len(test_loader)
+        test_loss_history.append(test_loss)
+        if test_loss < min_loss:
+            min_loss = test_loss
+            #write_checkpoint(i_epoch, best=True)
+
+    cleanup()
+
+
+
 
 def main():
     print(sys.argv)
@@ -72,18 +454,12 @@ def main():
     parser.add_argument('--ReduceLROnPlateau', action='store_true', help='Use ReduceLROnPlateau scheduler')
     parser.add_argument('--qmin', type=float, default=1., help='')
     parser.add_argument('--min-lr', type=float, default=1e-7, help='')
+    parser.add_argument('--dp', action='store_true', help='Use dataparallel')
+    parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
-
-    device = torch.device(args.cuda)
-    print('Using device: ', device)
-    
-    torch.cuda.set_device(device)
-
-
     reduce_noise = args.reduce_noise
-
     n_epochs = args.epochs
     batch_size = args.batch_size
     output_dimension = args.output_dimension
@@ -92,6 +468,24 @@ def main():
     er_coef = args.regression_coefficinet
     qmin = args.qmin
     min_lr=args.min_lr
+
+
+    if args.ddp:
+        world_size = torch.cuda.device_count()
+        mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
+
+        sys.exit()
+ 
+
+    device = torch.device(args.cuda) if not args.dp else 'cuda'
+    print('Using device: ', device)
+    if not args.dp: torch.cuda.set_device(device)
+    if args.dp:
+        print("available number of cuda ", torch.cuda.device_count())
+        # batch_size = batch_size * torch.cuda.device_count()
+        # lr_input = lr_input * torch.cuda.device_count()
+        batch_size = batch_size * 2
+        lr_input = lr_input * 2
     print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
     if args.mctpe:
         print("momentum and energy of virtual hits are MC truth")
@@ -99,17 +493,12 @@ def main():
         print("momentum and energy of virtual hits are NOT MC truth")
         print("using detected values")
 
-
     shuffle = True
 
     print(f'thetaphi at main: {args.thetaphi}')
-
     print("Loading dataset...")
 
-    if (args.no_split and args.inputdir_validate is None):
-        print("If --no-split is specified, it is required to set --inputdir-validate")
-        raise
-
+    
     dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
@@ -136,33 +525,7 @@ def main():
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
 
-    if (args.regression_coefficinet and args.energy_regression is None):
-        print("If --regression-coefficinet is specified, it is required to set --energy-regression")
-        raise
-    if (args.energy_regression_cluster and args.energy_regression is None):
-        print("If --cluster-energy is specified, it is required to set --energy-regression")
-        raise
-    index_pred_tracker_energy = 0
-    index_pred_cluster_energy = 0
-    index_pred_cluster_space_coords = 0
-    if (args.energy_regression):
-        output_dimension += 1   # adding track energy to model output
-        index_pred_tracker_energy += 1
-        if (args.energy_regression_cluster):
-            output_dimension += 1   # adding cluster energy to model output
-            index_pred_cluster_energy += 2
-    if (args.use_charged_cluster_loss):
-        output_dimension += 1   # adding output dimension
-        index_pred_tracker_energy = index_pred_tracker_energy + 1 if index_pred_tracker_energy!=0 else 0
-        index_pred_cluster_energy = index_pred_cluster_energy + 1 if index_pred_cluster_energy!=0 else 0
-
-    additional_input_dimension = 0
-    if (args.momentum):
-        additional_input_dimension += 3   # adding momentum to model input
-        if (args.momentum_amp):
-            additional_input_dimension += 1     # adding momentum amplitude to model input
-
-
+    index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
@@ -170,7 +533,6 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
     # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,num_workers=16, pin_memory=True)
-
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
@@ -181,19 +543,23 @@ def main():
     if args.model_ckpt=='':
         if not args.energy_branch:
             print(f"Loading GravnetModel")
-            from gravnet_model import GravnetModel
-            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
         else:
             print(f"Loading GravnetModel with energy branch")
-            from gravnet_model import GravNetModelBranch
-            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True).to(device)
+            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
             print(model)
     else:
         print(f"Loading model from checkpoint {args.model_ckpt}")
         if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
         else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension).to(device)
+            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
+    if not args.dp:
+        model.to(device)
+    else:
+        model.cuda()
+        model = torch.nn.DataParallel(model)
+        torch.backends.cudnn.benchmark = True
 
     epoch_size = len(train_loader.dataset)
     epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
@@ -204,7 +570,7 @@ def main():
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
             print("use ReduceLROnPlateau scheduler")
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=3, threshold=0.01)
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
             nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
             print("epochs to calculate patience ", nepoch_factor)
         else:
@@ -273,16 +639,6 @@ def main():
                 pred_charge_track_likeness = None
                 pred_cluster_space_coords = out[:,1:]
         cluster_track_index = data.y[:,1]
-
-        # pred_cluster_space_coords = out[:,index_pred_cluster_space_coords:]
-        # if use_charge_track_likeness:
-        #     pred_charge_track_likeness = torch.sigmoid(out[:,1])
-        #     assert(pred_charge_track_likeness.device == device)
-        # else:
-        #     pred_charge_track_likeness = None
-        # pred_tracker_energy = out[:,index_pred_tracker_energy] if args.energy_regression and index_pred_tracker_energy!=0 else None
-        # pred_cluster_energy = out[:,index_pred_cluster_energy] if args.energy_regression_cluster and index_pred_cluster_energy!=0 else None
-        # cluster_track_index = data.y[:,1]
 
         assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
         true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
@@ -442,7 +798,8 @@ def main():
                 result: torch.Tensor = model(data.x, data.batch)
                 learning_para = check_coords(result,data)
                 if args.jit:
-                    loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                    # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                    raise
                 else:
                     loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                     update(components)
@@ -514,7 +871,8 @@ def main():
                 data = data.to(device)
                 result = model(data.x, data.batch)
                 if args.jit:
-                    update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                    # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                    raise
                 else:
                     update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
@@ -542,7 +900,8 @@ def main():
                 data = data.to(device)
                 result = model(data.x, data.batch)
                 if args.jit:
-                    update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                    # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                    raise
                 else:
                     update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
@@ -561,7 +920,7 @@ def main():
         if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
         if not args.dry:
             os.makedirs(ckpt_dir, exist_ok=True)
-            m = torch.jit.script(model)
+            # m = torch.jit.script(model)
             #torch.jit.save(m,ckpt)
             torch.save(dict(model=model.state_dict()), ckpt)
 
@@ -608,7 +967,7 @@ def main():
             if test_loss < min_loss:
                 min_loss = test_loss
 
-    data_y = data.y.long().cpu().numpy()
+    # data_y = data.y.long().cpu().numpy()
     # plot_history(train_loss_history,test_loss_history)
 
 def colorlabel(y,label):
@@ -709,7 +1068,8 @@ def run_profile():
                 optimizer.zero_grad()
                 result = model(data.x, data.batch)
                 if args.jit:
-                    loss = loss_fn_jit(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
+                    # loss = loss_fn_jit(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
+                    raise
                 else:
                     loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
                 print(f'loss={float(loss)}')

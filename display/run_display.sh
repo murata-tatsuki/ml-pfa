@@ -31,4 +31,4 @@ momentumAmp=True
 # python display_h5_240219_cluster_pandora.py ../h5/outfile_display_pandora_uds__.h5 html/out_cluster_pandora_use__.html 0 1
 
 
-python display_h5.py ../h5/default.h5 html/default.html 0 1 ${virtual_space_coordinate_dim} # > test.log
+python display_h5.py ../h5/test.h5 html/test.html 0 1 ${virtual_space_coordinate_dim} # > test.log

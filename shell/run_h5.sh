@@ -36,4 +36,10 @@ momentumAmp=True
 
 outD=$((D))
 input_dim=7
-python save_pred.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test checkpoint_old/ckpts_gravnet_new02_2025_04_16_115502_outputD5/ckpt_499_1.pth.tar h5/default.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log
+# python save_pred.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test checkpoint_old/ckpts_gravnet_new02_2025_04_16_115502_outputD5/ckpt_499_1.pth.tar h5/default.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log
+# python save_pred.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test checkpoint/no_energy_regression/ckpts_gravnet_new02_2025_05_05_122251_outputD5/ckpt_499_1.pth.tar h5/lr3e-5_2.5e-6.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log
+
+
+# python save_pred.py /data/suehara/mldata/pfa/murata/data/tc_ntau_10GeV_10/test checkpoint/no_energy_regression/ckpts_gravnet_new02_2025_05_11_112102_outputD5/ckpt_109_1.pth.tar h5/tc_skimmed_lr3e-5_2.5e-6.h5 0 10 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log
+# python save_pred.py /data/suehara/mldata/pfa/murata/data/tc_ntau_10GeV_10/test checkpoint/no_energy_regression/ckpts_gravnet_new02_2025_05_11_112102_outputD5/ckpt_109_1.pth.tar h5/test.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log
+python save_pred.py /data/suehara/mldata/pfa/murata/code_test_ntau/test/tc checkpoint/no_energy_regression/ckpts_gravnet_new02_2025_05_11_112102_outputD5/ckpt_109_1.pth.tar h5/test.h5 0 1 False ${input_dim} ${outD} #> log/h5/test_2025_01_30_161918.log

@@ -8,8 +8,36 @@ import tools.load_awkward as la
 from dataset import ILCDataset
 from test_yielder import TestYielder
 from model import get_model
-from matching import get_energy_ABCD,get_mask_charged_neutral
+from matching import get_energy_ABCD,get_mask_charged_neutral,matching_1to1
 import argparse
+from torch_scatter import scatter_max, scatter_add, scatter_mean
+
+
+def calc_energy_prediction(prediction, pattern_cluster, pandora=False, energyRegression=False, energyRegressionCluster=False):
+    if not pandora:
+        predicted_beta = prediction.pred_betas[pattern_cluster]
+        predicted_energy = prediction.pred_tracker_energy[pattern_cluster] if energyRegression else -np.zeros(1)
+        predicted_energy = predicted_energy[np.argsort(-predicted_beta)] if energyRegression else -np.zeros(1)
+        predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+        # print(pattern_cluster, )
+        # match_track = match_track[pattern_cluster]
+        # cond_tracknesses = match_track[np.argsort(-predicted_beta)]
+        # cond_trackness = cond_tracknesses[0]
+        cond_trackness = 0
+        predicted_beta = -np.sort(-predicted_beta)
+        # print(predicted_beta[0], cond_trackness)
+    else:
+        predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+        cond_trackness = 0
+        predicted_beta = np.zeros(1)
+    
+    pred_edep = predicted_energy[0]                                  ## alpha
+    pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else -1
+
+    return pred_edep, pred_edep_cluster
+
+
+
 
 # def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, use_charge_track_likeness=False, pandora=False):
 def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
@@ -52,7 +80,7 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
-    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=1, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=0.5, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
 
         if i == nmax: break
 
@@ -67,45 +95,45 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         assert( len(event.y[:,0]) == len(event.label[:,1]) )
         n_hits = len(event.label[:,1])
 
-        matches12, matches21 = matches
+        matched_reco_clusterIds = matching_1to1(event, clustering, matches12)
+        print(matches12)
+        print(matched_reco_clusterIds)
         dict_energy = {}
         for id in all_truth_ids:
             pattern_mcid = (event.y[:,0]==id)
             match_label = event.label[pattern_mcid] 
             
-            if (id in matches12.keys()):
-                reco_match = matches12[id]
+            if (id in matched_reco_clusterIds.keys()):
+                reco_match = matched_reco_clusterIds[id]
                 for rid in reco_match:
                     pattern_cluster = (clustering==rid)
                     
-                    if not pandora:
-                        predicted_beta = prediction.pred_betas[pattern_cluster]
-                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster] if energyRegression else -np.zeros(1)
-                        predicted_energy = predicted_energy[np.argsort(-predicted_beta)] if energyRegression else -np.zeros(1)
-                        predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
-                        # print(pattern_cluster, )
-                        # match_track = match_track[pattern_cluster]
-                        # cond_tracknesses = match_track[np.argsort(-predicted_beta)]
-                        # cond_trackness = cond_tracknesses[0]
-                        cond_trackness = 0
-                        predicted_beta = -np.sort(-predicted_beta)
-                        # print(predicted_beta[0], cond_trackness)
-                    else:
-                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                        cond_trackness = 0
-                        predicted_beta = np.zeros(1)
+                    pred_edep, pred_edep_cluster = calc_energy_prediction(prediction, pattern_cluster, pandora,energyRegression,energyRegressionCluster)
 
-                    pred_edep = predicted_energy[0]                                  ## alpha
-                    pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else -1
                     my_label = match_label[0]
                     mcen = np.sqrt(my_label[4]**2 + my_label[5]**2 + my_label[6]**2 + my_label[7]**2)
                     dict_energy[rid] = {"truth_cluster_id":id, "reco_cluster_id":rid, "pred_edep":pred_edep, "pred_edep_cluster":pred_edep_cluster, "mcen":mcen}
             # for MC particle, take any element from the match because they should be the same
 
+        for rid in all_cluster_ids:
+            if (rid not in dict_energy.keys()):
+                pattern_cluster = (clustering==rid)
+                pred_edep, pred_edep_cluster = calc_energy_prediction(prediction, pattern_cluster, pandora,energyRegression,energyRegressionCluster)
+                dict_energy[rid] = {"truth_cluster_id":-1, "reco_cluster_id":rid, "pred_edep":pred_edep, "pred_edep_cluster":pred_edep_cluster, "mcen":-1}
+
         np_energy = np.zeros((event.y.shape[0],3))
         for i, reco_clusterId in enumerate(clustering):
-            np_energy[i] = np.array([dict_energy[reco_clusterId]["pred_edep"], dict_energy[reco_clusterId]["pred_edep_cluster"], dict_energy[reco_clusterId]["mcen"]])
-
+            if (reco_clusterId in dict_energy.keys()):
+                np_energy[i] = np.array([dict_energy[reco_clusterId]["pred_edep"], dict_energy[reco_clusterId]["pred_edep_cluster"], dict_energy[reco_clusterId]["mcen"]])
+            else:
+                np_energy[i] = np.array([-1, -1, -1])
+        # label_mcen = np.sqrt(event.label[:,4]**2 + event.label[:,5]**2 + event.label[:,6]**2 + event.label[:,7]**2)
+        # truth_ids = event.y[:,0]
+        # print(np.array(label_mcen).shape, np.array(truth_ids).shape)
+        # out = scatter_mean(np.array(label_mcen), np.array(truth_ids))
+        # print(out)
+        print(np.unique(np_energy[:,-1]))
+        # np_energy[:,-1] = label_mcen
         
         ak_x = ak.from_numpy(event.x)
         ak_y = ak.from_numpy(event.y)

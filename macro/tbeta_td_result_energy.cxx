@@ -130,7 +130,8 @@ void tbeta_td_result_energy(){
 
 
     // string particleNames[3] = {"electron", "pion", "gamma"};
-    string particleNames[3] = {"electron", "pion", "photon"};
+    string particleNames[3] =        {"electron", "pion", "photon"};
+    string particleNames_spacer[3] = {" ", "     ", "   "};
     vector<int> particledgValues = {11,-11, 211,-211, 22};
     // map<int,int> pdgParticle;
     // pdgParticle[11] = 0;
@@ -321,6 +322,23 @@ void tbeta_td_result_energy(){
             delete filein[itbeta][itd];
             irawfile++;
         }
+    }
+
+
+    cout << "best parametes  " << endl;
+    double best_value[nParticle] = {0,0,0};
+    int best_tbeta[nParticle] = {-1,-1,-1}, best_td[nParticle] = {-1,-1,-1};
+    for(int ip=0;ip<nParticle;ip++){
+        for(int itbeta=0; itbeta<nbeta; itbeta++){
+            for(int itd=0; itd<ndiameter; itd++){
+                if(best_value[ip] < efficiency_scan[ip][itbeta][itd]+purity_scan[ip][itbeta][itd]){
+                    best_value[ip] = efficiency_scan[ip][itbeta][itd]+purity_scan[ip][itbeta][itd];
+                    best_tbeta[ip] = itbeta;
+                    best_td[ip] = itd;
+                }
+            }
+        }
+        cout << "    " << particleNames[ip] << particleNames_spacer[ip] << " beta:" << betas[best_tbeta[ip]]/10.0 << " diameter:" << diameters[best_td[ip]]/10.0 <<  ",  eff:" <<efficiency_scan[ip][best_tbeta[ip]][best_td[ip]] << " pur:" << purity_scan[ip][best_tbeta[ip]][best_td[ip]] << endl;
     }
 
     // efficiency[0]->Draw();

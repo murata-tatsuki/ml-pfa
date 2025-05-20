@@ -34,7 +34,9 @@ class Event:
         feat = ak_feat[i]
         label = ak_label[i]
         pred = ak_pred[i]
-        print(pred)
+        print(ak.to_numpy(pred).shape)
+        print(ak.to_numpy(label).shape)
+        np_label = ak.to_numpy(label)
         
         inst = cls()
         inst.x = feat[:,1]
@@ -50,6 +52,7 @@ class Event:
         inst.truth_cluster_idx = label[:,1]
         inst.pdgid = label[:,2]
         inst.status = ak.values_astype(label[:,8],np.uint32)
+        inst.mass = label[:,4]
         inst.mcpx = label[:,5]
         inst.mcpy = label[:,6]
         inst.mcpz = label[:,7]
@@ -61,7 +64,14 @@ class Event:
         inst.predcoord = pred[:,2:-3]
         inst.pred_e_cond = pred[:,-3]
         inst.pred_e_calo = pred[:,-2]
-        inst.mcen = pred[:,-1]
+        # inst.mcen = pred[:,-1]
+        mcen = np.sqrt(np_label[:,4]**2+np_label[:,5]**2+np_label[:,6]**2+np_label[:,7]**2)
+        inst.mcen = mcen
+
+
+        # np.set_printoptions(threshold=10000)
+        # aa = np.unique(np.stack([ak.to_numpy(label[:,2]), mcen], axis=1),axis=0)
+        # print(aa)
         
         return inst
 
@@ -84,6 +94,7 @@ class Event:
         new.truth_cluster_idx = self.truth_cluster_idx[where]
         new.pdgid = self.pdgid[where]
         new.status = self.status[where]
+        new.mass = self.mass[where]
         new.mcpx = self.mcpx[where]
         new.mcpy = self.mcpy[where]
         new.mcpz = self.mcpz[where]
@@ -96,6 +107,7 @@ class Event:
         new.pred_e_cond = self.pred_e_cond[where]
         new.pred_e_calo = self.pred_e_calo[where]
         new.mcen = self.mcen[where]
+        # new.mcen = math.sqrt(self.mass[where]**2 + self.mcpx[where]**2 + self.mcpy[where]**2 + self.mcpz[where]**2)
 
     def __len__(self):
         return len(self.x)
@@ -140,6 +152,7 @@ def plot_event(e: Event):
                     f'<br>pdgid={int(pdgid)}'
                     f'<br>mcen={mcen:.3f}'
                     for e, t, tr, px, py, pz, s, pdgid, mcen
+                    # in zip(e.energy[sel2], e.time[sel2], e.track[sel2], e.px[sel2], e.py[sel2], e.pz[sel2], e.status_str, e.pdgid[sel2], math.sqrt(e.mass[sel2]**2+e.mcpx[sel2]**2+e.mcpy[sel2]**2+e.mcpz[sel2]**2))
                     in zip(e.energy[sel2], e.time[sel2], e.track[sel2], e.px[sel2], e.py[sel2], e.pz[sel2], e.status_str, e.pdgid[sel2], e.mcen[sel2])
                 ],
                 hovertemplate=(

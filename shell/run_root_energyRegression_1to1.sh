@@ -438,10 +438,11 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
   test_path=/data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test
   # outfile=tc_${train_particle}_${D}D_pandora_20250317.root
   # checkpoint=${checkpoint_path_old}/ckpts_gravnet_new02_2025_04_16_115502_outputD5
-  checkpoint=${checkpoint_path}/no_energy_regression/ckpts_gravnet_new02_2025_04_30_125848_outputD5
+  checkpoint=${checkpoint_path}/no_energy_regression/ckpts_gravnet_new02_2025_05_11_112700_outputD5
   D=5
-  output_path=output/energy_regression_1to1/
-  outdir=tc_${train_particle}/${D}D/no_E_regression/tbeta_td_scan/qmin02
+  output_path=output/energy_regression_1to1
+  outdir=tc_${train_particle}/${D}D/no_E_regression/tbeta_td_scan/qmin02_lr3e-5_2.5e-6
+  # test_path=/data/suehara/mldata/pfa/murata/data/ntau_10GeV_10/test
 
   # train_particle=uds91
   # test_particle=uds91
@@ -454,13 +455,14 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
   # outdir=tc_${train_particle}_${D}D/no_E_regression/tbeta_td_scan
 
   epoch=499
-  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:0 --beta-d-scan
+  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --beta-d-scan
+  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --td 0.5 --tbeta 0.9
 ##
 
 
 
 outfile=test.root
-# python save_root.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 40 False 7 9 --device cuda:1
+# python save_root.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 5 --device cuda:1
 # python -m cProfile -o shell/prof/batchsize1.prof save_root.py /data/suehara/mldata/pfa/ntau/tc_ntau_10GeV_10/test ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 50000 False 7 9 --device cuda:1
 # python save_root_energyRegression_1to1.py ${test_path} ${checkpoint}/ckpt_49_1.pth.tar test/${outfile} 0 1 False 7 ${outD} False True ${momentum} ${momentumAmp}
 # python save_root_energyRegression_1to1.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint}/ckpt_${epoch}_1.pth.tar test/test.root 0 100 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1

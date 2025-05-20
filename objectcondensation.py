@@ -1481,7 +1481,7 @@ def L_E_loss(tracker_energy: torch.Tensor, mcp_energy: torch.Tensor, index: torc
     return torch.nn.functional.mse_loss(input=tracker_energy_val, target=mcp_energy_val, reduction='none').sum()
 
 
-@torch.jit.script
+# @torch.jit.script
 def calc_LV_Lbeta_Eregression_jit(
     beta: torch.Tensor, tracker_energy: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
     charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option

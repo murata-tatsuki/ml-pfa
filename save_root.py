@@ -10,6 +10,7 @@ from ROOT import TFile, TTree
 import argparse
 import torch
 from sed import minimum_enclosing_sphere
+from matching import matching_1to1
 
 ## 1 to 1 match to reco-cluster and true cluster
 ## the largest edep_match reco-cluster is chosen
@@ -244,6 +245,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                 matches12, matches21 = matches
                 # print("matches12", matches12)
                 # print("matches21", matches21)
+                # print(clustering)
                 if (debug):
                     print(f"=== reco --> mc ===")
                     for k,v in matches12.items():
@@ -264,6 +266,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     print(f"{all_truth_ids=}")
                     #print(f"{all_mcid=}")
                     print(f"{all_cluster_ids=}")
+
+                # matched_reco_clusterIds = matching_1to1(event, clustering, matches12)
+                # print(matched_reco_clusterIds)
 
                 # iterate over all mcid
                 for id in all_truth_ids:

@@ -261,3 +261,42 @@ def get_energy_ABCD(event: Event, true_charged_mask, pred_charged_mask):
     if ( debug ):
         print(f"{A=}, {B=}, {C=}, {D=}")
     return A,B,C,D
+
+
+
+
+# chose one reco-cluster from matched reco-clusters 
+# matches12   keys: truth cluster, values: reco-clusters
+def matching_1to1(event, clustering, matches12):
+    edep_reco = 0
+    edep_match = 0
+    cluster_match = []
+    dict_cluster_matching = {}
+
+    for mcid in matches12.keys():
+        cluster_match = []
+        reco_match = matches12[mcid]
+        for reco_cluster_id in reco_match:
+            pattern_reco_cluster = (clustering==reco_cluster_id)
+            pattern_reco_cluster_feat = event.feat[pattern_reco_cluster]
+            pattern_reco_cluster_edep = pattern_reco_cluster_feat[:,0].detach().numpy().astype(np.float64)
+            edep_reco = np.sum(pattern_reco_cluster_edep)
+
+            pattern_mc_cluster = (event.y[:,0]==mcid)
+            pattern_matched_cluster = np.logical_and(pattern_mc_cluster, pattern_reco_cluster)
+            edep_matched_cluster = event.feat[pattern_matched_cluster][:,0].detach().numpy().astype(np.float64)
+            edep_match = np.sum(edep_matched_cluster)
+
+            cluster_match.append([edep_reco, edep_match, reco_cluster_id])
+
+        cluster_match = np.array(cluster_match)
+        if cluster_match.shape[0]==0:
+            continue
+        cluster_match_ = cluster_match[np.argsort(cluster_match[:, 1])]
+        matched_reco_cluster_id = cluster_match_[-1,2].astype(np.int64)
+        dict_cluster_matching[mcid] = [matched_reco_cluster_id]
+
+    return dict_cluster_matching
+
+
+

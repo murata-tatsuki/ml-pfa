@@ -156,7 +156,9 @@ void energy_regression(){
         fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/alpha_LE16_010_ERcluster_2025_02_07_150149_499_perfectClustering.root");
         
         
-        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/qmin02/tbeta090td050.root");
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr1e-4_2.5e-6/tbeta090td050.root");
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr5e-4_2.5e-6/tbeta090td050.root");
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta090td050.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
