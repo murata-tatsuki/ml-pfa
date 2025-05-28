@@ -159,6 +159,8 @@ void energy_regression(){
         fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr1e-4_2.5e-6/tbeta090td050.root");
         fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr5e-4_2.5e-6/tbeta090td050.root");
         fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta090td050.root");
+        fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta090td050.root");
+        // fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta090td050.root");
     }
     filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
@@ -359,8 +361,8 @@ void energy_regression(){
 
             if(edep>1) eff_vs_Ediff[itr]->Fill(eff,pred_edep_cluster-mcen);
             if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster-mcen);
-            condbeta_vs_eff[itr]->Fill(cond_beta,eff);
-            condbeta_vs_pur[itr]->Fill(cond_beta,pur);
+            if(edep>1) condbeta_vs_eff[itr]->Fill(cond_beta,eff);
+            if(edep>1) condbeta_vs_pur[itr]->Fill(cond_beta,pur);
             condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
             if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep-mcen);
             else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep-mcen);

@@ -44,6 +44,7 @@ def run_requirements(args):
         raise
 
 def index_setup(args):
+    output_dimension = args.output_dimension
     index_pred_tracker_energy = 0
     index_pred_cluster_energy = 0
     index_pred_cluster_space_coords = 0
@@ -64,7 +65,7 @@ def index_setup(args):
         if (args.momentum_amp):
             additional_input_dimension += 1     # adding momentum amplitude to model input
     
-    return index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
+    return output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
 
 
 def setup_ddp(rank, world_size):
@@ -117,7 +118,7 @@ def run_ddp_training(rank, world_size, args):
     else:
         train_dataset, test_dataset = dataset.split(.8)
 
-    index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
+    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
@@ -157,7 +158,7 @@ def run_ddp_training(rank, world_size, args):
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine", min_lr=min_lr)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr)
     loss_offset =1. # To prevent a negative loss from ever occuring
 
     def check_coords(out,data) :
@@ -456,6 +457,7 @@ def main():
     parser.add_argument('--min-lr', type=float, default=1e-7, help='')
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
+    parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -525,7 +527,7 @@ def main():
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
 
-    index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
+    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
@@ -575,7 +577,7 @@ def main():
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy="cosine", min_lr=min_lr)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr)
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 

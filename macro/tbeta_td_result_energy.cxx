@@ -9,6 +9,7 @@ const bool saving_canvas = false;
 const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;   // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string short_particle_type = train_particle_type == "ntau_10GeV_10" ? "ntau" : (train_particle_type == "uds91" ? "uds" : "ntau_10to100GeV_10");               // ntau    uds
+const bool range_setting = true;
 
 
 const bool hyper_parameter = false;
@@ -104,7 +105,8 @@ void tbeta_td_result_energy(){
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_uds91_5D/no_E_regression/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
 
 
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }
@@ -379,6 +381,11 @@ void tbeta_td_result_energy(){
         //     eff_vs_pur[ip]->SetMaximum(1.01);
         //     eff_vs_pur[ip]->GetXaxis()->SetLimits(0.73,1.01);
         // }
+        if(range_setting){
+            eff_vs_pur[ip]->SetMaximum(1.001);
+            eff_vs_pur[ip]->SetMinimum(0.9);
+            eff_vs_pur[ip]->GetXaxis()->SetLimits(0.6,1.001);
+        }
         eff_vs_pur[ip]->Draw("AP");
         // eff_vs_pur_[0][ip]->Draw("P");
         Pandora_eff_vs_pur[ip]->Draw("P");

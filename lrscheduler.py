@@ -10,8 +10,18 @@ class ReduceMaxLROnRestart:
     def __init__(self, ratio=0.75):
         self.ratio = ratio
         
-        def __call__(self, eta_min, eta_max):
-            return eta_min, eta_max * self.ratio
+    def __call__(self, eta_min, eta_max):
+        return eta_min, eta_max * self.ratio
+        
+
+class ReduceMaxLROnRestartWithNonreducedEpochs:
+    def __init__(self, n_restarts = 3, ratio=0.75):
+        self.ratio = ratio
+        self.n_restarts = n_restarts
+        
+    def __call__(self, eta_min, eta_max, restarts=0):
+        eta_max_return = eta_max * self.ratio if restarts >= self.n_restarts else eta_max
+        return eta_min, eta_max_return
         
         
 class ExpReduceMaxLROnIteration:
@@ -116,6 +126,9 @@ class CyclicLRWithRestarts(_LRScheduler):
             self.policy_fn = policy_fn
         elif self.policy == "cosine":
             self.policy_fn = CosinePolicy()
+        elif self.policy == "cosineReduce":
+            self.policy_fn = CosinePolicy()
+            self.eta_on_restart_cb = ReduceMaxLROnRestartWithNonreducedEpochs(n_restarts=3, ratio=0.7)
         elif self.policy == "arccosine":
             self.policy_fn = ArccosinePolicy()
         elif self.policy == "triangular":
@@ -150,8 +163,10 @@ class CyclicLRWithRestarts(_LRScheduler):
         
     def _on_restart(self):
         if self.eta_on_restart_cb is not None:
-            self.eta_min, self.eta_max = self.eta_on_restart_cb(self.eta_min,
-                                                                self.eta_max)
+            if self.policy == "cosineReduce":
+                self.eta_min, self.eta_max = self.eta_on_restart_cb(self.eta_min, self.eta_max, self.restarts)
+            else:
+                self.eta_min, self.eta_max = self.eta_on_restart_cb(self.eta_min, self.eta_max)
             
     def _on_iteration(self):
         if self.eta_on_iteration_cb is not None:

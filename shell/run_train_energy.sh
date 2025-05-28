@@ -110,7 +110,7 @@ alphbeta=alpha_tracker
 
 
 ## test
-python train.py -i /data/suehara/mldata/pfa/murata/code_test_ntau/train -ii /data/suehara/mldata/pfa/murata/code_test_ntau/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 3 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --ddp
+# python train.py -i /data/suehara/mldata/pfa/murata/code_test_ntau/train -ii /data/suehara/mldata/pfa/murata/code_test_ntau/validation --no-split --thetaphi --cuda cuda:0 --epochs 500 --restart-period 30 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --lr-policy cosineReduce > test/test.log
 # python train_energyRegression.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --LE-track ${alphbeta} --momentum --momentum-amp
 # python train_energyRegression.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --LE-track ${alphbeta} --momentum #> test/learning_rate_.log
 # python train_energyRegression.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 50 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --LE-track ${alphbeta} --momentum
@@ -131,14 +131,17 @@ alphbeta=alpha
 
 
 
-
+outputD=5
+ncuda=0
+alphbeta=alpha
+# python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/no_energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --qmin 0.2 --learning-rate 5e-4 --lr-policy cosineReduce --energy-regression --LE-track ${alphbeta} --momentum --momentum-amp --regression-coefficinet 0.1 > log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_momentum.log
 
 
 ## no energy regression 
 outputD=5
-ncuda=2
+ncuda=0
 alphbeta=alpha
-# python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/no_energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate 5.0e-4 --ReduceLROnPlateau > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
+# python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/no_energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --qmin 0.1 --learning-rate 5e-4 --lr-policy cosineReduce > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 # python train.py -i /data/suehara/mldata/pfa/murata/data/ntau_10GeV_10/train -ii /data/suehara/mldata/pfa/murata/data/ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 40 --output-dimension ${outputD} --ckptdir checkpoint/no_energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate 3.0e-5 --min-lr 2.5e-6 --ddp > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 50 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --ReduceLROnPlateau --energy-regression --momentum --momentum-amp --LE-track ${alphbeta} > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log
 # echo "python train.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 50 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --ReduceLROnPlateau --energy-regression --momentum --momentum-amp --LE-track ${alphbeta} > log/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}.log"
