@@ -29,6 +29,9 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 
+# clipping
+import torch.nn.utils as utils
+
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(True)
 
@@ -298,6 +301,7 @@ def run_ddp_training(rank, world_size, args):
                     loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                     update(components)
                 loss.backward()
+                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -458,6 +462,7 @@ def main():
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
+    parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -806,6 +811,7 @@ def main():
                     loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                     update(components)
                 loss.backward()
+                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -845,6 +851,7 @@ def main():
                 learning_para = check_coords(result,data)
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
+                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -1076,6 +1083,7 @@ def run_profile():
                     loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
                 print(f'loss={float(loss)}')
                 loss.backward()
+                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 pbar.set_postfix({'loss': float(loss)})
     print(prof.key_averages().table(sort_by="cpu_time", row_limit=10))

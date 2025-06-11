@@ -21,7 +21,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // int epoch_noLE = 15;
 
 
-const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_02_10_170311_alpha_tracker_momentum.log";
+const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_07_142213_alpha_momentum.log";
 
 
 
@@ -270,6 +270,7 @@ void reading_log(){
   // g_loss->SetMaximum(6); 
   g_loss->SetLineColor(1); 
   g_LV->SetLineColor(2); 
+  g_LV->GetYaxis()->SetTitle("validation loss"); 
   g_LV->GetXaxis()->SetTitle("epoch"); 
   g_LV->GetYaxis()->SetTitle("loss"); 
   g_Lbeta->SetLineColor(3); 
@@ -381,6 +382,7 @@ void reading_log(){
   TCanvas *c2 = new TCanvas("c2","validation loss",1);
   c2->cd();
   c2->SetGrid();
+  g_LV->GetYaxis()->SetTitle("validation loss"); 
   g_LV->SetMaximum(6); 
   g_LV->SetMinimum(0); 
   g_LV->Draw();

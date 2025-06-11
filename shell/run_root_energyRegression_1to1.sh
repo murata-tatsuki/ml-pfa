@@ -387,6 +387,8 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 # python save_root_energyRegression_1to1.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
 # python save_root_energyRegression_1to1.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
+checkpoint=${checkpoint_path}/no_energy_regression/ckpts_gravnet_new02_2025_06_08_193305_outputD5
+python save_root.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
 
 

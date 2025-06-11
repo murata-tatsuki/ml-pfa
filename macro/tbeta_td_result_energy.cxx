@@ -106,7 +106,9 @@ void tbeta_td_result_energy(){
 
 
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+
+                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }
@@ -327,7 +329,7 @@ void tbeta_td_result_energy(){
     }
 
 
-    cout << "best parametes  " << endl;
+    cout << "best parameters  " << endl;
     double best_value[nParticle] = {0,0,0};
     int best_tbeta[nParticle] = {-1,-1,-1}, best_td[nParticle] = {-1,-1,-1};
     for(int ip=0;ip<nParticle;ip++){

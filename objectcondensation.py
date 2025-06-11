@@ -50,6 +50,12 @@ def calc_L_E(
     if LE_track == 'alpha_tracker':
         mse = torch.square(tracker_energy - mcp_energy)
         L_E_cond = torch.sum(mse[index_alpha_track])
+    if LE_track == 'alpha_rmsle':
+        mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha] + 1), torch.log(mcp_energy[index_alpha] + 1))
+        L_E_cond = torch.sqrt(mse)                                                   ## alphaMSE     no beta
+    if LE_track == 'alpha_tracker_rmsle':
+        mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha_track] + 1), torch.log(mcp_energy[index_alpha_track] + 1))
+        L_E_cond = torch.sqrt(mse)
     if LE_track == 'alpha_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
