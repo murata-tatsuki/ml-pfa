@@ -80,9 +80,14 @@ def cleanup():
     dist.destroy_process_group()
 
 def run_ddp_training(rank, world_size, args):
+    # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
+    # setup_ddp(local_rank, world_size)
+    # torch.cuda.set_device(local_rank)
+
     setup_ddp(rank, world_size)
     torch.cuda.set_device(rank)
 
+    # device = torch.device(f"cuda:{local_rank}")
     device = torch.device(f"cuda:{rank}")
     print(device)
     run_requirements(args)
@@ -128,6 +133,7 @@ def run_ddp_training(rank, world_size, args):
     print(f"Batch size:  {batch_size}")
 
     # Sampler
+    # train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
@@ -147,6 +153,8 @@ def run_ddp_training(rank, world_size, args):
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
         else:
             model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+    # model.to(local_rank)
+    # model = DDP(model, device_ids=[local_rank])
     model.to(rank)
     model = DDP(model, device_ids=[rank])
 
@@ -461,6 +469,7 @@ def main():
     parser.add_argument('--min-lr', type=float, default=1e-7, help='')
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
+    parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use (e.g., '0,1')")
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
     parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
 
@@ -478,7 +487,15 @@ def main():
 
 
     if args.ddp:
-        world_size = torch.cuda.device_count()
+        if args.gpus is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+            visible_gpus = list(map(int, args.gpus.split(',')))
+        else:
+            visible_gpus = list(range(torch.cuda.device_count()))
+
+        world_size = len(visible_gpus)
+
+        # world_size = torch.cuda.device_count()
         mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
 
         sys.exit()

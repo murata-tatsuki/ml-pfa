@@ -387,9 +387,22 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 # python save_root_energyRegression_1to1.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp
 # python save_root_energyRegression_1to1.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
-checkpoint=${checkpoint_path}/no_energy_regression/ckpts_gravnet_new02_2025_06_08_193305_outputD5
-python save_root.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output_path}/energyTree/${outfile} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --energy-branch
 
+
+
+## energy regression
+  train_particle=ntau_10GeV_10
+  test_particle=ntau_10GeV_10
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_11_200202_outputD5
+  epoch=493
+  output_path=output/energy_regression_1to1
+  # outdir=tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/default
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log
+  test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test
+  echo ${output_path}/${outdir}
+  outD=5
+  echo python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --beta-d-scan
+##
 
 
 ## pandora energy prediction
@@ -458,7 +471,7 @@ python save_root.py ${test_path} ${checkpoint}/ckpt_${iepoch}_1.pth.tar ${output
 
   epoch=499
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --beta-d-scan
-  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --td 0.5 --tbeta 0.9
+  echo python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --td 0.5 --tbeta 0.9
 ##
 
 

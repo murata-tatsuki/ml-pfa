@@ -1,5 +1,5 @@
-['train.py', '-i', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train', '-ii', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '500', '--beta-track', '--force-track-alpha', '--batch-size', '40', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_05_204722_outputD5', '--energy-regression', '--energy-regression-cluster', '--LE-track', 'alpha_tracker', '--LE-cluster', 'sum', '--qmin', '0.1', '--learning-rate', '5e-4', '--lr-policy', 'cosineReduce', '--ddp']
-cuda:2
+['train.py', '-i', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train', '-ii', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '500', '--beta-track', '--force-track-alpha', '--batch-size', '20', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_17_114534_outputD5', '--energy-regression', '--energy-regression-cluster', '--LE-track', 'alpha_tracker_diff_log', '--LE-cluster', 'sum', '--qmin', '0.2', '--learning-rate', '5e-4', '--lr-policy', 'cosineReduce', '--ddp', '--clip-value', '10']
+cuda:0
 thetaphi at main: True
 Loading dataset...
 ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
@@ -100,7 +100,7 @@ Making ak_feats...
 Making ak_labels...
 Training dataset size:  30400
 Validating dataset size:  4800
-Batch size:  120
+Batch size:  80
 Loading GravnetModel
 Hello
 restart period :  30
@@ -205,11 +205,11 @@ Making ak_feats...
 Making ak_labels...
 Training dataset size:  30400
 Validating dataset size:  4800
-Batch size:  120
+Batch size:  80
 Loading GravnetModel
 Hello
 restart period :  30
-cuda:0
+cuda:2
 thetaphi at main: True
 Loading dataset...
 ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
@@ -310,8 +310,177 @@ Making ak_feats...
 Making ak_labels...
 Training dataset size:  30400
 Validating dataset size:  4800
-Batch size:  120
+Batch size:  80
 Loading GravnetModel
 Hello
 restart period :  30
-Exception encountered: DataBatch(x=[122928, 7], y=[122928, 2], feat=[122928, 13], label=[122928, 9], batch=[122928], ptr=[41]) i: 0
+cuda:3
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  30400
+Validating dataset size:  4800
+Batch size:  80
+Loading GravnetModel
+Hello
+restart period :  30
+Training epoch 0
+[2.21987795e-02 1.75448398e-03 3.45855585e-01 3.12538472e-03
+ 9.02860124e-02 6.71795578e-09 1.48156963e-01 5.60943335e-03
+ 4.61548185e-01 1.36871559e-07 2.60543258e-02 6.50321118e-03
+ 4.36001126e-01 1.04287393e-02 1.52913395e-02 5.56854624e-03
+ 2.87237179e-01 8.59578195e-03 3.31784035e-01 3.88242319e-03
+ 1.31245261e-02 2.17698126e-03 2.10848018e-02 4.33199100e-10
+ 2.96666664e-02 1.36205851e-03 1.45679221e-01 1.63439909e-09
+ 7.37179841e-03 2.27132055e-03 1.21097075e-01 3.63352802e-03
+ 6.71409489e-03 2.53130512e-03 1.24084049e-01 4.15114515e-03
+ 1.83413147e-01 1.76684670e-03 6.06049737e-03 1.85415693e-03
+ 1.35862260e-02 2.45610858e-10 1.89013641e-02 5.61614268e-04
+ 7.97193664e-02 1.04562120e-09 3.94164683e-03 1.04652882e-03
+ 6.19749397e-02 1.73570434e-03 3.86876653e-03 1.35588046e-03
+ 6.70549706e-02 2.20345454e-03 1.10431372e-01 1.09042292e-03
+ 4.13769809e-03 1.75451372e-03 6.89131737e-03 1.46494253e-10
+ 1.17392825e-02 2.56116859e-04 4.42248069e-02 6.50057426e-10
+ 2.17320786e-03 5.50723529e-04 3.31229487e-02 8.65138431e-04
+ 2.07567814e-03 8.00075816e-04 3.88181279e-02 1.29728960e-03
+ 7.20335146e-02 7.29638468e-04 2.87149209e-03 1.69527186e-03
+ 2.46935549e-01 5.75378773e-03 9.84414324e-03 4.33579987e-03
+ 1.62614735e-01 6.74313892e-03 9.02532393e-03 4.05234279e-03
+ 1.50571042e-01 6.19222583e-03 1.01653960e-02 4.23197378e-03
+ 1.41861608e-01 6.21920269e-03 1.33828886e-02 1.48223595e-02
+ 1.45909931e-01 2.20866387e-02 1.96435468e-01 5.84166150e-02
+ 2.55656066e-01 1.31357530e-01]
+train  L_V                   = +0.2161 (0.0%)
+ train    L_V_attractive      = +0.0542 (0.0%)
+ train      L_V_attractive_charged      = +0.0315 (0.0%)
+ train      L_V_attractive_neutral      = +0.0227 (0.0%)
+ train    L_V_repulsive       = +0.1619 (0.0%)
+ train      L_V_repulsive_charged       = +0.0708 (0.0%)
+ train      L_V_repulsive_neutral       = +0.0911 (0.0%)
+ train    L_charged_cluster   = +0.0000 (0.0%)
+ train  L_beta              = +1.7922 (0.0%)
+ train    L_beta_noise        = +0.0000 (0.0%)
+ train    L_beta_sig          = +0.8016 (0.0%)
+ train    L_beta_track        = +0.9906 (0.0%)
+ train      L_beta_norms_term   = -0.0081 (-0.0%)
+ train      L_beta_logbeta_term = +0.8097 (0.0%)
+ train  L_E   = +218180.4375 (100.0%)
+ train    L_E_charge = +0.0000 (0.0%)
+ train    L_E_cond = +64.5425 (0.0%)
+ train    L_E_cluster = +218115.8594 (100.0%)
+learning rate :  [0.001994522169273505]
+train loss :  1.2161425352096558
+test   L_V                   = +0.0634 (0.0%)
+    L_V_attractive      = +0.0335 (0.0%)
+      L_V_attractive_charged      = +0.0169 (0.0%)
+      L_V_attractive_neutral      = +0.0166 (0.0%)
+    L_V_repulsive       = +0.0299 (0.0%)
+      L_V_repulsive_charged       = +0.0116 (0.0%)
+      L_V_repulsive_neutral       = +0.0183 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +1.9149 (0.0%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +0.9196 (0.0%)
+    L_beta_track        = +0.9952 (0.0%)
+      L_beta_norms_term   = -0.0020 (-0.0%)
+      L_beta_logbeta_term = +0.9217 (0.0%)
+  L_E   = +170746.7188 (100.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_cond = +67.5925 (0.0%)
+    L_E_cluster = +170679.1094 (100.0%)
+Returning 170749.703125

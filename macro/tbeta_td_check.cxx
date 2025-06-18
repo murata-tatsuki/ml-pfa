@@ -1,10 +1,16 @@
+// macro to save or display efficiency and purity of the root file
+// 
+// usage
+// change the dirName, train_particle_type
+// change to saving_canvas = true, if you want to save figures
+// execute "root tbeta_td_check.cxx" 
+// 
+
 using namespace std;
 
-// efficiency, purityを表示して保存するマクロ
-
-const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
+const string dirName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log");
 const bool saving_canvas = false;
 const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;   // ntau_10GeV_10    uds91   ntau_10to100GeV_10
@@ -12,21 +18,7 @@ const string short_particle_type = train_particle_type == "ntau_10GeV_10" ? "nta
 const bool range_setting = true;
 
 
-const bool hyper_parameter = false;
-const int dimension = 5;    // output dimensions  (one for beta, others are for coordinates)
-// 8が先
-
-const bool fine_tuning = false;
-const int epoch = 25;       // 20   25
-const int train_epoch = epoch*2-1;
-
-const bool beta_scan = false; 
 const bool tbeta_td_scan = true; 
-const bool tbeta_td_scan_below01 = false; 
-const bool tbeta_td_scan_below01_add = false; 
-const bool new_clustering = true;
-const bool skimmed = false;
-
 
 const bool cout_eff_pur = true;
 
@@ -34,49 +26,41 @@ const bool cout_eff_pur = true;
 
 
 // split をあわせたときの値
-const double Pandora_eff_tau[3] = {0.993, 0.940, 0.991};    // GNN と同じ方法でenergy sumを計算した結果 tau
-const double Pandora_pur_tau[3] = {0.918, 0.946, 0.972};    // GNN と同じ方法でenergy sumを計算した結果 tau
-const double Pandora_eff_uds[3] = {0.802, 0.904, 0.790};    // GNN と同じ方法でenergy sumを計算した結果 uds91
-const double Pandora_pur_uds[3] = {0.750, 0.906, 0.777};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+// const double Pandora_eff_tau[3] = {0.993, 0.940, 0.991};    // The result of calculating the energy sum using the same method as the GNN     tau
+// const double Pandora_pur_tau[3] = {0.918, 0.946, 0.972};    // The result of calculating the energy sum using the same method as the GNN     tau
+// const double Pandora_eff_uds[3] = {0.802, 0.904, 0.790};    // The result of calculating the energy sum using the same method as the GNN     uds91
+// const double Pandora_pur_uds[3] = {0.750, 0.906, 0.777};    // The result of calculating the energy sum using the same method as the GNN     uds91
 // 1to1のときの値
-// const double Pandora_eff_tau[3] = {0.987, 0.885, 0.990};    // GNN と同じ方法でenergy sumを計算した結果 tau
-// const double Pandora_pur_tau[3] = {0.946, 0.991, 0.984};    // GNN と同じ方法でenergy sumを計算した結果 tau
-// const double Pandora_eff_uds[3] = {0.977, 0.878, 0.981};    // GNN と同じ方法でenergy sumを計算した結果 uds91
-// const double Pandora_pur_uds[3] = {0.715, 0.838, 0.840};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+const double Pandora_eff_tau[3] = {0.987, 0.885, 0.990};    // The result of calculating the energy sum using the same method as the GNN     tau
+const double Pandora_pur_tau[3] = {0.946, 0.991, 0.984};    // The result of calculating the energy sum using the same method as the GNN     tau
+const double Pandora_eff_uds[3] = {0.977, 0.878, 0.981};    // The result of calculating the energy sum using the same method as the GNN     uds91
+const double Pandora_pur_uds[3] = {0.715, 0.838, 0.840};    // The result of calculating the energy sum using the same method as the GNN     uds91
 double Pandora_eff[3] = {};
 double Pandora_pur[3] = {};
 
 // const double Pandora_eff[3] = {0.993, 0.940, 0.991};    // ILCSoft でenergy sumを計算した結果
 // const double Pandora_pur[3] = {0.918, 0.946, 0.972};    // ILCSoft でenergy sumを計算した結果
 
+const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particle_type == "uds91" ? 40 : 100 );
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 
 
 
-void tbeta_td_result_energy(){ 
-    int rawfilenum = 1;
-    int rawfilenum_below01 = 0;
+void tbeta_td_check(){ 
     int nbeta = 9;
     int ndiameter = 9;
     int betas[9] = {1,2,3,4,5,6,7,8,9};
     int diameters[9] = {1,2,3,4,5,6,7,8,9};
-    // int nbeta = 1;
+    // int nbeta = 2;
     // int ndiameter = 9;
-    // int betas[1] = {9};
+    // int betas[2] = {8,9};
     // int diameters[9] = {1,2,3,4,5,6,7,8,9};
-    if(beta_scan) rawfilenum = 81;
-    if(tbeta_td_scan) rawfilenum = 9;
 
     for(int i=0;i<3;i++){
         Pandora_eff[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_eff_tau[i] : (test_particle_type == "uds91" ? Pandora_eff_uds[i] : 0);
         Pandora_pur[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_pur_tau[i] : (test_particle_type == "uds91" ? Pandora_pur_uds[i] : 0);
-    }
-
-    if((hyper_parameter && fine_tuning && beta_scan && tbeta_td_scan) || (tbeta_td_scan_below01 && tbeta_td_scan_below01_add)){ // condition check
-        cout << "something wrong with setting boolean " << endl;
-        abort();
     }
 
     TFile *filein[nbeta][ndiameter];
@@ -88,34 +72,9 @@ void tbeta_td_result_energy(){
     if(tbeta_td_scan){
         for(int itbeta=0; itbeta<nbeta; itbeta++){
             for(int itd=0; itd<ndiameter; itd++){
-                // cout << Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alpha_LE16_010_testDetected_499_tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]) << endl;
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/alpha_LE16_010_testDetected_499_tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[irawfile] = new TFile(Form("../output/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta%02d0td%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
-                // filein[irawfile] = new TFile(Form("../output/new_clustering/hyper_parameter/tbeta_td/tc_%s_timingcut_forcealpha_thetaphi_5D_49_%s/tbeta010td010/tbeta%03dtd%02d0.root",train_particle_type.c_str(),test_particle_type.c_str(),itbeta,itd));
-
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/LEweight0/alpha_0_2025_02_19_1537484_499_tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression/new_clustering/energyTree/restartPeriod30/tc_ntau_10GeV_10_5D_59_ntau_10GeV_10_momentum/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_uds91_5D/fine_tuning_2025_03_04_162442/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/cluster_energy_regression/alpha_LE16_010_ERcluster_2025_02_07_150149/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/LEweight0/alpha_0_2025_02_19_1537484/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_uds91_5D/cluster_energy_regression/fine_tuning_2025_03_12_141129/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10_5D/no_E_regression/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_uds91_5D/no_E_regression/tbeta_td_scan/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-
-
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/lr3e-5_2.5e-6/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/no_E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/clip100/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/clip10/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                filein[itbeta][itd] = new TFile(Form("%s/tbeta%02d0td%02d0.root",dirName.c_str(),betas[itbeta],diameters[itd]));
             }
-            picDirectory = Form("../pic/tbeta_td_scan");
+            picDirectory = Form(".");
         }
     }
 
@@ -481,14 +440,9 @@ void tbeta_td_result_energy(){
 
 
     if(saving_canvas){  // saving canvases
-        string suffix = "";
-        if(hyper_parameter) suffix = Form("_%s",test_particle_type.c_str());
-        if(fine_tuning)     suffix = Form("_epoch%d_%s",epoch,test_particle_type.c_str());
-        // if(tbeta_td_scan)   suffix = Form("_epoch%d_%s",epoch,test_particle_type.c_str());
-        
         if(tbeta_td_scan){
-            compare->SaveAs(Form("%s/efficiency_vs_purity%s.pdf",picDirectory.c_str(),suffix.c_str()));
-            compare_tbeta_td->SaveAs(Form("%s/tbeta_td_2d%s.pdf",picDirectory.c_str(),suffix.c_str()));
+            compare->SaveAs(Form("%s/efficiency_vs_purity.pdf",picDirectory.c_str()));
+            compare_tbeta_td->SaveAs(Form("%s/tbeta_td_2d.pdf",picDirectory.c_str()));
         }
     }
 

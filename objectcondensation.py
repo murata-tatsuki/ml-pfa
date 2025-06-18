@@ -52,10 +52,13 @@ def calc_L_E(
         L_E_cond = torch.sum(mse[index_alpha_track])
     if LE_track == 'alpha_rmsle':
         mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha] + 1), torch.log(mcp_energy[index_alpha] + 1))
-        L_E_cond = torch.sqrt(mse)                                                   ## alphaMSE     no beta
+        L_E_cond = torch.sqrt(mse)
     if LE_track == 'alpha_tracker_rmsle':
         mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha_track] + 1), torch.log(mcp_energy[index_alpha_track] + 1))
         L_E_cond = torch.sqrt(mse)
+    if LE_track == 'alpha_tracker_diff_log':
+        mse = torch.log( torch.abs(tracker_energy[index_alpha_track] - mcp_energy[index_alpha_track])+1.0 )
+        L_E_cond = torch.sum(mse)
     if LE_track == 'alpha_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
@@ -99,6 +102,8 @@ def calc_L_E(
         cluster_energy_truth = cluster_energy_distribution(cluster_id=object_index[~is_trk], detected_energy=detected_energy[~is_trk], truth_energy=mcp_energy[~is_trk])
         target = torch.zeros(pred_cluster_energy[is_trk].size()[0]).to(device)
 
+        LE_cluster_coef = 1 if LE_cluster == 'sum_log' else 5
+
         if LE_cluster == 'distribution':
             ##
             # L_E_cluster = torch.nn.functional.mse_loss(input=pred_cluster_energy[~is_trk], target=cluster_energy_truth, reduction='none').sum()
@@ -109,10 +114,10 @@ def calc_L_E(
             L_E_cluster = torch.nn.functional.mse_loss(input=pred_cluster_energy[~is_trk], target=cluster_energy_truth, reduction='none').sum()
             L_E_cluster += torch.nn.functional.mse_loss(input=pred_cluster_energy[is_trk], target=target, reduction='none').sum()
             ##
-            L_E_cluster = L_E_cluster * 5
-        if LE_cluster == 'sum':
+            L_E_cluster = L_E_cluster * LE_cluster_coef
+        if LE_cluster == 'sum' or LE_cluster == 'sum_log':
             # L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk]) * 2
-            L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk]) * 5
+            L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk], loss_=LE_cluster) * LE_cluster_coef
         ##
     # L_E += L_E_cluster
 
@@ -831,7 +836,7 @@ def cluster_energy_distribution(cluster_id: torch.Tensor, detected_energy: torch
 
     return torch.square(detected_energy/energy_sum * truth_energy).sum()
 
-def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tensor, truth_energy: torch.Tensor) -> torch.Tensor:
+def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tensor, truth_energy: torch.Tensor, loss_="sum") -> torch.Tensor:
     """
     calculate 
     distribute MC truth energy to each hits
@@ -853,7 +858,14 @@ def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tens
     pred_energy_sum = scatter_add(predicted_energy, cluster_id)
     truth_cluster_energy, argmax = scatter_max(truth_energy, cluster_id)
 
-    return torch.sum(torch.square(pred_energy_sum - truth_cluster_energy))
+    if loss_=="sum":
+        loss = torch.sum(torch.square(pred_energy_sum - truth_cluster_energy))
+    elif loss_=="sum_log":
+        loss = torch.sum(torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 ))
+    else:
+        loss = torch.tensor(0).to(device)
+
+    return loss
 
 def get_condpoints(betas: np.array, tbeta: float=.1) -> np.array:
     """
