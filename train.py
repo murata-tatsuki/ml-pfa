@@ -169,7 +169,7 @@ def run_ddp_training(rank, world_size, args):
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
     loss_offset =1. # To prevent a negative loss from ever occuring
 
     def check_coords(out,data) :
@@ -309,7 +309,8 @@ def run_ddp_training(rank, world_size, args):
                     loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                     update(components)
                 loss.backward()
-                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                if not args.no_clipping:
+                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -471,7 +472,9 @@ def main():
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
     parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use (e.g., '0,1')")
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
+    parser.add_argument('--nrestart-cosreduce', type=int, default=3, help='number of restart without reducing the maximum learning rate')
     parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
+    parser.add_argument('--no-clipping', action='store_true', help='do not clip the gradients')           
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -599,7 +602,7 @@ def main():
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr)
+            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 
@@ -828,7 +831,8 @@ def main():
                     loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                     update(components)
                 loss.backward()
-                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                if not args.no_clipping:
+                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -868,7 +872,8 @@ def main():
                 learning_para = check_coords(result,data)
                 loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                 loss.backward()
-                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                if not args.no_clipping:
+                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -1100,7 +1105,8 @@ def run_profile():
                     loss = loss_fn(result, data, use_charge_track_likeness=args.use_charged_cluster_loss)
                 print(f'loss={float(loss)}')
                 loss.backward()
-                utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                if not args.no_clipping:
+                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 pbar.set_postfix({'loss': float(loss)})
     print(prof.key_averages().table(sort_by="cpu_time", row_limit=10))

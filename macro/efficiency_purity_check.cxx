@@ -14,7 +14,7 @@ using namespace std;
 
 
 // conditions
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log/tbeta090td050.root");
+const string fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/test.root");
 const bool saving_canvas = false;
 const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10

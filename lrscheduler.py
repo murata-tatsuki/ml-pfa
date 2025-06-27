@@ -91,7 +91,7 @@ class CyclicLRWithRestarts(_LRScheduler):
                  t_mult=2, last_epoch=-1, verbose=False,
                  policy="cosine", policy_fn=None, min_lr=1e-7,
                  eta_on_restart_cb=None, eta_on_iteration_cb=None,
-                 gamma=1.0, triangular_step=0.5):
+                 gamma=1.0, triangular_step=0.5, nrestart_cosreduce=3):
         
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
@@ -128,7 +128,7 @@ class CyclicLRWithRestarts(_LRScheduler):
             self.policy_fn = CosinePolicy()
         elif self.policy == "cosineReduce":
             self.policy_fn = CosinePolicy()
-            self.eta_on_restart_cb = ReduceMaxLROnRestartWithNonreducedEpochs(n_restarts=3, ratio=0.7)
+            self.eta_on_restart_cb = ReduceMaxLROnRestartWithNonreducedEpochs(n_restarts=nrestart_cosreduce, ratio=0.7)
         elif self.policy == "arccosine":
             self.policy_fn = ArccosinePolicy()
         elif self.policy == "triangular":

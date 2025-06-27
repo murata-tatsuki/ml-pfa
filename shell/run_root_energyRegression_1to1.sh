@@ -392,16 +392,19 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
 ## energy regression
   train_particle=ntau_10GeV_10
-  test_particle=ntau_10GeV_10
-  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_11_200202_outputD5
-  epoch=493
+  # train_particle=nnqq
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5
+  epoch=237
   output_path=output/energy_regression_1to1
-  # outdir=tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/default
-  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log
+  outdir=tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/default
+  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log__sum_log
   test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
   echo ${output_path}/${outdir}
   outD=5
-  echo python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --beta-d-scan
+  outdir=tc_${train_particle}/${D}D/E_regression/test.root
+  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0  --td 0.5 --tbeta 0.9
+  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --device cuda:0 --beta-d-scan
 ##
 
 
@@ -471,7 +474,7 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
   epoch=499
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --beta-d-scan
-  echo python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --td 0.5 --tbeta 0.9
+  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${D} --device cuda:1 --td 0.5 --tbeta 0.9
 ##
 
 

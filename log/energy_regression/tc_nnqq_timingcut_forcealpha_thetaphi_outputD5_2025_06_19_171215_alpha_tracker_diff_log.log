@@ -1,0 +1,486 @@
+['train.py', '-i', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train', '-ii', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '500', '--beta-track', '--force-track-alpha', '--batch-size', '20', '--output-dimension', '5', '--ckptdir', 'checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_19_171215_outputD5', '--energy-regression', '--energy-regression-cluster', '--LE-track', 'alpha_tracker_diff_log', '--LE-cluster', 'sum_log', '--momentum', '--momentum-amp', '--qmin', '0.2', '--learning-rate', '5e-4', '--lr-policy', 'cosineReduce', '--ddp', '--clip-value', '10', '--nrestart-cosreduce', '1']
+cuda:2
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  30400
+Validating dataset size:  4800
+Batch size:  80
+Loading GravnetModel
+Hello
+restart period :  30
+cuda:3
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  30400
+Validating dataset size:  4800
+Batch size:  80
+Loading GravnetModel
+Hello
+restart period :  30
+cuda:0
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  30400
+Validating dataset size:  4800
+Batch size:  80
+Loading GravnetModel
+Hello
+restart period :  30
+cuda:1
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_10_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_11_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_12_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_13_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_14_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_15_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_16_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_17_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_18_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_19_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_1_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_26_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_27_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_28_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_29_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_2_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_30_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_31_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_32_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_33_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_34_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_35_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_36_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_37_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_38_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_39_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_3_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_40_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_41_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_42_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_43_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_44_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_4_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_51_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_52_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_53_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_54_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_55_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_56_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_57_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_58_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_59_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_5_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_60_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_61_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_62_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_63_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_64_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_65_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_66_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_67_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_68_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_69_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_6_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_76_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_77_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_78_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_79_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_7_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_80_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_81_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_82_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_83_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_84_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_85_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_86_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_87_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_88_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_89_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_8_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_90_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_91_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_92_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_93_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_94_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train/nnqq_9_uu_eL_pR.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation'
+filenames=['/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5', '/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5']
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_20_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_21_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_22_uu_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_45_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_46_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_47_uu_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_70_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_71_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_72_dd_eL_pR.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_95_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_96_dd_eR_pL.h5'
+Reading file: file='/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation/nnqq_97_dd_eR_pL.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  30400
+Validating dataset size:  4800
+Batch size:  80
+Loading GravnetModel
+Hello
+restart period :  30
+Training epoch 0
+[2.22126912e-02 5.32735572e-04 2.52895746e-01 8.78243482e-04
+ 1.15186357e-01 4.95744056e-09 1.15126206e-01 1.37563106e-03
+ 3.20511668e-01 3.95791897e-09 1.43031758e-02 3.96051900e-03
+ 2.16628995e-01 6.63532240e-03 1.15131925e-02 4.43544046e-03
+ 2.01878324e-01 6.98875478e-03 2.93579327e-01 3.84660382e-03
+ 1.00384040e-02 2.20781297e-03 2.69664250e-02 8.43238983e-10
+ 4.66985770e-02 1.48065935e-03 1.50443144e-01 2.65299064e-09
+ 7.60708375e-03 2.11258685e-03 1.19276623e-01 3.52527110e-03
+ 6.64125913e-03 2.53334751e-03 1.19788670e-01 4.08555500e-03
+ 1.88519156e-01 2.35511293e-03 6.60803033e-03 2.07392267e-03
+ 1.51198247e-02 4.76977907e-10 2.99419394e-02 9.29069312e-04
+ 9.57769985e-02 1.46298777e-09 4.72025079e-03 1.31238481e-03
+ 7.65751346e-02 2.21397916e-03 4.35506574e-03 1.61302351e-03
+ 8.09662541e-02 2.58219250e-03 1.32862904e-01 1.76182773e-03
+ 5.08306831e-03 2.05536566e-03 4.24651810e-03 2.42649117e-10
+ 1.75586626e-02 5.54932707e-04 5.96797004e-02 8.93237289e-10
+ 2.93755523e-03 7.62514996e-04 4.84642042e-02 1.28451955e-03
+ 2.81182477e-03 1.03998828e-03 5.24520508e-02 1.68143408e-03
+ 9.07269090e-02 1.18315274e-03 3.42354163e-03 1.90040357e-03
+ 2.36117446e-01 6.55766581e-03 8.14536361e-03 4.35687448e-03
+ 1.42834719e-01 6.93268798e-03 7.37117069e-03 3.82440978e-03
+ 1.24460168e-01 6.09736251e-03 7.14038058e-03 3.53038250e-03
+ 1.12292809e-01 5.64156358e-03 1.06194292e-02 1.65689017e-02
+ 1.16517481e-01 2.51572149e-02 1.76748146e-01 5.87890565e-02
+ 2.61310393e-01 1.21734763e-01]
+train  L_V                   = +0.3003 (0.1%)
+ train    L_V_attractive      = +0.0789 (0.0%)
+ train      L_V_attractive_charged      = +0.0400 (0.0%)
+ train      L_V_attractive_neutral      = +0.0389 (0.0%)
+ train    L_V_repulsive       = +0.2215 (0.1%)
+ train      L_V_repulsive_charged       = +0.1010 (0.0%)
+ train      L_V_repulsive_neutral       = +0.1204 (0.0%)
+ train    L_charged_cluster   = +0.0000 (0.0%)
+ train  L_beta              = +1.9605 (0.8%)
+ train    L_beta_noise        = +0.0000 (0.0%)
+ train    L_beta_sig          = +0.9659 (0.4%)
+ train    L_beta_track        = +0.9947 (0.4%)
+ train      L_beta_norms_term   = -0.0058 (-0.0%)
+ train      L_beta_logbeta_term = +0.9717 (0.4%)
+ train  L_E   = +258.6753 (99.1%)
+ train    L_E_charge = +0.0000 (0.0%)
+ train    L_E_cond = +51.5437 (19.8%)
+ train    L_E_cluster = +207.1315 (79.4%)
+learning rate :  [0.001994522169273505]
+train loss :  1.300329566001892
+test   L_V                   = +0.0932 (0.0%)
+    L_V_attractive      = +0.0569 (0.0%)
+      L_V_attractive_charged      = +0.0236 (0.0%)
+      L_V_attractive_neutral      = +0.0333 (0.0%)
+    L_V_repulsive       = +0.0363 (0.0%)
+      L_V_repulsive_charged       = +0.0175 (0.0%)
+      L_V_repulsive_neutral       = +0.0188 (0.0%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = +2.0610 (0.8%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = +1.0635 (0.4%)
+    L_beta_track        = +0.9975 (0.4%)
+      L_beta_norms_term   = -0.0004 (-0.0%)
+      L_beta_logbeta_term = +1.0640 (0.4%)
+  L_E   = +270.9519 (99.2%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_cond = +53.4806 (19.6%)
+    L_E_cluster = +217.4713 (79.6%)
+Returning 274.1061096191406
