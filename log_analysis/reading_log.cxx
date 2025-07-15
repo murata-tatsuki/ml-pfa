@@ -21,7 +21,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // int epoch_noLE = 15;
 
 
-const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_172404_alpha_tracker_diff_log.log";
+const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_07_01_170645_alpha_tracker_diff_log_perCluster_momentum.log";
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
 
 

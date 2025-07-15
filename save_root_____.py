@@ -156,6 +156,22 @@ class PredData:
         t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
         t.Branch("trackness",this.trackness,"trackness/I")
 
+class EventData:
+    ''' TTree data for MCParticle
+        to be used for evaluating the efficiency
+    '''
+    event = np.array([0], dtype=np.int32)
+    ncluster = np.array([0], dtype=np.int32)
+    total_MC_energy = np.array([0], dtype=np.float64)
+    total_predicted_energy = np.array([0], dtype=np.float64)
+
+
+    def setup_branch(this,t):
+        t.Branch("event",this.event,"event/I")
+        t.Branch("ncluster",this.matched_ncluster,"ncluster/I")
+        t.Branch("total_MC_energy",this.total_MC_energy,"total_MC_energy/D")
+        t.Branch("total_predicted_energy",this.total_predicted_energy,"total_predicted_energy/D")
+
 
 # def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
 def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
@@ -206,11 +222,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     if args.beta_d_scan:
         tbeta_list = [i/10.0 for i in range(9,0,-1)]
         td_list = [i/10.0 for i in range(9,0,-1)]
-        # tbeta_list = [i/10.0 for i in range(1,0,-1)]
+        # tbeta_list = [0.9+i/100.0 for i in range(9,0,-1)]
         # td_list = [i/10.0 for i in range(9,0,-1)]
-        # # # tbeta_list = [0.9+i/100.0 for i in range(5,3,-1)]
-        # # tbeta_list = [0.91]
-        # # td_list = [i/10.0 for i in range(9,0,-1)]
 
     print(tbeta_list)
     print(td_list)
@@ -240,6 +253,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             t3 = TTree("prediction","tree for model output")
             d3 = PredData()
             d3.setup_branch(t3)
+
+            t4 = TTree("event","tree for event")
+            d4 = EventData()
+            d4.setup_branch(t4)
 
             # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
             for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
@@ -274,6 +291,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
                 # matched_reco_clusterIds = matching_1to1(event, clustering, matches12)
                 # print(matched_reco_clusterIds)
+
+                total_MC_energy = 0.
+                total_predicted_energy = 0.
 
                 # iterate over all mcid
                 for id in all_truth_ids:
@@ -386,11 +406,14 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d.cond_track[0] = cond_trackness
                     d.sed_radius[0] = sed_radius
 
-                    if(sed_radius>3):
-                        print(i,sed_center, sed_radius, my_label[2],my_label[5],my_label[6],my_label[7],np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2))
+                    # if(sed_radius>3):
+                    #     print(i,sed_center, sed_radius, my_label[2],my_label[5],my_label[6],my_label[7],np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2))
 
                     if (not d.mcid[0] == -1): # skip if track does not have hit
                         t.Fill()
+
+                    total_MC_energy += d.mcen[0]
+                    total_predicted_energy += pred_edep if d.mccharge[0]!=0 else pred_edep_cluster
 
                 # Iterate over reconstructed clusters
                 for cl in all_cluster_ids:
@@ -494,6 +517,33 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         if (not d3.mcid[0] == -1): # skip if track does not have hit
                             t3.Fill()
 
+                # for cl in all_cluster_ids:
+                #     pattern_cluster = (clustering==cl)
+                #     pattern_cluster_feat = event.feat[pattern_cluster]
+                #     pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
+                #     edep_reco = np.sum(pattern_cluster_edep)
+                #     if not pandora:
+                #         predicted_beta = prediction.pred_betas[pattern_cluster]
+                #         if energyRegression:
+                #             predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                #             predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                #             predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                #         else:
+                #             predicted_energy = np.zeros(1)
+                #             predicted_energy_cluster = np.zeros(1)
+                #         predicted_beta = -np.sort(-predicted_beta)
+                #         # print(predicted_beta[0], cond_trackness)
+                #     else:
+                #         predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                #         cond_trackness = 0
+                #         predicted_beta = np.zeros(1)
+                #     pred_edep = predicted_energy[0]                                  ## alpha
+                #     pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else 0
+
+                d4.event[0] = i
+                d4.ncluster[0] = len(all_cluster_ids)
+                d4.total_MC_energy[0] = total_MC_energy
+                d4.total_predicted_energy[0] = total_predicted_energy
 
             print(f"Saving to {outfile}")
             file.Write()

@@ -14,9 +14,10 @@ using namespace std;
 
 
 // conditions
-const string fileName = Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/test.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
 const bool saving_canvas = false;
-const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const bool pandora = false;
 const bool ECluster = true;
@@ -66,8 +67,9 @@ void efficiency_purity_check(){
 
 
     // string particleNames[3] = {"electron", "pion", "gamma"};
-    string particleNames[3] = {"electron", "pion", "photon"};
-    vector<int> particledgValues = {11,-11, 211,-211, 22};
+    string particleNames[5] = {"electron", "pion", "photon", "neutron", "K0"};
+    vector<int> particledgValues = {11,-11, 211,-211, 22, 2112, 311,310,130};
+    vector<int> particledgValues_itr = {0,0, 1,1, 2, 3, 4,4,4};
 
     double Eres_range = pandora ? 0.05 : 1.5;
     // double Eres_range = 1.5;
@@ -78,7 +80,7 @@ void efficiency_purity_check(){
     int Eres_fitbin_upper = Eres_range>Eres_fit_range ? Eres_nbin - (Eres_range-Eres_fit_range)/E_res_binWidth : -1;
     int rebin_factor = 0.025 / E_res_binWidth;
     
-    const int nParticle = 3;
+    const int nParticle = 5;
     const int nEnergy = 10;
     const double energy_interval = energyMaximum / nEnergy;
     TH1F *purity[nParticle];
@@ -206,7 +208,7 @@ void efficiency_purity_check(){
             if(cond_beta<beta_threshold) continue;
             auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
             if(result == particledgValues.end()) continue;
-            int itr = distance(particledgValues.begin(), result) / 2;
+            int itr = particledgValues_itr[distance(particledgValues.begin(), result)];
 
             double pur = edep_match / edep_reco;
             double eff = edep_match / edep;
@@ -267,7 +269,7 @@ void efficiency_purity_check(){
 
             auto result = find(particledgValues.begin(), particledgValues.end(), _mcpdg);
             if(result == particledgValues.end()) continue;
-            int itr = distance(particledgValues.begin(), result) / 2;
+            int itr = particledgValues_itr[distance(particledgValues.begin(), result)];
             // if(_pred_alpha==1) condbeta_vs_Ediff[itr]->Fill(_pred_beta,_pred_edep-_mcen);
             // if(_pred_alpha==1) condbeta_vs_mcen[itr]->Fill(_pred_beta,_mcen);
         }

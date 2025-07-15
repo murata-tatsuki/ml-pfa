@@ -34,15 +34,15 @@ const bool cout_eff_pur = true;
 
 
 // split をあわせたときの値
-const double Pandora_eff_tau[3] = {0.993, 0.940, 0.991};    // GNN と同じ方法でenergy sumを計算した結果 tau
-const double Pandora_pur_tau[3] = {0.918, 0.946, 0.972};    // GNN と同じ方法でenergy sumを計算した結果 tau
-const double Pandora_eff_uds[3] = {0.802, 0.904, 0.790};    // GNN と同じ方法でenergy sumを計算した結果 uds91
-const double Pandora_pur_uds[3] = {0.750, 0.906, 0.777};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+// const double Pandora_eff_tau[3] = {0.993, 0.940, 0.991};    // GNN と同じ方法でenergy sumを計算した結果 tau
+// const double Pandora_pur_tau[3] = {0.918, 0.946, 0.972};    // GNN と同じ方法でenergy sumを計算した結果 tau
+// const double Pandora_eff_uds[3] = {0.802, 0.904, 0.790};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+// const double Pandora_pur_uds[3] = {0.750, 0.906, 0.777};    // GNN と同じ方法でenergy sumを計算した結果 uds91
 // 1to1のときの値
-// const double Pandora_eff_tau[3] = {0.987, 0.885, 0.990};    // GNN と同じ方法でenergy sumを計算した結果 tau
-// const double Pandora_pur_tau[3] = {0.946, 0.991, 0.984};    // GNN と同じ方法でenergy sumを計算した結果 tau
-// const double Pandora_eff_uds[3] = {0.977, 0.878, 0.981};    // GNN と同じ方法でenergy sumを計算した結果 uds91
-// const double Pandora_pur_uds[3] = {0.715, 0.838, 0.840};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+const double Pandora_eff_tau[3] = {0.987, 0.885, 0.990};    // GNN と同じ方法でenergy sumを計算した結果 tau
+const double Pandora_pur_tau[3] = {0.946, 0.991, 0.984};    // GNN と同じ方法でenergy sumを計算した結果 tau
+const double Pandora_eff_uds[3] = {0.977, 0.878, 0.981};    // GNN と同じ方法でenergy sumを計算した結果 uds91
+const double Pandora_pur_uds[3] = {0.715, 0.838, 0.840};    // GNN と同じ方法でenergy sumを計算した結果 uds91
 double Pandora_eff[3] = {};
 double Pandora_pur[3] = {};
 
@@ -112,8 +112,12 @@ void tbeta_td_result_energy(){
                 
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/default/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/clip100/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/clip10/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/clip10/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+
+                
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta09%dtd%02d0.root",betas[itbeta],diameters[itd]));
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }

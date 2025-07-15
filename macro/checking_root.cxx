@@ -94,7 +94,8 @@ void checking_root(){
     int Eres_fitbin_upper = Eres_range>Eres_fit_range ? Eres_nbin - (Eres_range-Eres_fit_range)/E_res_binWidth : -1;
     int rebin_factor = 0.025 / E_res_binWidth;
     
-    const int nParticle = 3;
+    // const int nParticle = 3;
+    const int nParticle = 6;
     const int nEnergy = 10;
     const double energy_interval = energyMaximum / nEnergy;
     TH1F *purity[nParticle];
