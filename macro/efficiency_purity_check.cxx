@@ -12,13 +12,15 @@
 
 using namespace std;
 
-
 // conditions
 const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
 const bool saving_canvas = false;
 const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const bool kaon_neutron = false;
 const bool pandora = false;
 const bool ECluster = true;
 double beta_threshold = 0;
@@ -39,6 +41,7 @@ void efficiency_purity_check(){
     TFile *filein[rawfilenum];
     TTree *tree[rawfilenum];
     TTree *tree_pred[rawfilenum];
+    TTree *tree_event[rawfilenum];
     int entry_max[rawfilenum];
     int total_entry_max=0;
     string picDirectory = ".";
@@ -51,6 +54,7 @@ void efficiency_purity_check(){
         tree[i] = (TTree*) filein[i]->Get("t");
         entry_max[i] = tree[i]->GetEntries();
         tree_pred[i] = (TTree*) filein[i]->Get("prediction");
+        tree_event[i] = (TTree*) filein[i]->Get("event");
     }
 
 
@@ -66,10 +70,18 @@ void efficiency_purity_check(){
     TFile fileout("result/result_test.root","RECREATE");
 
 
-    // string particleNames[3] = {"electron", "pion", "gamma"};
-    string particleNames[5] = {"electron", "pion", "photon", "neutron", "K0"};
-    vector<int> particledgValues = {11,-11, 211,-211, 22, 2112, 311,310,130};
-    vector<int> particledgValues_itr = {0,0, 1,1, 2, 3, 4,4,4};
+    const int nParticle = kaon_neutron ? 5 : 3;
+    string particleNames_base[5] = {"electron", "pion", "photon", "neutron", "K0"};
+    vector<int> particledgValues_base = {11,-11, 211,-211, 22, 2112, 130};
+    vector<int> particledgValues_itr_base = {0,0, 1,1, 2, 3, 4};
+    vector<int> particledgValues_base_ = {11,-11, 211,-211, 22};
+    vector<int> particledgValues_itr_base_ = {0,0, 1,1, 2};
+
+    string particleNames[nParticle];
+    vector<int> particledgValues = kaon_neutron ? particledgValues_base : particledgValues_base_;
+    vector<int> particledgValues_itr = kaon_neutron ? particledgValues_itr_base : particledgValues_itr_base_;
+    for(int ip=0;ip<nParticle;ip++) particleNames[ip] = particleNames_base[ip];
+
 
     double Eres_range = pandora ? 0.05 : 1.5;
     // double Eres_range = 1.5;
@@ -80,7 +92,6 @@ void efficiency_purity_check(){
     int Eres_fitbin_upper = Eres_range>Eres_fit_range ? Eres_nbin - (Eres_range-Eres_fit_range)/E_res_binWidth : -1;
     int rebin_factor = 0.025 / E_res_binWidth;
     
-    const int nParticle = 5;
     const int nEnergy = 10;
     const double energy_interval = energyMaximum / nEnergy;
     TH1F *purity[nParticle];
@@ -680,7 +691,7 @@ void efficiency_purity_check(){
     
                 // energy_resolution_per_energy[ip][ie]->SetAxisRange(-Eres_range,Eres_range);
                 // cout << "   " << resolution_rms[ip][ie] << ", " << resolution_sigma[ip][ie] << endl;
-                if( (ip<2 && ie>6) || (ip==2 && (ie>1 && ie<5)) ){
+                if( (ip<2 && ie>6) || (ip>=2 && (ie>1 && ie<5)) ){
                     string energy_range = Form("%d-%d GeV",(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
                     cout << "  " << energy_range << " : " << cluster_resolution_sigma[ip][ie] << endl;
                 }
@@ -696,6 +707,26 @@ void efficiency_purity_check(){
     }
 
 
+    TCanvas *canvas_energy_regression_result = new TCanvas("canvas_energy_regression_result","canvas_energy_regression_result",1);
+    canvas_energy_regression_result->Divide(nParticle,2);
+    for(int ip=0;ip<nParticle;ip++){
+        canvas_energy_regression_result->cd(ip+1);
+        if(ip<2) energy2d[ip]->Draw("colz");
+        else clusterenergy2d[ip]->Draw("colz");
+
+        canvas_energy_regression_result->cd(ip+1+nParticle);
+        if(ip<2){
+            energy_resolution_rms[ip]->Draw("AP");
+            energy_resolution_sigma[ip]->Draw("P");
+            // legend_res->SetTextSize(0.03);
+            // legend_res->SetFillStyle(0);
+            legend_res->Draw("same");
+        } else {
+            cluster_energy_resolution_rms[ip]->Draw("AP");
+            cluster_energy_resolution_sigma[ip]->Draw("P");
+            legend_res->Draw("same");
+        }
+    }
 
 
     
@@ -711,6 +742,7 @@ void efficiency_purity_check(){
         canvas_beta_energy->SaveAs(Form("%s/beta_vs_energy.pdf",picDirectory.c_str()));
         canvas_beta_ediff->SaveAs(Form("%s/beta_vs_energy_ediff.pdf",picDirectory.c_str()));
         canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen.pdf",picDirectory.c_str()));
+        canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
     }
     
 
