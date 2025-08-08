@@ -40,7 +40,7 @@ class ILCDataset(Dataset):
         reduce_noise (float): Randomly delete a fraction of noise. Useful
             to speed up training.
     """
-    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False):
+    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False, event_energy=False):
         super(ILCDataset, self).__init__(path)
 
         self.flip = flip
@@ -50,6 +50,7 @@ class ILCDataset(Dataset):
         self.thetaphi = thetaphi
         self.test_mode = test_mode
         self.pandora = pandora
+        self.event_energy = event_energy
         self.momentum = momentum
         self.momentumAmp = momentumAmp
         self.max_momentum = 1.0
@@ -60,6 +61,7 @@ class ILCDataset(Dataset):
             filenames = list(sorted(glob.iglob(path + '/*.h5')))
             self.ak_feats, self.ak_labels = la.load_awkwards(filenames)
             if(pandora): self.ak_pandoras = la.load_awkwards_pandora(filenames)
+            if(event_energy): self.ak_eventEnergy = la.load_awkwards_eventEnergy(filenames)
 
             if timingCut:
                 # need to update hits so we need to recreate awk arrays
@@ -77,6 +79,9 @@ class ILCDataset(Dataset):
                 if(pandora):
                     print("Making ak_pandoras...")
                     self.ak_pandoras = self.ak_pandoras[nstart:nstart+nend] 
+                if(event_energy):
+                    print("Making ak_eventEnergy...")
+                    self.ak_eventEnergy = self.ak_eventEnergy[nstart:nstart+nend] 
 
             # eliminate events with zero hits
             feats1 = self.ak_feats
@@ -86,6 +91,7 @@ class ILCDataset(Dataset):
             self.ak_feats = self.ak_feats[ not_empty ]
             self.ak_labels = self.ak_labels[ not_empty ]
             if(pandora): self.ak_pandoras = self.ak_pandoras[ not_empty ]
+            if(event_energy): self.ak_eventEnergy = self.ak_eventEnergy[ not_empty ]
         
         if self.momentum:
             self.max_momentum = self.momentum_normalization(self.ak_feats)
@@ -137,12 +143,18 @@ class ILCDataset(Dataset):
         feat_t = ak.to_numpy(self.ak_feats[i])
         label_t = ak.to_numpy(self.ak_labels[i])
         if(self.pandora): pandora_t = ak.to_numpy(self.ak_pandoras[i])
+        if(self.event_energy): 
+            event_energy_t = ak.to_numpy(self.ak_eventEnergy[i][2])
+            jet_energy_t = ak.to_numpy(self.ak_eventEnergy[i][:2])
 
         # explicit deepcopy
         feat = copy.deepcopy(feat_t)
         label = copy.deepcopy(label_t)
         if(self.pandora): 
             pand = copy.deepcopy(pandora_t)
+        if(self.event_energy): 
+            eventE = copy.deepcopy(event_energy_t)
+            jetE = copy.deepcopy(jet_energy_t)
         # print(feat)
         # print(label)
         # print(pand)
@@ -273,6 +285,17 @@ class ILCDataset(Dataset):
                 feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
                 label = torch.from_numpy(label[order]).type(torch.float).cpu(),
                 pand = pand_inst[:,2:5],
+                # pandora_prediction = pand_inst[:,3:5],
+            )
+        elif (self.event_energy):
+            # eventE_inst = torch.from_numpy(eventE[order]).type(torch.float).cpu()
+            data = Data(
+                x = torch.from_numpy(x[order]).type(torch.float),
+                y = torch.from_numpy(y[order]).type(torch.int),
+                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
+                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
+                jet = torch.from_numpy(jetE).type(torch.float).cpu(),
+                event = torch.from_numpy(eventE).type(torch.float).cpu(),
                 # pandora_prediction = pand_inst[:,3:5],
             )
         else:

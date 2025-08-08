@@ -157,6 +157,34 @@ def load_awkwards_pandora(filenames):
     ak_pand = ak.concatenate(pands_list, axis=0)
     return ak_pand
 
+def load_awkward2_eventEnergy(filename):
+    file = h5py.File(filename)
+    pand = file["event"]
+    
+    form = ak.forms.from_json(pand.attrs["form"])
+    length = json.loads(pand.attrs["length"])
+    container = {k: np.asarray(v) for k, v in pand.items()}
+
+    ak_eventEnergy = ak.from_buffers(form, length, container)    
+
+    return ak_eventEnergy
+
+def load_awkwards_eventEnergy(filenames):
+    print(f"{filenames=}")
+    assert(len(filenames)>0)
+    eventE_list = []
+    for i, file in enumerate(filenames):
+        print(f"Reading file: {file=}")
+        eventE = load_awkward2_eventEnergy(file)
+        eventE_list.append(eventE)
+        # if i==0:
+        #     ak_pand = pand
+        # else:
+        #     ak_pand = ak.concatenate((ak_pand, pand), axis=0)
+        #print (ak.num(ak_feats,axis=0), ak.num(ak_labels,axis=0))
+    ak_eventEnergy = ak.concatenate(eventE_list, axis=0)
+    return ak_eventEnergy
+
 def save_awkward(filename, ak_feat, ak_label, ak_pred = None, ak_energy = None, ak_x = None, ak_y = None, ak_pandora = None, ak_eventEnergy = None, ak_bremsConversion = None):
     file = h5py.File(filename,"w")
     g_feat = file.create_group("feature")

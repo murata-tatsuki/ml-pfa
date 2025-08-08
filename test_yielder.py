@@ -10,7 +10,7 @@ from clustering import cluster
 from matching import make_matches
 
 class TestYielder:
-    def __init__(self, model=None, dataset=None, ckpt=None, device='cpu', timingCut=False, use_charge_track_likeness=False, pandora=False):
+    def __init__(self, model=None, dataset=None, ckpt=None, device='cpu', timingCut=False, use_charge_track_likeness=False, pandora=False, event_energy=False):
         self.model = get_model(jit=False) if model is None else model
         if ckpt:
             model.load_state_dict(torch.load(ckpt, map_location=torch.device(device))['model'])
@@ -20,6 +20,7 @@ class TestYielder:
         self.device = device
         self.reset_loader()
         self.pandora = pandora
+        self.event_energy = event_energy
 
     def reset_loader(self):
         self.batch_size = 1 if self.device=='cpu' else 20
@@ -50,7 +51,7 @@ class TestYielder:
         data_list = data.to_data_list()
         for batch_id, data_batch in zip(torch.unique(data.batch), data_list):
             same_batch = data.batch==batch_id
-            out_gravnet_batch = out_gravnet[same_batch]
+            out_gravnet_batch = out_gravnet[same_batch] if not self.pandora else None
             data_batch = Batch.from_data_list([data_batch])
             yield i, data_batch, out_gravnet_batch
 
@@ -60,8 +61,8 @@ class TestYielder:
             for i, data, out_gravnet in self._iter_data(nmax):
                 if self.device!='cpu':
                     data=data.to('cpu')
-                    out_gravnet=out_gravnet.to('cpu')
-                event = Event(data, self.pandora)
+                    out_gravnet=out_gravnet.to('cpu') if not self.pandora else None
+                event = Event(data, self.pandora, self.event_energy)
 
                 # label=event.y
                 # unique_label=np.unique(label)
