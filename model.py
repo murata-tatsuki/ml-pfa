@@ -43,3 +43,26 @@ def get_model_branch(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp
             model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])        
 
     return model
+
+
+def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp = False):
+    # from torch_cmspepr.gravnet_model import GravnetModel
+    from lcr_module import LCR, LCR_withPID, LCR_withClass, hungarian_set_loss, hungarian_set_loss_bbox_only
+    #model = GravnetModelWithNoiseFilter(input_dim=9, output_dim=6, k=50, signal_threshold=.05)
+    LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
+
+    ckpt = ReadText("Grav_ILC_setting.txt")["Output Model File"] if ckpt is None else ckpt 
+    print(f"Loading model from {ckpt=}")
+
+    if jit:
+        model = torch.jit.load(ckpt, map_location=torch.device('cpu'))
+
+    else:
+        print(f'{input_dim=}')
+        model=LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
+        if not ddp:
+            model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+        else:
+            model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+
+    return model

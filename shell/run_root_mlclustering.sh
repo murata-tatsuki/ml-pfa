@@ -2,6 +2,26 @@
 
 cd ..
 
+input_dim=7
+outD=5
+
+checkpoint_path=/home/murata/master/checkpoint
+
+checkpoint_gnn=energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_499_1.pth.tar
+checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_08_27_182730_outputD5/ckpt_434_1.pth.tar
+outfile=test.root
+# python save_root_mlclustering.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 1000 False 7 5 --energy-regression --energy-regression-cluster  --momentum --momentum-amp
+# python save_root_mlclustering.py /data/suehara/mldata/pfa/murata/code_test_ntau/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 50 1000 False 7 5 --device cuda:1 --energy-regression --energy-regression-cluster  --momentum --momentum-amp
+
+python save_root_mlclustering.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 1 False 7 5 --device cuda:1 --energy-regression --energy-regression-cluster  --momentum --momentum-amp
+
+
+  # python save_root_____.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --event-total-energy --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
+
+
+
+
+
 
 train_particle=ntau_10GeV_10    # ntau_10GeV_10      uds91    ntau_10to100GeV_10
 test_particle=${train_particle}     # ntau_10GeV_10      uds91    ntau_10to100GeV_10
@@ -408,11 +428,11 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_23_1
   epoch=499
   output_path=output/energy_regression_1to1
   # outdir=tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/default
-  echo ${output_path}/${outdir}
+  # echo ${output_path}/${outdir}
   outD=5
   # outdir=tc_${train_particle}/${D}D/E_regression/test.root
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --beta-d-scan
-  python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
+  # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
   # python save_root_____.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --event-total-energy --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --device cuda:0 --beta-d-scan
 ##

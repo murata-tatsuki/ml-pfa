@@ -91,6 +91,97 @@ def hungarian_set_loss_bbox_only(pred_fourvec, true_fourvec):
 
     return batch_loss / pred_fourvec.size(0)
 
+def hungarian_set_loss_new(pred_fourvec, true_fourvec, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    wE, wMag, wDir : エネルギー、大きさ、方向の重み
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+
+    for b in range(pred_fourvec.size(0)):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+        M, N = P.shape[0], T.shape[0]
+
+        # ΔE/E
+        dE = torch.log(torch.abs(P[:,None,0] - T[None,:,0]) + 1)  # (M,N)
+        # dE = torch.abs(P[:,None,0] - T[None,:,0]) / (T[None,:,0] + eps)  # (M,N)
+        # 方向誤差
+        p_pred = P[:,None,1:]  # (M,1,3)
+        p_true = T[None,:,1:]  # (1,N,3)
+        # cos_theta = torch.sum(p_pred * p_true, dim=-1) / (
+        #     torch.norm(p_pred, dim=-1) * torch.norm(p_true, dim=-1) + eps
+        # )
+        # dTheta = torch.acos(torch.clamp(cos_theta, -1.0, 1.0))  # (M,N)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)  # (M,N)
+
+        C = (wE * dE + wMag * dMag + wDir * dDir)
+        row, col = linear_sum_assignment(C.detach().cpu().numpy())
+
+        batch_loss += C[row, col].sum() / len(row)
+
+    return batch_loss / pred_fourvec.size(0)
+
+def hungarian_set_loss_new_sub(pred_fourvec, true_fourvec, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    wE, wMag, wDir : エネルギー、大きさ、方向の重み
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+    loss_E = 0.0
+    loss_Mag = 0.0
+    loss_Dir = 0.0
+
+    for b in range(pred_fourvec.size(0)):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+        M, N = P.shape[0], T.shape[0]
+
+        # ΔE/E
+        dE = torch.log(torch.abs(P[:,None,0] - T[None,:,0]) + 1)  # (M,N)
+        # dE = torch.abs(P[:,None,0] - T[None,:,0]) / (T[None,:,0] + eps)  # (M,N)
+        # 方向誤差
+        p_pred = P[:,None,1:]  # (M,1,3)
+        p_true = T[None,:,1:]  # (1,N,3)
+        # cos_theta = torch.sum(p_pred * p_true, dim=-1) / (
+        #     torch.norm(p_pred, dim=-1) * torch.norm(p_true, dim=-1) + eps
+        # )
+        # dTheta = torch.acos(torch.clamp(cos_theta, -1.0, 1.0))  # (M,N)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)  # (M,N)
+
+        C = (wE * dE + wMag * dMag + wDir * dDir)
+        row, col = linear_sum_assignment(C.detach().cpu().numpy())
+
+        loss_E += dE[row, col].sum() / len(row)
+        loss_Mag += dMag[row, col].sum() / len(row)
+        loss_Dir += dDir[row, col].sum() / len(row)
+        batch_loss += C[row, col].sum() / len(row)
+
+    components = dict(
+        loss_E = loss_E / pred_fourvec.size(0), 
+        loss_Mag = loss_Mag / pred_fourvec.size(0),
+        loss_Dir = loss_Dir / pred_fourvec.size(0)
+        )
+
+    return batch_loss / pred_fourvec.size(0), components
+
+
 
 # ------------------------------------------------------------
 # Main Module: LCR
@@ -388,8 +479,9 @@ class LCR(nn.Module):
         )
         self.mass_pred = nn.Linear(embed_dim, 1)
 
-        self.F_TRACK_VEC   = slice(0, 3)   # px,py,pz
-        self.F_E_CALO      = 3             # scalar
+        # self.F_TRACK_VEC   = slice(0, 3)   # px,py,pz
+        self.F_TRACK_VEC   = slice(7, 10)   # px,py,pz
+        self.F_E_CALO      = 0             # scalar
         self.F_IS_TRACK    = 5             # scalar flag
 
     """""

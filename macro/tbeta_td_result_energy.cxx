@@ -6,10 +6,10 @@ const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // conditions
 const bool saving_canvas = false;
-const string train_particle_type = "ntau_10GeV_10";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const string test_particle_type = train_particle_type;   // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "nnqq";      // ntau_10GeV_10    uds91   ntau_10to100GeV_10     nnqq
+const string test_particle_type = train_particle_type;   // ntau_10GeV_10    uds91   ntau_10to100GeV_10     nnqq
 const string short_particle_type = train_particle_type == "ntau_10GeV_10" ? "ntau" : (train_particle_type == "uds91" ? "uds" : "ntau_10to100GeV_10");               // ntau    uds
-const bool range_setting = true;
+const bool range_setting = false;
 
 
 const bool hyper_parameter = false;
@@ -43,12 +43,13 @@ const double Pandora_eff_tau[3] = {0.987, 0.885, 0.990};    // GNN と同じ方�
 const double Pandora_pur_tau[3] = {0.946, 0.991, 0.984};    // GNN と同じ方法でenergy sumを計算した結果 tau
 const double Pandora_eff_uds[3] = {0.977, 0.878, 0.981};    // GNN と同じ方法でenergy sumを計算した結果 uds91
 const double Pandora_pur_uds[3] = {0.715, 0.838, 0.840};    // GNN と同じ方法でenergy sumを計算した結果 uds91
-double Pandora_eff[3] = {};
-double Pandora_pur[3] = {};
-
+const double Pandora_eff_nnqq[5] = {0.968, 0.868, 0.972, 0.839, 0.829};    // GNN と同じ方法でenergy sumを計算した結果 nnqq
+const double Pandora_pur_nnqq[5] = {0.681, 0.779, 0.785, 0.698, 0.738};    // GNN と同じ方法でenergy sumを計算した結果 nnqq
 // const double Pandora_eff[3] = {0.993, 0.940, 0.991};    // ILCSoft でenergy sumを計算した結果
 // const double Pandora_pur[3] = {0.918, 0.946, 0.972};    // ILCSoft でenergy sumを計算した結果
 
+double Pandora_eff[3] = {};
+double Pandora_pur[3] = {};
 
 const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particle_type == "uds91" ? 40 : 100 );
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
@@ -70,8 +71,8 @@ void tbeta_td_result_energy(){
     if(tbeta_td_scan) rawfilenum = 9;
 
     for(int i=0;i<3;i++){
-        Pandora_eff[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_eff_tau[i] : (test_particle_type == "uds91" ? Pandora_eff_uds[i] : 0);
-        Pandora_pur[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_pur_tau[i] : (test_particle_type == "uds91" ? Pandora_pur_uds[i] : 0);
+        Pandora_eff[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_eff_tau[i] : (test_particle_type == "uds91" ? Pandora_eff_uds[i] : Pandora_eff_nnqq[i]);
+        Pandora_pur[i] = test_particle_type == "ntau_10GeV_10" ? Pandora_pur_tau[i] : (test_particle_type == "uds91" ? Pandora_pur_uds[i] : Pandora_pur_nnqq[i]);
     }
 
     if((hyper_parameter && fine_tuning && beta_scan && tbeta_td_scan) || (tbeta_td_scan_below01 && tbeta_td_scan_below01_add)){ // condition check
@@ -116,8 +117,8 @@ void tbeta_td_result_energy(){
                 // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
 
                 
-                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
-                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta09%dtd%02d0.root",betas[itbeta],diameters[itd]));
+                filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta%02d0td%02d0.root",betas[itbeta],diameters[itd]));
+                // filein[itbeta][itd] = new TFile(Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta09%dtd%02d0.root",betas[itbeta],diameters[itd]));
             }
             picDirectory = Form("../pic/tbeta_td_scan");
         }
@@ -143,17 +144,21 @@ void tbeta_td_result_energy(){
 
 
     // string particleNames[3] = {"electron", "pion", "gamma"};
-    string particleNames[3] =        {"electron", "pion", "photon"};
-    string particleNames_spacer[3] = {" ", "     ", "   "};
-    vector<int> particledgValues = {11,-11, 211,-211, 22};
-    // map<int,int> pdgParticle;
-    // pdgParticle[11] = 0;
-    // pdgParticle[-11] = 0;
-    // pdgParticle[211] = 1;
-    // pdgParticle[-211] = 1;
-    // pdgParticle[22] = 2;
+    const int nParticle = train_particle_type == "nnqq" ? 5 : 3;
+    // string particleNames[3] =        {"electron", "pion", "photon"};
+    string particleNames_spacer[5] = {" ", "     ", "   ", "  ", "       "};
+    // vector<int> particledgValues = {11,-11, 211,-211, 22};
+    string particleNames_base[5] = {"electron", "pion", "photon", "neutron", "K0"};
+    vector<int> particledgValues_base = {11,-11, 211,-211, 22, 2112, 130};
+    vector<int> particledgValues_itr_base = {0,0, 1,1, 2, 3, 4};
+    vector<int> particledgValues_base_ = {11,-11, 211,-211, 22};
+    vector<int> particledgValues_itr_base_ = {0,0, 1,1, 2};
+
+    string particleNames[nParticle];
+    vector<int> particledgValues = nParticle==5 ? particledgValues_base : particledgValues_base_;
+    vector<int> particledgValues_itr = nParticle==5 ? particledgValues_itr_base : particledgValues_itr_base_;
+    for(int ip=0;ip<nParticle;ip++) particleNames[ip] = particleNames_base[ip];
     
-    const int nParticle = 3;
     const int nEnergy = 10;
     TH1F *purity[nParticle][nbeta][ndiameter];
     TH1F *purity_energy[nParticle][nEnergy][nbeta][ndiameter];
@@ -280,9 +285,12 @@ void tbeta_td_result_energy(){
                     // cout << "edep>10  event:" << event << "  hitid:" << hitid << "  edep:" << edep << endl;
                     // continue;
                 }
+                // auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
+                // if(result == particledgValues.end()) continue;
+                // int itr = distance(particledgValues.begin(), result) / 2;
                 auto result = find(particledgValues.begin(), particledgValues.end(), mcpdg);
                 if(result == particledgValues.end()) continue;
-                int itr = distance(particledgValues.begin(), result) / 2;
+                int itr = particledgValues_itr[distance(particledgValues.begin(), result)];
 
                 double pur = edep_match / edep_reco;
                 double eff = edep_match / edep;
@@ -339,8 +347,8 @@ void tbeta_td_result_energy(){
 
 
     cout << "best parameters  " << endl;
-    double best_value[nParticle] = {0,0,0};
-    int best_tbeta[nParticle] = {-1,-1,-1}, best_td[nParticle] = {-1,-1,-1};
+    double best_value[5] = {0,0,0};
+    int best_tbeta[5] = {-1,-1,-1,-1,-1}, best_td[5] = {-1,-1,-1,-1,-1};
     for(int ip=0;ip<nParticle;ip++){
         for(int itbeta=0; itbeta<nbeta; itbeta++){
             for(int itd=0; itd<ndiameter; itd++){
@@ -397,6 +405,9 @@ void tbeta_td_result_energy(){
             eff_vs_pur[ip]->SetMinimum(0.9);
             eff_vs_pur[ip]->GetXaxis()->SetLimits(0.6,1.001);
         }
+            eff_vs_pur[ip]->SetMaximum(1.001);
+            eff_vs_pur[ip]->SetMinimum(0.6);
+            eff_vs_pur[ip]->GetXaxis()->SetLimits(0.6,1.001);
         eff_vs_pur[ip]->Draw("AP");
         // eff_vs_pur_[0][ip]->Draw("P");
         Pandora_eff_vs_pur[ip]->Draw("P");
@@ -410,6 +421,7 @@ void tbeta_td_result_energy(){
     }
 
     TCanvas *compare_tbeta_td = new TCanvas("compare_tbeta_td","compare_tbeta_td",1);
+    /*
     compare_tbeta_td->Divide(nParticle,2);
     if(tbeta_td_scan){
         for(int ip=0;ip<nParticle;ip++){
@@ -426,7 +438,7 @@ void tbeta_td_result_energy(){
 
 
 
-
+    /*
     TCanvas *canvas_energy_resolution_scan = new TCanvas("canvas_energy_resolution_scan","canvas_energy_resolution_scan",1400,500);
     canvas_energy_resolution_scan->Divide(nParticle,1);
     // TCanvas *canvas_energy_resolution_scan = new TCanvas("canvas_energy_resolution_scan","canvas_energy_resolution_scan",1);
@@ -479,6 +491,7 @@ void tbeta_td_result_energy(){
         }
         legend_res->Draw("same");
     }
+    */
     
 
 

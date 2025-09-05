@@ -19,7 +19,7 @@ from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
 from model import get_model, get_model_branch
-from lcr_module import LCR, LCR_withPID, LCR_withClass, hungarian_set_loss, hungarian_set_loss_bbox_only
+from lcr_module import LCR, LCR_withPID, LCR_withClass, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub
 
 #from ReadText import ReadText
 import sys
@@ -127,6 +127,22 @@ def pdg_id_to_class(pdg_ids):
     return cls
 
 
+def formatted_loss_components_string(components: dict) -> str:
+    """
+    Formats the components returned by calc_LV_Lbeta
+    """
+    total_loss = components['loss_E']+components['loss_Mag']+components['loss_Dir']
+    fractions = { k : v/total_loss for k, v in components.items() }
+    fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
+    s = (
+        '   loss_E                   = {loss_E}'
+        '\n   loss_Mag                 = {loss_Mag}'
+        '\n   loss_Dir                 = {loss_Dir}'
+        .format(L=total_loss,**{k : fkey(k) for k in components})
+        )
+    return s
+
+
 
 
 def main():
@@ -184,6 +200,7 @@ def main():
     parser.add_argument('--no-clipping', action='store_true', help='do not clip the gradients')           
     parser.add_argument('--classification', action='store_true', help='turn on claasification in LCR')           
     parser.add_argument('--pid', action='store_true', help='turn on pid in LCR')           
+    parser.add_argument('--loss-specify', action='store_true', help='turn on pid in LCR')           
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -329,13 +346,13 @@ def main():
         print('Training epoch', epoch)
         lcr_model.train()
         N_train = len(train_loader)
-        # loss_components={}
+        loss_components={}
         train_loss = 0.0
         gradients=[]
-        # def update(components):
-        #     for key, value in components.items():
-        #         if not key in loss_components: loss_components[key] = 0.
-        #         loss_components[key] += value
+        def update(components):
+            for key, value in components.items():
+                if not key in loss_components: loss_components[key] = 0.
+                loss_components[key] += value
         if not args.ReduceLROnPlateau: scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
@@ -360,7 +377,8 @@ def main():
                     unique_label = [torch.unique(t[:,1:3], dim=0) for t in unique_label]
                     unique_label = [pdg_id_to_class(t[:,1]) for t in unique_label]
                 true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-                truth_four_vector = torch.cat((data.label[:,5:8], true_energy.reshape(true_energy.shape[0],1)), 1)
+                # truth_four_vector = torch.cat((data.label[:,5:8], true_energy.reshape(true_energy.shape[0],1)), 1)
+                truth_four_vector = torch.cat((true_energy.reshape(true_energy.shape[0],1), data.label[:,5:8]), 1)
                 truth_four_vector = split_by_batch(truth_four_vector, data.batch)
                 truth_four_vector = [torch.unique(t, dim=0) for t in truth_four_vector]
 
@@ -368,7 +386,10 @@ def main():
                 # print(pred_cls.shape)
 
                 if args.classification or args.pid: loss = hungarian_set_loss(pred_fourvec, pred_cls, truth_four_vector, unique_label)
-                else: loss = hungarian_set_loss_bbox_only(pred_fourvec, truth_four_vector)
+                elif args.loss_specify: 
+                    loss, components = hungarian_set_loss_new_sub(pred_fourvec, truth_four_vector)
+                    update(components)
+                else: loss = hungarian_set_loss_new(pred_fourvec, truth_four_vector)
                 # update(components)
                 train_loss += loss
                 loss.backward()
@@ -382,10 +403,12 @@ def main():
             # Divide by number of entries
             layer_grads = np.mean(np.array(gradients), axis=0)
             print(layer_grads)
-            # for key in loss_components:
-            #     loss_components[key] /= N_train
+            if args.loss_specify: 
+                for key in loss_components:
+                    loss_components[key] /= N_train
             train_loss = train_loss.item() / N_train
             print('train                     = ', train_loss)
+            if args.loss_specify: print(formatted_loss_components_string(loss_components))
             return train_loss
         except Exception:
             print('Exception encountered:', data, 'i:', i)
@@ -393,13 +416,13 @@ def main():
 
     def test(epoch):
         N_test = len(test_loader)
-        # loss_components = {}
+        loss_components = {}
         test_acc=0.
         test_loss=0.
-        # def update(components):
-        #     for key, value in components.items():
-        #         if not key in loss_components: loss_components[key] = 0.
-        #         loss_components[key] += value
+        def update(components):
+            for key, value in components.items():
+                if not key in loss_components: loss_components[key] = 0.
+                loss_components[key] += value
         with torch.no_grad():
 
             lcr_model.eval()
@@ -424,14 +447,18 @@ def main():
                 truth_four_vector = split_by_batch(truth_four_vector, data.batch)
                 truth_four_vector = [torch.unique(t, dim=0) for t in truth_four_vector]
                 if args.classification or args.pid: loss = hungarian_set_loss(pred_fourvec, pred_cls, truth_four_vector, unique_label)
-                else: loss = hungarian_set_loss_bbox_only(pred_fourvec, truth_four_vector)
+                elif args.loss_specify: 
+                    loss, components = hungarian_set_loss_new_sub(pred_fourvec, truth_four_vector)
+                    update(components)
+                else: loss = hungarian_set_loss_new(pred_fourvec, truth_four_vector)
                 test_loss += loss
                 # update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         # Divide by number of entries
-        # for key in loss_components:
-        #     loss_components[key] /= N_test
+        if args.loss_specify: 
+            for key in loss_components:
+                loss_components[key] /= N_test
         # Compute total loss and do printout
-        # print('test ' + oc.formatted_loss_components_string(loss_components))
+        if args.loss_specify: print('test ' + formatted_loss_components_string(loss_components))
         # # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
         test_loss = test_loss.item() / N_test

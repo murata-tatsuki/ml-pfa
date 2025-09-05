@@ -162,21 +162,57 @@ class EventData:
     '''
     event = np.array([0], dtype=np.int32)
     ncluster = np.array([0], dtype=np.int32)
-    total_MC_energy = np.array([0], dtype=np.float64)
-    total_predicted_energy = np.array([0], dtype=np.float64)
+    MC_dijet_energy = np.array([0], dtype=np.float64)
+    total_MC_energy_truth = np.array([0], dtype=np.float64)
+    total_MC_energy_pred = np.array([0], dtype=np.float64)
+    total_predicted_energy_truth = np.array([0], dtype=np.float64)
+    total_predicted_energy_pred = np.array([0], dtype=np.float64)
 
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
-        t.Branch("ncluster",this.matched_ncluster,"ncluster/I")
-        t.Branch("total_MC_energy",this.total_MC_energy,"total_MC_energy/D")
-        t.Branch("total_predicted_energy",this.total_predicted_energy,"total_predicted_energy/D")
+        t.Branch("ncluster",this.ncluster,"ncluster/I")
+        t.Branch("MC_dijet_energy",this.MC_dijet_energy,"MC_dijet_energy/D")
+        t.Branch("total_MC_energy_truth",this.total_MC_energy_truth,"total_MC_energy_truth/D")
+        t.Branch("total_MC_energy_pred",this.total_MC_energy_pred,"total_MC_energy_pred/D")
+        t.Branch("total_predicted_energy_truth",this.total_predicted_energy_truth,"total_predicted_energy_truth/D")
+        t.Branch("total_predicted_energy_pred",this.total_predicted_energy_pred,"total_predicted_energy_pred/D")
 
+class JetData:
+    ''' TTree data for MCParticle
+        to be used for evaluating the efficiency
+    '''
+    event = np.array([0], dtype=np.int32)
+    # ncluster = np.array([0], dtype=np.int32)
+    MC_jet_energy = np.array([0], dtype=np.float64)
+    total_predicted_energy_truthBase = np.array([0], dtype=np.float64)
+    total_predicted_energy_predBase = np.array([0], dtype=np.float64)
+
+
+    def setup_branch(this,t):
+        t.Branch("event",this.event,"event/I")
+        # t.Branch("ncluster",this.ncluster,"ncluster/I")
+        t.Branch("MC_jet_energy",this.MC_jet_energy,"MC_jet_energy/D")
+        t.Branch("total_predicted_energy_truthBase",this.total_predicted_energy_truthBase,"total_predicted_energy_truthBase/D")
+        t.Branch("total_predicted_energy_predBase",this.total_predicted_energy_predBase,"total_predicted_energy_predBase/D")
+
+
+def calc_origin_quark(quarks: np.array, clusters: np.array):    # calcurated from closest angles
+    quarks = quarks / np.linalg.norm(quarks, axis=1, keepdims=True)
+    clusters = clusters / np.linalg.norm(clusters, axis=1, keepdims=True)
+    cos_angles = clusters @ quarks.T
+    nearest_indices = np.argmax(cos_angles, axis=1)
+    return nearest_indices
+
+def calc_pred_jet_energy(energies: np.array, nearest_indices: np.array):    # calcurated jet energy from closest angle
+    assert(not (energies.shape != nearest_indices.shape))
+    return np.array([np.sum(energies[nearest_indices==0]), np.sum(energies[nearest_indices==1])])
 
 # def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
 def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
     debug = False
     pandora=args.pandora
+    event_energy=args.event_total_energy
     energyRegression=args.energy_regression
     energyRegressionCluster=args.energy_regression_cluster
     momentum=args.momentum
@@ -202,8 +238,8 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     else:
         model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
-    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
-    yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora)
+    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe,event_energy=event_energy)
+    yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora, event_energy=event_energy)
 
     nmax = None if nend==-1 else nend-nstart+1
     print("number of entry : ", nmax)
@@ -258,6 +294,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d4 = EventData()
             d4.setup_branch(t4)
 
+            t5 = TTree("jet","tree for jets")
+            d5 = JetData()
+            d5.setup_branch(t5)
+
             # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
             for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
                 if i == nmax: break
@@ -294,6 +334,16 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
                 total_MC_energy = 0.
                 total_predicted_energy = 0.
+                total_MC_energy_ = 0.
+                total_predicted_energy_ = 0.
+                MC_dijet_energy = event.event[1] if event_energy else 0
+                MC_jet_energies = event.jet[:,0] if event_energy else np.zeros(2)
+                jet_momentum = event.jet[:,1:] if event_energy else np.zeros(1)
+                reco_momentum_truthBase = []
+                pred_energy_truthBase = []
+                reco_momentum_predBase = []
+                pred_energy_predBase = []
+
 
                 # iterate over all mcid
                 for id in all_truth_ids:
@@ -412,12 +462,56 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     if (not d.mcid[0] == -1): # skip if track does not have hit
                         t.Fill()
 
-                    total_MC_energy += d.mcen[0]
-                    total_predicted_energy += pred_edep if d.mccharge[0]!=0 else pred_edep_cluster
+                    total_MC_energy_ += d.mcen[0]
+                    total_predicted_energy_ += pred_edep if cond_trackness!=0 else pred_edep_cluster
+
+                    reco_momentum_truthBase.append([my_label[5], my_label[6], my_label[7]])
+                    predenergy = pred_edep if cond_trackness!=0 else pred_edep_cluster
+                    pred_energy_truthBase.append(predenergy)
 
                 # Iterate over reconstructed clusters
                 for cl in all_cluster_ids:
-                    break
+                    pattern_cluster = (clustering==cl)
+                    match_label_ = event.label[pattern_cluster]
+                    match_feat_ = event.feat[pattern_cluster]
+                    match_track_ = event.feat[pattern_cluster]
+                    match_track_ = match_track_[:,5].detach().numpy().astype(np.int32)
+                    if not pandora:
+                        predicted_beta_ = prediction.pred_betas[pattern_cluster]
+                        if energyRegression:
+                            predicted_energy_ = prediction.pred_tracker_energy[pattern_cluster]
+                            predicted_energy_ = predicted_energy_[np.argsort(-predicted_beta_)]
+                            predicted_energy_cluster_ = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                            match_label_ = match_label_[np.argsort(-predicted_beta_)]
+                            match_feat_ = match_feat_[np.argsort(-predicted_beta_)]
+                        else:
+                            predicted_energy_ = np.zeros(1)
+                            predicted_energy_cluster_ = np.zeros(1)
+                        cond_tracknesses_ = match_track_[np.argsort(-predicted_beta_)]
+                        cond_trackness_ = cond_tracknesses_[0]
+                        predicted_beta_ = -np.sort(-predicted_beta_)
+                        # print(predicted_beta[0], cond_trackness)
+                    else:
+                        predicted_energy_ = prediction.pred_tracker_energy[pattern_cluster]
+                        cond_trackness_ = 0
+                        predicted_beta_ = np.zeros(1)
+
+                    # for MC particle, take any element from the match because they should be the same
+                    pred_edep_ = predicted_energy_[0]                                  ## alpha
+                    pred_edep_cluster_ = np.sum(predicted_energy_cluster_) if not pandora else 0
+                    # print(pred_edep_, pred_edep_cluster_, predicted_beta_, cond_tracknesses_)
+                    oc_label = match_label_[0]
+                    total_MC_energy += np.sqrt(oc_label[4]**2 + oc_label[5]**2 + oc_label[6]**2 + oc_label[7]**2)
+                    total_predicted_energy += pred_edep_ if cond_trackness_!=0 else pred_edep_cluster_
+
+                    # reco_momentum_predBase.append([oc_label[5], oc_label[6], oc_label[7]])
+                    oc_feat = match_feat_[0]
+                    reco_momentum_predBase.append([oc_feat[1], oc_feat[2], oc_feat[3]])
+                    predenergy = pred_edep_ if cond_trackness_!=0 else pred_edep_cluster_
+                    pred_energy_predBase.append(predenergy)
+                    
+                    continue
+                    # break
                     pattern_cluster = (clustering==cl)
                     pattern_cluster_feat = event.feat[pattern_cluster]
                     pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
@@ -542,8 +636,26 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
                 d4.event[0] = i
                 d4.ncluster[0] = len(all_cluster_ids)
-                d4.total_MC_energy[0] = total_MC_energy
-                d4.total_predicted_energy[0] = total_predicted_energy
+                d4.MC_dijet_energy[0] = MC_dijet_energy
+                d4.total_MC_energy_truth[0] = total_MC_energy_
+                d4.total_MC_energy_pred[0] = total_MC_energy
+                d4.total_predicted_energy_truth[0] = total_predicted_energy_
+                d4.total_predicted_energy_pred[0] = total_predicted_energy
+                t4.Fill()
+            
+                q_en_truthBase = calc_pred_jet_energy(np.array(pred_energy_truthBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_truthBase)))
+                q_en_predBase = calc_pred_jet_energy(np.array(pred_energy_predBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_predBase)))
+                # print(q_en_truthBase, q_en_predBase, MC_jet_energies)
+                d5.event[0] = i
+                d5.MC_jet_energy[0] = MC_jet_energies[0]
+                d5.total_predicted_energy_truthBase[0] = q_en_truthBase[0]
+                d5.total_predicted_energy_predBase[0] = q_en_predBase[0]
+                t5.Fill()
+                d5.event[0] = i
+                d5.MC_jet_energy[0] = MC_jet_energies[1]
+                d5.total_predicted_energy_truthBase[0] = q_en_truthBase[1]
+                d5.total_predicted_energy_predBase[0] = q_en_predBase[1]
+                t5.Fill()
 
             print(f"Saving to {outfile}")
             file.Write()
@@ -564,6 +676,7 @@ def main():
     parser.add_argument('input_dim', type=int)
     parser.add_argument('output_dim', type=int)
     parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
+    parser.add_argument('--event-total-energy', action='store_true', help='Use event visible energy')
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
     parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')

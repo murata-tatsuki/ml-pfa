@@ -2,6 +2,8 @@ import bisect
 import numpy as np
 from clustering import cluster
 from event import Event
+from scipy.optimize import linear_sum_assignment   # Hungarian matching
+import torch
 
 def make_matches(event, prediction, tbeta=.2, td=.5, clustering=None):
     if clustering is None: clustering = cluster(event, prediction, tbeta, td)
@@ -300,3 +302,89 @@ def matching_1to1(event, clustering, matches12):
 
 
 
+
+## transformer clustering four vector matching
+def matching_hungarian_set_bbox_only(pred_fourvec, true_fourvec):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+    result = []
+
+    # if pred_fourvec.size(0) > 1:
+    #     for b in range(pred_fourvec.size(0)):
+    #         P = pred_fourvec[b]    # (M, 4)
+    #         T = true_fourvec[b]    # (N, 4)
+
+    #         if T.ndim == 1:
+    #             T = T.unsqueeze(0)
+    #         if P.ndim == 1:
+    #             P = P.unsqueeze(0)
+
+    #         # L1 distance cost matrix (M, N)
+    #         C_bbox = torch.cdist(P, T, p=1)
+
+    #         if torch.isnan(C_bbox).any() or torch.isinf(C_bbox).any():
+    #             print("Invalid values in cost matrix C_bbox")
+    #             print("C_bbox:", C_bbox)
+    #             raise ValueError("NaN or Inf detected in cost matrix")
+
+    #         # ハンガリアン法による最適マッチング
+    #         row, col = linear_sum_assignment(C_bbox.cpu().detach().numpy())
+
+    #         result.append(torch.cat((row, col), dim=1))
+
+    #     return result
+    # else:
+
+    P = pred_fourvec    # (M, 4)
+    T = true_fourvec    # (N, 4)
+
+    if T.ndim == 1:
+        T = T.unsqueeze(0)
+    if P.ndim == 1:
+        P = P.unsqueeze(0)
+
+    # L1 distance cost matrix (M, N)
+    C_bbox = torch.cdist(P, T, p=1)
+
+    if torch.isnan(C_bbox).any() or torch.isinf(C_bbox).any():
+        print("Invalid values in cost matrix C_bbox")
+        print("C_bbox:", C_bbox)
+        raise ValueError("NaN or Inf detected in cost matrix")
+
+    # ハンガリアン法による最適マッチング
+    row, col = linear_sum_assignment(C_bbox.cpu().detach().numpy())
+
+    return row, col
+
+
+def matching_hungarian_set_bbox_only_(pred_fourvec, true_fourvec):
+    wE, wMag, wDir, eps = 1, 1, 1, 1e-8
+    P = pred_fourvec    # (M, 4)
+    T = true_fourvec    # (N, 4)
+    M, N = P.shape[0], T.shape[0]
+
+    # ΔE/E
+    dE = torch.log(torch.abs(P[:,None,0] - T[None,:,0]) + 1)  # (M,N)
+    # dE = torch.abs(P[:,None,0] - T[None,:,0]) / (T[None,:,0] + eps)  # (M,N)
+    # 方向誤差
+    p_pred = P[:,None,1:]  # (M,1,3)
+    p_true = T[None,:,1:]  # (1,N,3)
+    # cos_theta = torch.sum(p_pred * p_true, dim=-1) / (
+    #     torch.norm(p_pred, dim=-1) * torch.norm(p_true, dim=-1) + eps
+    # )
+    # dTheta = torch.acos(torch.clamp(cos_theta, -1.0, 1.0))  # (M,N)
+    mag_pred = torch.norm(p_pred, dim=-1)
+    mag_true = torch.norm(p_true, dim=-1)
+    dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+    p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+    p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+    dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)  # (M,N)
+
+    C = (wE * dE + wMag * dMag + wDir * dDir)
+    row, col = linear_sum_assignment(C.detach().cpu().numpy())
+    return row, col

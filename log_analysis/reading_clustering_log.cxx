@@ -24,7 +24,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
 
-const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_08_05_144744__momentum.log";
+const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_09_04_180934_momentum.log";
 
 
 vector<double> l_v;
@@ -148,7 +148,7 @@ void getting_loss(string line, bool get_train){
 
 
 
-void reading_log(){ 
+void reading_clustering_log(){ 
   int nepoch = -1;
   vector<double> learning_rates, grads;
   vector<vector<double>> gradients;
@@ -284,15 +284,15 @@ void reading_log(){
   g_LV_rep_charged->SetLineColor(3); 
   g_LV_rep_neutral->SetLineColor(4); 
 
-  TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
-  legend->AddEntry( g_LV, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
-  legend->AddEntry( g_Lbeta, "L_beta", "l") ;
-  legend->AddEntry( g_LE, "L_E", "l") ;
-  legend->AddEntry( g_LEcond, "L_E_condpoint", "l") ;
-  legend->AddEntry( g_LEcluster, "L_E_cluster", "l") ;
-  // legend->AddEntry( g5, "total loss w/o L_E", "l") ;
-  legend->SetFillColor(0);
+  // TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  // legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  // legend->AddEntry( g_LV, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  // legend->AddEntry( g_Lbeta, "L_beta", "l") ;
+  // legend->AddEntry( g_LE, "L_E", "l") ;
+  // legend->AddEntry( g_LEcond, "L_E_condpoint", "l") ;
+  // legend->AddEntry( g_LEcluster, "L_E_cluster", "l") ;
+  // // legend->AddEntry( g5, "total loss w/o L_E", "l") ;
+  // legend->SetFillColor(0);
 
 
   TGraph *g_train_loss = new TGraph();
@@ -321,104 +321,117 @@ void reading_log(){
   g_train_LV_rep_charged->SetLineColor(3); 
   g_train_LV_rep_neutral->SetLineColor(4); 
 
-  TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
-  legend_train->AddEntry( g_train_LV, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
-  legend_train->AddEntry( g_train_Lbeta, "L_beta", "l") ;
-  legend_train->AddEntry( g_train_LE, "L_E", "l") ;
-  legend_train->AddEntry( g_train_LEtracker, "L_E_condpoint", "l") ;
-  legend_train->AddEntry( g_train_LEcluster, "L_E_cluster", "l") ;
-  legend_train->SetFillColor(0);
+  // TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  // legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  // legend_train->AddEntry( g_train_LV, "L_V", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  // legend_train->AddEntry( g_train_Lbeta, "L_beta", "l") ;
+  // legend_train->AddEntry( g_train_LE, "L_E", "l") ;
+  // legend_train->AddEntry( g_train_LEtracker, "L_E_condpoint", "l") ;
+  // legend_train->AddEntry( g_train_LEcluster, "L_E_cluster", "l") ;
+  // legend_train->SetFillColor(0);
 
   double minimum_loss = returning[0];
   int minimum_loss_epoch = 0;
   for(int i=0;i<nepoch;i++){
-    g_loss->SetPoint(i,i,i>epoch_noLE ? returning[i] : returning[i] - l_e[i]);
-    g_LV->SetPoint(i,i,l_v[i]);
-    if(l_v_att_charged.size()>0) g_LV_att_charged->SetPoint(i,i,l_v_att_charged[i]);
-    if(l_v_att_neutral.size()>0) g_LV_att_neutral->SetPoint(i,i,l_v_att_neutral[i]);
-    if(l_v_rep_charged.size()>0) g_LV_rep_charged->SetPoint(i,i,l_v_rep_charged[i]);
-    if(l_v_rep_neutral.size()>0) g_LV_rep_neutral->SetPoint(i,i,l_v_rep_neutral[i]);
-    g_Lbeta->SetPoint(i,i,l_beta[i]);
-    if(i>epoch_noLE){
-      g_LE->SetPoint(i-epoch_noLE-1,i,l_e[i]);
-      if(l_e_tracker.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_tracker[i]);
-      if(l_e_cond.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_cond[i]);
-      // g_LEcond->SetPoint(i,i,l_e_tracker[i]-l_e_cluster[i]);
-      if(l_e_cluster.size()>0) g_LEcluster->SetPoint(i-epoch_noLE-1,i,l_e_cluster[i]);
-    }
+    g_loss->SetPoint(i,i,returning[i]);
+    // g_LV->SetPoint(i,i,l_v[i]);
+    // if(l_v_att_charged.size()>0) g_LV_att_charged->SetPoint(i,i,l_v_att_charged[i]);
+    // if(l_v_att_neutral.size()>0) g_LV_att_neutral->SetPoint(i,i,l_v_att_neutral[i]);
+    // if(l_v_rep_charged.size()>0) g_LV_rep_charged->SetPoint(i,i,l_v_rep_charged[i]);
+    // if(l_v_rep_neutral.size()>0) g_LV_rep_neutral->SetPoint(i,i,l_v_rep_neutral[i]);
+    // g_Lbeta->SetPoint(i,i,l_beta[i]);
+    // if(i>epoch_noLE){
+    //   g_LE->SetPoint(i-epoch_noLE-1,i,l_e[i]);
+    //   if(l_e_tracker.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_tracker[i]);
+    //   if(l_e_cond.size()>0) g_LEcond->SetPoint(i-epoch_noLE-1,i,l_e_cond[i]);
+    //   // g_LEcond->SetPoint(i,i,l_e_tracker[i]-l_e_cluster[i]);
+    //   if(l_e_cluster.size()>0) g_LEcluster->SetPoint(i-epoch_noLE-1,i,l_e_cluster[i]);
+    // }
 
     if(minimum_loss>returning[i]){
       minimum_loss = returning[i];
       minimum_loss_epoch = i;
     }
 
-    if(train_l_v.size()==0) continue;
-    g_train_loss->SetPoint(i,i,i>epoch_noLE ? train_l_v[i]+train_l_beta[i]+train_l_e[i] : train_l_v[i]+train_l_beta[i]);
-    g_train_LV->SetPoint(i,i,train_l_v[i]);
-    if(train_l_v_att_charged.size()>0) g_train_LV_att_charged->SetPoint(i,i,train_l_v_att_charged[i]);
-    if(train_l_v_att_neutral.size()>0) g_train_LV_att_neutral->SetPoint(i,i,train_l_v_att_neutral[i]);
-    if(train_l_v_rep_charged.size()>0) g_train_LV_rep_charged->SetPoint(i,i,train_l_v_rep_charged[i]);
-    if(train_l_v_rep_neutral.size()>0) g_train_LV_rep_neutral->SetPoint(i,i,train_l_v_rep_neutral[i]);
-    if(train_l_beta.size()!=0) g_train_Lbeta->SetPoint(i,i,train_l_beta[i]);
-    if(i>epoch_noLE){
-      g_train_LE->SetPoint(i-epoch_noLE-1,i,train_l_e[i]);
-      if(train_l_e_tracker.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_tracker[i]);
-      if(train_l_e_cond.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_cond[i]);
-      g_train_LEcluster->SetPoint(i-epoch_noLE-1,i,train_l_e_cluster[i]);
-    }
+    // if(train_l_v.size()==0) continue;
+    g_train_loss->SetPoint(i,i,train_loss[i]);
+    // g_train_LV->SetPoint(i,i,train_l_v[i]);
+    // if(train_l_v_att_charged.size()>0) g_train_LV_att_charged->SetPoint(i,i,train_l_v_att_charged[i]);
+    // if(train_l_v_att_neutral.size()>0) g_train_LV_att_neutral->SetPoint(i,i,train_l_v_att_neutral[i]);
+    // if(train_l_v_rep_charged.size()>0) g_train_LV_rep_charged->SetPoint(i,i,train_l_v_rep_charged[i]);
+    // if(train_l_v_rep_neutral.size()>0) g_train_LV_rep_neutral->SetPoint(i,i,train_l_v_rep_neutral[i]);
+    // if(train_l_beta.size()!=0) g_train_Lbeta->SetPoint(i,i,train_l_beta[i]);
+    // if(i>epoch_noLE){
+    //   g_train_LE->SetPoint(i-epoch_noLE-1,i,train_l_e[i]);
+    //   if(train_l_e_tracker.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_tracker[i]);
+    //   if(train_l_e_cond.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_cond[i]);
+    //   g_train_LEcluster->SetPoint(i-epoch_noLE-1,i,train_l_e_cluster[i]);
+    // }
   }
   cout << "epoch : " << minimum_loss_epoch << "  minimum loss : " << minimum_loss << endl;
 
-  TCanvas *c1 = new TCanvas("c1","validation loss all range",1);
-  c1->cd();
-  g_loss->Draw();
-  // g5->Draw("same");
-  g_LV->Draw("same");
-  g_Lbeta->Draw("same");
-  g_LE->Draw("same");
-  g_LEcond->Draw("same");
-  g_LEcluster->Draw("same");
-  // legend->Draw();
+  TLegend *legend = new TLegend( 0.4, 0.6, 0.8, 0.9);
+  legend->AddEntry( g_loss, "validation loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  legend->AddEntry( g_train_loss, "train loss", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  legend->SetFillColor(0);
 
-  TCanvas *c2 = new TCanvas("c2","validation loss",1);
-  c2->cd();
-  c2->SetGrid();
-  g_LV->GetYaxis()->SetTitle("validation loss"); 
-  g_LV->SetMaximum(10); 
-  g_LV->SetMinimum(0); 
-  g_LV->Draw();
-  g_loss->Draw("same");
-  // g5->Draw("same");
-  g_Lbeta->Draw("same");
-  g_LE->Draw("same");
-  g_LEcond->Draw("same");
-  g_LEcluster->Draw("same");
+  TCanvas *c1 = new TCanvas("c1","loss all range",1);
+  c1->cd();
+  g_loss->SetLineColor(kBlue);
+  g_loss->Draw();
+  g_train_loss->SetLineColor(kRed);
+  g_train_loss->Draw("same");
   legend->Draw();
 
-  TCanvas *c1_train = new TCanvas("c1_train","train loss all range",1);
-  TCanvas *c2_train = new TCanvas("c2_train","train loss",1);
-  if(train_l_v.size()>0){
-    c1_train->cd();
-    g_train_loss->Draw();
-    g_train_LV->Draw("same");
-    g_train_Lbeta->Draw("same");
-    g_train_LE->Draw("same");
-    g_train_LEtracker->Draw("same");
-    g_train_LEcluster->Draw("same");
+  // TCanvas *c1 = new TCanvas("c1","validation loss all range",1);
+  // c1->cd();
+  // g_loss->Draw();
+  // // g5->Draw("same");
+  // g_LV->Draw("same");
+  // g_Lbeta->Draw("same");
+  // g_LE->Draw("same");
+  // g_LEcond->Draw("same");
+  // g_LEcluster->Draw("same");
+  // // legend->Draw();
 
-    c2_train->cd();
-    c2_train->SetGrid();
-    g_train_LV->SetMaximum(6); 
-    g_train_LV->SetMinimum(0); 
-    g_train_LV->Draw();
-    g_train_loss->Draw("same");
-    g_train_Lbeta->Draw("same");
-    g_train_LE->Draw("same");
-    g_train_LEtracker->Draw("same");
-    g_train_LEcluster->Draw("same");
-    legend_train->Draw();
-  }
+  // TCanvas *c2 = new TCanvas("c2","validation loss",1);
+  // c2->cd();
+  // c2->SetGrid();
+  // g_LV->GetYaxis()->SetTitle("validation loss"); 
+  // g_LV->SetMaximum(10); 
+  // g_LV->SetMinimum(0); 
+  // g_LV->Draw();
+  // g_loss->Draw("same");
+  // // g5->Draw("same");
+  // g_Lbeta->Draw("same");
+  // g_LE->Draw("same");
+  // g_LEcond->Draw("same");
+  // g_LEcluster->Draw("same");
+  // legend->Draw();
+
+  // TCanvas *c1_train = new TCanvas("c1_train","train loss all range",1);
+  // TCanvas *c2_train = new TCanvas("c2_train","train loss",1);
+  // if(train_l_v.size()>0){
+  //   c1_train->cd();
+  //   g_train_loss->Draw();
+  //   g_train_LV->Draw("same");
+  //   g_train_Lbeta->Draw("same");
+  //   g_train_LE->Draw("same");
+  //   g_train_LEtracker->Draw("same");
+  //   g_train_LEcluster->Draw("same");
+
+  //   c2_train->cd();
+  //   c2_train->SetGrid();
+  //   g_train_LV->SetMaximum(6); 
+  //   g_train_LV->SetMinimum(0); 
+  //   g_train_LV->Draw();
+  //   g_train_loss->Draw("same");
+  //   g_train_Lbeta->Draw("same");
+  //   g_train_LE->Draw("same");
+  //   g_train_LEtracker->Draw("same");
+  //   g_train_LEcluster->Draw("same");
+  //   legend_train->Draw();
+  // }
   
 
 
@@ -427,104 +440,104 @@ void reading_log(){
 
 
 
-  // assert(gradients.size()!=nepoch);
+  // // assert(gradients.size()!=nepoch);
 
-  // gradient
-  int digit_range = grad_max_digit - grad_min_digit + 1;
-  cout << "digits : " << grad_max_digit << " , " <<  grad_min_digit << endl;
-  int ngrad = gradients.size()>0 ? gradients[0].size() : 0;
+  // // gradient
+  // int digit_range = grad_max_digit - grad_min_digit + 1;
+  // cout << "digits : " << grad_max_digit << " , " <<  grad_min_digit << endl;
+  // int ngrad = gradients.size()>0 ? gradients[0].size() : 0;
 
-  int last_epoch_digits[ngrad];
-  if(ngrad!=0){
-    for(int igrad=0;igrad<ngrad;igrad++){
-      int dig = log10(gradients[nepoch-1][igrad]) > 0 ? log10(gradients[nepoch-1][igrad]) : log10(gradients[nepoch-1][igrad]) - 1;
-      // cout << gradients[nepoch-1][igrad] << ", " << dig << endl;
-      last_epoch_digits[igrad] = dig;
-    }
-  }
-
-
+  // int last_epoch_digits[ngrad];
+  // if(ngrad!=0){
+  //   for(int igrad=0;igrad<ngrad;igrad++){
+  //     int dig = log10(gradients[nepoch-1][igrad]) > 0 ? log10(gradients[nepoch-1][igrad]) : log10(gradients[nepoch-1][igrad]) - 1;
+  //     // cout << gradients[nepoch-1][igrad] << ", " << dig << endl;
+  //     last_epoch_digits[igrad] = dig;
+  //   }
+  // }
 
 
 
-  TGraph *g_gradients[ngrad];
-  for(int igrad=0;igrad<ngrad;igrad++){
-    g_gradients[igrad] = new TGraph();
-    g_gradients[igrad]->GetXaxis()->SetTitle("epoch"); 
-    g_gradients[igrad]->GetYaxis()->SetTitle("gradient"); 
-    // g_gradients[i]->SetMinimum(0); 
-    // g_gradients[i]->SetLineColor(1); 
-  }
-  TCanvas *c_gradients[digit_range];
-  TLegend *c_legend[digit_range];
-  int ngraph_digit[digit_range], line_color[digit_range];
-  for(int idig=0;idig<digit_range;idig++){
-    c_gradients[idig] = new TCanvas(Form("c_gradients_%d",idig+grad_min_digit),Form("gradients_%d",idig+grad_min_digit),1);
-    c_legend[idig] = new TLegend(0.5, 0.6, 0.9, 0.9);
-    ngraph_digit[idig] = 0;
-    line_color[idig] = 1;
-  }
 
-  for(int iepoch=0;iepoch<nepoch;iepoch++){
-    for(int igrad=0;igrad<ngrad;igrad++){
-      g_gradients[igrad]->SetPoint(iepoch,iepoch,gradients[iepoch][igrad]);
-    }
-  }
 
-  for(int igrad=0;igrad<ngrad;igrad++){
-    c_gradients[last_epoch_digits[igrad]-grad_min_digit]->cd();
-    string drawOption = ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==0 ? "" : "same";
-    g_gradients[igrad]->SetLineColor(ngraph_digit[last_epoch_digits[igrad]-grad_min_digit] + line_color[last_epoch_digits[igrad]-grad_min_digit]); 
-    c_legend[last_epoch_digits[igrad]-grad_min_digit]->AddEntry(g_gradients[igrad], Form("gradient norm of parameter %d",igrad) , "l");
-    g_gradients[igrad]->Draw(drawOption.c_str());
-    ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]++;
-    if(ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==4 || ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==8) line_color[last_epoch_digits[igrad]-grad_min_digit]++;
-  }
+  // TGraph *g_gradients[ngrad];
+  // for(int igrad=0;igrad<ngrad;igrad++){
+  //   g_gradients[igrad] = new TGraph();
+  //   g_gradients[igrad]->GetXaxis()->SetTitle("epoch"); 
+  //   g_gradients[igrad]->GetYaxis()->SetTitle("gradient"); 
+  //   // g_gradients[i]->SetMinimum(0); 
+  //   // g_gradients[i]->SetLineColor(1); 
+  // }
+  // TCanvas *c_gradients[digit_range];
+  // TLegend *c_legend[digit_range];
+  // int ngraph_digit[digit_range], line_color[digit_range];
+  // for(int idig=0;idig<digit_range;idig++){
+  //   c_gradients[idig] = new TCanvas(Form("c_gradients_%d",idig+grad_min_digit),Form("gradients_%d",idig+grad_min_digit),1);
+  //   c_legend[idig] = new TLegend(0.5, 0.6, 0.9, 0.9);
+  //   ngraph_digit[idig] = 0;
+  //   line_color[idig] = 1;
+  // }
 
-  for(int idig=0;idig<digit_range;idig++){
-    c_gradients[idig]->cd();
-    c_legend[idig]->Draw("same");
-  }
+  // for(int iepoch=0;iepoch<nepoch;iepoch++){
+  //   for(int igrad=0;igrad<ngrad;igrad++){
+  //     g_gradients[igrad]->SetPoint(iepoch,iepoch,gradients[iepoch][igrad]);
+  //   }
+  // }
+
+  // for(int igrad=0;igrad<ngrad;igrad++){
+  //   c_gradients[last_epoch_digits[igrad]-grad_min_digit]->cd();
+  //   string drawOption = ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==0 ? "" : "same";
+  //   g_gradients[igrad]->SetLineColor(ngraph_digit[last_epoch_digits[igrad]-grad_min_digit] + line_color[last_epoch_digits[igrad]-grad_min_digit]); 
+  //   c_legend[last_epoch_digits[igrad]-grad_min_digit]->AddEntry(g_gradients[igrad], Form("gradient norm of parameter %d",igrad) , "l");
+  //   g_gradients[igrad]->Draw(drawOption.c_str());
+  //   ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]++;
+  //   if(ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==4 || ngraph_digit[last_epoch_digits[igrad]-grad_min_digit]==8) line_color[last_epoch_digits[igrad]-grad_min_digit]++;
+  // }
+
+  // for(int idig=0;idig<digit_range;idig++){
+  //   c_gradients[idig]->cd();
+  //   c_legend[idig]->Draw("same");
+  // }
   
 
 
 
-  TLegend *legend_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend_LV->AddEntry( g_LV_att_charged, "attractive +-", "l");
-  legend_LV->AddEntry( g_LV_att_neutral, "attractive 0", "l");
-  legend_LV->AddEntry( g_LV_rep_charged, "repulsive +-", "l");
-  legend_LV->AddEntry( g_LV_rep_neutral, "repulsive 0", "l");
-  legend_LV->SetFillColor(0);
-  TCanvas *c_l_v = new TCanvas("c_l_v","l_v validation",1);
-  c_l_v->cd();
-  c_l_v->SetGrid();
-  g_LV_rep_neutral->SetMinimum(0); 
-  g_LV_rep_neutral->SetMaximum(1); 
-  if(l_v_rep_neutral.size()>0){
-    g_LV_rep_neutral->Draw();
-    g_LV_att_charged->Draw("same");
-    g_LV_att_neutral->Draw("same");
-    g_LV_rep_charged->Draw("same");
-    legend_LV->Draw("same");
-  }
+  // TLegend *legend_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  // legend_LV->AddEntry( g_LV_att_charged, "attractive +-", "l");
+  // legend_LV->AddEntry( g_LV_att_neutral, "attractive 0", "l");
+  // legend_LV->AddEntry( g_LV_rep_charged, "repulsive +-", "l");
+  // legend_LV->AddEntry( g_LV_rep_neutral, "repulsive 0", "l");
+  // legend_LV->SetFillColor(0);
+  // TCanvas *c_l_v = new TCanvas("c_l_v","l_v validation",1);
+  // c_l_v->cd();
+  // c_l_v->SetGrid();
+  // g_LV_rep_neutral->SetMinimum(0); 
+  // g_LV_rep_neutral->SetMaximum(1); 
+  // if(l_v_rep_neutral.size()>0){
+  //   g_LV_rep_neutral->Draw();
+  //   g_LV_att_charged->Draw("same");
+  //   g_LV_att_neutral->Draw("same");
+  //   g_LV_rep_charged->Draw("same");
+  //   legend_LV->Draw("same");
+  // }
 
-  TLegend *legend_train_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend_train_LV->AddEntry( g_train_LV_att_charged, "attractive +-", "l");
-  legend_train_LV->AddEntry( g_train_LV_att_neutral, "attractive 0", "l");
-  legend_train_LV->AddEntry( g_train_LV_rep_charged, "repulsive +-", "l");
-  legend_train_LV->AddEntry( g_train_LV_rep_neutral, "repulsive 0", "l");
-  legend_train_LV->SetFillColor(0);
-  TCanvas *c_l_v_train = new TCanvas("c_l_v_train","l_v train",1);
-  c_l_v_train->cd();
-  c_l_v_train->SetGrid();
-  g_train_LV_rep_neutral->SetMinimum(0); 
-  g_train_LV_rep_neutral->SetMaximum(1); 
-  if(train_l_v_att_charged.size()>0){
-    g_train_LV_rep_neutral->Draw();
-    g_train_LV_att_charged->Draw("same");
-    g_train_LV_att_neutral->Draw("same");
-    g_train_LV_rep_charged->Draw("same");
-    legend_train_LV->Draw("same");
-  }
+  // TLegend *legend_train_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  // legend_train_LV->AddEntry( g_train_LV_att_charged, "attractive +-", "l");
+  // legend_train_LV->AddEntry( g_train_LV_att_neutral, "attractive 0", "l");
+  // legend_train_LV->AddEntry( g_train_LV_rep_charged, "repulsive +-", "l");
+  // legend_train_LV->AddEntry( g_train_LV_rep_neutral, "repulsive 0", "l");
+  // legend_train_LV->SetFillColor(0);
+  // TCanvas *c_l_v_train = new TCanvas("c_l_v_train","l_v train",1);
+  // c_l_v_train->cd();
+  // c_l_v_train->SetGrid();
+  // g_train_LV_rep_neutral->SetMinimum(0); 
+  // g_train_LV_rep_neutral->SetMaximum(1); 
+  // if(train_l_v_att_charged.size()>0){
+  //   g_train_LV_rep_neutral->Draw();
+  //   g_train_LV_att_charged->Draw("same");
+  //   g_train_LV_att_neutral->Draw("same");
+  //   g_train_LV_rep_charged->Draw("same");
+  //   legend_train_LV->Draw("same");
+  // }
 
 }

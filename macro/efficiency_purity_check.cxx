@@ -13,14 +13,20 @@
 using namespace std;
 
 // conditions
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta090td050.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
+
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_tbeta09td05_truthClustering.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats_truthClustering.root");
+
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const bool kaon_neutron = false;
+const bool jet_regression = false;
 const bool pandora = false;
 const bool ECluster = true;
 double beta_threshold = 0;
@@ -42,6 +48,7 @@ void efficiency_purity_check(){
     TTree *tree[rawfilenum];
     TTree *tree_pred[rawfilenum];
     TTree *tree_event[rawfilenum];
+    TTree *tree_jet[rawfilenum];
     int entry_max[rawfilenum];
     int total_entry_max=0;
     string picDirectory = ".";
@@ -55,6 +62,7 @@ void efficiency_purity_check(){
         entry_max[i] = tree[i]->GetEntries();
         tree_pred[i] = (TTree*) filein[i]->Get("prediction");
         tree_event[i] = (TTree*) filein[i]->Get("event");
+        if(jet_regression) tree_jet[i] = (TTree*) filein[i]->Get("jet");
     }
 
 
@@ -63,6 +71,8 @@ void efficiency_purity_check(){
 
     int _event, _hitid, _mcid, _truthid, _mcpdg, _mccharge, _mcstatus, _ncluster, _matched_ncluster, _matched_cluster, _pred_alpha;
     double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_edep_cluster, _pred_beta;
+
+    double _MC_jet_energy, _total_predicted_energy_truthBase, _total_predicted_energy_predBase;
 
 
 
@@ -82,6 +92,10 @@ void efficiency_purity_check(){
     vector<int> particledgValues_itr = kaon_neutron ? particledgValues_itr_base : particledgValues_itr_base_;
     for(int ip=0;ip<nParticle;ip++) particleNames[ip] = particleNames_base[ip];
 
+    // const int nParticle = 4;
+    // string particleNames[4] = {"electron", "pion", "photon", "neutral particle"};
+    // vector<int> particledgValues = {11,-11, 211,-211, 22, 2112, 130};
+    // vector<int> particledgValues_itr = {0,0, 1,1, 2, 3, 3};
 
     double Eres_range = pandora ? 0.05 : 1.5;
     // double Eres_range = 1.5;
@@ -91,6 +105,8 @@ void efficiency_purity_check(){
     int Eres_fitbin_lower = Eres_range>Eres_fit_range ? (Eres_range-Eres_fit_range)/E_res_binWidth : 0;
     int Eres_fitbin_upper = Eres_range>Eres_fit_range ? Eres_nbin - (Eres_range-Eres_fit_range)/E_res_binWidth : -1;
     int rebin_factor = 0.025 / E_res_binWidth;
+
+    const int nEnergy_jet = 12;
     
     const int nEnergy = 10;
     const double energy_interval = energyMaximum / nEnergy;
@@ -174,14 +190,14 @@ void efficiency_purity_check(){
         energy_resolution[ip] = new TH1F(Form("energy_resolution_%d",ip), Form("%s (truth energy>1 GeV);(predicted - truth) / truth",particleNames[ip].c_str()), energyMax*10,-energyMax/2,energyMax/2);
         for(int ie=0;ie<nEnergy;ie++){
             string title = ie==0 ? Form("%s purity",particleNames[ip].c_str()) : Form("%s purity %d-%d GeV",particleNames[ip].c_str(),ie,ie+1);
-            purity_energy[ip][ie] = new TH1F(Form("purity_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
+            purity_energy[ip][ie] = new TH1F(Form("purity_%d_%d",ip,ie), title.c_str(), 101,0,1.01);
             purity_energy[ip][ie]->SetXTitle("purity (edep_match/edep_reco)");
-            purity_energy_normalize[ip][ie] = new TH1F(Form("purity_norm_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
+            purity_energy_normalize[ip][ie] = new TH1F(Form("purity_norm_%d_%d",ip,ie), title.c_str(), 101,0,1.01);
             purity_energy_normalize[ip][ie]->SetXTitle("purity (edep_match/edep_reco)");
             title = ie==0 ? Form("%s efficiency",particleNames[ip].c_str()) : Form("%s efficiency %d-%d GeV",particleNames[ip].c_str(),ie,ie+1);
-            efficiency_energy[ip][ie] = new TH1F(Form("efficiency_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
+            efficiency_energy[ip][ie] = new TH1F(Form("efficiency_%d_%d",ip,ie), title.c_str(), 101,0,1.01);
             efficiency_energy[ip][ie]->SetXTitle("efficiency (edep_match/edep)");
-            efficiency_energy_normalize[ip][ie] = new TH1F(Form("efficiency_normalize_%d_%d",ip,ie), title.c_str(), 51,0,1.02);
+            efficiency_energy_normalize[ip][ie] = new TH1F(Form("efficiency_normalize_%d_%d",ip,ie), title.c_str(), 101,0,1.01);
             efficiency_energy_normalize[ip][ie]->SetXTitle("efficiency (edep_match/edep)");
 
             title = ie==0 ? Form("%s ;predicted energy - MC truth energy",particleNames[ip].c_str()) : Form("%s (%d-%d GeV);predicted energy - MC truth energy",particleNames[ip].c_str(),(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
@@ -192,6 +208,12 @@ void efficiency_purity_check(){
             energy_resolution_per_energy[ip][ie] = new TH1F(Form("energy_resolution_per_energy_%d_%d",ip,ie), title.c_str(), Eres_nbin,-Eres_range,Eres_range);
             energy_resolution_per_energy_cluster[ip][ie] = new TH1F(Form("energy_resolution_per_energy_cluster_%d_%d",ip,ie), title.c_str(), Eres_nbin,-Eres_range,Eres_range);
         }
+    }
+    TH2F *jet_energy2d = new TH2F(Form("jet_energy2d"), Form(";MC jet energy;predicted jet energy"), 1200,0,120,1200,0,120);
+    TH1F *jet_energy_resolution_per_energy[nEnergy_jet];
+    for(int ie=0;ie<nEnergy_jet;ie++){
+        string title = ie==0 ? Form("jet;(predicted - truth) / truth") : Form("jet (%d-%d GeV);(predicted - truth) / truth",(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
+        jet_energy_resolution_per_energy[ie] = new TH1F(Form("energy_resolution_per_energy_%d",ie), title.c_str(), 400,-0.5,0.5);
     }
 
 
@@ -226,14 +248,15 @@ void efficiency_purity_check(){
 
             if(edep>1) purity[itr]->Fill(pur);
             purity2d[itr]->Fill(pur,edep);
-            // if(edep<10){
-            //     purity_energy[itr][(int)edep]->Fill(pur);
-            //     purity_energy_normalize[itr][(int)edep]->Fill(pur);
-            //     efficiency_energy[itr][(int)edep]->Fill(eff);
-            //     efficiency_energy_normalize[itr][(int)edep]->Fill(eff);
-            // }
             if(edep>1) efficiency[itr]->Fill(eff);
             efficiency2d[itr]->Fill(eff,edep);
+            int energy_itr = mcen / energy_interval;
+            if(energy_itr<nEnergy){
+                purity_energy[itr][energy_itr]->Fill(pur);
+                purity_energy_normalize[itr][energy_itr]->Fill(pur);
+                efficiency_energy[itr][energy_itr]->Fill(eff);
+                efficiency_energy_normalize[itr][energy_itr]->Fill(eff);
+            }
 
             energy[itr]->Fill(pred_edep);
             MCtruth_energy[itr]->Fill(mcen);
@@ -284,8 +307,20 @@ void efficiency_purity_check(){
             // if(_pred_alpha==1) condbeta_vs_Ediff[itr]->Fill(_pred_beta,_pred_edep-_mcen);
             // if(_pred_alpha==1) condbeta_vs_mcen[itr]->Fill(_pred_beta,_mcen);
         }
-      
 
+
+        if(jet_regression){
+            tree_jet[irawfile]->SetBranchAddress("MC_jet_energy", &_MC_jet_energy);
+            tree_jet[irawfile]->SetBranchAddress("total_predicted_energy_truthBase", &_total_predicted_energy_truthBase);
+            tree_jet[irawfile]->SetBranchAddress("total_predicted_energy_predBase", &_total_predicted_energy_predBase);
+            for(int ientry=0; ientry<tree_jet[irawfile]->GetEntries(); ientry++){
+                tree_jet[irawfile]->GetEntry(ientry);
+
+                jet_energy2d->Fill(_MC_jet_energy, _total_predicted_energy_predBase);
+                int itr_energy = _MC_jet_energy/10;
+                jet_energy_resolution_per_energy[itr_energy]->Fill( (_total_predicted_energy_predBase - _MC_jet_energy) / _MC_jet_energy );
+            }
+        }
 
     }
     
@@ -298,7 +333,7 @@ void efficiency_purity_check(){
     gStyle->SetStatH(0.3);
     gStyle->SetStatW(0.4);
     // legends をもう少し大きくする
-
+/*
     TCanvas *compare = new TCanvas("compare","compare",1);
     compare->Divide(nParticle,2);
     for(int ip=0;ip<nParticle*2;ip++){
@@ -308,7 +343,97 @@ void efficiency_purity_check(){
         if(ip<nParticle) efficiency[ip]->Draw();
         else purity[ip-nParticle]->Draw();
     }
+*/
+    TCanvas *compare_energy = new TCanvas("compare_energy","compare_energy",1);
+    compare_energy->Divide(nParticle,2);
+    TLegend *legend_comp_e[nParticle][2];
+    double eff_mean[nParticle][nEnergy];
+    double eff_mean_error[nParticle][nEnergy];
+    double pur_mean[nParticle][nEnergy];
+    double pur_mean_error[nParticle][nEnergy];
+    for(int ip=0;ip<nParticle*2;ip++){
+        compare_energy->cd(ip+1);
+        string par_type = ip/nParticle==0 ? " efficiency" : " purity";
+        cout << particleNames[ip%nParticle] << par_type.c_str() << endl;
+        gPad->SetLogy();
+        legend_comp_e[ip%nParticle][ip/nParticle] = new TLegend( 0.4, 0.6, 0.8, 0.9);
+        for(int ie=0;ie<nEnergy;ie++){
+            string drawOption = ie==0 ? "HIST" : "same HIST";
+            int colorId = ie<9 ? ie+1 : ie+2;
+            string led_com = "";
+            if(ip<nParticle){
+                // efficiency_energy[ip][ie]->Rebin(2);
+                efficiency_energy_normalize[ip][ie]->SetLineColor(colorId);
+                efficiency_energy_normalize[ip][ie]->SetMarkerColor(colorId);
+                int scaling = efficiency_energy_normalize[ip][ie]->Integral() == 0 ? 1 : efficiency_energy_normalize[ip][ie]->Integral();
+                efficiency_energy_normalize[ip][ie]->Scale(1.0/scaling);
+                // efficiency_energy_normalize[ip][ie]->SetMaximum(yaxis_height[ip]*2);
+                efficiency_energy_normalize[ip][ie]->Draw(drawOption.c_str());
+                eff_mean[ip][ie] = efficiency_energy[ip][ie]->GetMean();
+                eff_mean_error[ip][ie] = efficiency_energy[ip][ie]->GetMeanError();
+                led_com = Form("%d-%d GeV mean:%f StdErr:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), efficiency_energy[ip][ie]->GetMean(), efficiency_energy[ip][ie]->GetMeanError());
+                // led_com = Form("%d-%d GeV mean:%f StdDev:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), efficiency_energy_normalize[ip][ie]->GetMean(), efficiency_energy_normalize[ip][ie]->GetStdDev());
+                legend_comp_e[ip%nParticle][ip/nParticle]->AddEntry(efficiency_energy_normalize[ip][ie], led_com.c_str() , "l");
+                // legend_comp_e[ip%nParticle][ip/nParticle]->AddEntry(efficiency_energy_normalize[ip][ie], Form("%d-%d GeV",(int)(ie*energy_interval),(int)((ie+1)*energy_interval)), "l");
+                legend_comp_e[ip%nParticle][ip/nParticle]->Draw("same");
+                cout << "   " << led_com.c_str() << endl;
+            } else {
+                // purity_energy[ip-nParticle][ie]->Rebin(2);
+                purity_energy_normalize[ip-nParticle][ie]->SetLineColor(colorId);
+                purity_energy_normalize[ip-nParticle][ie]->SetMarkerColor(colorId);
+                int scaling = purity_energy_normalize[ip-nParticle][ie]->Integral() == 0 ? 1 : purity_energy_normalize[ip-nParticle][ie]->Integral();
+                purity_energy_normalize[ip-nParticle][ie]->Scale(1.0/scaling);
+                // purity_energy_normalize[ip-nParticle][ie]->SetMaximum(yaxis_height[ip]*2);
+                purity_energy_normalize[ip-nParticle][ie]->Draw(drawOption.c_str());
+                // compare_energy->cd(ip+1)->BuildLegend();
+                pur_mean[ip-nParticle][ie] = purity_energy[ip-nParticle][ie]->GetMean();
+                pur_mean_error[ip-nParticle][ie] = purity_energy[ip-nParticle][ie]->GetMeanError();
+                led_com = Form("%d-%d GeV mean:%f StdErr:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), pur_mean[ip-nParticle][ie], pur_mean_error[ip-nParticle][ie]);
+                // led_com = Form("%d-%d GeV mean:%f StdDev:%f",(int)(ie*energy_interval),(int)((ie+1)*energy_interval), purity_energy_normalize[ip-nParticle][ie]->GetMean(), purity_energy_normalize[ip-nParticle][ie]->GetStdDev());
+                legend_comp_e[ip%nParticle][ip/nParticle]->AddEntry(purity_energy_normalize[ip-nParticle][ie], led_com.c_str() , "l");
+                // legend_comp_e[ip%nParticle][ip/nParticle]->AddEntry(purity_energy_normalize[ip-nParticle][ie], Form("%d-%d GeV",(int)(ie*energy_interval),(int)((ie+1)*energy_interval)), "l");
+                legend_comp_e[ip%nParticle][ip/nParticle]->Draw("same");
+                cout << "   " << led_com.c_str() << endl;
+            }
+        }
+    }
 
+    TCanvas *compare_per_energy = new TCanvas("compare_per_energy","compare_per_energy",1);
+    compare_per_energy->Divide(2,1);
+    compare_per_energy->cd();
+    TGraphErrors *eff_per_energy[nParticle];
+    TGraphErrors *pur_per_energy[nParticle];
+    TLegend *legend_comp_per_e = new TLegend( 0.4, 0.1, 0.8, 0.4);;
+    for(int ip=0;ip<nParticle;ip++){
+        eff_per_energy[ip] = new TGraphErrors();
+        pur_per_energy[ip] = new TGraphErrors();
+        for(int ie=0;ie<nEnergy;ie++){
+            eff_per_energy[ip]->SetPoint(ie, (ie+0.5)*energy_interval, eff_mean[ip][ie]);
+            eff_per_energy[ip]->SetPointError(ie, (0.5)*energy_interval, eff_mean_error[ip][ie]);
+            pur_per_energy[ip]->SetPoint(ie, (ie+0.5)*energy_interval, pur_mean[ip][ie]);
+            pur_per_energy[ip]->SetPointError(ie, (0.5)*energy_interval, pur_mean_error[ip][ie]);
+        }
+        eff_per_energy[ip]->SetLineColor(ip+1);
+        eff_per_energy[ip]->SetMarkerColor(ip+1);
+        pur_per_energy[ip]->SetLineColor(ip+1);
+        pur_per_energy[ip]->SetMarkerColor(ip+1);
+        legend_comp_per_e->AddEntry(eff_per_energy[ip], Form("%s", particleNames[ip].c_str()) , "l");
+
+        string drawOption = ip==0 ? "AP" : "P";
+        compare_per_energy->cd(1);
+        eff_per_energy[ip]->SetMaximum(1);
+        eff_per_energy[ip]->SetMinimum(0);
+        eff_per_energy[ip]->Draw(drawOption.c_str());
+        compare_per_energy->cd(2);
+        pur_per_energy[ip]->SetMaximum(1);
+        pur_per_energy[ip]->SetMinimum(0);
+        pur_per_energy[ip]->Draw(drawOption.c_str());
+    }
+    compare_per_energy->cd(1);
+    legend_comp_per_e->Draw("same");
+    compare_per_energy->cd(2);
+    legend_comp_per_e->Draw("same");
+/*
     TCanvas *canvas_energy = new TCanvas("canvas_energy","canvas_energy",1);
     canvas_energy->Divide(nParticle,2);
     canvas_energy->cd();
@@ -729,6 +854,87 @@ void efficiency_purity_check(){
     }
 
 
+    TCanvas *canvas_jet_energy = new TCanvas("canvas_jet_energy","canvas_jet_energy",1400,500);
+    canvas_jet_energy->Divide(3,1);
+    canvas_jet_energy->cd();
+    canvas_jet_energy->cd(1);
+    jet_energy2d->SetStats(0);
+    jet_energy2d->Draw("colz");
+
+    canvas_jet_energy->cd(2);
+    TLegend *legend_jet_resolution;
+    int Ymaximum_jet_resolution = 0;
+        for(int ie=0;ie<nEnergy_jet;ie++){
+            Ymaximum_jet_resolution = jet_energy_resolution_per_energy[ie]->GetMaximum() > Ymaximum_jet_resolution ? jet_energy_resolution_per_energy[ie]->GetMaximum() : Ymaximum_jet_resolution;
+        }
+        legend_jet_resolution = new TLegend( 0.1, 0.6, 0.5, 0.9) ;
+        for(int ie=0;ie<nEnergy_jet;ie++){
+            legend_jet_resolution->AddEntry(jet_energy_resolution_per_energy[ie], Form("%d-%d GeV mean:%f StdDev:%f",(int)(ie*10),(int)((ie+1)*10), jet_energy_resolution_per_energy[ie]->GetMean(), jet_energy_resolution_per_energy[ie]->GetStdDev()) , "l");
+            string drawOption = ie==0 ? "HIST" : "same HIST";
+            int colorId = ie<9 ? ie+1 : ie+2;
+            jet_energy_resolution_per_energy[ie]->SetLineColor(colorId);
+            jet_energy_resolution_per_energy[ie]->SetMarkerColor(colorId);
+            jet_energy_resolution_per_energy[ie]->SetMaximum(Ymaximum_jet_resolution*3);
+            jet_energy_resolution_per_energy[ie]->SetStats(0);
+            jet_energy_resolution_per_energy[ie]->Draw(drawOption.c_str());
+        }
+        legend_jet_resolution->SetTextSize(0.03);
+        legend_jet_resolution->SetFillStyle(0);
+        legend_jet_resolution->Draw("same");
+
+    canvas_jet_energy->cd(3);
+    double jet_resolution_rms[nEnergy_jet];
+    double jet_resolution_sigma[nEnergy_jet];
+    double jet_resolution_sigma_error[nEnergy_jet];
+    TGraphErrors *jet_energy_resolution_rms;
+    TGraphErrors *jet_energy_resolution_sigma;
+    TLegend *legend_jet_res = new TLegend( 0.5, 0.75, 0.9, 0.9);
+        cout << "jet energy resolution" << endl;
+        jet_energy_resolution_rms = new TGraphErrors();
+        jet_energy_resolution_rms->SetTitle(Form("jet"));
+        jet_energy_resolution_rms->GetXaxis()->SetTitle("GeV");
+        jet_energy_resolution_rms->GetYaxis()->SetTitle("simga of (pred-truth)/truth (%)");
+        jet_energy_resolution_rms->SetLineColor(kRed);
+        jet_energy_resolution_rms->SetMarkerColor(kRed);
+        jet_energy_resolution_rms->SetMaximum(15);
+        jet_energy_resolution_rms->SetMinimum(0);
+        jet_energy_resolution_sigma = new TGraphErrors();
+        jet_energy_resolution_sigma->SetTitle(Form("jet"));
+        jet_energy_resolution_sigma->SetLineColor(kBlue);
+        jet_energy_resolution_sigma->SetMarkerColor(kBlue);
+        jet_energy_resolution_sigma->SetMaximum(15);
+        jet_energy_resolution_sigma->SetMinimum(0);
+        legend_jet_res->AddEntry(jet_energy_resolution_rms, Form("rms") , "l");
+        legend_jet_res->AddEntry(jet_energy_resolution_sigma, Form("gaussian sigma") , "l");
+        for(int ie=0;ie<nEnergy_jet;ie++){
+            jet_energy_resolution_per_energy[ie]->SetAxisRange(-Eres_fit_range,Eres_fit_range);
+            jet_resolution_rms[ie] = jet_energy_resolution_per_energy[ie]->GetStdDev();
+            if(jet_energy_resolution_per_energy[ie]->Integral(Eres_fitbin_lower,Eres_fitbin_upper)>30){
+                jet_energy_resolution_per_energy[ie]->Fit("gaus","NQ","",-0.1,0.1);
+                jet_resolution_sigma[ie] = gaus->GetParameter(2);
+                jet_resolution_sigma_error[ie] = gaus->GetParError(2);
+            } else {
+                jet_energy_resolution_per_energy[ie]->Rebin(4);
+                jet_energy_resolution_per_energy[ie]->Fit("gaus","NQ","",-0.1,0.1);
+                jet_resolution_sigma[ie] = gaus->GetParameter(2);
+                jet_resolution_sigma_error[ie] = gaus->GetParError(2);
+                if(gaus->GetParameter(2)>0.2){
+                    jet_resolution_sigma[ie] = -1;
+                    jet_resolution_sigma_error[ie] = 0;
+                }
+            }
+            jet_energy_resolution_rms->SetPoint(ie, (ie+0.5)*10, jet_resolution_rms[ie]*100);
+            jet_energy_resolution_rms->SetPointError(ie, (0.5)*10, 0);
+            jet_energy_resolution_sigma->SetPoint(ie, (ie+0.5)*10, jet_resolution_sigma[ie]*100);
+            jet_energy_resolution_sigma->SetPointError(ie, (0.5)*10, jet_resolution_sigma_error[ie]*100);
+            string energy_range = Form("%d-%d GeV",(int)(ie*10),(int)((ie+1)*10));
+            cout << "  " << energy_range << " : " << jet_resolution_sigma[ie] << endl;
+        }
+        jet_energy_resolution_rms->Draw("AP");
+        jet_energy_resolution_sigma->Draw("P");
+        legend_jet_res->Draw("same");
+
+
     
     if(saving_canvas){  // saving canvases
         
@@ -745,5 +951,5 @@ void efficiency_purity_check(){
         canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
     }
     
-
+*/
 }
