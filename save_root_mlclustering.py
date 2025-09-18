@@ -118,9 +118,6 @@ class PredData:
         to be used for evaluating the purity
     '''
     event = np.array([0], dtype=np.int32)
-    hitid = np.array([0], dtype=np.int32)
-    mcid = np.array([0], dtype=np.int32)
-    truthid = np.array([0], dtype=np.int32)
     mcpdg = np.array([0], dtype=np.int32)
     mccharge = np.array([0], dtype=np.int32)
     mcmass = np.array([0], dtype=np.float64)
@@ -130,17 +127,16 @@ class PredData:
     mcen = np.array([0], dtype=np.float64)
     mcstatus = np.array([0], dtype=np.int32)
     # edep_mc = np.array([0], dtype=np.float64)
-    pred_edep = np.array([0], dtype=np.float64)
-    pred_edep_cluster = np.array([0], dtype=np.float64)
-    pred_beta = np.array([0], dtype=np.float64)
-    pred_alpha = np.array([0], dtype=np.int32)
-    trackness = np.array([0], dtype=np.int32)
+    pred_pdg = np.array([0], dtype=np.int32)
+    pred_en = np.array([0], dtype=np.float64)
+    pred_px = np.array([0], dtype=np.float64)
+    pred_py = np.array([0], dtype=np.float64)
+    pred_pz = np.array([0], dtype=np.float64)
+    delta_E = np.array([0], dtype=np.float64)
+    delta_theta = np.array([0], dtype=np.float64)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
-        t.Branch("hitid",this.mcid,"hitid/I")
-        t.Branch("mcid",this.mcid,"mcid/I")
-        t.Branch("truthid",this.mcid,"truthid/I")
         t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
         t.Branch("mccharge",this.mccharge,"mccharge/I")
         t.Branch("mcmass",this.mcmass,"mcmass/D")
@@ -150,11 +146,14 @@ class PredData:
         t.Branch("mcen",this.mcen,"mcen/D")
         t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
         # t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
-        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
-        t.Branch("pred_edep_cluster",this.pred_edep,"pred_edep_cluster/D")
-        t.Branch("pred_beta",this.pred_beta,"pred_beta/D")
-        t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
-        t.Branch("trackness",this.trackness,"trackness/I")
+        t.Branch("pred_pdg",this.pred_pdg,"pred_pdg/D")
+        t.Branch("pred_en",this.pred_en,"pred_en/D")
+        t.Branch("pred_px",this.pred_px,"pred_px/D")
+        t.Branch("pred_py",this.pred_py,"pred_py/D")
+        t.Branch("pred_pz",this.pred_pz,"pred_pz/D")
+        t.Branch("delta_E",this.delta_E,"delta_E/D")
+        t.Branch("delta_theta",this.delta_theta,"delta_theta/D")
+        
 
 
 # def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
@@ -224,13 +223,39 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
         if i < 10 or i%100 == 0:
             print("Event", i, "processing...")
 
-            result = evaluate_particles(truth_fourvec, pred_fourvec)
+            # result = evaluate_particles(truth_fourvec, pred_fourvec)
+            result = evaluate_particles_(truth_fourvec, pred_fourvec)
 
-            print("     Efficiency:", result['Efficiency'])
-            print("     Purity:", result['Purity'])
-            print("     Matched particles:", result['MatchedCount'])
-            print("     Delta E:", result['DeltaE'])
-            print("     Delta theta (rad):", result['DeltaTheta'])
+            # print("     Efficiency:", result['Efficiency'])
+            # print("     Purity:", result['Purity'])
+            # print("     Matched particles:", result['MatchedCount'])
+            # print("     Delta E:", result['DeltaE'])
+            # print("     Delta theta (rad):", result['DeltaTheta'])
+            
+            # print("     true four vector        : ", result['TrueVec'])
+            # print("     predicted four vector   : ", result['PredVec'])
+            # print("     Delta E                 : ", result['DeltaE'])
+            # print("     Delta theta (rad)       : ", result['DeltaTheta'])
+
+            for ind, (true_vec, pred_vec) in enumerate(zip(result['TrueVec'], result['PredVec'])):
+                d3.event[0] = i
+                d3.mcpdg[0] = 0
+                d3.mccharge[0] = 0
+                d3.mcen[0] = true_vec[0]
+                d3.mcpx[0] = true_vec[1]
+                d3.mcpy[0] = true_vec[2]
+                d3.mcpz[0] = true_vec[3]
+                d3.pred_pdg[0] = 0
+                d3.pred_en[0] = pred_vec[0]
+                d3.pred_px[0] = pred_vec[1]
+                d3.pred_py[0] = pred_vec[2]
+                d3.pred_pz[0] = pred_vec[3]
+                d3.delta_E[0] = result['DeltaE'][ind]
+                d3.delta_theta[0] = result['DeltaTheta'][ind]
+
+                t3.Fill()
+
+
 
 
 
@@ -295,6 +320,67 @@ def evaluate_particles(true_particles, pred_particles, cost_fn=None, eps_E=0.1, 
         'DeltaE': np.array(delta_E_list),
         'DeltaTheta': np.array(delta_theta_list)
     }
+
+def evaluate_particles_(true_particles, pred_particles, cost_fn=None, eps_E=0.1, eps_theta=0.05, eps_hit=0.5):
+    e_ind = 0
+    """
+    true_particles, pred_particles: list of dict
+        dict keys: 'E', 'p', 'hits' (optional)
+    cost_fn: function(t, p) -> float
+        マッチング用コスト関数。NoneならΔEでマッチング
+    eps_E, eps_theta, eps_hit: 正しいマッチの閾値
+    """
+    N_true = len(true_particles)
+    N_pred = len(pred_particles)
+    torch.set_printoptions(edgeitems=1000)
+    # print(true_particles, pred_particles)
+    
+    # Hungarianマッチング
+    row_ind, col_ind = matching_hungarian_set_bbox_only_(pred_particles, true_particles)
+    
+    matched_correctly = 0
+    true_vec_list = []
+    pred_vec_list = []
+    delta_E_list = []
+    delta_theta_list = []
+    
+    for i, j in zip(row_ind, col_ind):
+        t = true_particles[j]
+        p = pred_particles[i]
+        # print(t, p)
+        
+        delta_E = (p[e_ind] - t[e_ind])
+        # delta_E = abs(p[e_ind] - t[e_ind]) / (t[e_ind] + 1e-8)
+        delta_theta = angle_between(p[1:], t[1:])
+        # if 'hits' in t and 'hits' in p:
+        #     jaccard = jaccard_index(t['hits'], p['hits'])
+        # else:
+            # jaccard = 1.0  # hits情報なしならスキップ
+        jaccard = 1.0  # hits情報なしならスキップ
+
+        # print(delta_E, delta_theta)
+        
+        # if delta_E < eps_E and delta_theta < eps_theta and jaccard > eps_hit:
+        #     matched_correctly += 1
+        #     delta_E_list.append(delta_E)
+        #     delta_theta_list.append(delta_theta)
+        true_vec_list.append(t)
+        pred_vec_list.append(p)
+        delta_E_list.append(delta_E)
+        delta_theta_list.append(delta_theta)
+        
+    
+    # Efficiency / Purity
+    efficiency = matched_correctly / N_true if N_true > 0 else 0
+    purity = matched_correctly / N_pred if N_pred > 0 else 0
+    
+    return {
+        'TrueVec': true_vec_list,
+        'PredVec': pred_vec_list,
+        'DeltaE': np.array(delta_E_list),
+        'DeltaTheta': np.array(delta_theta_list)
+    }
+
 
 def angle_between(p1, p2):
     """ベクトルp1, p2の間の角度（ラジアン）"""

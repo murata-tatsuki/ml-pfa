@@ -160,6 +160,7 @@ def calc_LV_Lbeta(
     LE_cluster='distribution',
     Ecl_regression=False,
     pred_cluster_energy = None,
+    l_beta_suppression = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -389,6 +390,7 @@ def calc_LV_Lbeta(
     
     # -------
     # L_beta signal term
+    L_beta_suppress = 0
 
     if beta_term_option == 'paper':
         L_beta_sig = (scatter_add((1-beta_alpha), batch_object) / n_objects_per_event).sum()
@@ -419,9 +421,38 @@ def calc_LV_Lbeta(
         L_beta_logbeta_term = (
             scatter_add(-.2*torch.log(beta_alpha+1e-9), batch_object) / n_objects_per_event
             ).sum()
+        
+        if l_beta_suppression:
+            beta_sq_sum = scatter_add((beta[is_sig]**2), object_index)
+            beta_sq_alpha = beta_alpha**2
+            non_alpha_sq = beta_sq_sum - beta_sq_alpha
+            non_alpha_term = non_alpha_sq / (n_hits_per_object + 1e-8)
+            L_beta_suppress = (scatter_add(non_alpha_term, batch_object) / n_objects_per_event).sum() * 100
+
+            # # # lambda_secondary = 1.0  # strength of penalty; tune as hyperparameter
+            # # # # beta for signal hits only (is_sig mask applied earlier)
+            # # # # object_index maps each signal hit -> object id in [0, n_objects)
+            # # # beta_sum_per_object = scatter_add(beta[is_sig], object_index)  # (n_objects,)
+            # # # # leftover beta excluding the alpha (the largest beta in the object)
+            # # # non_alpha_sum = beta_sum_per_object - beta_alpha  # (n_objects,)
+            # # # # normalize by hits-per-object to make term size-insensitive to object multiplicity
+            # # # non_alpha_avg = non_alpha_sum / (n_hits_per_object + 1e-8)  # (n_objects,)
+            # # # # aggregate to events: sum per event then divide by n_objects_per_event
+            # # # L_beta_suppress = (scatter_add(non_alpha_avg, batch_object) / n_objects_per_event).sum()
+            # # # L_beta_suppress = lambda_secondary * L_beta_suppress
+
+            # beta_sig = beta[is_sig]
+            # obj_idx = batch_object
+            # # mask: exclude condensation hits (index_alpha gives condensation per object)
+            # mask_non_alpha = torch.ones_like(beta_sig, dtype=torch.bool)
+            # mask_non_alpha[index_alpha] = False
+            # beta_non_alpha = beta_sig[mask_non_alpha]
+            # penalty term for non-condensation betas
+            # L_beta_suppress = 0.1 * (scatter_add(beta_non_alpha**2, obj_idx[mask_non_alpha]) / (n_objects_per_event)).sum()
+
 
         # Final L_beta term
-        L_beta_sig = L_beta_norms_term + L_beta_logbeta_term
+        L_beta_sig = L_beta_norms_term + L_beta_logbeta_term + L_beta_suppress
 
     else:
         valid_options = ['paper', 'short-range-potential']
@@ -542,6 +573,7 @@ def calc_LV_Lbeta(
             L_beta = L_beta / batch_size,
             L_beta_noise = L_beta_noise / batch_size,
             L_beta_sig = L_beta_sig / batch_size,
+            L_beta_suppress = L_beta_suppress / batch_size,
             L_beta_track = L_beta_track / batch_size,
             L_E = L_E / batch_size,
             L_E_charge = L_E_charge / batch_size,
@@ -575,6 +607,7 @@ def formatted_loss_components_string(components: dict) -> str:
         '\n  L_beta              = {L_beta}'
         '\n    L_beta_noise        = {L_beta_noise}'
         '\n    L_beta_sig          = {L_beta_sig}'
+        '\n    L_beta_suppress     = {L_beta_suppress}'
         '\n    L_beta_track        = {L_beta_track}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
@@ -615,6 +648,7 @@ def formatted_loss_components_string_train(components: dict) -> str:
         '\n train  L_beta              = {L_beta}'
         '\n train    L_beta_noise        = {L_beta_noise}'
         '\n train    L_beta_sig          = {L_beta_sig}'
+        '\n train    L_beta_suppress     = {L_beta_suppress}'
         '\n train    L_beta_track        = {L_beta_track}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )

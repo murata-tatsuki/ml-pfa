@@ -257,6 +257,7 @@ def run_ddp_training(rank, world_size, args):
             LE_cluster=args.LE_cluster,
             Ecl_regression=args.energy_regression_cluster,
             pred_cluster_energy = pred_cluster_energy,
+            l_beta_suppression = args.l_beta_suppression
         )
         
         if return_components:
@@ -475,6 +476,7 @@ def main():
     parser.add_argument('--nrestart-cosreduce', type=int, default=3, help='number of restart without reducing the maximum learning rate')
     parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
     parser.add_argument('--no-clipping', action='store_true', help='do not clip the gradients')           
+    parser.add_argument('--l-beta-suppression', action='store_true', help='add to decrease beta of non-condensation point')           
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -694,6 +696,7 @@ def main():
             LE_cluster=args.LE_cluster,
             Ecl_regression=args.energy_regression_cluster,
             pred_cluster_energy = pred_cluster_energy,
+            l_beta_suppression = args.l_beta_suppression
         )
         
         if return_components:

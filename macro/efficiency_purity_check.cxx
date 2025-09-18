@@ -16,16 +16,18 @@ using namespace std;
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta090td050.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_tbeta09td05_truthClustering.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats_truthClustering.root");
 
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_betaSuppress.root");
+
 const bool saving_canvas = false;
-const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const bool kaon_neutron = false;
+const bool kaon_neutron = true;
 const bool jet_regression = false;
 const bool pandora = false;
 const bool ECluster = true;
@@ -333,7 +335,7 @@ void efficiency_purity_check(){
     gStyle->SetStatH(0.3);
     gStyle->SetStatW(0.4);
     // legends をもう少し大きくする
-/*
+
     TCanvas *compare = new TCanvas("compare","compare",1);
     compare->Divide(nParticle,2);
     for(int ip=0;ip<nParticle*2;ip++){
@@ -343,7 +345,7 @@ void efficiency_purity_check(){
         if(ip<nParticle) efficiency[ip]->Draw();
         else purity[ip-nParticle]->Draw();
     }
-*/
+
     TCanvas *compare_energy = new TCanvas("compare_energy","compare_energy",1);
     compare_energy->Divide(nParticle,2);
     TLegend *legend_comp_e[nParticle][2];
@@ -433,7 +435,7 @@ void efficiency_purity_check(){
     legend_comp_per_e->Draw("same");
     compare_per_energy->cd(2);
     legend_comp_per_e->Draw("same");
-/*
+
     TCanvas *canvas_energy = new TCanvas("canvas_energy","canvas_energy",1);
     canvas_energy->Divide(nParticle,2);
     canvas_energy->cd();
@@ -951,5 +953,5 @@ void efficiency_purity_check(){
         canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
     }
     
-*/
+
 }

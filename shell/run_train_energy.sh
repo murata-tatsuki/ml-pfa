@@ -128,10 +128,10 @@ alphbeta=alpha
 
 ## nnqq
 outputD=5
-ncuda=0
+ncuda=2
 alphbeta=alpha_tracker_diff_log_perCluster
 sumdis=sum_log_perCluster
-# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-4 --lr-policy cosineReduce --ddp --clip-value 10 > log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
+python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-4 --lr-policy cosineReduce --clip-value 10 --l-beta-suppression --ddp > log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
 
 
 

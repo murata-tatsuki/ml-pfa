@@ -127,7 +127,7 @@ def pdg_id_to_class(pdg_ids):
     return cls
 
 
-def formatted_loss_components_string(components: dict) -> str:
+def formatted_loss_components_string(components: dict, valid: str="") -> str:
     """
     Formats the components returned by calc_LV_Lbeta
     """
@@ -135,9 +135,9 @@ def formatted_loss_components_string(components: dict) -> str:
     fractions = { k : v/total_loss for k, v in components.items() }
     fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
     s = (
-        '   loss_E                   = {loss_E}'
-        '\n   loss_Mag                 = {loss_Mag}'
-        '\n   loss_Dir                 = {loss_Dir}'
+        '  {valid} loss_E                   = {loss_E}'
+        '\n  {valid} loss_Mag                 = {loss_Mag}'
+        '\n  {valid} loss_Dir                 = {loss_Dir}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
@@ -458,7 +458,7 @@ def main():
             for key in loss_components:
                 loss_components[key] /= N_test
         # Compute total loss and do printout
-        if args.loss_specify: print('test ' + formatted_loss_components_string(loss_components))
+        if args.loss_specify: print(formatted_loss_components_string(loss_components, valid="test"))
         # # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
         test_loss = test_loss.item() / N_test

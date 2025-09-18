@@ -24,7 +24,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
 
-const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_09_04_180934_momentum.log";
+const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_09_05_152851_momentum.log";
 
 
 vector<double> l_v;
@@ -37,6 +37,9 @@ vector<double> l_e;
 vector<double> l_e_tracker;
 vector<double> l_e_cond;
 vector<double> l_e_cluster;
+vector<double> l_E;
+vector<double> l_Mag;
+vector<double> l_Dir;
 vector<double> returning;
 vector<double> train_loss;
 vector<double> train_l_v;
@@ -49,6 +52,9 @@ vector<double> train_l_e;
 vector<double> train_l_e_tracker;
 vector<double> train_l_e_cond;
 vector<double> train_l_e_cluster;
+vector<double> train_l_E;
+vector<double> train_l_Mag;
+vector<double> train_l_Dir;
 
 vector<string> split(string str, char del) {
     int first = 0;
@@ -146,6 +152,36 @@ void getting_loss(string line, bool get_train){
     }
 }
 
+void getting_clustering_loss(string line, bool get_train){
+    // getting  l_E
+    if(line.find("loss_E")!=string::npos){
+      // cout << line << endl;
+      line.erase(0,line.find("= ")+3);
+      // cout << line << endl;
+      // cout << stod(line) << endl;
+      if(!get_train) l_E.push_back(stod(line));
+      else train_l_E.push_back(stod(line));
+    }
+
+    if(line.find("loss_Mag")!=string::npos){
+      // cout << line << endl;
+      line.erase(0,line.find("= ")+3);
+      // cout << line << endl;
+      // cout << stod(line) << endl;
+      if(!get_train) l_Mag.push_back(stod(line));
+      else train_l_Mag.push_back(stod(line));
+    }
+
+    if(line.find("loss_Dir")!=string::npos){
+      // cout << line << endl;
+      line.erase(0,line.find("= ")+3);
+      // cout << line << endl;
+      // cout << stod(line) << endl;
+      if(!get_train) l_Dir.push_back(stod(line));
+      else train_l_Dir.push_back(stod(line));
+    }
+}
+
 
 
 void reading_clustering_log(){ 
@@ -160,8 +196,11 @@ void reading_clustering_log(){
   ifstream file(Form("%s",fileName.c_str()));
   string line;
   bool gradient_check = false;
+  int line_num = 0;
+  int last_train_char=0, last_test_char=0;
 
   while(getline(file, line)){
+    line_num++;
 
     // getting number of epochs
     if(line.find("epoch ")!=string::npos){
@@ -199,7 +238,14 @@ void reading_clustering_log(){
       returning.push_back(stod(line));
     }
 
+    if(line.find("train")!=string::npos) last_train_char = line_num;
+    if(line.find("test")!=string::npos) last_test_char = line_num;
+
     getting_loss(line, line.find("train")!=string::npos);
+
+    // getting_clustering_loss(line, line.find("train")!=string::npos);
+    getting_clustering_loss(line, last_train_char>last_test_char);
+    // cout << line_num << "   " << line << "   " << last_train_char << ", " << last_test_char << endl;
     // cout << line << endl;
 
     // getting gradient
@@ -265,6 +311,9 @@ void reading_clustering_log(){
   TGraph *g_LE = new TGraph();
   TGraph *g_LEcond = new TGraph();
   TGraph *g_LEcluster = new TGraph();
+  TGraph *g_clustering_LE = new TGraph();
+  TGraph *g_clustering_LMag = new TGraph();
+  TGraph *g_clustering_LDir = new TGraph();
   g_loss->GetXaxis()->SetTitle("epoch"); 
   g_loss->GetYaxis()->SetTitle("validation loss"); 
   // g_loss->SetTitle("beta * E"); 
@@ -283,6 +332,9 @@ void reading_clustering_log(){
   g_LV_att_neutral->SetLineColor(2); 
   g_LV_rep_charged->SetLineColor(3); 
   g_LV_rep_neutral->SetLineColor(4); 
+  g_clustering_LE->SetLineColor(1); 
+  g_clustering_LMag->SetLineColor(2); 
+  g_clustering_LDir->SetLineColor(3); 
 
   // TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
   // legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -305,6 +357,9 @@ void reading_clustering_log(){
   TGraph *g_train_LE = new TGraph();
   TGraph *g_train_LEtracker = new TGraph();
   TGraph *g_train_LEcluster = new TGraph();
+  TGraph *g_train_clustering_LE = new TGraph();
+  TGraph *g_train_clustering_LMag = new TGraph();
+  TGraph *g_train_clustering_LDir = new TGraph();
   g_train_loss->GetXaxis()->SetTitle("epoch"); 
   g_train_loss->GetYaxis()->SetTitle("train loss"); 
   g_train_loss->SetMinimum(0); 
@@ -320,6 +375,9 @@ void reading_clustering_log(){
   g_train_LV_att_neutral->SetLineColor(2); 
   g_train_LV_rep_charged->SetLineColor(3); 
   g_train_LV_rep_neutral->SetLineColor(4); 
+  g_train_clustering_LE->SetLineColor(1);
+  g_train_clustering_LMag->SetLineColor(2);
+  g_train_clustering_LDir->SetLineColor(3);
 
   // TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
   // legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -334,6 +392,9 @@ void reading_clustering_log(){
   int minimum_loss_epoch = 0;
   for(int i=0;i<nepoch;i++){
     g_loss->SetPoint(i,i,returning[i]);
+    g_clustering_LE->SetPoint(i,i,l_E[i]);
+    g_clustering_LMag->SetPoint(i,i,l_Mag[i]);
+    g_clustering_LDir->SetPoint(i,i,l_Dir[i]);
     // g_LV->SetPoint(i,i,l_v[i]);
     // if(l_v_att_charged.size()>0) g_LV_att_charged->SetPoint(i,i,l_v_att_charged[i]);
     // if(l_v_att_neutral.size()>0) g_LV_att_neutral->SetPoint(i,i,l_v_att_neutral[i]);
@@ -355,6 +416,9 @@ void reading_clustering_log(){
 
     // if(train_l_v.size()==0) continue;
     g_train_loss->SetPoint(i,i,train_loss[i]);
+    g_train_clustering_LE->SetPoint(i,i,train_l_E[i]);
+    g_train_clustering_LMag->SetPoint(i,i,train_l_Mag[i]);
+    g_train_clustering_LDir->SetPoint(i,i,train_l_Dir[i]);
     // g_train_LV->SetPoint(i,i,train_l_v[i]);
     // if(train_l_v_att_charged.size()>0) g_train_LV_att_charged->SetPoint(i,i,train_l_v_att_charged[i]);
     // if(train_l_v_att_neutral.size()>0) g_train_LV_att_neutral->SetPoint(i,i,train_l_v_att_neutral[i]);
@@ -382,6 +446,34 @@ void reading_clustering_log(){
   g_train_loss->SetLineColor(kRed);
   g_train_loss->Draw("same");
   legend->Draw();
+
+  TCanvas *Cvalid = new TCanvas("Cvalid","validation loss all range",1);
+  Cvalid->cd();
+  g_loss->Draw();
+  g_clustering_LE->Draw("same");
+  g_clustering_LMag->Draw("same");
+  g_clustering_LDir->Draw("same");
+  TLegend *valid_legend = new TLegend( 0.4, 0.6, 0.8, 0.9);
+  valid_legend->AddEntry( g_loss, "total validation loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  valid_legend->AddEntry( g_clustering_LE, "energy loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  valid_legend->AddEntry( g_clustering_LMag, "momentum magnitude loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  valid_legend->AddEntry( g_clustering_LDir, "momentum direction loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  valid_legend->SetFillColor(0);
+  valid_legend->Draw("same");
+  
+  TCanvas *Ctrain = new TCanvas("Ctrain","train loss all range",1);
+  Ctrain->cd();
+  g_train_loss->Draw();
+  g_train_clustering_LE->Draw("same");
+  g_train_clustering_LMag->Draw("same");
+  g_train_clustering_LDir->Draw("same");
+  TLegend *train_legend = new TLegend( 0.4, 0.6, 0.8, 0.9);
+  train_legend->AddEntry( g_train_loss, "total validation loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
+  train_legend->AddEntry( g_train_clustering_LE, "energy loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  train_legend->AddEntry( g_train_clustering_LMag, "momentum magnitude loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  train_legend->AddEntry( g_train_clustering_LDir, "momentum direction loss ", "l"); // option は　"f"=box, "l"="L"=line, "p"=marker
+  train_legend->SetFillColor(0);
+  train_legend->Draw("same");
 
   // TCanvas *c1 = new TCanvas("c1","validation loss all range",1);
   // c1->cd();

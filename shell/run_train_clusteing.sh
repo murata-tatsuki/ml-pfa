@@ -5,7 +5,12 @@ cd ..
 DATE=`date '+%Y_%m_%d_%H%M%S'`
 
 ### test
-# python train_clustering.py -i /data/suehara/mldata/pfa/murata/code_test_ntau/train -ii /data/suehara/mldata/pfa/murata/code_test_ntau/validation                     --no-split --thetaphi --gnn-model-ckpt checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_${epoch}_1.pth.tar --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size ${batch_size} --output-dimension ${outputD} --ckptdir checkpoint/clustering/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate 5e-4 --lr-policy cosineReduce --energy-regression --energy-regression-cluster --momentum --momentum-amp --clip-value 10 #> log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_momentum.log
+batch_size=100
+outputD=5
+epoch=499
+ncuda=1
+lr=1e-4
+python train_clustering.py -i /data/suehara/mldata/pfa/murata/code_test_ntau/train -ii /data/suehara/mldata/pfa/murata/code_test_ntau/validation --no-split --thetaphi --gnn-model-ckpt checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_${epoch}_1.pth.tar --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size ${batch_size} --output-dimension ${outputD} --ckptdir checkpoint/clustering/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate 5e-4 --lr-policy cosineReduce --energy-regression --energy-regression-cluster --momentum --momentum-amp --clip-value 10 #> log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_momentum.log
 
 
 batch_size=100
