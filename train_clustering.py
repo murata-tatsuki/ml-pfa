@@ -19,7 +19,7 @@ from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
 from model import get_model, get_model_branch
-from lcr_module import LCR, LCR_withPID, LCR_withClass, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub
+from lcr_module import LCR, LCR_withPID, LCR_withClass, LCR_Block, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub, hungarian_set_loss_new_sub_mask
 
 #from ReadText import ReadText
 import sys
@@ -127,7 +127,7 @@ def pdg_id_to_class(pdg_ids):
     return cls
 
 
-def formatted_loss_components_string(components: dict, valid: str="") -> str:
+def formatted_loss_components_string(components: dict) -> str:
     """
     Formats the components returned by calc_LV_Lbeta
     """
@@ -135,18 +135,117 @@ def formatted_loss_components_string(components: dict, valid: str="") -> str:
     fractions = { k : v/total_loss for k, v in components.items() }
     fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
     s = (
-        '  {valid} loss_E                   = {loss_E}'
-        '\n  {valid} loss_Mag                 = {loss_Mag}'
-        '\n  {valid} loss_Dir                 = {loss_Dir}'
+        '   loss_E                   = {loss_E}'
+        '\n   loss_Mag                 = {loss_Mag}'
+        '\n   loss_Dir                 = {loss_Dir}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
+
+def formatted_loss_components_string_train(components: dict) -> str:
+    """
+    Formats the components returned by calc_LV_Lbeta
+    """
+    total_loss = components['loss_E']+components['loss_Mag']+components['loss_Dir']
+    fractions = { k : v/total_loss for k, v in components.items() }
+    fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
+    s = (
+        '   train loss_E                   = {loss_E}'
+        '\n   train loss_Mag                 = {loss_Mag}'
+        '\n   train loss_Dir                 = {loss_Dir}'
+        .format(L=total_loss,**{k : fkey(k) for k in components})
+        )
+    return s
+
+def select_seeds(hit_embed, hit_beta, beta_threshold=0.9):
+    """
+    hit_embed: (B, N, D)
+    hit_beta : (B, N)
+    Return:
+        seeds     : (B, Mmax, D)
+        pred_mask : (B, Mmax)  True=padding
+    """
+    B, N, D = hit_embed.shape
+    device = hit_embed.device
+
+    seeds_list = []
+    mask_list = []
+    max_len = 0
+
+    # 1. イベントごとに β閾値で seed を選択
+    for b in range(B):
+        # idx = (hit_beta[b] > beta_threshold).nonzero(as_tuple=True)[0]  # 有効なindex
+        # selected = hit_embed[b, idx]  # (n_b, D)
+        idx = (hit_beta[b] > beta_threshold).nonzero(as_tuple=True)[0]
+        selected = hit_embed[b, idx]  # ← 埋め込みベクトル (D=128次元)
+        seeds_list.append(selected)
+        max_len = max(max_len, selected.size(0))
+
+    # 2. padding + mask を作る
+    for i, selected in enumerate(seeds_list):
+        n = selected.size(0)
+        if n < max_len:
+            pad = torch.zeros(max_len - n, D, device=device)
+            seeds = torch.cat([selected, pad], dim=0)
+            mask = torch.cat([torch.zeros(n, dtype=torch.bool, device=device),
+                              torch.ones(max_len - n, dtype=torch.bool, device=device)])
+        else:
+            seeds = selected
+            mask = torch.zeros(max_len, dtype=torch.bool, device=device)
+
+        mask_list.append(mask)
+        # (Mmax, D)
+        seeds_list[i] = seeds
+        
+
+    seeds = torch.stack(seeds_list, dim=0)      # (B, Mmax, D)
+    pred_mask = torch.stack(mask_list, dim=0)   # (B, Mmax)
+
+    return seeds, pred_mask
+
+
+# def setup_ddp(rank, world_size):
+#     os.environ["MASTER_ADDR"] = "localhost"
+#     os.environ["MASTER_PORT"] = "12355"
+#     dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+# def cleanup():
+#     dist.destroy_process_group()
+
+# def run_ddp_training(rank, world_size, args):
+#     # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
+#     # setup_ddp(local_rank, world_size)
+#     # torch.cuda.set_device(local_rank)
+
+#     setup_ddp(rank, world_size)
+#     torch.cuda.set_device(rank)
+
+#     # device = torch.device(f"cuda:{local_rank}")
+#     device = torch.device(f"cuda:{rank}")
+#     print(device)
+#     run_requirements(args)
+#     reduce_noise = args.reduce_noise
+#     n_epochs = args.epochs
+#     batch_size = args.batch_size
+#     output_dimension = args.output_dimension
+#     lr_input = args.learning_rate
+#     weight_decay_input = args.weight_decay
+#     er_coef = args.regression_coefficinet
+#     qmin = args.qmin
+#     min_lr=args.min_lr
+
+#     batch_size = batch_size * world_size
+#     lr_input = lr_input * world_size
+
+#     shuffle = True
 
 
 
 
 def main():
     print(sys.argv)
+    torch.cuda.init()
+
 
     #print("Parsing arguments")
     parser = argparse.ArgumentParser()
@@ -201,6 +300,7 @@ def main():
     parser.add_argument('--classification', action='store_true', help='turn on claasification in LCR')           
     parser.add_argument('--pid', action='store_true', help='turn on pid in LCR')           
     parser.add_argument('--loss-specify', action='store_true', help='turn on pid in LCR')           
+    parser.add_argument('--lcr-block', action='store_true', help='Use LCR block')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -216,6 +316,22 @@ def main():
 
     out_classes = 10 if args.pid else 7
 
+    if args.ddp:
+        if args.gpus is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+            visible_gpus = list(map(int, args.gpus.split(',')))
+        else:
+            visible_gpus = list(range(torch.cuda.device_count()))
+
+        world_size = len(visible_gpus)
+
+        # world_size = torch.cuda.device_count()
+        mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
+
+        sys.exit()
+ 
+
+
     device = torch.device(args.cuda) if not args.dp else 'cuda'
     print('Using device: ', device)
     if not args.dp: torch.cuda.set_device(device)
@@ -226,7 +342,7 @@ def main():
         batch_size = batch_size * 2
         lr_input = lr_input * 2
     print("learning rate :", lr_input, ",  weght decay :", weight_decay_input)
-
+    torch.device(args.cuda)
 
 
 
@@ -284,8 +400,10 @@ def main():
     # lcr_model = LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, n_classes=7, feat_dim=5).to(device)
     if args.classification: lcr_model = LCR_withClass(embed_dim_=4,embed_dim=128, num_heads=8, K=256, n_classes=out_classes, feat_dim=4).to(device)
     if args.pid: lcr_model = LCR_withPID(embed_dim_=4,embed_dim=128, num_heads=8, K=256, n_classes=out_classes, feat_dim=4).to(device)
-    else : lcr_model = LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4).to(device)
+    if args.lcr_block: lcr_model = LCR_Block(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=100, K=256, feat_dim=4).to(device)
+    else : lcr_model = LCR(embed_dim_=7,embed_dim=128, num_heads=8, K=256, feat_dim=4).to(device)
     # lcr_model = LCR(embed_dim=128, num_heads=8, K=256, n_classes=7, feat_dim=5).to(device)
+    lcr_model.to(device)
     
     # optimizer = torch.optim.AdamW(lcr_model.parameters(), lr=2e-4, weight_decay=1e-2)
     # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=4e-4, total_steps=N_steps)
@@ -342,6 +460,13 @@ def main():
 
         return pred_cluster_space_coords, pred_betas
     
+    def get_gnn_output_allFeat(batched_data):
+        with torch.no_grad():
+            gnn_outputs: torch.Tensor = gnn_model(batched_data.x, batched_data.batch)
+        
+        return gnn_outputs, torch.sigmoid(gnn_outputs[:,0])
+    
+
     def train(epoch):
         print('Training epoch', epoch)
         lcr_model.train()
@@ -361,11 +486,16 @@ def main():
                 # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
                 optimizer.zero_grad()
-                pred_cluster_space_coords, pred_betas = get_gnn_output(data)
-                hit_embed, hit_mask = pad_and_mask_batch(pred_cluster_space_coords, data.batch)
-                hit_beta, _         = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
-                hit_beta            = hit_beta.squeeze(-1)  # 元のshapeに戻す
-                hit_feat, _         = pad_and_mask_batch(data.feat, data.batch)
+                # pred_cluster_space_coords, pred_betas = get_gnn_output(data)
+                # hit_embed, hit_mask = pad_and_mask_batch(pred_cluster_space_coords, data.batch)
+                # hit_beta, _         = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+                # hit_beta            = hit_beta.squeeze(-1)  # 元のshapeに戻す
+                # hit_feat, _         = pad_and_mask_batch(data.feat, data.batch)
+                gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
+                hit_embed, hit_mask     = pad_and_mask_batch(gnn_outputs, data.batch)
+                hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+                hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+                hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
 
                 if args.classification or args.pid: pred_fourvec, pred_cls, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
                 else: pred_fourvec, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
@@ -385,9 +515,11 @@ def main():
                 # print(pred_fourvec, pred_cls, truth_four_vector, unique_label)
                 # print(pred_cls.shape)
 
+                seeds, pred_mask = select_seeds(hit_embed, hit_beta, beta_threshold=0.9)
+
                 if args.classification or args.pid: loss = hungarian_set_loss(pred_fourvec, pred_cls, truth_four_vector, unique_label)
                 elif args.loss_specify: 
-                    loss, components = hungarian_set_loss_new_sub(pred_fourvec, truth_four_vector)
+                    loss, components = hungarian_set_loss_new_sub_mask(pred_fourvec, truth_four_vector, pred_mask=pred_mask)
                     update(components)
                 else: loss = hungarian_set_loss_new(pred_fourvec, truth_four_vector)
                 # update(components)
@@ -399,6 +531,10 @@ def main():
                 optimizer.step()
                 if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
+                for name, p in lcr_model.named_parameters():
+                    if p.grad is None:
+                        print(f"No grad: {name}")
+
                 gradients.append([p.grad.norm().item() for p in lcr_model.parameters()])
             # Divide by number of entries
             layer_grads = np.mean(np.array(gradients), axis=0)
@@ -407,8 +543,8 @@ def main():
                 for key in loss_components:
                     loss_components[key] /= N_train
             train_loss = train_loss.item() / N_train
-            print('train                     = ', train_loss)
-            if args.loss_specify: print(formatted_loss_components_string(loss_components))
+            print('train loss                = ', train_loss)
+            if args.loss_specify: print(formatted_loss_components_string_train(loss_components))
             return train_loss
         except Exception:
             print('Exception encountered:', data, 'i:', i)
@@ -428,11 +564,11 @@ def main():
             lcr_model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
-                pred_cluster_space_coords, pred_betas = get_gnn_output(data)
-                hit_embed, hit_mask = pad_and_mask_batch(pred_cluster_space_coords, data.batch)
-                hit_beta, _         = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
-                hit_beta            = hit_beta.squeeze(-1)  # 元のshapeに戻す
-                hit_feat, _         = pad_and_mask_batch(data.feat, data.batch)
+                gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
+                hit_embed, hit_mask     = pad_and_mask_batch(gnn_outputs, data.batch)
+                hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+                hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+                hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
                 if args.classification or args.pid: pred_fourvec, pred_cls, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
                 else: pred_fourvec, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
                 if args.classification:
@@ -448,7 +584,7 @@ def main():
                 truth_four_vector = [torch.unique(t, dim=0) for t in truth_four_vector]
                 if args.classification or args.pid: loss = hungarian_set_loss(pred_fourvec, pred_cls, truth_four_vector, unique_label)
                 elif args.loss_specify: 
-                    loss, components = hungarian_set_loss_new_sub(pred_fourvec, truth_four_vector)
+                    loss, components = hungarian_set_loss_new_sub_mask(pred_fourvec, truth_four_vector)
                     update(components)
                 else: loss = hungarian_set_loss_new(pred_fourvec, truth_four_vector)
                 test_loss += loss
@@ -458,7 +594,7 @@ def main():
             for key in loss_components:
                 loss_components[key] /= N_test
         # Compute total loss and do printout
-        if args.loss_specify: print(formatted_loss_components_string(loss_components, valid="test"))
+        if args.loss_specify: print(formatted_loss_components_string(loss_components))
         # # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
         test_loss = test_loss.item() / N_test

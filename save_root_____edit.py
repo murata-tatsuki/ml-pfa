@@ -5,7 +5,7 @@ from distutils.util import strtobool
 import awkward as ak
 from model import get_model, get_model_branch
 from dataset import ILCDataset
-from test_yielder import TestYielder
+from test_yielder_edit import TestYielder
 from ROOT import TFile, TTree
 import argparse
 import torch
@@ -39,12 +39,14 @@ class Data:
     matched_cluster = np.array([0], dtype=np.int32)
     pred_edep = np.array([0], dtype=np.float64)
     pred_edep_cluster = np.array([0], dtype=np.float64)
+    pred_edep_weight = np.array([0], dtype=np.float64)
     cond_beta = np.array([0], dtype=np.float64)
     cond_track = np.array([0], dtype=np.int32)
     sed_radius = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
 
     pred_photon_energy = np.array([0], dtype=np.float64)
-    pred_hadron_energy = np.array([0], dtype=np.float64)
+    pred_charged_hadron_energy = np.array([0], dtype=np.float64)
+    pred_neutral_hadron_energy = np.array([0], dtype=np.float64)
     pred_muon_energy = np.array([0], dtype=np.float64)
     pred_electron_energy = np.array([0], dtype=np.float64)
 
@@ -69,12 +71,14 @@ class Data:
         t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
         t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
+        t.Branch("pred_edep_weight",this.pred_edep_weight,"pred_edep_weight/D")
         t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
         t.Branch("cond_track",this.cond_track,"cond_track/I")
         t.Branch("sed_radius",this.sed_radius,"sed_radius/D")
 
         t.Branch("pred_photon_energy",this.pred_photon_energy,"pred_photon_energy/D")
-        t.Branch("pred_hadron_energy",this.pred_hadron_energy,"pred_hadron_energy/D")
+        t.Branch("pred_charged_hadron_energy",this.pred_charged_hadron_energy,"pred_charged_hadron_energy/D")
+        t.Branch("pred_neutral_hadron_energy",this.pred_neutral_hadron_energy,"pred_neutral_hadron_energy/D")
         t.Branch("pred_muon_energy",this.pred_muon_energy,"pred_muon_energy/D")
         t.Branch("pred_electron_energy",this.pred_electron_energy,"pred_electron_energy/D")
 
@@ -145,7 +149,8 @@ class PredData:
     pred_alpha = np.array([0], dtype=np.int32)
     trackness = np.array([0], dtype=np.int32)
     weight_photon = np.array([0], dtype=np.float64)
-    weight_hadron = np.array([0], dtype=np.float64)
+    weight_charged_hadron = np.array([0], dtype=np.float64)
+    weight_neutral_hadron = np.array([0], dtype=np.float64)
     weight_muon = np.array([0], dtype=np.float64)
     weight_electron = np.array([0], dtype=np.float64)
 
@@ -169,7 +174,8 @@ class PredData:
         t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
         t.Branch("trackness",this.trackness,"trackness/I")
         t.Branch("weight_photon",this.weight_photon,"weight_photon/D")
-        t.Branch("weight_hadron",this.weight_hadron,"weight_hadron/D")
+        t.Branch("weight_charged_hadron",this.weight_charged_hadron,"weight_charged_hadron/D")
+        t.Branch("weight_neutral_hadron",this.weight_neutral_hadron,"weight_neutral_hadron/D")
         t.Branch("weight_muon",this.weight_muon,"weight_muon/D")
         t.Branch("weight_electron",this.weight_electron,"weight_electron/D")
 
@@ -232,6 +238,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     event_energy=args.event_total_energy
     energyRegression=args.energy_regression
     energyRegressionCluster=args.energy_regression_cluster
+    energyRegressionWeight=args.energy_regression_weight
     momentum=args.momentum
     momentumAmp=args.momentum_amp
     mctpe=args.mctpe
@@ -246,12 +253,11 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         if momentumAmp:
             input_dim += 1
     if energyRegression:
-        if args.e_weight:
-            output_dim += 4
-        else:
+        output_dim += 1
+        if energyRegressionCluster:
             output_dim += 1
-            if energyRegressionCluster:
-                output_dim += 1
+    if energyRegressionWeight:
+            output_dim += 4
     print(f"Loading model from checkpoint {ckpt}")
     if energy_branch:
         model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
@@ -319,7 +325,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             d5.setup_branch(t5)
 
             # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster, e_weight=args.e_weight)):
+            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster, energyRegressionWeight=energyRegressionWeight)):
                 if i == nmax: break
                 if i < 10 or i%100 == 0:
                     print("Event", i, "processing...")
@@ -425,26 +431,43 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     if not pandora:
                         predicted_beta = prediction.pred_betas[pattern_cluster]
                         edeps = event.feat[pattern_cluster][:,0].detach().numpy().astype(np.float64)
-                        if energyRegression:
-                            if not args.e_weight:
-                                predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                                predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
-                                predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
-                            else:
-                                predicted_energy_cluster = -np.ones(1)
-                                pred_weight_photon = prediction.pred_weight_photon[pattern_cluster]
-                                pred_weight_hadron = prediction.pred_weight_hadron[pattern_cluster]
-                                pred_weight_muon = prediction.pred_weight_muon[pattern_cluster]
-                                pred_weight_electron = prediction.pred_weight_electron[pattern_cluster]
-                                pred_weights = pred_weight_photon + pred_weight_hadron + pred_weight_muon + pred_weight_electron
-                                predicted_energy = np.array([np.sum(edeps * pred_weights)])
-                                pred_photon_energy = np.array([np.sum(edeps * pred_weight_photon)])
-                                pred_hadron_energy = np.array([np.sum(edeps * pred_weight_hadron)])
-                                pred_muon_energy = np.array([np.sum(edeps * pred_weight_muon)])
-                                pred_electron_energy = np.array([np.sum(edeps * pred_weight_electron)])
-                        else:
-                            predicted_energy = np.zeros(1)
-                            predicted_energy_cluster = np.zeros(1)
+                        predicted_energy = np.zeros(1)
+                        predicted_energy_cluster = np.zeros(1)
+                        predicted_energy_weight = np.zeros(1)
+                        if energyRegressionWeight and not energyRegression:
+                            pred_weight_photon = prediction.pred_weight_photon[pattern_cluster]
+                            pred_weight_charged_hadron = prediction.pred_weight_charged_hadron[pattern_cluster]
+                            pred_weight_neutral_hadron = prediction.pred_weight_neutral_hadron[pattern_cluster]
+                            pred_weight_muon = prediction.pred_weight_muon[pattern_cluster]
+                            pred_weight_electron = prediction.pred_weight_electron[pattern_cluster]
+                            pred_weights = pred_weight_photon + pred_weight_charged_hadron + pred_weight_neutral_hadron + pred_weight_muon + pred_weight_electron
+                            predicted_energy_weight = np.array([np.sum(edeps * pred_weights)])
+                            pred_photon_energy = np.array([np.sum(edeps * pred_weight_photon)])
+                            pred_charged_hadron_energy = np.array([np.sum(edeps * pred_weight_charged_hadron)])
+                            pred_neutral_hadron_energy = np.array([np.sum(edeps * pred_weight_neutral_hadron)])
+                            pred_muon_energy = np.array([np.sum(edeps * pred_weight_muon)])
+                            pred_electron_energy = np.array([np.sum(edeps * pred_weight_electron)])
+                            predicted_energy = predicted_energy_weight
+                        if energyRegression and not energyRegressionWeight:
+                            predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                            predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                        if energyRegression and energyRegressionWeight:
+                            predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
+                            predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
+                            predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
+                            pred_weight_photon = prediction.pred_weight_photon[pattern_cluster]
+                            pred_weight_charged_hadron = prediction.pred_weight_charged_hadron[pattern_cluster]
+                            pred_weight_neutral_hadron = prediction.pred_weight_neutral_hadron[pattern_cluster]
+                            pred_weight_muon = prediction.pred_weight_muon[pattern_cluster]
+                            pred_weight_electron = prediction.pred_weight_electron[pattern_cluster]
+                            pred_weights = pred_weight_photon + pred_weight_charged_hadron + pred_weight_neutral_hadron + pred_weight_muon + pred_weight_electron
+                            predicted_energy_weight = np.array([np.sum(edeps * pred_weights)])
+                            pred_photon_energy = np.array([np.sum(edeps * pred_weight_photon)])
+                            pred_charged_hadron_energy = np.array([np.sum(edeps * pred_weight_charged_hadron)])
+                            pred_neutral_hadron_energy = np.array([np.sum(edeps * pred_weight_neutral_hadron)])
+                            pred_muon_energy = np.array([np.sum(edeps * pred_weight_muon)])
+                            pred_electron_energy = np.array([np.sum(edeps * pred_weight_electron)])
                         cond_tracknesses = match_track[np.argsort(-predicted_beta)]
                         cond_trackness = cond_tracknesses[0]
                         predicted_beta = -np.sort(-predicted_beta)
@@ -486,11 +509,13 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     d.matched_cluster[0] = matched_cluster
                     d.pred_edep[0] = pred_edep
                     d.pred_edep_cluster[0] = pred_edep_cluster
+                    d.pred_edep_weight[0] = predicted_energy_weight
                     d.cond_beta[0] = predicted_beta[0]
                     d.cond_track[0] = cond_trackness
                     d.sed_radius[0] = sed_radius
                     d.pred_photon_energy[0] = pred_photon_energy
-                    d.pred_hadron_energy[0] = pred_hadron_energy
+                    d.pred_charged_hadron_energy[0] = pred_charged_hadron_energy
+                    d.pred_neutral_hadron_energy[0] = pred_neutral_hadron_energy
                     d.pred_muon_energy[0] = pred_muon_energy
                     d.pred_electron_energy[0] = pred_electron_energy
 
@@ -518,13 +543,15 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         predicted_beta_ = prediction.pred_betas[pattern_cluster]
                         edeps = event.feat[pattern_cluster][:,0].detach().numpy().astype(np.float64)
                         if energyRegression:
-                            if not args.e_weight:
+                            if not energyRegressionWeight:
                                 predicted_energy_ = prediction.pred_tracker_energy[pattern_cluster]
                                 predicted_energy_ = predicted_energy_[np.argsort(-predicted_beta_)]
                                 predicted_energy_cluster_ = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
                             else:
-                                pred_weights = (prediction.pred_weight_photon + prediction.pred_weight_hadron + prediction.pred_weight_muon + prediction.pred_weight_electron)[pattern_cluster]
-                                predicted_energy_ = np.array([np.sum(edeps * pred_weights)])
+                                predicted_energy_ = prediction.pred_tracker_energy[pattern_cluster]
+                                predicted_energy_ = predicted_energy_[np.argsort(-predicted_beta_)]
+                                pred_weights = (prediction.pred_weight_photon + prediction.pred_weight_charged_hadron + prediction.pred_weight_neutral_hadron + prediction.pred_weight_muon + prediction.pred_weight_electron)[pattern_cluster]
+                                predicted_energy_weight = np.array([np.sum(edeps * pred_weights)])
                                 predicted_energy_cluster_ = np.zeros(1)
                             match_label_ = match_label_[np.argsort(-predicted_beta_)]
                             match_feat_ = match_feat_[np.argsort(-predicted_beta_)]
@@ -551,7 +578,10 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                     # reco_momentum_predBase.append([oc_label[5], oc_label[6], oc_label[7]])
                     oc_feat = match_feat_[0]
                     reco_momentum_predBase.append([oc_feat[1], oc_feat[2], oc_feat[3]])
-                    predenergy = pred_edep_ if cond_trackness_!=0 else pred_edep_cluster_
+                    if energyRegressionWeight:
+                        predenergy = pred_edep_ if cond_trackness_!=0 else predicted_energy_weight
+                    else:
+                        predenergy = pred_edep_ if cond_trackness_!=0 else pred_edep_cluster_
                     pred_energy_predBase.append(predenergy)
                     
                     continue
@@ -647,13 +677,14 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
                         d3.mcstatus[0] = my_label[8]
                         d3.edep_mc[0] = my_feat[0]
-                        d3.pred_edep[0] = -1 if not energyRegression else (-1 if args.e_weight else prediction.pred_tracker_energy[ihit])
+                        d3.pred_edep[0] = -1 if not energyRegression else (-1 if energyRegressionWeight else prediction.pred_tracker_energy[ihit])
                         d3.pred_edep_cluster[0] = prediction.pred_cluster_energy[ihit] if energyRegression and energyRegressionCluster else -1
                         d3.pred_beta[0] = prediction.pred_betas[ihit]
                         d3.pred_alpha[0] = condensation_points[ihit]
                         d3.trackness[0] = my_feat[5]
                         d3.weight_photon[0] = prediction.pred_weight_photon[ihit]
-                        d3.weight_hadron[0] = prediction.pred_weight_hadron[ihit]
+                        d3.weight_charged_hadron[0] = prediction.pred_weight_charged_hadron[ihit]
+                        d3.weight_neutral_hadron[0] = prediction.pred_weight_neutral_hadron[ihit]
                         d3.weight_muon[0] = prediction.pred_weight_muon[ihit]
                         d3.weight_electron[0] = prediction.pred_weight_electron[ihit]
 
@@ -691,20 +722,21 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                 d4.total_predicted_energy_truth[0] = total_predicted_energy_
                 d4.total_predicted_energy_pred[0] = total_predicted_energy
                 t4.Fill()
-            
-                q_en_truthBase = calc_pred_jet_energy(np.array(pred_energy_truthBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_truthBase)))
-                q_en_predBase = calc_pred_jet_energy(np.array(pred_energy_predBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_predBase)))
-                # print(q_en_truthBase, q_en_predBase, MC_jet_energies)
-                d5.event[0] = i
-                d5.MC_jet_energy[0] = MC_jet_energies[0]
-                d5.total_predicted_energy_truthBase[0] = q_en_truthBase[0]
-                d5.total_predicted_energy_predBase[0] = q_en_predBase[0]
-                t5.Fill()
-                d5.event[0] = i
-                d5.MC_jet_energy[0] = MC_jet_energies[1]
-                d5.total_predicted_energy_truthBase[0] = q_en_truthBase[1]
-                d5.total_predicted_energy_predBase[0] = q_en_predBase[1]
-                t5.Fill()
+
+                if event_energy:
+                    q_en_truthBase = calc_pred_jet_energy(np.array(pred_energy_truthBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_truthBase)))
+                    q_en_predBase = calc_pred_jet_energy(np.array(pred_energy_predBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_predBase)))
+                    # print(q_en_truthBase, q_en_predBase, MC_jet_energies)
+                    d5.event[0] = i
+                    d5.MC_jet_energy[0] = MC_jet_energies[0]
+                    d5.total_predicted_energy_truthBase[0] = q_en_truthBase[0]
+                    d5.total_predicted_energy_predBase[0] = q_en_predBase[0]
+                    t5.Fill()
+                    d5.event[0] = i
+                    d5.MC_jet_energy[0] = MC_jet_energies[1]
+                    d5.total_predicted_energy_truthBase[0] = q_en_truthBase[1]
+                    d5.total_predicted_energy_predBase[0] = q_en_predBase[1]
+                    t5.Fill()
 
             print(f"Saving to {outfile}")
             file.Write()
@@ -728,7 +760,7 @@ def main():
     parser.add_argument('--event-total-energy', action='store_true', help='Use event visible energy')
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
-    parser.add_argument('--e-weight', action='store_true', help='Turn on enegy weight loss')
+    parser.add_argument('--energy-regression-weight', action='store_true', help='Turn on energy regression term on loss function and output (enegy weight loss)')
     parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')
     parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')

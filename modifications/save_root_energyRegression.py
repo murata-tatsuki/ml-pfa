@@ -34,6 +34,7 @@ class Data:
     matched_cluster = np.array([0], dtype=np.int32)
     pred_edep = np.array([0], dtype=np.float64)
     pred_edep_cluster = np.array([0], dtype=np.float64)
+    pred_edep_weight = np.array([0], dtype=np.float64)
     cond_beta = np.array([0], dtype=np.float64)
     cond_track = np.array([0], dtype=np.int32)
     # sed_radiud = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
@@ -60,6 +61,7 @@ class Data:
         t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
         t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
         t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
+        t.Branch("pred_edep_weight",this.pred_edep_weight,"pred_edep_weight/D")
         t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
         t.Branch("cond_track",this.cond_track,"cond_track/I")
 

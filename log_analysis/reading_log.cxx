@@ -23,7 +23,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 
 // const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
-const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_09_10_154302_alpha_tracker_diff_log_perCluster.log";
+const string fileName = "../log/energy_regression/weighted_edep/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_11_02_095108_alpha_tracker_diff_log_perCluster.log";
 
 // const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_08_05_144744__momentum.log";
 
@@ -528,4 +528,44 @@ void reading_log(){
     legend_train_LV->Draw("same");
   }
 
+
+
+
+  TLegend *legend_LE = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_LE->AddEntry( g_LV_att_charged, "attractive +-", "l");
+  legend_LE->AddEntry( g_LV_att_neutral, "attractive 0", "l");
+  legend_LE->AddEntry( g_LV_rep_charged, "repulsive +-", "l");
+  legend_LE->AddEntry( g_LV_rep_neutral, "repulsive 0", "l");
+  legend_LE->SetFillColor(0);
+  TCanvas *c_l_v = new TCanvas("c_l_v","l_v validation",1);
+  c_l_v->cd();
+  c_l_v->SetGrid();
+  g_LV_rep_neutral->SetMinimum(0); 
+  g_LV_rep_neutral->SetMaximum(1); 
+  if(l_v_rep_neutral.size()>0){
+    g_LV_rep_neutral->Draw();
+    g_LV_att_charged->Draw("same");
+    g_LV_att_neutral->Draw("same");
+    g_LV_rep_charged->Draw("same");
+    legend_LV->Draw("same");
+  }
+
+  TLegend *legend_train_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_train_LV->AddEntry( g_train_LV_att_charged, "attractive +-", "l");
+  legend_train_LV->AddEntry( g_train_LV_att_neutral, "attractive 0", "l");
+  legend_train_LV->AddEntry( g_train_LV_rep_charged, "repulsive +-", "l");
+  legend_train_LV->AddEntry( g_train_LV_rep_neutral, "repulsive 0", "l");
+  legend_train_LV->SetFillColor(0);
+  TCanvas *c_l_v_train = new TCanvas("c_l_v_train","l_v train",1);
+  c_l_v_train->cd();
+  c_l_v_train->SetGrid();
+  g_train_LV_rep_neutral->SetMinimum(0); 
+  g_train_LV_rep_neutral->SetMaximum(1); 
+  if(train_l_v_att_charged.size()>0){
+    g_train_LV_rep_neutral->Draw();
+    g_train_LV_att_charged->Draw("same");
+    g_train_LV_att_neutral->Draw("same");
+    g_train_LV_rep_charged->Draw("same");
+    legend_train_LV->Draw("same");
+  }
 }

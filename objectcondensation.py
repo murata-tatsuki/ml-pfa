@@ -135,6 +135,177 @@ def calc_L_E(
 
     return L_E_cond, L_E_charge, L_E_cluster, L_E
 
+def calc_L_E_weight(
+    tracker_energy: torch.Tensor,
+    mcp_energy: torch.Tensor, # mc truth energy
+    detected_energy: torch.Tensor,
+    beta: torch.Tensor,
+    index_alpha, index_alpha_track, is_trk, object_index,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    pred_cluster_energy = None,
+    batch_object=torch.tensor(1),
+    n_objects_per_event=torch.tensor(1),
+    mcpdg = torch.tensor(1),
+    weight_photon = torch.tensor(1),
+    weight_hadron = torch.tensor(1),
+    weight_muon = torch.tensor(1),
+    weight_electron = torch.tensor(1),
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    device = beta.device
+
+    # ________________________________      ## need to modify
+    # energy regression term condensation point energy
+    L_E_w_photon = torch.tensor(0).to(device)
+    L_E_w_hadron = torch.tensor(0).to(device)
+    L_E_w_muon = torch.tensor(0).to(device)
+    L_E_w_electron = torch.tensor(0).to(device)
+
+    print(detected_energy.size(), weight_photon.size(), weight_hadron.size(), weight_muon.size(), weight_electron.size(), mcpdg.size())
+
+    print(object_index.size(), n_objects_per_event)
+    
+    if LE_track == 'weight':
+        pdg_ids = [ torch.tensor([-22, 22], device=device), torch.tensor([-13, 13], device=device), torch.tensor([-11, 11], device=device)]
+
+        weights = [weight_photon, weight_muon, weight_electron]
+        loss = [L_E_w_photon, L_E_w_muon, L_E_w_electron]
+
+        for idx, (pdg_id, weight) in enumerate(zip(pdg_ids, weights)):
+            mcens = mcp_energy.clone()
+            mask = torch.isin(mcpdg, pdg_id)
+            mcens[~mask] = 0
+
+            weighted_edep = torch.mul(detected_energy, weight)
+
+            pred_energy_sum = scatter_add(weighted_edep, object_index)
+            truth_cluster_energy, argmax = scatter_max(mcens, object_index)
+
+            mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
+            loss[idx] = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+
+        mcens = mcp_energy.clone()
+        mask = torch.isin(mcpdg, torch.tensor([22, -13, 13, -11, 11], device=mcpdg.device))
+        mcens[mask] = 0
+
+        weighted_edep = torch.mul(detected_energy, weight_hadron)
+
+        pred_energy_sum = scatter_add(weighted_edep, object_index)
+        truth_cluster_energy, argmax = scatter_max(mcens, object_index)
+
+        mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
+        L_E_w_hadron = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+
+    L_E_w_photon, L_E_w_muon, L_E_w_electron = loss
+        
+
+    L_E_w_photon = L_E_w_photon * er_coef
+    L_E_w_hadron = L_E_w_hadron * er_coef
+    L_E_w_muon = L_E_w_muon * er_coef
+    L_E_w_electron = L_E_w_electron * er_coef
+
+    return L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron
+    
+
+def calc_L_E_weight_fast(
+    tracker_energy: torch.Tensor,
+    mcp_energy: torch.Tensor, # mc truth energy
+    detected_energy: torch.Tensor,
+    beta: torch.Tensor,
+    index_alpha, index_alpha_track, is_trk, object_index,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    pred_cluster_energy = None,
+    batch_object=torch.tensor(1),
+    n_objects_per_event=torch.tensor(1),
+    mcpdg = torch.tensor(1),
+    mccharge = torch.tensor(1),
+    weight_photon = torch.tensor(1),
+    weight_charged_hadron = torch.tensor(1),
+    weight_neutral_hadron = torch.tensor(1),
+    weight_muon = torch.tensor(1),
+    weight_electron = torch.tensor(1),
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    device = beta.device
+
+    # --- PDGグループ定義 ---
+    pdg_groups = torch.tensor([
+        [-22, 22],      # photon
+        [-13, 13],      # muon
+        [-11, 11],      # electron
+    ], device=device)
+    
+    weights = torch.stack([weight_photon, weight_muon, weight_electron], dim=1)  # (N_hit, 3)
+    
+    # --- 各ヒットがどのPDGカテゴリに属するかを判定 ---
+    # shape: (N_hit, 3)
+    mask_matrix = torch.stack([
+        torch.isin(mcpdg, pdg_groups[i]) for i in range(pdg_groups.size(0))
+    ], dim=1)
+    
+    # 各ヒットのtruth energyを各カテゴリに適用
+    # shape: (N_hit, 3)
+    mcens_matrix = mcp_energy.unsqueeze(1) * mask_matrix.float()
+    
+    # 重みづけされたedep (N_hit, 3)
+    weighted_edep_matrix = detected_energy.unsqueeze(1) * weights
+    
+    # clusterごとにsummation (broadcast)
+    # scatter_addは1D indexに対してのみ働くため、列ごとに一度に処理
+    pred_energy_sum = torch.stack([
+        scatter_add(weighted_edep_matrix[:, i], object_index)
+        for i in range(weighted_edep_matrix.size(1))
+    ], dim=1)  # shape: (N_cluster, 3)
+    
+    truth_cluster_energy = torch.stack([
+        scatter_max(mcens_matrix[:, i], object_index)[0]
+        for i in range(mcens_matrix.size(1))
+    ], dim=1)
+    
+    # loss計算
+    mse = torch.log(torch.abs(pred_energy_sum - truth_cluster_energy) + 1.0)
+    
+    # eventごとの正規化
+    loss = torch.stack([
+        (scatter_add(mse[:, i], batch_object) / n_objects_per_event).sum()
+        for i in range(mse.size(1))
+    ], dim=0)  # shape: (3,)
+    
+    # 残り（hadron: それ以外）
+    mask_all = mask_matrix.any(dim=1)
+    mask_hadron = ~mask_all
+    mask_neutral = mccharge==0
+    mask_charged = ~mask_neutral
+    
+    mcens_charged_hadron = mcp_energy * mask_hadron.float() * mask_charged.float()
+    mcens_neutral_hadron = mcp_energy * mask_hadron.float() * mask_neutral.float()
+    weighted_edep_charged_hadron = detected_energy * weight_charged_hadron
+    weighted_edep_neutral_hadron = detected_energy * weight_neutral_hadron
+
+    pred_energy_sum_charged_hadron = scatter_add(weighted_edep_charged_hadron, object_index)
+    pred_energy_sum_neutral_hadron = scatter_add(weighted_edep_neutral_hadron, object_index)
+    truth_cluster_energy_charged_hadron = scatter_max(mcens_charged_hadron, object_index)[0]
+    truth_cluster_energy_neutral_hadron = scatter_max(mcens_neutral_hadron, object_index)[0]
+    
+    mse_charged_hadron = torch.log(torch.abs(pred_energy_sum_charged_hadron - truth_cluster_energy_charged_hadron) + 1.0)
+    mse_neutral_hadron = torch.log(torch.abs(pred_energy_sum_neutral_hadron - truth_cluster_energy_neutral_hadron) + 1.0)
+    L_E_w_charged_hadron = (scatter_add(mse_charged_hadron, batch_object) / n_objects_per_event).sum()
+    L_E_w_neutral_hadron = (scatter_add(mse_neutral_hadron, batch_object) / n_objects_per_event).sum()
+    
+    # 結果
+    L_E_w_photon, L_E_w_muon, L_E_w_electron = loss
+
+    return L_E_w_photon, L_E_w_charged_hadron, L_E_w_neutral_hadron, L_E_w_muon, L_E_w_electron
+
+
+
+
 def calc_LV_Lbeta(
     beta: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
     charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option
@@ -159,8 +330,17 @@ def calc_LV_Lbeta(
     LE_track='betaE',
     LE_cluster='distribution',
     Ecl_regression=False,
+    weight_regression=False,
     pred_cluster_energy = None,
     l_beta_suppression = False,
+    epoch = 0,
+    mcpdg = torch.empty(0),
+    mccharge = torch.empty(0),
+    weight_photon = None,
+    weight_charged_hadron = None,
+    weight_neutral_hadron = None,
+    weight_muon = None,
+    weight_electron = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -423,11 +603,14 @@ def calc_LV_Lbeta(
             ).sum()
         
         if l_beta_suppression:
-            beta_sq_sum = scatter_add((beta[is_sig]**2), object_index)
-            beta_sq_alpha = beta_alpha**2
-            non_alpha_sq = beta_sq_sum - beta_sq_alpha
-            non_alpha_term = non_alpha_sq / (n_hits_per_object + 1e-8)
-            L_beta_suppress = (scatter_add(non_alpha_term, batch_object) / n_objects_per_event).sum() * 100
+            if epoch > 100:
+                beta_sq_sum = scatter_add((beta[is_sig]**2), object_index)
+                beta_sq_alpha = beta_alpha**2
+                non_alpha_sq = beta_sq_sum - beta_sq_alpha
+                non_alpha_term = non_alpha_sq / (n_hits_per_object + 1e-8)
+                L_beta_suppress = (scatter_add(non_alpha_term, batch_object) / n_objects_per_event).sum() * 100
+            else:
+                L_beta_suppress = 0
 
             # # # lambda_secondary = 1.0  # strength of penalty; tune as hyperparameter
             # # # # beta for signal hits only (is_sig mask applied earlier)
@@ -537,6 +720,55 @@ def calc_LV_Lbeta(
     L_E_charge = torch.tensor(0).to(device)
     L_E_cluster = torch.tensor(0).to(device)
     L_E = torch.tensor(0).to(device)
+    L_E_w_photon = torch.tensor(0).to(device)
+    L_E_w_charged_hadron = torch.tensor(0).to(device)
+    L_E_w_neutral_hadron = torch.tensor(0).to(device)
+    L_E_w_muon = torch.tensor(0).to(device)
+    L_E_w_electron = torch.tensor(0).to(device)
+    if weight_regression and weight_photon is not None:
+        # L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron = calc_L_E_weight(
+        #     tracker_energy=tracker_energy,
+        #     mcp_energy=mcp_energy,
+        #     detected_energy=detected_energy,
+        #     beta=beta,
+        #     index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+        #     er_coef=er_coef,
+        #     LE_track=LE_track,
+        #     LE_cluster=LE_cluster,
+        #     Ecl_regression=Ecl_regression,
+        #     pred_cluster_energy=pred_cluster_energy,
+        #     batch_object=batch_object,
+        #     n_objects_per_event=n_objects_per_event,
+        #     mcpdg=mcpdg,
+        #     weight_photon = weight_photon,
+        #     weight_hadron = weight_hadron,
+        #     weight_muon = weight_muon,
+        #     weight_electron = weight_electron
+        #     )
+        # print(L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron)
+        L_E_w_photon, L_E_w_charged_hadron, L_E_w_neutral_hadron, L_E_w_muon, L_E_w_electron = calc_L_E_weight_fast(
+            tracker_energy=tracker_energy,
+            mcp_energy=mcp_energy,
+            detected_energy=detected_energy,
+            beta=beta,
+            index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+            er_coef=er_coef,
+            LE_track=LE_track,
+            LE_cluster=LE_cluster,
+            Ecl_regression=Ecl_regression,
+            pred_cluster_energy=pred_cluster_energy,
+            batch_object=batch_object,
+            n_objects_per_event=n_objects_per_event,
+            mcpdg=mcpdg,
+            mccharge=mccharge,
+            weight_photon = weight_photon,
+            weight_charged_hadron = weight_charged_hadron,
+            weight_neutral_hadron = weight_neutral_hadron,
+            weight_muon = weight_muon,
+            weight_electron = weight_electron
+            )
+        # print(fast_L_E_w_photon, fast_L_E_w_hadron, fast_L_E_w_muon, fast_L_E_w_electron)
+        # L_E = L_E_w_photon + L_E_w_hadron + L_E_w_muon + L_E_w_electron
     if tracker_energy is not None:
         L_E_cond, L_E_charge, L_E_cluster, L_E = calc_L_E(
             tracker_energy=tracker_energy,
@@ -552,6 +784,7 @@ def calc_LV_Lbeta(
             batch_object=batch_object,
             n_objects_per_event=n_objects_per_event,
             )
+    L_E = L_E + (L_E_w_photon + L_E_w_charged_hadron + L_E_w_neutral_hadron + L_E_w_muon + L_E_w_electron) * 5
 
 
 
@@ -579,6 +812,11 @@ def calc_LV_Lbeta(
             L_E_charge = L_E_charge / batch_size,
             L_E_cond = L_E_cond / batch_size,
             L_E_cluster = L_E_cluster / batch_size,
+            L_E_w_photon = L_E_w_photon / batch_size,
+            L_E_w_charged_hadron = L_E_w_charged_hadron / batch_size,
+            L_E_w_neutral_hadron = L_E_w_neutral_hadron / batch_size,
+            L_E_w_muon = L_E_w_muon / batch_size,
+            L_E_w_electron = L_E_w_electron / batch_size,
             )
         if beta_term_option == 'short-range-potential':
             components['L_beta_norms_term'] = L_beta_norms_term / batch_size
@@ -625,6 +863,11 @@ def formatted_loss_components_string(components: dict) -> str:
             '\n    L_E_charge = {L_E_charge}'
             '\n    L_E_cond = {L_E_cond}'
             '\n    L_E_cluster = {L_E_cluster}'
+            '\n    L_E_w_photon   = {L_E_w_photon}'
+            '\n    L_E_w_charged_hadron   = {L_E_w_charged_hadron}'
+            '\n    L_E_w_neutral_hadron   = {L_E_w_neutral_hadron}'
+            '\n    L_E_w_muon     = {L_E_w_muon}'
+            '\n    L_E_w_electron = {L_E_w_electron}'
             .format(**{k : fkey(k) for k in components})
             )
     return s
@@ -666,6 +909,11 @@ def formatted_loss_components_string_train(components: dict) -> str:
             '\n train    L_E_charge = {L_E_charge}'
             '\n train    L_E_cond = {L_E_cond}'
             '\n train    L_E_cluster = {L_E_cluster}'
+            '\n train    L_E_w_photon   = {L_E_w_photon}'
+            '\n train    L_E_w_charged_hadron   = {L_E_w_charged_hadron}'
+            '\n train    L_E_w_neutral_hadron   = {L_E_w_neutral_hadron}'
+            '\n train    L_E_w_muon     = {L_E_w_muon}'
+            '\n train    L_E_w_electron = {L_E_w_electron}'
             .format(**{k : fkey(k) for k in components})
             )
     return s
@@ -855,6 +1103,21 @@ def batch_cluster_indices(cluster_id: torch.Tensor, batch: torch.Tensor) -> Tupl
     # Fill it per hit
     offset = torch.gather(offset_values, 0, batch).long()
     return offset + cluster_id, n_clusters_per_event
+
+def energy_deposit_weight(cluster_id: torch.Tensor, weighted_edep: torch.Tensor, truth_energy: torch.Tensor, pdg_id: torch.Tensor) -> torch.Tensor:
+    """
+    calculate loss for weighted energy deposit
+
+    """
+    device = cluster_id.device
+    assert cluster_id.device == weighted_edep.device
+    assert cluster_id.device == truth_energy.device
+
+    energy_pred_sum = scatter_add(weighted_edep, cluster_id)
+    energy_truth = scatter_max(truth_energy, cluster_id)
+
+    return torch.square(detected_energy/energy_sum * truth_energy).sum()
+
 
 def cluster_energy_distribution(cluster_id: torch.Tensor, detected_energy: torch.Tensor, truth_energy: torch.Tensor) -> torch.Tensor:
     """

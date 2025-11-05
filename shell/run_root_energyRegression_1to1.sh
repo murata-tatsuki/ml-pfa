@@ -398,24 +398,42 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 # # # # # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_23_172406_outputD5
   train_particle=nnqq
   test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
-  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_09_10_154302_outputD5
+  # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_09_10_154302_outputD5
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_09_30_105247_outputD5
   outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_betaSuppress.root
-  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_betaSuppress_moreStats.root
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_100betaSuppress_moreStats.root
   # # # # # # test_path=/data/suehara/mldata/pfa/murata/data/raw/nnqq/test
   # # # # # # # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root
   # # # # # # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy__.root
   test_path=/data/suehara/mldata/pfa/murata/data/raw/nnqq/new/concat/test
   # # # # # # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats_truthClustering.root
-  epoch=495
+  epoch=485
   output_path=output/energy_regression_1to1
   # outdir=tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/default
   echo ${output_path}/${outdir}
   outD=5
   # outdir=tc_${train_particle}/${D}D/E_regression/test.root
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --beta-d-scan
-  python save_root.py        ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --event-total-energy
-  python save_root_____.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --event-total-energy --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
+  #python save_root_____.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --event-total-energy --e-weight
+  # python save_root_____.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster  --momentum --momentum-amp --event-total-energy --device cuda:0 --tbeta 0.9 --td 0.5 --truth-clustering
   # python save_root.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --device cuda:0 --beta-d-scan
+##
+
+## energy regression weight energy loss
+  # train_particle=nnqq
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
+  # test_path=/data/suehara/mldata/pfa/murata/data/raw/nnqq/new/concat/test
+  train_particle=ntau_10GeV_10
+  # test_path=/data/suehara/mldata/pfa/murata/data/raw/ntau_10GeV_10/test
+  test_path=/data/suehara/mldata/pfa/murata/data/tc_ntau_10GeV_10/test
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_11_02_095108_outputD5
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root
+  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root
+  epoch=317
+  output_path=output/energy_regression_1to1
+  echo ${output_path}/${outdir}
+  outD=5
+  python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-weight
 ##
 
 

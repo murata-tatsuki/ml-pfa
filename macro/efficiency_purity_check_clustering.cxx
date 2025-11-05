@@ -43,7 +43,7 @@ const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particl
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
-void efficiency_purity_check(){ 
+void efficiency_purity_check_clustering(){ 
     int rawfilenum = 1;
 
     // if(hyper_parameter && fine_tuning){ // condition check
@@ -74,10 +74,10 @@ void efficiency_purity_check(){
 
 
     int event, hitid, mcid, truthid, mcpdg, mccharge, mcstatus, ncluster, matched_ncluster, matched_cluster, cond_track;
-    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match, pred_edep, pred_edep_cluster, cond_beta, pred_alpha;
+    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match, pred_edep, pred_edep_cluster, pred_edep_weight, cond_beta, pred_alpha, pred_photon_energy, pred_hadron_energy, pred_muon_energy, pred_electron_energy;
 
     int _event, _hitid, _mcid, _truthid, _mcpdg, _mccharge, _mcstatus, _ncluster, _matched_ncluster, _matched_cluster, _pred_alpha;
-    double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_edep_cluster, _pred_beta;
+    double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_edep_cluster, _pred_edep_weight, _pred_beta;
 
     double _MC_jet_energy, _total_predicted_energy_truthBase, _total_predicted_energy_predBase;
 
@@ -131,6 +131,7 @@ void efficiency_purity_check(){
     TH1F *energy_diff_per_energy[nParticle][nEnergy];
     TH2F *energy2d[nParticle];
     TH2F *clusterenergy2d[nParticle];
+    TH2F *weightenergy2d[nParticle];
     TH1F *energy_resolution[nParticle];
     TH1F *energy_resolution_per_energy[nParticle][nEnergy];
     TH1F *energy_resolution_per_energy_cluster[nParticle][nEnergy];
@@ -164,6 +165,9 @@ void efficiency_purity_check(){
         clusterenergy2d[ip] = new TH2F(Form("clusterenergy2d_%d",ip), Form("%s cluster energy",particleNames[ip].c_str()), energyMax*10,0,energyMax, energyMax*10,0,energyMax);
         clusterenergy2d[ip]->SetXTitle("MC truth energy");
         clusterenergy2d[ip]->SetYTitle("predicted cluster energy");
+        weightenergy2d[ip] = new TH2F(Form("weightenergy2d_%d",ip), Form("%s weighted energy",particleNames[ip].c_str()), energyMax*10,0,energyMax, energyMax*10,0,energyMax);
+        weightenergy2d[ip]->SetXTitle("MC truth energy");
+        weightenergy2d[ip]->SetYTitle("predicted weighted edep energy");
         eff_vs_Ediff[ip] = new TH2F(Form("eff_vs_Ediff_%d",ip), Form("%s",particleNames[ip].c_str()), 100,0,1, energyMax*20,-energyMax,energyMax);
         eff_vs_Ediff[ip]->SetXTitle("efficiency");
         eff_vs_Ediff[ip]->SetYTitle("predicted cluster energy - true energy");
@@ -238,8 +242,13 @@ void efficiency_purity_check(){
         tree[irawfile]->SetBranchAddress("edep_match", &edep_match);
         tree[irawfile]->SetBranchAddress("pred_edep", &pred_edep);
         tree[irawfile]->SetBranchAddress("pred_edep_cluster", &pred_edep_cluster);
+        tree[irawfile]->SetBranchAddress("pred_edep_weight", &pred_edep_weight);
         tree[irawfile]->SetBranchAddress("cond_beta", &cond_beta);
         tree[irawfile]->SetBranchAddress("cond_track", &cond_track);
+        tree[irawfile]->SetBranchAddress("pred_photon_energy", &pred_photon_energy);
+        tree[irawfile]->SetBranchAddress("pred_hadron_energy", &pred_hadron_energy);
+        tree[irawfile]->SetBranchAddress("pred_muon_energy", &pred_muon_energy);
+        tree[irawfile]->SetBranchAddress("pred_electron_energy", &pred_electron_energy);
 
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             tree[irawfile]->GetEntry(ientry);
@@ -265,18 +274,21 @@ void efficiency_purity_check(){
                 efficiency_energy_normalize[itr][energy_itr]->Fill(eff);
             }
 
-            energy[itr]->Fill(pred_edep);
+            double pred_edep_ = (mcpdg==11 || mcpdg==-11) ? pred_electron_energy : ( (mcpdg==22) ? pred_photon_energy : ( (mcpdg==13 || mcpdg==-13) ? pred_muon_energy : pred_hadron_energy ) );
+
+            energy[itr]->Fill(pred_edep_);
             MCtruth_energy[itr]->Fill(mcen);
-            energy_diff[itr]->Fill(pred_edep - mcen);
-            energy2d[itr]->Fill(mcen,pred_edep);
+            energy_diff[itr]->Fill(pred_edep_ - mcen);
+            energy2d[itr]->Fill(mcen,pred_edep_);
             clusterenergy2d[itr]->Fill(mcen,pred_edep_cluster);
-            energy_resolution[itr]->Fill( (pred_edep - mcen) / mcen );
+            weightenergy2d[itr]->Fill(mcen,pred_edep_weight);
+            energy_resolution[itr]->Fill( (pred_edep_ - mcen) / mcen );
 
             int itr_energy = mcen / energy_interval;
             // cout << itr_energy << ", " << mcen << ", " << energy_interval << endl;
-            if(itr_energy<nEnergy && pred_edep>0.1){
-                energy_diff_per_energy[itr][itr_energy]->Fill(pred_edep - mcen);
-                energy_resolution_per_energy[itr][itr_energy]->Fill( (pred_edep - mcen) / mcen );
+            if(itr_energy<nEnergy && pred_edep_>0.1){
+                energy_diff_per_energy[itr][itr_energy]->Fill(pred_edep_ - mcen);
+                energy_resolution_per_energy[itr][itr_energy]->Fill( (pred_edep_ - mcen) / mcen );
             }
             if(itr_energy<nEnergy && pred_edep_cluster>0.1){
                 energy_resolution_per_energy_cluster[itr][itr_energy]->Fill( (pred_edep_cluster - mcen) / mcen );
@@ -286,9 +298,9 @@ void efficiency_purity_check(){
             if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster-mcen);
             if(edep>1) condbeta_vs_eff[itr]->Fill(cond_beta,eff);
             if(edep>1) condbeta_vs_pur[itr]->Fill(cond_beta,pur);
-            condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
-            if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep-mcen);
-            else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep-mcen);
+            condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep_-mcen);
+            if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep_-mcen);
+            else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep_-mcen);
             condbeta_vs_mcen[itr]->Fill(cond_beta,mcen);
             if(cond_track==1) condbeta_vs_mcen_track[itr]->Fill(cond_beta,mcen);
             else condbeta_vs_mcen_nottrack[itr]->Fill(cond_beta,mcen);
@@ -442,23 +454,25 @@ void efficiency_purity_check(){
     legend_comp_per_e->Draw("same");
 
     TCanvas *canvas_energy = new TCanvas("canvas_energy","canvas_energy",1);
-    canvas_energy->Divide(nParticle,2);
+    canvas_energy->Divide(nParticle,3);
     canvas_energy->cd();
-    for(int ip=0;ip<nParticle*2;ip++){
+    for(int ip=0;ip<nParticle*3;ip++){
         canvas_energy->cd(ip+1);
         // gPad->SetLogy();
         // if(ip<nParticle) energy[ip]->Draw();
-        if(ip<nParticle){
+        if(ip/nParticle==0){
             // gStyle->SetOptStat(0);
             energy2d[ip]->SetStats(0);
             energy2d[ip]->Draw("colz");
-        }
-        else {
+        } else if(ip/nParticle==1){
             // gPad->SetLogy();
             // energy_diff[ip-nParticle]->SetStats(0);
             // energy_diff[ip-nParticle]->Draw();
             clusterenergy2d[ip-nParticle]->SetStats(0);
             clusterenergy2d[ip-nParticle]->Draw("colz");
+        } else if(ip/nParticle==2){
+            weightenergy2d[ip-nParticle]->SetStats(0);
+            weightenergy2d[ip-nParticle]->Draw("colz");
         }
         // else MCtruth_energy[ip-nParticle]->Draw();
     }

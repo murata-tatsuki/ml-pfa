@@ -18,7 +18,22 @@ def get_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp = Fals
         if not ddp:
             model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
         else:
-            model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+            from collections import OrderedDict
+            checkpoint = torch.load(ckpt, map_location=torch.device('cpu'))
+            state_dict = checkpoint["model"] if "model" in checkpoint else checkpoint
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k.replace("module.", "") if k.startswith("module.") else k
+                new_state_dict[name] = v
+            model.load_state_dict(new_state_dict, strict=False)
+            # from collections import OrderedDict
+            # new_state_dict = OrderedDict()
+            # for k, v in state_dict.items():
+            #     name = k.replace("module.", "") if k.startswith("module.") else k
+            #     new_state_dict[name] = v
+            # model.load_state_dict(new_state_dict)
+
+            # model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
 
     return model
 
@@ -45,11 +60,12 @@ def get_model_branch(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp
     return model
 
 
-def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp = False):
+def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp = False, lcr_block = True):
     # from torch_cmspepr.gravnet_model import GravnetModel
-    from lcr_module import LCR, LCR_withPID, LCR_withClass, hungarian_set_loss, hungarian_set_loss_bbox_only
+    from lcr_module import LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, hungarian_set_loss, hungarian_set_loss_bbox_only
     #model = GravnetModelWithNoiseFilter(input_dim=9, output_dim=6, k=50, signal_threshold=.05)
-    LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
+    # LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
+    # LCR_Block(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, K=256, feat_dim=4)
 
     ckpt = ReadText("Grav_ILC_setting.txt")["Output Model File"] if ckpt is None else ckpt 
     print(f"Loading model from {ckpt=}")
@@ -58,11 +74,20 @@ def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3,
         model = torch.jit.load(ckpt, map_location=torch.device('cpu'))
 
     else:
-        print(f'{input_dim=}')
-        model=LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
-        if not ddp:
-            model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+        if lcr_block:
+            print(f'{input_dim=}')
+            # model=LCR_Block(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4)
+            model=LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4)
+            if not ddp:
+                model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+            else:
+                model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
         else:
-            model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+            print(f'{input_dim=}')
+            model=LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
+            if not ddp:
+                model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
+            else:
+                model.module.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
 
     return model

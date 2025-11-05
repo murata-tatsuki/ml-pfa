@@ -182,7 +182,7 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
         model_gnn = get_model_branch(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
         model_gnn = get_model(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
-    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
+    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, ddp=args.ddp).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp)
     yielder = TestYielderWithMLClustering(model=model_gnn, model_clustering=model_clustering, dataset=dataset, device=device, pandora=pandora)
@@ -218,7 +218,7 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
     d3.setup_branch(t3)
     
         # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    for i, (event_num, event_data, pred_fourvec, truth_fourvec) in enumerate(yielder._iter_data(nmax=nmax)):
+    for i, (event_num, event_data, pred_fourvec, truth_fourvec, hit_mask, attn_w) in enumerate(yielder._iter_data(nmax=nmax)):
         if i == nmax: break
         if i < 10 or i%100 == 0:
             print("Event", i, "processing...")
@@ -236,6 +236,14 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
             # print("     predicted four vector   : ", result['PredVec'])
             # print("     Delta E                 : ", result['DeltaE'])
             # print("     Delta theta (rad)       : ", result['DeltaTheta'])
+
+            hit_to_cluster, hit_contrib = get_hit_cluster_assignment_single_batch(attn_w, hit_mask)
+
+            # ヒットiの寄与クラスタ
+            print(hit_contrib)
+            for i, hit in enumerate(event_data):
+                print(f"ヒット{i} → クラスタ {hit_to_cluster[i].item()}, 寄与度 {hit_contrib[i].item():.3f}")
+
 
             for ind, (true_vec, pred_vec) in enumerate(zip(result['TrueVec'], result['PredVec'])):
                 d3.event[0] = i
@@ -397,6 +405,57 @@ def jaccard_index(hit_true, hit_pred):
     return intersection / union
 
 
+def get_hit_cluster_assignment(attn_weights, hit_mask=None):
+    """
+    各ヒットがどのクラスタ(seed)に最も寄与しているかを計算
+    
+    Args:
+        attn_weights: Tensor of shape (B, K, N_hit)
+        hit_mask: Optional mask (B, N_hit) for valid hits (1=valid,0=padding)
+    
+    Returns:
+        hit_to_cluster: Tensor of shape (B, N_hit), 
+                        各ヒットに対応するクラスタの index (-1 は無効)
+        max_contrib: Tensor of shape (B, N_hit), 寄与度
+    """
+    B, K, N = attn_weights.shape
+    device = attn_weights.device
+
+    # 各ヒットが最も寄与するクラスタを取得
+    # w_max_idx : (B,N), max_contrib: (B,N)
+    max_contrib, w_max_idx = attn_weights.max(dim=1)  
+
+    if hit_mask is not None:
+        w_max_idx = w_max_idx.masked_fill(~hit_mask.bool(), -1)
+        max_contrib = max_contrib.masked_fill(~hit_mask.bool(), 0.0)
+
+    return w_max_idx, max_contrib
+
+def get_hit_cluster_assignment_single_batch(attn_weights, hit_mask=None):
+    """
+    1バッチ分のヒットがどのクラスタ(seed)に最も寄与しているかを計算
+    
+    Args:
+        attn_weights: Tensor of shape (K, N_hit)
+        hit_mask: Optional mask (N_hit,) for valid hits (1=valid,0=padding)
+    
+    Returns:
+        hit_to_cluster: Tensor of shape (N_hit,), 各ヒットに対応するクラスタ index (-1は無効)
+        max_contrib: Tensor of shape (N_hit,), ヒットごとの寄与度
+    """
+    # ヒットごとに最大のクラスタを取得
+    max_contrib, hit_to_cluster = attn_weights.max(dim=0)  # (N_hit,)
+
+    if hit_mask is not None:
+        mask = hit_mask.bool()
+        hit_to_cluster = hit_to_cluster.masked_fill(~mask, -1)
+        max_contrib = max_contrib.masked_fill(~mask, 0.0)
+
+    return hit_to_cluster, max_contrib
+
+
+
+
 def main():
     print(sys.argv)
     if (len(sys.argv) < 9):
@@ -424,6 +483,8 @@ def main():
     # parser.add_argument('--tbeta', type=float, default=0.9)
     # parser.add_argument('--td', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
+    parser.add_argument('--lcr-block', action='store_true', help='Use LCR block')
+    parser.add_argument('--ddp', action='store_true', help='Use ddp for training')
     # parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
     # parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
 

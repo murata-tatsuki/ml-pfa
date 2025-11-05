@@ -51,12 +51,16 @@ def index_setup(args):
     index_pred_tracker_energy = 0
     index_pred_cluster_energy = 0
     index_pred_cluster_space_coords = 0
-    if (args.energy_regression):
-        output_dimension += 1   # adding track energy to model output
-        index_pred_tracker_energy += 1
-        if (args.energy_regression_cluster):
-            output_dimension += 1   # adding cluster energy to model output
-            index_pred_cluster_energy += 2
+    if args.energy_regression_weight:
+        output_dimension += 5
+        index_pred_cluster_energy += 5
+    else:
+        if (args.energy_regression):
+            output_dimension += 1   # adding track energy to model output
+            index_pred_tracker_energy += 1
+            if (args.energy_regression_cluster):
+                output_dimension += 1   # adding cluster energy to model output
+                index_pred_cluster_energy += 2
     if (args.use_charged_cluster_loss):
         output_dimension += 1   # adding output dimension
         index_pred_tracker_energy = index_pred_tracker_energy + 1 if index_pred_tracker_energy!=0 else 0
@@ -193,41 +197,67 @@ def run_ddp_training(rank, world_size, args):
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
-        if args.energy_regression:
-            if not args.energy_regression_cluster:
-                if use_charge_track_likeness:
-                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                    pred_tracker_energy = out[:,2]
-                    pred_cluster_energy = None
-                    pred_cluster_space_coords = out[:,3:]
-                    assert(pred_charge_track_likeness.device == device)
-                else:
-                    pred_charge_track_likeness = None
-                    pred_tracker_energy = out[:,1]
-                    pred_cluster_energy = None
-                    pred_cluster_space_coords = out[:,2:]
-            else:
-                if use_charge_track_likeness:
-                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                    pred_tracker_energy = out[:,2]
-                    pred_cluster_energy = out[:,3]
-                    pred_cluster_space_coords = out[:,4:]
-                    assert(pred_charge_track_likeness.device == device)
-                else:
-                    pred_charge_track_likeness = None
-                    pred_tracker_energy = out[:,1]
-                    pred_cluster_energy = out[:,2]
-                    pred_cluster_space_coords = out[:,3:]
+        pred_charge_track_likeness = None
+        pred_tracker_energy = None
+        pred_cluster_energy = None
+        weight_photon = None
+        weight_hadron = None
+        weight_muon = None
+        weight_electron = None
+        if args.energy_regression_weight:
+            if args.energy_regression and not args.energy_regression_cluster:
+                pred_tracker_energy = out[:,1]
+                weight_photon = out[:,2]
+                weight_charged_hadron = out[:,3]
+                weight_neutral_hadron = out[:,4]
+                weight_muon = out[:,5]
+                weight_electron = out[:,6]
+                pred_cluster_space_coords = out[:,7:]
+            elif args.energy_regression and args.energy_regression_cluster:
+                pred_tracker_energy = out[:,1]
+                pred_cluster_energy = out[:,2]
+                weight_photon = out[:,3]
+                weight_charged_hadron = out[:,4]
+                weight_neutral_hadron = out[:,5]
+                weight_muon = out[:,6]
+                weight_electron = out[:,7]
+                pred_cluster_space_coords = out[:,8:]
+            elif not args.energy_regression:
+                weight_photon = out[:,1]
+                weight_charged_hadron = out[:,2]
+                weight_neutral_hadron = out[:,3]
+                weight_muon = out[:,4]
+                weight_electron = out[:,5]
+                pred_cluster_space_coords = out[:,6:]
         else:
-            pred_tracker_energy = None
-            pred_cluster_energy = None
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
+            if args.energy_regression:
+                if not args.energy_regression_cluster:
+                    if use_charge_track_likeness:
+                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                        pred_tracker_energy = out[:,2]
+                        pred_cluster_space_coords = out[:,3:]
+                        assert(pred_charge_track_likeness.device == device)
+                    else:
+                        pred_tracker_energy = out[:,1]
+                        pred_cluster_space_coords = out[:,2:]
+                else:
+                    if use_charge_track_likeness:
+                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                        pred_tracker_energy = out[:,2]
+                        pred_cluster_energy = out[:,3]
+                        pred_cluster_space_coords = out[:,4:]
+                        assert(pred_charge_track_likeness.device == device)
+                    else:
+                        pred_tracker_energy = out[:,1]
+                        pred_cluster_energy = out[:,2]
+                        pred_cluster_space_coords = out[:,3:]
             else:
-                pred_charge_track_likeness = None
-                pred_cluster_space_coords = out[:,1:]
+                if use_charge_track_likeness:
+                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                    pred_cluster_space_coords = out[:,2:]
+                    assert(pred_charge_track_likeness.device == device)
+                else:
+                    pred_cluster_space_coords = out[:,1:]
         cluster_track_index = data.y[:,1]
 
         assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
@@ -235,6 +265,8 @@ def run_ddp_training(rank, world_size, args):
         detected_energy = data.feat[:,0]
         LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
         er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
+        mcpdg = data.label[:,2]
+        mccharge = data.label[:,3]
 
         LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
             pred_betas,
@@ -256,8 +288,17 @@ def run_ddp_training(rank, world_size, args):
             LE_track=args.LE_track,
             LE_cluster=args.LE_cluster,
             Ecl_regression=args.energy_regression_cluster,
+            weight_regression=args.energy_regression_weight,
             pred_cluster_energy = pred_cluster_energy,
-            l_beta_suppression = args.l_beta_suppression
+            l_beta_suppression = args.l_beta_suppression,
+            epoch = i_epoch,
+            mcpdg = mcpdg,
+            mccharge = mccharge,
+            weight_photon = weight_photon,
+            weight_charged_hadron = weight_charged_hadron,
+            weight_neutral_hadron = weight_neutral_hadron,
+            weight_muon = weight_muon,
+            weight_electron = weight_electron
         )
         
         if return_components:
@@ -454,6 +495,7 @@ def main():
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
     parser.add_argument('--weight-decay', type=float, default=1e-4)                                                                     ## not using now
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
+    parser.add_argument('--energy-regression-weight', action='store_true', help='Turn on energy regression term on loss function and output (weighted edep)')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (cluster energy for neutral particles)')
     parser.add_argument('--regression-coefficinet', type=float, default=1)                       ### energy regression scaling factor
     parser.add_argument('--LE-track', type=str, default='alpha', help='Specify L_E_track loss term')
@@ -632,41 +674,67 @@ def main():
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
-        if args.energy_regression:
-            if not args.energy_regression_cluster:
-                if use_charge_track_likeness:
-                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                    pred_tracker_energy = out[:,2]
-                    pred_cluster_energy = None
-                    pred_cluster_space_coords = out[:,3:]
-                    assert(pred_charge_track_likeness.device == device)
-                else:
-                    pred_charge_track_likeness = None
-                    pred_tracker_energy = out[:,1]
-                    pred_cluster_energy = None
-                    pred_cluster_space_coords = out[:,2:]
-            else:
-                if use_charge_track_likeness:
-                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                    pred_tracker_energy = out[:,2]
-                    pred_cluster_energy = out[:,3]
-                    pred_cluster_space_coords = out[:,4:]
-                    assert(pred_charge_track_likeness.device == device)
-                else:
-                    pred_charge_track_likeness = None
-                    pred_tracker_energy = out[:,1]
-                    pred_cluster_energy = out[:,2]
-                    pred_cluster_space_coords = out[:,3:]
+        pred_charge_track_likeness = None
+        pred_tracker_energy = None
+        pred_cluster_energy = None
+        weight_photon = None
+        weight_hadron = None
+        weight_muon = None
+        weight_electron = None
+        if args.energy_regression_weight:
+            if args.energy_regression and not args.energy_regression_cluster:
+                pred_tracker_energy = out[:,1]
+                weight_photon = out[:,2]
+                weight_charged_hadron = out[:,3]
+                weight_neutral_hadron = out[:,4]
+                weight_muon = out[:,5]
+                weight_electron = out[:,6]
+                pred_cluster_space_coords = out[:,7:]
+            elif args.energy_regression and args.energy_regression_cluster:
+                pred_tracker_energy = out[:,1]
+                pred_cluster_energy = out[:,2]
+                weight_photon = out[:,3]
+                weight_charged_hadron = out[:,4]
+                weight_neutral_hadron = out[:,5]
+                weight_muon = out[:,6]
+                weight_electron = out[:,7]
+                pred_cluster_space_coords = out[:,8:]
+            elif not args.energy_regression:
+                weight_photon = out[:,1]
+                weight_charged_hadron = out[:,2]
+                weight_neutral_hadron = out[:,3]
+                weight_muon = out[:,4]
+                weight_electron = out[:,5]
+                pred_cluster_space_coords = out[:,6:]
         else:
-            pred_tracker_energy = None
-            pred_cluster_energy = None
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
+            if args.energy_regression:
+                if not args.energy_regression_cluster:
+                    if use_charge_track_likeness:
+                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                        pred_tracker_energy = out[:,2]
+                        pred_cluster_space_coords = out[:,3:]
+                        assert(pred_charge_track_likeness.device == device)
+                    else:
+                        pred_tracker_energy = out[:,1]
+                        pred_cluster_space_coords = out[:,2:]
+                else:
+                    if use_charge_track_likeness:
+                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                        pred_tracker_energy = out[:,2]
+                        pred_cluster_energy = out[:,3]
+                        pred_cluster_space_coords = out[:,4:]
+                        assert(pred_charge_track_likeness.device == device)
+                    else:
+                        pred_tracker_energy = out[:,1]
+                        pred_cluster_energy = out[:,2]
+                        pred_cluster_space_coords = out[:,3:]
             else:
-                pred_charge_track_likeness = None
-                pred_cluster_space_coords = out[:,1:]
+                if use_charge_track_likeness:
+                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                    pred_cluster_space_coords = out[:,2:]
+                    assert(pred_charge_track_likeness.device == device)
+                else:
+                    pred_cluster_space_coords = out[:,1:]
         cluster_track_index = data.y[:,1]
 
         assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
@@ -674,6 +742,8 @@ def main():
         detected_energy = data.feat[:,0]
         LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
         er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
+        mcpdg = data.label[:,2]
+        mccharge = data.label[:,3]
 
         LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
             pred_betas,
@@ -695,8 +765,17 @@ def main():
             LE_track=args.LE_track,
             LE_cluster=args.LE_cluster,
             Ecl_regression=args.energy_regression_cluster,
+            weight_regression=args.energy_regression_weight,
             pred_cluster_energy = pred_cluster_energy,
-            l_beta_suppression = args.l_beta_suppression
+            l_beta_suppression = args.l_beta_suppression,
+            epoch = i_epoch,
+            mcpdg = mcpdg,
+            mccharge = mccharge,
+            weight_photon = weight_photon,
+            weight_charged_hadron = weight_charged_hadron,
+            weight_neutral_hadron = weight_neutral_hadron,
+            weight_muon = weight_muon,
+            weight_electron = weight_electron
         )
         
         if return_components:

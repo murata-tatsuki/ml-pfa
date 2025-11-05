@@ -1,0 +1,471 @@
+# lcr_module.py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from scipy.optimize import linear_sum_assignment   # Hungarian matching
+
+# ------------------------------------------------------------
+# Utility: permutation-invariant Hungarian loss
+# ------------------------------------------------------------
+def hungarian_set_loss(pred_fourvec, pred_cls, true_fourvec, true_cls,
+                       cost_class=1.0, cost_bbox=2.0):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    pred_cls     : (B, M, C)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    true_cls     : (B, N)
+    Return      : scalar loss
+    """
+    batch_loss = 0.0
+    for b in range(pred_fourvec.size(0)):
+        # Expand tensors for pair-wise cost matrix
+        P = pred_fourvec[b]                    # (M,4)
+        T = true_fourvec[b]                    # (N,4)
+        Pcls = pred_cls[b].softmax(-1)         # (M,C)
+        # Tcl  = F.one_hot(true_cls[b], Pcls.size(-1)).float()  # (N,C)
+        # print("truth_four_vector:", T)
+        # print("uniqu_label:", true_cls[b])
+        # print("uniqu_label min/max:", true_cls[b].min().item(), true_cls[b].max().item())
+
+        # print(true_cls[b].shape, pred_cls[b].shape, Pcls.size(-1), Pcls)
+
+        if not ((true_cls[b] >= 0) & (true_cls[b] < Pcls.size(-1))).all():
+            print(f"Invalid true_cls index in batch {b}: ", true_cls[b])
+            raise ValueError("true_cls contains out-of-bound class indices.")
+
+        Tcl = F.one_hot(true_cls[b].long(), Pcls.size(-1)).float()
+
+        # print(T.shape, P.shape)
+        if T.ndim == 1:
+            T = T.unsqueeze(0)
+        if P.ndim == 1:
+            P = P.unsqueeze(0)
+
+        # ① L1 cost on 4-vector (or custom ΔR,E etc.)
+        C_bbox = torch.cdist(P, T, p=1)        # (M,N)
+
+        # ② classification cost (cross-entropy)
+        C_cls  = -(Pcls @ Tcl.T)               # (M,N) negative log-prob
+
+        C      = cost_bbox*C_bbox + cost_class*C_cls  # (M,N)
+        if torch.isnan(C).any() or torch.isinf(C).any():
+            print("NaN or inf detected in cost matrix C")
+            print("C_bbox:", C_bbox)
+            print("C_cls:", C_cls)
+            raise ValueError("Invalid values in cost matrix")
+
+        row, col = linear_sum_assignment(C.cpu().detach().numpy())
+        batch_loss += C[row, col].sum() / len(row)
+
+    return batch_loss / pred_fourvec.size(0)
+
+def hungarian_set_loss_bbox_only(pred_fourvec, true_fourvec):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+
+    for b in range(pred_fourvec.size(0)):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+
+        if T.ndim == 1:
+            T = T.unsqueeze(0)
+        if P.ndim == 1:
+            P = P.unsqueeze(0)
+
+        # L1 distance cost matrix (M, N)
+        C_bbox = torch.cdist(P, T, p=1)
+
+        if torch.isnan(C_bbox).any() or torch.isinf(C_bbox).any():
+            print("Invalid values in cost matrix C_bbox")
+            print("C_bbox:", C_bbox)
+            raise ValueError("NaN or Inf detected in cost matrix")
+
+        # ハンガリアン法による最適マッチング
+        row, col = linear_sum_assignment(C_bbox.cpu().detach().numpy())
+        batch_loss += C_bbox[row, col].sum() / len(row)
+
+    return batch_loss / pred_fourvec.size(0)
+
+def hungarian_set_loss_new(pred_fourvec, true_fourvec, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    wE, wMag, wDir : エネルギー、大きさ、方向の重み
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+
+    for b in range(pred_fourvec.size(0)):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+        M, N = P.shape[0], T.shape[0]
+
+        # ΔE/E
+        dE = torch.log(torch.abs(P[:,None,0] - T[None,:,0]) + 1)  # (M,N)
+        # dE = torch.abs(P[:,None,0] - T[None,:,0]) / (T[None,:,0] + eps)  # (M,N)
+        # 方向誤差
+        p_pred = P[:,None,1:]  # (M,1,3)
+        p_true = T[None,:,1:]  # (1,N,3)
+        # cos_theta = torch.sum(p_pred * p_true, dim=-1) / (
+        #     torch.norm(p_pred, dim=-1) * torch.norm(p_true, dim=-1) + eps
+        # )
+        # dTheta = torch.acos(torch.clamp(cos_theta, -1.0, 1.0))  # (M,N)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)  # (M,N)
+
+        C = (wE * dE + wMag * dMag + wDir * dDir)
+        row, col = linear_sum_assignment(C.detach().cpu().numpy())
+
+        batch_loss += C[row, col].sum() / len(row)
+
+    return batch_loss / pred_fourvec.size(0)
+
+def hungarian_set_loss_new_sub(pred_fourvec, true_fourvec, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    wE, wMag, wDir : エネルギー、大きさ、方向の重み
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+    loss_E = 0.0
+    loss_Mag = 0.0
+    loss_Dir = 0.0
+
+    for b in range(pred_fourvec.size(0)):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+        M, N = P.shape[0], T.shape[0]
+
+        # ΔE/E
+        dE = torch.log(torch.abs(P[:,None,0] - T[None,:,0]) + 1)  # (M,N)
+        # dE = torch.abs(P[:,None,0] - T[None,:,0]) / (T[None,:,0] + eps)  # (M,N)
+        # 方向誤差
+        p_pred = P[:,None,1:]  # (M,1,3)
+        p_true = T[None,:,1:]  # (1,N,3)
+        # cos_theta = torch.sum(p_pred * p_true, dim=-1) / (
+        #     torch.norm(p_pred, dim=-1) * torch.norm(p_true, dim=-1) + eps
+        # )
+        # dTheta = torch.acos(torch.clamp(cos_theta, -1.0, 1.0))  # (M,N)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)  # (M,N)
+
+        C = (wE * dE + wMag * dMag + wDir * dDir)
+        row, col = linear_sum_assignment(C.detach().cpu().numpy())
+
+        loss_E += dE[row, col].sum() / len(row)
+        loss_Mag += dMag[row, col].sum() / len(row)
+        loss_Dir += dDir[row, col].sum() / len(row)
+        batch_loss += C[row, col].sum() / len(row)
+
+    components = dict(
+        loss_E = loss_E / pred_fourvec.size(0), 
+        loss_Mag = loss_Mag / pred_fourvec.size(0),
+        loss_Dir = loss_Dir / pred_fourvec.size(0)
+        )
+
+    return batch_loss / pred_fourvec.size(0), components
+
+def hungarian_set_loss_new_sub_mask(pred_fourvec, true_fourvec, pred_mask=None, true_mask=None, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – predicted 4-vectors
+    true_fourvec : (B, N, 4)   – truth 4-vectors
+    pred_mask    : (B, M) bool – True=無効 (padding) 
+    true_mask    : (B, N) bool – True=無効 (padding)
+    """
+    batch_loss = 0.0
+    loss_E = 0.0
+    loss_Mag = 0.0
+    loss_Dir = 0.0
+
+    B = pred_fourvec.size(0)
+
+    for b in range(B):
+        # --- 修正: maskを適用 ---
+        if pred_mask is not None:
+            if pred_mask.shape[1] != pred_fourvec.shape[1]:
+                print(f"[DEBUG] pred_fourvec[b].shape = {pred_fourvec[b].shape}")
+                print(f"[DEBUG] pred_mask[b].shape = {pred_mask[b].shape}")
+                print(f"[DEBUG] pred_mask[b] sum = {pred_mask[b].sum()}")
+            P = pred_fourvec[b][~pred_mask[b]]  # (M_valid, 4)
+        else:
+            P = pred_fourvec[b]
+
+        if true_mask is not None:
+            T = true_fourvec[b][~true_mask[b]]  # (N_valid, 4)
+        else:
+            T = true_fourvec[b]
+        # -------------------------
+
+        if P.size(0) == 0 or T.size(0) == 0:
+            continue  # 有効データがなければスキップ
+
+        # ΔE/E (log)
+        dE = torch.log(torch.abs(P[:, None, 0] - T[None, :, 0]) + 1)  # (M,N)
+
+        # 運動量大きさ
+        p_pred = P[:, None, 1:]  # (M,1,3)
+        p_true = T[None, :, 1:]  # (1,N,3)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)  # (M,N)
+
+        # 方向
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm) ** 2, dim=-1)  # (M,N)
+
+        # コスト行列
+        C = (wE * dE + wMag * dMag + wDir * dDir)
+        row, col = linear_sum_assignment(C.detach().cpu().numpy())
+
+        loss_E += dE[row, col].sum() / len(row)
+        loss_Mag += dMag[row, col].sum() / len(row)
+        loss_Dir += dDir[row, col].sum() / len(row)
+        batch_loss += C[row, col].sum() / len(row)
+
+    components = dict(
+        loss_E = loss_E / B,
+        loss_Mag = loss_Mag / B,
+        loss_Dir = loss_Dir / B
+    )
+
+    return batch_loss / B, components
+
+def soft_matching_loss(pred_four, true_four, beta_pred=None, pred_mask=None, true_mask=None, alpha_E=1.0, alpha_dir=0.2, beta_temp=1.0):
+    """
+    pred_four: (B, N_pred, 4)
+    true_four: (B, N_true, 4)
+    beta_pred: (B, N_pred) optional, β-weight for seed confidence
+    pred_mask: (B, N_pred), bool tensor, True=有効, False=padding
+    true_mask: (B, N_true), bool tensor, True=有効, False=padding
+    """
+
+    E_pred, p_pred = pred_four[..., 0], pred_four[..., 1:]
+    E_true, p_true = true_four[..., 0], true_four[..., 1:]
+
+    # normalize direction
+    p_pred_norm = F.normalize(p_pred, dim=-1)
+    p_true_norm = F.normalize(p_true, dim=-1)
+
+    # pairwise cosine similarity
+    cos_sim = torch.einsum('bik,bjk->bij', p_pred_norm, p_true_norm).clamp(-1, 1)
+    ang_diff = 1 - cos_sim  # small if aligned
+
+    # relative energy diff
+    rel_E = torch.abs(E_pred.unsqueeze(2) - E_true.unsqueeze(1)) / (E_true.unsqueeze(1) + 1e-6)
+
+    # pairwise distance (smaller is better)
+    dist = alpha_E * rel_E + alpha_dir * ang_diff
+
+    # convert to similarity (larger is better)
+    sim = -dist / beta_temp  # temperature controls softness
+
+    # apply masks before softmax
+    if true_mask is not None:
+        # set invalid true entries to large negative
+        mask_j = (~true_mask).unsqueeze(1).expand_as(sim)
+        sim = sim.masked_fill(mask_j, -1e9)
+
+
+    # soft assignment weights (B, N_pred, N_true)
+    w = F.softmax(sim, dim=-1)
+
+    # β-weighted version
+    if beta_pred is not None:
+        beta_w = beta_pred.unsqueeze(-1) / (beta_pred.sum(dim=1, keepdim=True) + 1e-6)
+        w = w * beta_w  # apply β weight
+        w = w / (w.sum(dim=-1, keepdim=True) + 1e-6)  # renormalize
+    
+    # apply pred mask: invalid rows (padding) should not contribute to loss
+    if pred_mask is not None:
+        mask_i = pred_mask.unsqueeze(-1).float()
+        w = w * mask_i
+        dist = dist * mask_i
+
+    if true_mask is not None:
+        mask_j = true_mask.unsqueeze(1).float()
+        w = w * mask_j
+        dist = dist * mask_j
+
+    # compute loss
+    valid_sum = (w > 0).float().sum(dim=[1, 2]) + 1e-6
+    loss_pair = (w * dist).sum(dim=[1, 2]) / valid_sum
+    loss = loss_pair.mean()
+    # loss_pair = dist  # (B, N_pred, N_true)
+    # loss = (w * loss_pair).sum(dim=[1, 2]).mean()
+
+    components = dict(
+        loss = loss,
+        loss_E = 0, 
+        loss_Mag = 0, 
+        loss_Dir = 0
+    )
+
+    return loss, components
+
+def soft_matching_cross_attention_loss(pred_four, true_four, cross_attention, beta_pred=None, pred_mask=None, true_mask=None, alpha_E=1.0, alpha_dir=0.2, beta_temp=1.0):
+    """
+    pred_four: (B, N_pred, 4)
+    true_four: (B, N_true, 4)
+    beta_pred: (B, N_pred) optional, β-weight for seed confidence
+    pred_mask: (B, N_pred), bool tensor, True=有効, False=padding
+    true_mask: (B, N_true), bool tensor, True=有効, False=padding
+    """
+
+    E_pred, p_pred = pred_four[..., 0], pred_four[..., 1:]
+    E_true, p_true = true_four[..., 0], true_four[..., 1:]
+
+    # normalize direction
+    p_pred_norm = F.normalize(p_pred, dim=-1)
+    p_true_norm = F.normalize(p_true, dim=-1)
+
+    # pairwise cosine similarity
+    cos_sim = torch.einsum('bik,bjk->bij', p_pred_norm, p_true_norm).clamp(-1, 1)
+    ang_diff = 1 - cos_sim  # small if aligned
+
+    # relative energy diff
+    rel_E = torch.abs(E_pred.unsqueeze(2) - E_true.unsqueeze(1)) / (E_true.unsqueeze(1) + 1e-6)
+
+    # pairwise distance (smaller is better)
+    dist = alpha_E * rel_E + alpha_dir * ang_diff
+
+    # convert to similarity (larger is better)
+    sim = -dist / beta_temp  # temperature controls softness
+
+    # apply masks before softmax
+    if true_mask is not None:
+        # set invalid true entries to large negative
+        mask_j = (~true_mask).unsqueeze(1).expand_as(sim)
+        sim = sim.masked_fill(mask_j, -1e9)
+
+
+    # soft assignment weights (B, N_pred, N_true)
+    w = F.softmax(sim, dim=-1)
+
+    # β-weighted version
+    if beta_pred is not None:
+        beta_w = beta_pred.unsqueeze(-1) / (beta_pred.sum(dim=1, keepdim=True) + 1e-6)
+        w = w * beta_w  # apply β weight
+        w = w / (w.sum(dim=-1, keepdim=True) + 1e-6)  # renormalize
+    
+    # apply pred mask: invalid rows (padding) should not contribute to loss
+    if pred_mask is not None:
+        mask_i = pred_mask.unsqueeze(-1).float()
+        w = w * mask_i
+        dist = dist * mask_i
+
+    if true_mask is not None:
+        mask_j = true_mask.unsqueeze(1).float()
+        w = w * mask_j
+        dist = dist * mask_j
+
+    # compute loss
+    valid_sum = (w > 0).float().sum(dim=[1, 2]) + 1e-6
+    loss_pair = (w * dist).sum(dim=[1, 2]) / valid_sum
+    loss = loss_pair.mean()
+    # loss_pair = dist  # (B, N_pred, N_true)
+    # loss = (w * loss_pair).sum(dim=[1, 2]).mean()
+
+    components = dict(
+        loss = loss,
+        loss_E = 0, 
+        loss_Mag = 0, 
+        loss_Dir = 0
+    )
+
+    return loss, components
+
+
+
+
+def lcr_hungarian_loss(pred_fourvec, true_fourvec, pred_pcl_prob, matched_idx, pred_logits, tgt_labels, attn, truth_mcid, wE=1.0, wMag=1.0, wDir=1.0, eps=1e-8):
+    """
+    pred_fourvec : (B, M, 4)   – weighted sums from LCR (M=K seeds)
+    true_fourvec : (B, N, 4)   – truth particles (varying N<=M)
+    matched_idx  : list of tuples [(row_idx, col_idx), ...] for each batch, from HungarianMatcher
+    wE, wMag, wDir : エネルギー、大きさ、方向の重み
+    Return       : scalar loss
+    """
+    batch_loss = 0.0
+    loss_E = 0.0
+    loss_Mag = 0.0
+    loss_Dir = 0.0
+    loss_pcl_prob = 0.0
+    loss_pid = 0.0
+    loss_attn = 0.0
+    B = pred_fourvec.size(0)
+
+
+    for b in range(B):
+        P = pred_fourvec[b]    # (M, 4)
+        T = true_fourvec[b]    # (N, 4)
+        row, col = matched_idx[b]  # torch.Tensor
+
+        # ΔE/E
+        dE = torch.log(torch.abs(P[row, 0] - T[col, 0]) + 1)
+
+        # 方向誤差・大きさ誤差
+        p_pred = P[row, 1:]  # (matched_count, 3)
+        p_true = T[col, 1:]  # (matched_count, 3)
+        mag_pred = torch.norm(p_pred, dim=-1)
+        mag_true = torch.norm(p_true, dim=-1)
+        dMag = torch.abs(mag_pred - mag_true) / (mag_true + eps)
+
+        p_pred_norm = p_pred / (mag_pred.unsqueeze(-1) + eps)
+        p_true_norm = p_true / (mag_true.unsqueeze(-1) + eps)
+        dDir = torch.sum((p_pred_norm - p_true_norm)**2, dim=-1)
+
+        C = wE * dE + wMag * dMag + wDir * dDir
+        batch_loss += C.sum() / len(row)
+        loss_E += dE.sum() / len(row)
+        loss_Mag += dMag.sum() / len(row)
+        loss_Dir += dDir.sum() / len(row)
+
+        # particle probability loss 
+        target_particle = torch.zeros_like(pred_pcl_prob[b])
+        target_particle[row] = 1
+        loss_pcl_prob += F.binary_cross_entropy(pred_pcl_prob[b], target_particle)
+
+        # pid loss
+        pred_logit = pred_logits[b]
+        tgt_label = tgt_labels[b]
+        criterion = nn.CrossEntropyLoss()
+        loss_pid += criterion(pred_logit[row], tgt_label[col])
+
+        # Truth-based hit–seed assignment Cross Entropy
+        # hit_to_truth = truth_mcid[b]
+        # for i_seed, i_truth in zip(row, col):
+        #     tgt_mask = (hit_to_truth == i_truth)  # hit ∈ true cluster
+        #     attn_b = attn[b, i_seed]              # [N_hit]
+        #     loss_attn += F.binary_cross_entropy(attn_b, tgt_mask.float())
+        loss_attn = 0
+
+
+    components = dict(
+        loss = batch_loss / B + loss_pcl_prob / B + loss_pid / B + loss_attn / B,
+        loss_E = loss_E / B,
+        loss_Mag = loss_Mag / B,
+        loss_Dir = loss_Dir / B,
+        loss_pcl_prob = loss_pcl_prob / B,
+        loss_pid = loss_pid / B,
+        # loss_attn = loss_attn / B
+    )
+
+    return batch_loss / B + loss_pcl_prob / B + loss_pid / B, components
+    # return batch_loss / B + loss_pcl_prob / B + loss_pid / B + loss_attn / B, components
