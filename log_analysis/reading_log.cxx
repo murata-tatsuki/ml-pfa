@@ -21,11 +21,16 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // int epoch_noLE = 15;
 
 
-// const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/backup/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_23_172406_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
-const string fileName = "../log/energy_regression/weighted_edep/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_11_02_095108_alpha_tracker_diff_log_perCluster.log";
-
 // const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_08_05_144744__momentum.log";
+
+
+// const string fileName = "../log/energy_regression/weighted_edep/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_17_105903_alpha_tracker_diff_log_perCluster.log";
+const string fileName = "../log/energy_regression/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_17_101654_alpha_tracker_diff_log_perCluster.log";
+
+// const string fileName = "../log/energy_regression/backup/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_11_200202_alpha_tracker_diff_log_momentum.log";
+// const string fileName = "../log/energy_regression/weighted_edep/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_10_08_144911_weight.log";
 
 
 vector<double> l_v;
@@ -38,6 +43,11 @@ vector<double> l_e;
 vector<double> l_e_tracker;
 vector<double> l_e_cond;
 vector<double> l_e_cluster;
+vector<double> l_e_w_photon;
+vector<double> l_e_w_charged_hadron;
+vector<double> l_e_w_neutral_hadron;
+vector<double> l_e_w_muon;
+vector<double> l_e_w_electron;
 vector<double> returning;
 vector<double> train_loss;
 vector<double> train_l_v;
@@ -50,6 +60,11 @@ vector<double> train_l_e;
 vector<double> train_l_e_tracker;
 vector<double> train_l_e_cond;
 vector<double> train_l_e_cluster;
+vector<double> train_l_e_w_photon;
+vector<double> train_l_e_w_charged_hadron;
+vector<double> train_l_e_w_neutral_hadron;
+vector<double> train_l_e_w_muon;
+vector<double> train_l_e_w_electron;
 
 vector<string> split(string str, char del) {
     int first = 0;
@@ -71,6 +86,43 @@ vector<string> split(string str, char del) {
     }
 
     return result;
+}
+
+void getting_edep_weight_loss(string line, bool get_train){
+    // getting L_E_w_photon
+    if(line.find("L_E_w_photon")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_e_w_photon.push_back(stod(line));
+      else train_l_e_w_photon.push_back(stod(line));
+    }
+
+    // getting L_E_w_charged_hadron
+    if(line.find("L_E_w_charged_hadron")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_e_w_charged_hadron.push_back(stod(line));
+      else train_l_e_w_charged_hadron.push_back(stod(line));
+    }
+
+    // getting L_E_w_neutral_hadron
+    if(line.find("L_E_w_neutral_hadron")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_e_w_neutral_hadron.push_back(stod(line));
+      else train_l_e_w_neutral_hadron.push_back(stod(line));
+    }
+
+    // getting L_E_w_muon
+    if(line.find("L_E_w_muon")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_e_w_muon.push_back(stod(line));
+      else train_l_e_w_muon.push_back(stod(line));
+    }
+
+    // getting L_E_w_electron
+    if(line.find("L_E_w_electron")!=string::npos){
+      line.erase(0,line.find("= ")+3);
+      if(!get_train) l_e_w_electron.push_back(stod(line));
+      else train_l_e_w_electron.push_back(stod(line));
+    }
 }
 
 void getting_loss(string line, bool get_train){
@@ -144,6 +196,11 @@ void getting_loss(string line, bool get_train){
       line.erase(0,line.find("= ")+3);
       if(!get_train) l_e_cluster.push_back(stod(line));
       else train_l_e_cluster.push_back(stod(line));
+    }
+
+    // getting L_E_w
+    if(line.find("L_E_w")!=string::npos){
+      getting_edep_weight_loss(line, get_train);
     }
 }
 
@@ -266,6 +323,11 @@ void reading_log(){
   TGraph *g_LE = new TGraph();
   TGraph *g_LEcond = new TGraph();
   TGraph *g_LEcluster = new TGraph();
+  TGraph *g_LE_w_photon = new TGraph();
+  TGraph *g_LE_w_charged_hadron = new TGraph();
+  TGraph *g_LE_w_neutral_hadron = new TGraph();
+  TGraph *g_LE_w_muon = new TGraph();
+  TGraph *g_LE_w_electron = new TGraph();
   g_loss->GetXaxis()->SetTitle("epoch"); 
   g_loss->GetYaxis()->SetTitle("validation loss"); 
   // g_loss->SetTitle("beta * E"); 
@@ -284,6 +346,11 @@ void reading_log(){
   g_LV_att_neutral->SetLineColor(2); 
   g_LV_rep_charged->SetLineColor(3); 
   g_LV_rep_neutral->SetLineColor(4); 
+  g_LE_w_photon->SetLineColor(1); 
+  g_LE_w_charged_hadron->SetLineColor(2); 
+  g_LE_w_neutral_hadron->SetLineColor(3); 
+  g_LE_w_muon->SetLineColor(4); 
+  g_LE_w_electron->SetLineColor(7); 
 
   TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -306,6 +373,11 @@ void reading_log(){
   TGraph *g_train_LE = new TGraph();
   TGraph *g_train_LEtracker = new TGraph();
   TGraph *g_train_LEcluster = new TGraph();
+  TGraph *g_train_LE_w_photon = new TGraph();
+  TGraph *g_train_LE_w_charged_hadron = new TGraph();
+  TGraph *g_train_LE_w_neutral_hadron = new TGraph();
+  TGraph *g_train_LE_w_muon = new TGraph();
+  TGraph *g_train_LE_w_electron = new TGraph();
   g_train_loss->GetXaxis()->SetTitle("epoch"); 
   g_train_loss->GetYaxis()->SetTitle("train loss"); 
   g_train_loss->SetMinimum(0); 
@@ -321,6 +393,11 @@ void reading_log(){
   g_train_LV_att_neutral->SetLineColor(2); 
   g_train_LV_rep_charged->SetLineColor(3); 
   g_train_LV_rep_neutral->SetLineColor(4); 
+  g_train_LE_w_photon->SetLineColor(1); 
+  g_train_LE_w_charged_hadron->SetLineColor(2); 
+  g_train_LE_w_neutral_hadron->SetLineColor(3); 
+  g_train_LE_w_muon->SetLineColor(4); 
+  g_train_LE_w_electron->SetLineColor(7); 
 
   TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -348,6 +425,11 @@ void reading_log(){
       // g_LEcond->SetPoint(i,i,l_e_tracker[i]-l_e_cluster[i]);
       if(l_e_cluster.size()>0) g_LEcluster->SetPoint(i-epoch_noLE-1,i,l_e_cluster[i]);
     }
+    if(l_e_w_photon.size()>0) g_LE_w_photon->SetPoint(i,i,l_e_w_photon[i]);
+    if(l_e_w_charged_hadron.size()>0) g_LE_w_charged_hadron->SetPoint(i,i,l_e_w_charged_hadron[i]);
+    if(l_e_w_neutral_hadron.size()>0) g_LE_w_neutral_hadron->SetPoint(i,i,l_e_w_neutral_hadron[i]);
+    if(l_e_w_muon.size()>0) g_LE_w_muon->SetPoint(i,i,l_e_w_muon[i]);
+    if(l_e_w_electron.size()>0) g_LE_w_electron->SetPoint(i,i,l_e_w_electron[i]);
 
     if(minimum_loss>returning[i]){
       minimum_loss = returning[i];
@@ -368,6 +450,12 @@ void reading_log(){
       if(train_l_e_cond.size()>0) g_train_LEtracker->SetPoint(i-epoch_noLE-1,i,train_l_e_cond[i]);
       g_train_LEcluster->SetPoint(i-epoch_noLE-1,i,train_l_e_cluster[i]);
     }
+    
+    if(train_l_e_w_photon.size()>0) g_train_LE_w_photon->SetPoint(i,i,train_l_e_w_photon[i]);
+    if(train_l_e_w_charged_hadron.size()>0) g_train_LE_w_charged_hadron->SetPoint(i,i,train_l_e_w_charged_hadron[i]);
+    if(train_l_e_w_neutral_hadron.size()>0) g_train_LE_w_neutral_hadron->SetPoint(i,i,train_l_e_w_neutral_hadron[i]);
+    if(train_l_e_w_muon.size()>0) g_train_LE_w_muon->SetPoint(i,i,train_l_e_w_muon[i]);
+    if(train_l_e_w_electron.size()>0) g_train_LE_w_electron->SetPoint(i,i,train_l_e_w_electron[i]);
   }
   cout << "epoch : " << minimum_loss_epoch << "  minimum loss : " << minimum_loss << endl;
 
@@ -532,40 +620,48 @@ void reading_log(){
 
 
   TLegend *legend_LE = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend_LE->AddEntry( g_LV_att_charged, "attractive +-", "l");
-  legend_LE->AddEntry( g_LV_att_neutral, "attractive 0", "l");
-  legend_LE->AddEntry( g_LV_rep_charged, "repulsive +-", "l");
-  legend_LE->AddEntry( g_LV_rep_neutral, "repulsive 0", "l");
+  legend_LE->AddEntry( g_LE_w_photon, "photon", "l");
+  legend_LE->AddEntry( g_LE_w_charged_hadron, "charged hadron", "l");
+  legend_LE->AddEntry( g_LE_w_neutral_hadron, "neutral hadron", "l");
+  legend_LE->AddEntry( g_LE_w_muon, "muon", "l");
+  legend_LE->AddEntry( g_LE_w_electron, "electron", "l");
   legend_LE->SetFillColor(0);
-  TCanvas *c_l_v = new TCanvas("c_l_v","l_v validation",1);
-  c_l_v->cd();
-  c_l_v->SetGrid();
-  g_LV_rep_neutral->SetMinimum(0); 
-  g_LV_rep_neutral->SetMaximum(1); 
+  TCanvas *c_l_e_w = new TCanvas("c_l_e_w","c_l_e_w validation",1);
+  c_l_e_w->cd();
+  c_l_e_w->SetGrid();
+  g_LE_w_photon->SetMinimum(0); 
+  g_LE_w_photon->SetMaximum(0.5); 
+  g_LE_w_photon->GetXaxis()->SetTitle("epoch"); 
+  g_LE_w_photon->GetYaxis()->SetTitle("validation loss"); 
   if(l_v_rep_neutral.size()>0){
-    g_LV_rep_neutral->Draw();
-    g_LV_att_charged->Draw("same");
-    g_LV_att_neutral->Draw("same");
-    g_LV_rep_charged->Draw("same");
-    legend_LV->Draw("same");
+    g_LE_w_photon->Draw();
+    g_LE_w_charged_hadron->Draw("same");
+    g_LE_w_neutral_hadron->Draw("same");
+    g_LE_w_muon->Draw("same");
+    g_LE_w_electron->Draw("same");
+    legend_LE->Draw("same");
   }
 
-  TLegend *legend_train_LV = new TLegend( 0.4, 0.48, 0.8, 0.78);
-  legend_train_LV->AddEntry( g_train_LV_att_charged, "attractive +-", "l");
-  legend_train_LV->AddEntry( g_train_LV_att_neutral, "attractive 0", "l");
-  legend_train_LV->AddEntry( g_train_LV_rep_charged, "repulsive +-", "l");
-  legend_train_LV->AddEntry( g_train_LV_rep_neutral, "repulsive 0", "l");
-  legend_train_LV->SetFillColor(0);
-  TCanvas *c_l_v_train = new TCanvas("c_l_v_train","l_v train",1);
-  c_l_v_train->cd();
-  c_l_v_train->SetGrid();
-  g_train_LV_rep_neutral->SetMinimum(0); 
-  g_train_LV_rep_neutral->SetMaximum(1); 
-  if(train_l_v_att_charged.size()>0){
-    g_train_LV_rep_neutral->Draw();
-    g_train_LV_att_charged->Draw("same");
-    g_train_LV_att_neutral->Draw("same");
-    g_train_LV_rep_charged->Draw("same");
-    legend_train_LV->Draw("same");
+  TLegend *legend_train_LE = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_train_LE->AddEntry( g_train_LE_w_photon, "photon", "l");
+  legend_train_LE->AddEntry( g_train_LE_w_charged_hadron, "charged hadron", "l");
+  legend_train_LE->AddEntry( g_train_LE_w_neutral_hadron, "neutral hadron", "l");
+  legend_train_LE->AddEntry( g_train_LE_w_muon, "muon", "l");
+  legend_train_LE->AddEntry( g_train_LE_w_electron, "electron", "l");
+  legend_train_LE->SetFillColor(0);
+  TCanvas *c_l_e_w_train = new TCanvas("c_l_e_w_train","c_l_e_w train",1);
+  c_l_e_w_train->cd();
+  c_l_e_w_train->SetGrid();
+  g_train_LE_w_photon->SetMinimum(0); 
+  g_train_LE_w_photon->SetMaximum(0.5); 
+  g_train_LE_w_photon->GetXaxis()->SetTitle("epoch"); 
+  g_train_LE_w_photon->GetYaxis()->SetTitle("train loss"); 
+  if(l_v_rep_neutral.size()>0){
+    g_train_LE_w_photon->Draw();
+    g_train_LE_w_charged_hadron->Draw("same");
+    g_train_LE_w_neutral_hadron->Draw("same");
+    g_train_LE_w_muon->Draw("same");
+    g_train_LE_w_electron->Draw("same");
+    legend_train_LE->Draw("same");
   }
 }

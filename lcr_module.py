@@ -1567,6 +1567,97 @@ class LCR_Block_modifiedOutput_moreParameters(nn.Module):
 
         return four_corr, particle_prob, particle_cls_logits, attn_w_all, seed_padding_mask
 
+class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
+    def __init__(self, embed_dim_=17, embed_dim=128, num_heads=8, num_layers=8, feat_dim=5, num_particle_classes=5):
+        super().__init__()
+        self.k_embed = nn.Sequential(
+            nn.Linear(embed_dim_, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+        self.q_embed = nn.Sequential(
+            nn.Linear(embed_dim_, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+        self.v_embed = nn.Sequential(
+            nn.Linear(embed_dim_, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+
+        # Cross-attention blocks
+        self.layers = nn.ModuleList([
+            CrossAttnBlock(embed_dim, num_heads) for _ in range(num_layers)
+        ])
+
+        # self.mass_pred = nn.Linear(embed_dim, 1)
+        # self.fourvec_head = nn.Sequential(
+        #     nn.LayerNorm(4),
+        #     nn.Linear(4, 4)
+        # )
+        self.fourvec_head = nn.Sequential(
+            nn.LayerNorm(embed_dim),
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, 4)
+        )
+        self.particle_head = nn.Sequential(
+            nn.LayerNorm(embed_dim),
+            nn.Linear(embed_dim, 1)
+        )
+
+        # for particle identification
+        self.classifier_head = nn.Sequential(
+            nn.LayerNorm(embed_dim),
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, num_particle_classes)
+        )
+
+
+        self.F_TRACK_VEC   = slice(7, 10)  # px,py,pz
+        self.F_E_CALO      = 0
+        self.F_IS_TRACK    = 5
+        self.beta_threshold = 0.9
+
+    def forward(self, hit_embed, query, hit_mask=None):
+        B, N, D = hit_embed.shape
+        print(B, N, D, hit_embed[0,0,:])
+        device = hit_embed.device
+
+        Q = self.q_embed(query)
+        K = self.k_embed(hit_embed)
+        V = self.v_embed(hit_embed)
+
+        # --- stacked cross-attention ---
+        attn_w_all = []
+        for layer in self.layers:
+            Q_new, attn_w = layer(Q, K, V, key_padding_mask=(~hit_mask.bool() if hit_mask is not None else None))
+            # Q = Q + Q_new
+            Q = F.layer_norm(Q + Q_new, Q.shape[-1:])
+            attn_w_all.append(attn_w)
+
+        attn_out = Q  # 最終出力 (B, Kmax, D)
+        w = attn_w_all[-1]  # 最終層の attention map を返す
+
+        four_raw = self.fourvec_head(attn_out)
+        E = F.softplus(four_raw[..., :1]) + 1e-6
+        p = four_raw[..., 1:]
+        four_corr = torch.cat([E, p], dim=-1)
+
+        # --- ② particle / non-particle 判定 ---
+        particle_logits = self.particle_head(attn_out).squeeze(-1)
+        particle_prob = torch.sigmoid(particle_logits)
+
+        # particle_prob_mask = torch.sigmoid(10 * (particle_prob - 0.5)).unsqueeze(-1)  # soft mask ∈ (0,1)
+        # four_corr_filtered = four_corr * particle_prob_mask
+
+        particle_cls_logits = self.classifier_head(attn_out)
+        # particle_cls_logits = self.classifier_head(attn_out).softmax(-1)
+
+        return four_corr, particle_prob, particle_cls_logits, attn_w_all
+
 
 """
 class LCR_Block_modifiedOutput(nn.Module):

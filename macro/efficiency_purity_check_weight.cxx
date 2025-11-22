@@ -25,12 +25,16 @@ using namespace std;
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_100betaSuppress_moreStats.root");
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
+
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl_cond_weight.root");
 
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10to100GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const bool kaon_neutron = false;
+const bool kaon_neutron = true;
 const bool jet_regression = false;
 const bool pandora = false;
 const bool ECluster = true;
@@ -43,7 +47,19 @@ const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particl
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
-void efficiency_purity_check(){ 
+const int nWeightParicles = 5;
+const string weightParticleNames[5] = {"photon", "charged hadron", "neutral hadron", "muon", "electron"};
+
+int itr_weighted_edep(int mcpdg){
+    int result = 2;
+    if(mcpdg==22) result = 0;
+    if(mcpdg==211||mcpdg==-211) result = 1;
+    if(mcpdg==13||mcpdg==-13) result = 3;
+    if(mcpdg==11||mcpdg==-11) result = 4;
+    return result;
+}
+
+void efficiency_purity_check_weight(){ 
     int rawfilenum = 1;
 
     // if(hyper_parameter && fine_tuning){ // condition check
@@ -74,7 +90,7 @@ void efficiency_purity_check(){
 
 
     int event, hitid, mcid, truthid, mcpdg, mccharge, mcstatus, ncluster, matched_ncluster, matched_cluster, cond_track;
-    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match, pred_edep, pred_edep_cluster, cond_beta, pred_alpha;
+    double mcmass, mcpx, mcpy, mcpz, mcen, edep, edep_reco, edep_match, pred_edep, pred_edep_cluster, pred_edep_weight, cond_beta, pred_alpha, pred_photon_energy, pred_charged_hadron_energy, pred_neutral_hadron_energy, pred_muon_energy, pred_electron_energy;
 
     int _event, _hitid, _mcid, _truthid, _mcpdg, _mccharge, _mcstatus, _ncluster, _matched_ncluster, _matched_cluster, _pred_alpha;
     double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_edep_cluster, _pred_beta;
@@ -222,6 +238,14 @@ void efficiency_purity_check(){
         string title = ie==0 ? Form("jet;(predicted - truth) / truth") : Form("jet (%d-%d GeV);(predicted - truth) / truth",(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
         jet_energy_resolution_per_energy[ie] = new TH1F(Form("energy_resolution_per_energy_%d",ie), title.c_str(), 400,-0.5,0.5);
     }
+    TH2F *weightenergy2d[nWeightParicles][nWeightParicles];
+    for(int ip=0;ip<nWeightParicles;ip++){
+        for(int jp=0;jp<nWeightParicles;jp++){
+            weightenergy2d[ip][jp] = new TH2F(Form("weightenergy2d_%d_%d",ip, jp), "", energyMax*10,0,energyMax, energyMax*10,0,energyMax);
+            weightenergy2d[ip][jp]->SetXTitle(Form("%s MC truth energy",weightParticleNames[ip].c_str()));
+            weightenergy2d[ip][jp]->SetYTitle(Form("%s weighted energy",weightParticleNames[jp].c_str()));
+        }
+    }
 
 
     // data をとってきてる
@@ -238,11 +262,24 @@ void efficiency_purity_check(){
         tree[irawfile]->SetBranchAddress("edep_match", &edep_match);
         tree[irawfile]->SetBranchAddress("pred_edep", &pred_edep);
         tree[irawfile]->SetBranchAddress("pred_edep_cluster", &pred_edep_cluster);
+        tree[irawfile]->SetBranchAddress("pred_edep_weight", &pred_edep_weight);
         tree[irawfile]->SetBranchAddress("cond_beta", &cond_beta);
         tree[irawfile]->SetBranchAddress("cond_track", &cond_track);
+        tree[irawfile]->SetBranchAddress("pred_photon_energy", &pred_photon_energy);
+        tree[irawfile]->SetBranchAddress("pred_charged_hadron_energy", &pred_charged_hadron_energy);
+        tree[irawfile]->SetBranchAddress("pred_neutral_hadron_energy", &pred_neutral_hadron_energy);
+        tree[irawfile]->SetBranchAddress("pred_muon_energy", &pred_muon_energy);
+        tree[irawfile]->SetBranchAddress("pred_electron_energy", &pred_electron_energy);
 
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             tree[irawfile]->GetEntry(ientry);
+
+            int itr_weight = itr_weighted_edep(mcpdg);
+            weightenergy2d[itr_weight][0]->Fill(mcen, pred_photon_energy);
+            weightenergy2d[itr_weight][1]->Fill(mcen, pred_charged_hadron_energy);
+            weightenergy2d[itr_weight][2]->Fill(mcen, pred_neutral_hadron_energy);
+            weightenergy2d[itr_weight][3]->Fill(mcen, pred_muon_energy);
+            weightenergy2d[itr_weight][4]->Fill(mcen, pred_electron_energy);
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
             if(cond_beta<beta_threshold) continue;
@@ -265,11 +302,13 @@ void efficiency_purity_check(){
                 efficiency_energy_normalize[itr][energy_itr]->Fill(eff);
             }
 
+            double pred_edep_cluster__ = edep_weight_ ? pred_edep_weight : pred_edep_cluster;
+
             energy[itr]->Fill(pred_edep);
             MCtruth_energy[itr]->Fill(mcen);
             energy_diff[itr]->Fill(pred_edep - mcen);
             energy2d[itr]->Fill(mcen,pred_edep);
-            clusterenergy2d[itr]->Fill(mcen,pred_edep_cluster);
+            clusterenergy2d[itr]->Fill(mcen,pred_edep_cluster__);
             energy_resolution[itr]->Fill( (pred_edep - mcen) / mcen );
 
             int itr_energy = mcen / energy_interval;
@@ -278,12 +317,12 @@ void efficiency_purity_check(){
                 energy_diff_per_energy[itr][itr_energy]->Fill(pred_edep - mcen);
                 energy_resolution_per_energy[itr][itr_energy]->Fill( (pred_edep - mcen) / mcen );
             }
-            if(itr_energy<nEnergy && pred_edep_cluster>0.1){
-                energy_resolution_per_energy_cluster[itr][itr_energy]->Fill( (pred_edep_cluster - mcen) / mcen );
+            if(itr_energy<nEnergy && pred_edep_cluster__>0.1){
+                energy_resolution_per_energy_cluster[itr][itr_energy]->Fill( (pred_edep_cluster__ - mcen) / mcen );
             }
 
-            if(edep>1) eff_vs_Ediff[itr]->Fill(eff,pred_edep_cluster-mcen);
-            if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster-mcen);
+            if(edep>1) eff_vs_Ediff[itr]->Fill(eff,pred_edep_cluster__-mcen);
+            if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster__-mcen);
             if(edep>1) condbeta_vs_eff[itr]->Fill(cond_beta,eff);
             if(edep>1) condbeta_vs_pur[itr]->Fill(cond_beta,pur);
             condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
@@ -328,11 +367,10 @@ void efficiency_purity_check(){
                 jet_energy_resolution_per_energy[itr_energy]->Fill( (_total_predicted_energy_predBase - _MC_jet_energy) / _MC_jet_energy );
             }
         }
-
     }
     
 
-    
+    if(true){
     // gStyle->SetStatX(0.35);
     gStyle->SetOptStat("rme");
     gStyle->SetStatX(0.55);
@@ -941,22 +979,38 @@ void efficiency_purity_check(){
         jet_energy_resolution_sigma->Draw("P");
         legend_jet_res->Draw("same");
 
+    }
 
     
-    if(saving_canvas){  // saving canvases
-        
-        compare->SaveAs(Form("%s/efficiency_purity.pdf",picDirectory.c_str()));
-        // compare2d->SaveAs(Form("%s/efficiency_purity_vs_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        // compare_energy->SaveAs(Form("%s/per_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        // compare_energy_normalized->SaveAs(Form("%s/per_energy_norm%s.pdf",picDirectory.c_str(),suffix.c_str()));
-        canvas_energy->SaveAs(Form("%s/energy_truth_vs_pred.pdf",picDirectory.c_str()));
-        canvas_energy_scan->SaveAs(Form("%s/energy_scan.pdf",picDirectory.c_str()));
-        canvas_energy_resolution_scan->SaveAs(Form("%s/energy_resolution_scan.pdf",picDirectory.c_str()));
-        canvas_beta_energy->SaveAs(Form("%s/beta_vs_energy.pdf",picDirectory.c_str()));
-        canvas_beta_ediff->SaveAs(Form("%s/beta_vs_energy_ediff.pdf",picDirectory.c_str()));
-        canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen.pdf",picDirectory.c_str()));
-        canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
+
+
+    
+    TCanvas *canvas_weighted_edep = new TCanvas("canvas_weighted_edep","canvas_weighted_edep",1);
+    canvas_weighted_edep->Divide(nWeightParicles,nWeightParicles);
+    canvas_weighted_edep->cd();
+    for(int ip=0;ip<nWeightParicles;ip++){
+        for(int jp=0;jp<nWeightParicles;jp++){
+            canvas_weighted_edep->cd(ip*nWeightParicles+jp+1);
+            weightenergy2d[ip][jp]->Draw("colz");
+        }
     }
+
+
+    
+    // if(saving_canvas){  // saving canvases
+        
+    //     compare->SaveAs(Form("%s/efficiency_purity.pdf",picDirectory.c_str()));
+    //     // compare2d->SaveAs(Form("%s/efficiency_purity_vs_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
+    //     // compare_energy->SaveAs(Form("%s/per_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
+    //     // compare_energy_normalized->SaveAs(Form("%s/per_energy_norm%s.pdf",picDirectory.c_str(),suffix.c_str()));
+    //     canvas_energy->SaveAs(Form("%s/energy_truth_vs_pred.pdf",picDirectory.c_str()));
+    //     canvas_energy_scan->SaveAs(Form("%s/energy_scan.pdf",picDirectory.c_str()));
+    //     canvas_energy_resolution_scan->SaveAs(Form("%s/energy_resolution_scan.pdf",picDirectory.c_str()));
+    //     canvas_beta_energy->SaveAs(Form("%s/beta_vs_energy.pdf",picDirectory.c_str()));
+    //     canvas_beta_ediff->SaveAs(Form("%s/beta_vs_energy_ediff.pdf",picDirectory.c_str()));
+    //     canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen.pdf",picDirectory.c_str()));
+    //     canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
+    // }
     
 
 }

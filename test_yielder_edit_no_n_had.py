@@ -92,6 +92,7 @@ class TestYielder:
                     pred_tracker_energy = None
                     pred_cluster_energy = None
                     pred_weight_photon = None
+                    pred_weight_hadron = None
                     pred_weight_charged_hadron = None
                     pred_weight_neutral_hadron = None
                     pred_weight_muon = None
@@ -129,11 +130,10 @@ class TestYielder:
                         else:
                             if (not energyRegression):
                                 pred_weight_photon = out_gravnet[:,1].numpy()
-                                pred_weight_charged_hadron = out_gravnet[:,2].numpy()
-                                pred_weight_neutral_hadron = out_gravnet[:,3].numpy()
-                                pred_weight_muon = out_gravnet[:,4].numpy()
-                                pred_weight_electron = out_gravnet[:,5].numpy()
-                                pred_cluster_space_coords = out_gravnet[:,6:].numpy()
+                                pred_weight_hadron = out_gravnet[:,2].numpy()
+                                pred_weight_muon = out_gravnet[:,3].numpy()
+                                pred_weight_electron = out_gravnet[:,4].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,5:].numpy()
                             elif (energyRegression and not energyRegressionCluster):
                                 pred_tracker_energy = out_gravnet[:,1].numpy()
                                 pred_weight_photon = out_gravnet[:,2].numpy()
@@ -154,7 +154,7 @@ class TestYielder:
                         # add track hits info
                         charged_hits = event.x[:,4]
 
-                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy, pred_weight_photon, pred_weight_charged_hadron, pred_weight_neutral_hadron, pred_weight_muon, pred_weight_electron) #w/o noise
+                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy, pred_weight_photon, pred_weight_hadron, None, pred_weight_muon, pred_weight_electron) #w/o noise
                 else:
                     prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None, None, None, None, None, None) #w/o noise
                     # print(event.pand)

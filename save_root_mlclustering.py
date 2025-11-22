@@ -459,7 +459,7 @@ def get_hit_cluster_assignment_single_batch(attn_weights, hit_mask=None):
 def main():
     print(sys.argv)
     if (len(sys.argv) < 9):
-        print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
+        print("Usage: save_root.py datapath ckpt_gnn ckpt_clustering outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
         return
 
     parser = argparse.ArgumentParser()

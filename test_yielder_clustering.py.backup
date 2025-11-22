@@ -97,7 +97,7 @@ class TestYielder:
                     pred_weight_muon = None
                     pred_weight_electron = None
 
-                    if (not energyRegression and not energyRegressionWeight):
+                    if (not energyRegression):
                         if (self.use_charge_track_likeness):
                             pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
                             pred_cluster_space_coords = out_gravnet[:,2:].numpy()
@@ -373,9 +373,9 @@ class TestYielderWithMLClustering(TestYielder):
         hit_feat, _ = self.pad_and_mask_batch(data.feat, data.batch)
 
         if self.classification or self.pid:
-            pred_fourvec, pred_cls, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
+            pred_fourvec, pred_cls, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask)
         else:
-            pred_fourvec, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
+            pred_fourvec, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask)
         if self.classification:
             unique_label = self.split_by_batch(data.label, data.batch)
             unique_label = [torch.unique(t[:,1], dim=0) for t in unique_label]
@@ -400,3 +400,304 @@ class TestYielderWithMLClustering(TestYielder):
         for batch_id, data_batch, pred_vecs, truth_vecs, mask, attn in zip(torch.unique(data.batch), data_list, pred_fourvec, truth_four_vector, hit_mask, attn_w):
             data_batch = Batch.from_data_list([data_batch])
             yield i, data_batch.to('cpu'), pred_vecs.to('cpu'), truth_vecs.to('cpu'), mask.to('cpu'), attn.to('cpu')
+
+
+class TestYielderGNNTransformer(TestYielder):
+    def __init__(self, model_clustering=None, classification=False, pid=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.classification = classification
+        self.pid = pid
+        self.model_clustering = get_model(jit=False) if model_clustering is None else model_clustering
+    
+    def reset_loader(self):
+        self.batch_size = 1 if self.device=='cpu' else 100
+        self.loader = DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False)
+
+    def pad_and_mask_batch(self, tensor, batch):
+        """
+        Args:
+            tensor: (sum BM, D) - GNNの出力（embed, featなど）
+            batch:  (sum BM,)   - 各行が属するイベントID
+        Returns:
+            padded_tensor: (B, N_max, D)
+            mask:          (B, N_max) - 1 for valid, 0 for padded
+        """
+        device = tensor.device
+        batch_ids = batch.unique(sorted=True)
+
+        # イベント単位にテンソルを分割（List[(M_i, D)])
+        split_tensors = [tensor[batch == b_id] for b_id in batch_ids]
+
+        # パディングして (B, N_max, D)
+        padded_tensor = pad_sequence(split_tensors, batch_first=True)  # padding = 0 by default
+
+        # mask 生成: True where data is valid
+        lengths = [t.size(0) for t in split_tensors]
+        max_len = padded_tensor.size(1)
+        mask = torch.zeros(len(lengths), max_len, dtype=torch.bool, device=device)
+        for i, l in enumerate(lengths):
+            mask[i, :l] = True
+
+        return padded_tensor, mask
+
+    def split_by_batch(self, tensor, batch):
+        """
+        Args:
+            tensor: (N, D) - GNNの出力（embed, featなど）
+            batch:  (N,)   - 各行が属するイベントID
+        Returns:
+            split_tensors: List[Tensor] - イベントごとのテンソル [(M_0, D), (M_1, D), ..., (M_B-1, D)]
+        """
+        batch_ids = batch.unique(sorted=True)
+        split_tensors = [tensor[batch == b_id] for b_id in batch_ids]
+        return split_tensors
+
+    def pdg_id_to_class(self, pdg_ids):
+        """
+        pdg_ids: torch.Tensor or np.ndarray, shape (N,)
+        Return: torch.Tensor, shape (N,) – class indices (0~9)
+        """
+        abs_ids = torch.abs(pdg_ids)
+        cls = torch.full_like(pdg_ids, fill_value=9)  # default: other neutral hadron (ID=10)
+
+        # Explicit mappings
+        cls[pdg_ids == 22] = 0      # photon
+        cls[abs_ids == 11] = 1      # electron / positron
+        cls[abs_ids == 13] = 2      # muon
+        cls[abs_ids == 211] = 3     # charged pion
+        cls[abs_ids == 111] = 4     # neutral pion
+        cls[abs_ids == 321] = 5     # charged kaon
+        cls[abs_ids == 130] = 6     # K_L0
+        cls[abs_ids == 310] = 6     # K_S0
+        cls[abs_ids == 2212] = 7    # proton
+        cls[abs_ids == 2112] = 8    # neutron
+
+        return cls
+
+    """
+    def get_gnn_output(self, batched_data, use_charged_cluster_loss=False, energy_regression=True, energy_regression_cluster=True):
+        with torch.no_grad():
+            gnn_outputs: torch.Tensor = self.model(batched_data.x, batched_data.batch).to(self.device)
+            
+            pred_betas = torch.sigmoid(gnn_outputs[:,0])
+            pred_charge_track_likeness = None
+            pred_tracker_energy = None
+            pred_cluster_energy = None
+            if energy_regression:
+                if not energy_regression_cluster:
+                    if use_charged_cluster_loss:
+                        pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                        pred_tracker_energy = gnn_outputs[:,2]
+                        pred_cluster_space_coords = gnn_outputs[:,3:]
+                        assert(pred_charge_track_likeness.device == self.device)
+                    else:
+                        pred_tracker_energy = gnn_outputs[:,1]
+                        pred_cluster_space_coords = gnn_outputs[:,2:]
+                else:
+                    if use_charged_cluster_loss:
+                        pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                        pred_tracker_energy = gnn_outputs[:,2]
+                        pred_cluster_energy = gnn_outputs[:,3]
+                        pred_cluster_space_coords = gnn_outputs[:,4:]
+                        assert(pred_charge_track_likeness.device == self.device)
+                    else:
+                        pred_tracker_energy = gnn_outputs[:,1]
+                        pred_cluster_energy = gnn_outputs[:,2]
+                        pred_cluster_space_coords = gnn_outputs[:,3:]
+            else:
+                if use_charged_cluster_loss:
+                    pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                    pred_cluster_space_coords = gnn_outputs[:,2:]
+                    assert(pred_charge_track_likeness.device == self.device)
+                else:
+                    pred_cluster_space_coords = gnn_outputs[:,1:]
+            cluster_track_index = batched_data.y[:,1]
+
+            # assert all(t.device == self.device for t in [pred_betas, pred_cluster_space_coords, batched_data.y, batched_data.batch,])
+            true_energy = torch.sqrt(torch.sum(torch.square(batched_data.label[:,4:8]), 1))
+            detected_energy = batched_data.feat[:,0]
+
+        return pred_cluster_space_coords.to('cpu'), pred_betas.to('cpu'), pred_tracker_energy.to('cpu'), pred_cluster_energy.to('cpu')
+    """
+
+    def get_gnn_output(self, gnn_outputs, use_charged_cluster_loss=False, energy_regression=True, energy_regression_cluster=True):
+        with torch.no_grad():
+            pred_betas = torch.sigmoid(gnn_outputs[:,0])
+            pred_charge_track_likeness = None
+            pred_tracker_energy = None
+            pred_cluster_energy = None
+            if energy_regression:
+                if not energy_regression_cluster:
+                    if use_charged_cluster_loss:
+                        pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                        pred_tracker_energy = gnn_outputs[:,2]
+                        pred_cluster_space_coords = gnn_outputs[:,3:]
+                        assert(pred_charge_track_likeness.device == self.device)
+                    else:
+                        pred_tracker_energy = gnn_outputs[:,1]
+                        pred_cluster_space_coords = gnn_outputs[:,2:]
+                else:
+                    if use_charged_cluster_loss:
+                        pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                        pred_tracker_energy = gnn_outputs[:,2]
+                        pred_cluster_energy = gnn_outputs[:,3]
+                        pred_cluster_space_coords = gnn_outputs[:,4:]
+                        assert(pred_charge_track_likeness.device == self.device)
+                    else:
+                        pred_tracker_energy = gnn_outputs[:,1]
+                        pred_cluster_energy = gnn_outputs[:,2]
+                        pred_cluster_space_coords = gnn_outputs[:,3:]
+            else:
+                if use_charged_cluster_loss:
+                    pred_charge_track_likeness = torch.sigmoid(gnn_outputs[:,1])
+                    pred_cluster_space_coords = gnn_outputs[:,2:]
+                    assert(pred_charge_track_likeness.device == self.device)
+                else:
+                    pred_cluster_space_coords = gnn_outputs[:,1:]
+            cluster_track_index = batched_data.y[:,1]
+
+            # assert all(t.device == self.device for t in [pred_betas, pred_cluster_space_coords, batched_data.y, batched_data.batch,])
+            true_energy = torch.sqrt(torch.sum(torch.square(batched_data.label[:,4:8]), 1))
+            detected_energy = batched_data.feat[:,0]
+
+        return pred_cluster_space_coords.to('cpu'), pred_betas.to('cpu'), pred_tracker_energy.to('cpu'), pred_cluster_energy.to('cpu')
+    
+
+    def _iter_data(self, nmax=None):
+        with torch.no_grad():
+            self.model.eval()
+            self.model_clustering.eval()
+
+            for i, data in enumerate(self.loader):
+                if nmax is not None and i >= nmax: break
+
+                for event_number, event_data, prediction, pred_fourvec, truth_four_vector, mask, attn in self.iter_event(i, data):
+                    event_num = event_number + i * self.batch_size
+                    yield event_num, event_data, prediction, pred_fourvec, truth_four_vector, mask, attn
+
+
+    def get_gnn_output_allFeat(self, batched_data):
+        with torch.no_grad():
+            gnn_outputs: torch.Tensor = self.model(batched_data.x, batched_data.batch)
+        
+        return gnn_outputs, torch.sigmoid(gnn_outputs[:,0])
+    
+    def split_by_batch_unique(self, tensor, batch):
+        """
+        Args:
+            tensor: (N, D) - GNNの出力（embed, featなど）
+            batch:  (N,)   - 各行が属するイベントID
+        Returns:
+            split_tensors: List[Tensor] - イベントごとのテンソル [(M_0, D), (M_1, D), ..., (M_B-1, D)]
+        """
+        batch_ids = batch.unique(sorted=True)
+        split_tensors = [torch.unique(tensor[batch == b_id], dim=0) for b_id in batch_ids]
+        return split_tensors
+
+    def pad_and_mask_batch(self, tensor, batch):
+        """
+        Args:
+            tensor: (sum BM, D) - GNNの出力（embed, featなど）
+            batch:  (sum BM,)   - 各行が属するイベントID
+        Returns:
+            padded_tensor: (B, N_max, D)
+            mask:          (B, N_max) - 1 for valid, 0 for padded
+        """
+        device = tensor.device
+        batch_ids = batch.unique(sorted=True)
+
+        # イベント単位にテンソルを分割（List[(M_i, D)])
+        split_tensors = [tensor[batch == b_id] for b_id in batch_ids]
+
+        # パディングして (B, N_max, D)
+        padded_tensor = pad_sequence(split_tensors, batch_first=True)  # padding = 0 by default
+
+        # mask 生成: True where data is valid
+        lengths = [t.size(0) for t in split_tensors]
+        max_len = padded_tensor.size(1)
+        mask = torch.zeros(len(lengths), max_len, dtype=torch.bool, device=device)
+        for i, l in enumerate(lengths):
+            mask[i, :l] = True
+
+        return padded_tensor, mask
+
+    def split_by_batch_padded(self, tensor, batch):
+        """
+        Args:
+            tensor: (N, D)
+            batch:  (N,)
+        Returns:
+            padded_tensor: (B, N_max, D)
+            mask: (B, N_max)  # True=有効
+        """
+        batch_ids = batch.unique(sorted=True)
+        split_tensors = [tensor[batch == b_id] for b_id in batch_ids]
+
+        max_len = max(t.size(0) for t in split_tensors)
+        feat_dim = tensor.size(-1)
+        device = tensor.device
+        B = len(split_tensors)
+
+        padded = torch.zeros(B, max_len, feat_dim, device=device)
+        mask = torch.zeros(B, max_len, dtype=torch.bool, device=device)
+
+        for i, t in enumerate(split_tensors):
+            n = t.size(0)
+            padded[i, :n, :] = t
+            mask[i, :n] = True
+
+        return padded, mask
+
+    def pdg_id_to_class(self, pdg_ids, pcl_charge):
+        """
+        pdg_ids: torch.Tensor or np.ndarray, shape (N,)
+        Return: torch.Tensor, shape (N,) – class indices (0~9)
+        """
+        abs_ids = torch.abs(pdg_ids)
+        cls = torch.full_like(pdg_ids, fill_value=3, dtype=torch.long)  # default: other charged hadron (ID=3)
+
+        # Explicit mappings
+        cls[pcl_charge == 0] = 4    # neutral hadron
+        cls[pdg_ids == 22] = 0      # photon
+        cls[abs_ids == 11] = 1      # electron / positron
+        cls[abs_ids == 13] = 2      # muon
+
+        return cls
+
+
+    def iter_event(self, i, data, nmax=None):
+        data.to(self.device)
+
+        gnn_outputs, pred_betas = self.get_gnn_output_allFeat(data)
+        hit_features = torch.cat((gnn_outputs, data.feat[:,:-3]), dim=-1)
+        hit_embed, hit_mask     = self.pad_and_mask_batch(hit_features, data.batch)
+        hit_beta, _             = self.pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+        hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+        hit_feat, _             = self.pad_and_mask_batch(data.feat, data.batch)
+
+        if self.pid: 
+            pred_fourvec, particle_prob, particle_cls_logits, attn_w, seed_padding_mask = self.model_clustering(hit_embed, hit_mask=hit_mask)
+
+            unique_label = self.split_by_batch(data.label[:,1:4], data.batch)
+            unique_label = [torch.unique(t, dim=0) for t in unique_label]
+            true_cls = [self.pdg_id_to_class(t[:,1], t[:,2]) for t in unique_label]
+        
+        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+        truth_four_vector_torchTensor = torch.cat((true_energy.reshape(true_energy.shape[0],1), data.label[:,5:8]), 1)
+        truth_four_vector = self.split_by_batch_unique(truth_four_vector_torchTensor, data.batch)
+        truth_four_vector_torchTensor, true_mask = self.split_by_batch_padded(truth_four_vector_torchTensor, data.batch)
+
+        assert(torch.unique(data.batch).shape[0] == len(pred_fourvec))
+
+        pred_cluster_space_coords, pred_betas, pred_tracker_energy, pred_cluster_energy = self.get_gnn_output(gnn_outputs)
+
+        data_list = data.to_data_list()
+        for batch_id, data_batch, pred_vecs, truth_vecs, mask, attn in zip(torch.unique(data.batch), data_list, pred_fourvec, truth_four_vector, hit_mask, attn_w):
+            same_batch = data.batch==batch_id
+            pred_cluster_space_coord = pred_cluster_space_coords[same_batch]
+            pred_beta = pred_betas[same_batch]
+            tracker_energy = pred_tracker_energy[same_batch]
+            cluster_energy = pred_cluster_energy[same_batch]
+            data_batch = Event(Batch.from_data_list([data_batch]))
+            prediction = Prediction(pred_beta, pred_cluster_space_coord, None, None, tracker_energy, cluster_energy, None, None, None, None, None) #w/o noise
+            yield i, data_batch, prediction, pred_vecs.to('cpu'), truth_vecs.to('cpu'), mask.to('cpu'), attn.to('cpu')

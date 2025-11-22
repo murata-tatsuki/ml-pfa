@@ -5,7 +5,7 @@ from distutils.util import strtobool
 import awkward as ak
 from model import get_model, get_model_branch
 from dataset import ILCDataset
-from test_yielder_edit import TestYielder
+from test_yielder_edit_no_n_had import TestYielder
 from ROOT import TFile, TTree
 import argparse
 import torch
@@ -257,7 +257,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
         if energyRegressionCluster:
             output_dim += 1
     if energyRegressionWeight:
-            output_dim += 5
+            output_dim += 4
     print(f"Loading model from checkpoint {ckpt}")
     if energy_branch:
         model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
@@ -442,14 +442,14 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         if energyRegressionWeight and not energyRegression:
                             pred_weight_photon = prediction.pred_weight_photon[pattern_cluster]
                             pred_weight_charged_hadron = prediction.pred_weight_charged_hadron[pattern_cluster]
-                            pred_weight_neutral_hadron = prediction.pred_weight_neutral_hadron[pattern_cluster]
+                            pred_weight_neutral_hadron = 0
                             pred_weight_muon = prediction.pred_weight_muon[pattern_cluster]
                             pred_weight_electron = prediction.pred_weight_electron[pattern_cluster]
                             pred_weights = pred_weight_photon + pred_weight_charged_hadron + pred_weight_neutral_hadron + pred_weight_muon + pred_weight_electron
                             predicted_energy_weight = np.array([np.sum(edeps * pred_weights)])
                             pred_photon_energy = np.array([np.sum(edeps * pred_weight_photon)])
                             pred_charged_hadron_energy = np.array([np.sum(edeps * pred_weight_charged_hadron)])
-                            pred_neutral_hadron_energy = np.array([np.sum(edeps * pred_weight_neutral_hadron)])
+                            pred_neutral_hadron_energy = np.zeros(1)
                             pred_muon_energy = np.array([np.sum(edeps * pred_weight_muon)])
                             pred_electron_energy = np.array([np.sum(edeps * pred_weight_electron)])
                             predicted_energy = predicted_energy_weight
@@ -689,7 +689,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d3.trackness[0] = my_feat[5]
                         d3.weight_photon[0] = prediction.pred_weight_photon[ihit] if energyRegressionWeight else 0
                         d3.weight_charged_hadron[0] = prediction.pred_weight_charged_hadron[ihit] if energyRegressionWeight else 0
-                        d3.weight_neutral_hadron[0] = prediction.pred_weight_neutral_hadron[ihit] if energyRegressionWeight else 0
+                        d3.weight_neutral_hadron[0] = 0
                         d3.weight_muon[0] = prediction.pred_weight_muon[ihit] if energyRegressionWeight else 0
                         d3.weight_electron[0] = prediction.pred_weight_electron[ihit] if energyRegressionWeight else 0
 

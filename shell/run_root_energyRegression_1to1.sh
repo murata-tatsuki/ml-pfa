@@ -428,12 +428,25 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
   test_path=/data/suehara/mldata/pfa/murata/data/tc_ntau_10GeV_10/test
   checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_11_02_095108_outputD5
   outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root
-  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root
-  epoch=317
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl_cond_weight.root
+  epoch=394
   output_path=output/energy_regression_1to1
   echo ${output_path}/${outdir}
   outD=5
-  python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-weight
+  # python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-weight --truth-clustering
+##
+
+## energy regression of neutron events
+  train_particle=neutron_1to100GeV
+  test_path=/data/suehara/mldata/pfa/murata/neutron_1to100GeV/test
+  # checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_10_08_144911_outputD5
+  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl_cond_weight.root
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_30_151610_outputD5
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_truthcl_cond_cluster.root
+  echo ${output_path}/${outdir}
+  epoch=444
+  python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster --truth-clustering
+  # python save_root_____edit_no_n_had.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-weight --truth-clustering
 ##
 
 

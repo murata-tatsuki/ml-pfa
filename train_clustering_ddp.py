@@ -19,8 +19,8 @@ from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
 from model import get_model, get_model_branch
-from lcr_module import truth_based_assignment, HungarianMatcher, LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, LCR_Block_modifiedOutput_moreParameters, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub, hungarian_set_loss_new_sub_mask, soft_matching_loss
-from lcr_module_loss import lcr_hungarian_loss
+from lcr_module import truth_based_assignment, HungarianMatcher, LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, LCR_Block_modifiedOutput_moreParameters, LCR_Block_modifiedOutput_moreParameters_trackQuery, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub, hungarian_set_loss_new_sub_mask, soft_matching_loss
+from lcr_module_loss import lcr_hungarian_loss, attention_cluster_loss
 
 #from ReadText import ReadText
 import sys
@@ -64,6 +64,54 @@ def index_setup(args):
             additional_input_dimension += 1     # adding momentum amplitude to model input
     
     return output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
+
+def feat_format(gnn_output, feat):
+    gnn_output[:,0] = torch.sigmoid(gnn_output[:,0])
+    feat[:,1:4] = feat[:,1:4] / 2000
+    feat[:,7:10] = feat[:,7:10] / 3
+    return torch.cat((gnn_output, feat), dim=-1)
+
+def query_construction(hit_embed, hit_mask=None, k=50):
+    B, N, D = hit_embed.shape
+    device = hit_embed.device
+    # --- seed 選択 (可変長 + パディング) ---
+    is_trk = (hit_embed[:,:,12] == 1)
+    print(is_trk.shape, is_trk)
+    # seed_mask = (hit_embed[:,:,0] >= self.beta_threshold)
+    nk = min(N, k)
+    masked_scores = hit_embed[:,:,0].masked_fill(is_trk, 0)
+    _, idx = torch.topk(masked_scores, nk, dim=1)
+    seed_mask = torch.zeros_like(hit_embed[:,:,0], dtype=torch.bool)  # (B, N)
+    seed_mask.scatter_(1, idx, True)
+    print(seed_mask.shape, is_trk.shape)
+    # print(seed_mask, is_trk)
+    if hit_mask is not None:
+        seed_mask = hit_mask.bool() & (seed_mask | is_trk)
+    max_seeds = seed_mask.sum(dim=1).max().item()
+    
+    seeds_padded = torch.zeros(B, max_seeds, D, device=device)
+    seed_padding_mask = torch.ones(B, max_seeds, dtype=torch.bool, device=device)
+    seed_track_mask = torch.ones(B, max_seeds, dtype=torch.bool, device=device)
+    query_indices_in_key = -torch.ones(B, N, device=device)
+    for b in range(B):
+        selected = hit_embed[b][seed_mask[b]]
+        n_seed = selected.size(0)
+        if n_seed > 0:
+            seeds_padded[b, :n_seed] = selected
+            seed_padding_mask[b, :n_seed] = False
+        
+        selected_trk = hit_embed[b][is_trk[b]]
+        n_seed_trk = selected_trk.size(0)
+        if n_seed_trk > 0:
+            seed_track_mask[b, :n_seed_trk] = False
+        
+        nkey = seed_mask[b].nonzero().flatten().shape[0]
+        query_indices_in_key[b,:nkey] = seed_mask[b].nonzero().flatten()
+    
+    print(seeds_padded.shape, seed_padding_mask.shape, seed_track_mask.shape)
+    # print(seeds_padded, seed_padding_mask)
+
+    return seeds_padded, seed_padding_mask, query_indices_in_key, seed_track_mask
 
 
 def pad_and_mask_batch(tensor, batch):
@@ -164,6 +212,39 @@ def split_by_batch_padded(tensor, batch):
 
     return padded, mask
 
+def split_by_batch_padded_1d(cluster_id, batch):
+    """
+    cluster_id: (total_hits,) int tensor
+    batch:      (total_hits,) int tensor
+    return:
+        padded: (B, N) int tensor   # padded entries = -1
+        mask:   (B, N) bool tensor  # True where valid
+    """
+    device = cluster_id.device
+    B = batch.max().item() + 1
+    sizes = torch.bincount(batch)  # (B,)
+    max_len = sizes.max().item()
+
+    # (B, max_len)
+    padded = torch.full((B, max_len), -1, device=device, dtype=cluster_id.dtype)
+    mask = torch.zeros((B, max_len), dtype=torch.bool, device=device)
+
+    # 並べ替え（batch単位で連続にする）
+    idx = torch.argsort(batch)
+    sorted_cluster = cluster_id[idx]
+    sorted_batch = batch[idx]
+
+    start = 0
+    for i in range(B):
+        cnt = sizes[i].item()
+        # バッチ i の範囲抽出
+        padded[i, :cnt] = sorted_cluster[start:start+cnt]
+        mask[i, :cnt] = True
+        start += cnt
+
+    return padded, mask
+
+
 def pdg_id_to_class(pdg_ids, pcl_charge):
     """
     pdg_ids: torch.Tensor or np.ndarray, shape (N,)
@@ -195,6 +276,8 @@ def formatted_loss_components_string(components: dict) -> str:
         '\n   loss_Dir                 = {loss_Dir}'
         '\n   loss_pcl_prob            = {loss_pcl_prob}'
         '\n   loss_pid                 = {loss_pid}'
+        '\n   loss_charged             = {loss_charged}'
+        '\n   loss_neutral             = {loss_neutral}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
@@ -213,10 +296,12 @@ def formatted_loss_components_string_train(components: dict) -> str:
         '\n   train loss_Dir                 = {loss_Dir}'
         '\n   train loss_pcl_prob            = {loss_pcl_prob}'
         '\n   train loss_pid                 = {loss_pid}'
+        '\n   train loss_charged             = {loss_charged}'
+        '\n   train loss_neutral             = {loss_neutral}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
-
+    
 def select_seeds(hit_embed, hit_beta, beta_threshold=0.9):
     """
     hit_embed: (B, N, D)
@@ -848,8 +933,11 @@ def main():
     # if args.lcr_block: lcr_model = LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4).to(device)
     # else : lcr_model = LCR(embed_dim_=7,embed_dim=128, num_heads=8, K=256, feat_dim=4).to(device)
     # # lcr_model = LCR(embed_dim=128, num_heads=8, K=256, n_classes=7, feat_dim=5).to(device)
+
     # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
-    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
+    # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
+
+    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5).to(device)
     lcr_model.to(device)
     
     # optimizer = torch.optim.AdamW(lcr_model.parameters(), lr=2e-4, weight_decay=1e-2)
@@ -940,11 +1028,13 @@ def main():
                 # hit_beta            = hit_beta.squeeze(-1)  # 元のshapeに戻す
                 # hit_feat, _         = pad_and_mask_batch(data.feat, data.batch)
                 gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
-                hit_features = torch.cat((gnn_outputs, data.feat[:,:-3]), dim=-1)
+                hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
                 hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
                 hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
                 hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
                 hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
+
+                query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
 
                 # if args.classification or args.pid: pred_fourvec, pred_cls, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
                 # else: pred_fourvec, particle_prob, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
@@ -956,7 +1046,7 @@ def main():
                 #     unique_label = [torch.unique(t[:,1:3], dim=0) for t in unique_label]
                 #     unique_label = [pdg_id_to_class(t[:,1]) for t in unique_label]
                 if args.lcr_block and args.pid: 
-                    pred_fourvec, particle_prob, particle_cls_logits, attn_w, seed_padding_mask = lcr_model(hit_embed, hit_mask=hit_mask)
+                    pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
                     # pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
 
                     unique_label = split_by_batch(data.label[:,1:4], data.batch)
@@ -993,7 +1083,19 @@ def main():
                 # for attn_list_, mcid_by_batch_, truth_four_vector_ in zip(attn_list, mcid_by_batch, truth_four_vector):
                 #     print(attn_list_.shape, mcid_by_batch_.shape, truth_four_vector_.shape)
                 # indices = truth_based_assignment(attn_list, mcid_by_batch)
-                if args.lcr_block and args.pid and args.loss_specify: loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
+
+                # if args.lcr_block and args.pid and args.loss_specify: loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
+                if args.lcr_block and args.pid and args.loss_specify: 
+                    cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
+                    loss, components = attention_cluster_loss(
+                        attn_w[-1],
+                        cluster_id_pad,
+                        hit_embed[:,:,0],
+                        seed_track_mask,
+                        query_mask=seed_padding_mask,
+                        key_mask=hit_mask,
+                        query_indices_in_key=query_indices_in_key
+                    )
                 update(components)
                 train_loss += loss
                 loss.backward()
@@ -1037,14 +1139,16 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
-                hit_features = torch.cat((gnn_outputs, data.feat[:,:-3]), dim=-1)
+                hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
                 hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
                 hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
                 hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
                 hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
 
+                query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
+
                 if args.lcr_block and args.pid: 
-                    pred_fourvec, particle_prob, particle_cls_logits, attn_w, seed_padding_mask = lcr_model(hit_embed, hit_mask=hit_mask)
+                    pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
 
                     unique_label = split_by_batch(data.label[:,1:4], data.batch)
                     unique_label = [torch.unique(t, dim=0) for t in unique_label]
@@ -1057,7 +1161,18 @@ def main():
                 indices = matcher(particle_cls_logits, pred_fourvec, true_cls, truth_four_vector, seed_padding_mask)
                 mcid_by_batch = split_by_batch_unique(data.label[:,1], data.batch)
                 attn_list = get_attn_list(attn_w[-1], hit_mask)
-                if args.lcr_block and args.pid and args.loss_specify: loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
+                if args.lcr_block and args.pid and args.loss_specify:
+                    # loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
+                    cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
+                    loss, components = attention_cluster_loss(
+                        attn_w[-1],
+                        cluster_id_pad,
+                        hit_embed[:,:,0],
+                        seed_track_mask,
+                        query_mask=seed_padding_mask,
+                        key_mask=hit_mask,
+                        query_indices_in_key=query_indices_in_key
+                    )
                 test_loss += loss
                 update(components)
         # Divide by number of entries

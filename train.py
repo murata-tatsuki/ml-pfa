@@ -139,8 +139,10 @@ def run_ddp_training(rank, world_size, args):
     # Sampler
     # train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
+    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Model setup
     if args.model_ckpt=='':
@@ -201,7 +203,8 @@ def run_ddp_training(rank, world_size, args):
         pred_tracker_energy = None
         pred_cluster_energy = None
         weight_photon = None
-        weight_hadron = None
+        weight_charged_hadron = None
+        weight_neutral_hadron = None
         weight_muon = None
         weight_electron = None
         if args.energy_regression_weight:
@@ -486,6 +489,7 @@ def main():
     parser.add_argument('--beta-track', action='store_true', help='Include L_beta_track term')
     parser.add_argument('--beta-track-beginning', action='store_true', help='L_beta_track term from epoch 1')
     parser.add_argument('--force-track-alpha', action='store_true', help='Force track as alpha (condensation point)')
+    parser.add_argument('--force-innermost-alpha', action='store_true', help='Force innermost hit as alpha (condensation point) for clusters without track')
     parser.add_argument('--output-dimension', type=int, default=3, help='Specify total output dimension (note that 1 dim each is used for beta and charged cluster loss)')
     parser.add_argument('-i', '--inputdir', type=str, required=True, help='Specify input directory for training (required)')
     parser.add_argument('--no-split', action='store_true', help='Do not split sample into training/validating')
@@ -678,7 +682,8 @@ def main():
         pred_tracker_energy = None
         pred_cluster_energy = None
         weight_photon = None
-        weight_hadron = None
+        weight_charged_hadron = None
+        weight_neutral_hadron = None
         weight_muon = None
         weight_electron = None
         if args.energy_regression_weight:

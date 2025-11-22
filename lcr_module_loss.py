@@ -391,6 +391,175 @@ def soft_matching_cross_attention_loss(pred_four, true_four, cross_attention, be
 
     return loss, components
 
+"""
+def attention_cluster_loss(attn, truth_cluster, is_track_query, eps=1e-8):
+    ""
+    attn: (B, Nq, Nk)  softmax済み attention
+    truth_cluster: (B, N_hits) int cluster ID (tracks + calo 並んだ同一次元)
+    is_track_query: (B, Nq) bool mask, True if query is track
+    ""
+
+    B, Nq, Nk = attn.shape
+    
+    # クラスタIDを (B, Nq, Nk) に broadcast
+    # 例）cluster[q] == cluster[k] → positive mask
+    q_cluster = truth_cluster.unsqueeze(2).expand(B, Nq, Nk)  # (B, Nq, Nk)
+    k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)  # (B, Nq, Nk)
+    
+    pos_mask = (q_cluster == k_cluster)        # same cluster
+    neg_mask = ~pos_mask                       # different cluster
+    
+    # ---- (A) Charged: Cross Entropy風 Loss ----
+    # positive cluster への総attentionを最大化
+    attn_pos = attn * pos_mask
+    sum_pos = attn_pos.sum(dim=-1)  # (B, Nq)
+    
+    # track queries のみ対象
+    track_pos = sum_pos[is_track_query]
+    loss_charged = -torch.log(track_pos + eps).mean()
+
+    # ---- (B) Neutral: KL divergence ----
+    # truth adjacency matrix を soft label として作成
+    with torch.no_grad():
+        truth_adj = pos_mask.float()
+        truth_adj = truth_adj / (truth_adj.sum(dim=-1, keepdim=True) + eps)
+
+    # neutral query mask
+    neutral_mask = ~is_track_query
+    attn_neutral = attn[neutral_mask]          # (Nn, Nk)
+    truth_neutral = truth_adj[neutral_mask]    # (Nn, Nk)
+
+    # KL divergence: log(attn) vs truth distribution
+    # reduction separately to avoid weight imbalance
+    if attn_neutral.numel() > 0:
+        loss_neutral = F.kl_div(
+            attn_neutral.log(), truth_neutral, reduction="batchmean"
+        )
+    else:
+        loss_neutral = torch.tensor(0.0, device=attn.device)
+
+    # ---- 合算 ----
+    loss = loss_charged + loss_neutral
+
+    return {
+        "loss": loss,
+        "loss_charged": loss_charged,
+        "loss_neutral": loss_neutral
+    }
+"""
+
+def attention_cluster_loss(
+    attn,                  # (B, Nq, Nk) softmax済み attention
+    truth_cluster,         # (B, N_hits) int cluster ID
+    beta,                  # (B, N_hits) in [0,1]
+    is_track_query,        # (B, Nq) bool mask, True if query is track
+    query_mask=None,       # (B, Nq) bool mask, True if valid
+    key_mask=None,         # (B, Nk) bool mask, True if valid
+    query_indices_in_key=None,
+    eps=1e-8
+):
+    """
+    β-weighted cross attention loss with padding mask support.
+    """
+    B, Nq, Nk = attn.shape
+    assert(Nk == truth_cluster.shape[1])
+    print("attention_cluster_loss")
+    print(attn.shape)
+    print(truth_cluster.shape)
+    print(beta.shape)
+    print(is_track_query.shape)
+    print(query_mask.shape)
+    print(key_mask.shape)
+
+    # --- cluster broadcast ---
+    truth_cluster_q = truth_cluster.gather(1, query_indices_in_key)  # (B, Nq)
+    q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
+    k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
+    pos_mask = (q_cluster == k_cluster)  # same cluster
+
+    # -------------------------------
+    #  β-weighted truth adjacency
+    # -------------------------------
+    beta_k = beta.unsqueeze(1)  # (B, 1, Nk)
+    with torch.no_grad():
+        truth_adj = pos_mask.float() * beta_k
+
+        # key mask がある場合 padding を 0 に
+        if key_mask is not None:
+            truth_adj = truth_adj * key_mask.unsqueeze(0).unsqueeze(0)
+
+        denom = truth_adj.sum(dim=-1, keepdim=True)
+        zero_mask = denom < eps
+        truth_adj = truth_adj / (denom + eps)
+
+        # fallback for zero-sum
+        if zero_mask.any():
+            fallback = pos_mask.float()
+            if key_mask is not None:
+                fallback = fallback * key_mask.unsqueeze(0).unsqueeze(0)
+            fallback = fallback / (fallback.sum(dim=-1, keepdim=True) + eps)
+            truth_adj[zero_mask.expand_as(truth_adj)] = fallback[zero_mask.expand_as(truth_adj)]
+
+    # -------------------------------
+    # Charged: Cross Entropy style
+    # -------------------------------
+    attn_pos = attn * pos_mask
+
+    # key mask
+    if key_mask is not None:
+        attn_pos = attn_pos * key_mask.unsqueeze(0).unsqueeze(0)
+
+    sum_pos = attn_pos.sum(dim=-1)  # (B, Nq)
+
+    # query mask
+    valid_query_mask = query_mask if query_mask is not None else torch.ones(B, Nq, dtype=torch.bool, device=attn.device)
+
+    track_pos = sum_pos[is_track_query & valid_query_mask]
+    loss_charged = -torch.log(track_pos + eps).mean()
+
+    # -------------------------------
+    # Neutral: KL divergence
+    # -------------------------------
+    neutral_mask = ~is_track_query & valid_query_mask
+
+    attn_neutral = attn[neutral_mask]  # (Nn, Nk)
+    truth_neutral = truth_adj[neutral_mask]  # (Nn, Nk)
+
+    if key_mask is not None:
+        attn_neutral = attn_neutral * key_mask.unsqueeze(0)
+        truth_neutral = truth_neutral * key_mask.unsqueeze(0)
+
+    if attn_neutral.numel() > 0:
+        loss_neutral = F.kl_div(attn_neutral.log(), truth_neutral, reduction="batchmean")
+    else:
+        loss_neutral = torch.tensor(0.0, device=attn.device)
+
+    # -------------------------------
+    # 合算
+    # -------------------------------
+    total_loss = loss_charged + loss_neutral
+
+    return {
+        "loss": total_loss,
+        "loss_charged": loss_charged,
+        "loss_neutral": loss_neutral
+    }
+
+    components = dict(
+        loss = total_loss / B,
+        loss_E = 0,
+        loss_Mag = 0,
+        loss_Dir = 0,
+        loss_pcl_prob = 0,
+        loss_pid = 0,
+        loss_charged = loss_charged / B,
+        loss_neutral = loss_neutral / B
+        # loss_attn = loss_attn / B
+    )
+
+    return total_loss / B, components
+
+
 
 
 
