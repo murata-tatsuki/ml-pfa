@@ -62,7 +62,7 @@ def get_model_branch(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp
 
 def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3, ddp = False, lcr_block = True, pid = False):
     # from torch_cmspepr.gravnet_model import GravnetModel
-    from lcr_module import LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, LCR_Block_modifiedOutput_moreParameters, hungarian_set_loss, hungarian_set_loss_bbox_only
+    from lcr_module import LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, LCR_Block_modifiedOutput_moreParameters, LCR_Block_modifiedOutput_moreParameters_trackQuery, hungarian_set_loss, hungarian_set_loss_bbox_only
     #model = GravnetModelWithNoiseFilter(input_dim=9, output_dim=6, k=50, signal_threshold=.05)
     # LCR(embed_dim_=4,embed_dim=128, num_heads=8, K=256, feat_dim=4)
     # LCR_Block(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, K=256, feat_dim=4)
@@ -80,7 +80,8 @@ def get_clustering_model(ckpt = None, jit = True, input_dim = 5, output_dim = 3,
                 model=LCR_Block(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4)
                 # model=LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4)
             else:
-                model=LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5)
+                # model=LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5)
+                model=LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5)
             if not ddp:
                 model.load_state_dict(torch.load(ckpt, map_location=torch.device('cpu'))['model'])
             else:

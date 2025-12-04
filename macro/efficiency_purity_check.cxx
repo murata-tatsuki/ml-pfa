@@ -27,12 +27,17 @@ using namespace std;
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_cond_cluster.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
+
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/neutron_finetuning.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/mixed_finetuning.root");
+
+const string fileName = Form("../test/test_1130.root");
 
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const bool kaon_neutron = true;
+const bool kaon_neutron = false;
 const bool jet_regression = false;
 const bool pandora = false;
 const bool ECluster = true;

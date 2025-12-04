@@ -14,6 +14,7 @@ from torch_scatter import scatter_max, scatter_add, scatter_mean
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
+from train_clustering_ddp import feat_format, query_construction, pad_and_mask_batch
 
 
 def calc_energy_prediction(prediction, pattern_cluster, pandora=False, energyRegression=False, energyRegressionCluster=False):
@@ -154,6 +155,11 @@ def save_pred(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
     pands = []
     energy = []
 
+    def get_gnn_output_allFeat(batched_data):
+        with torch.no_grad():
+            gnn_outputs: torch.Tensor = model_gnn(batched_data.x, batched_data.batch)
+        return gnn_outputs, torch.sigmoid(gnn_outputs[:,0])
+
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
     # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
     for i, (event, data, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=0.5, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
@@ -240,10 +246,20 @@ def save_pred(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
 
 
         ## transformer-like clustering calculation
-        gnn_outputs = model_gnn(data.x.to(device), data.batch.to(device)).to('cpu')
-        hit_features = torch.cat((gnn_outputs, event.feat[:,:-3]), dim=-1)
 
-        pred_fourvec, particle_prob, particle_cls_logits, attn_w, seed_padding_mask = model_clustering(hit_features.unsqueeze(0))
+        # gnn_outputs = model_gnn(data.x.to(device), data.batch.to(device)).to('cpu')
+        # hit_features = torch.cat((gnn_outputs, event.feat[:,:-3]), dim=-1)
+        # pred_fourvec, particle_prob, particle_cls_logits, attn_w, seed_padding_mask = model_clustering(hit_features.unsqueeze(0))
+
+        gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
+        hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
+        hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
+        hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+        hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+        hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
+        query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
+        if args.lcr_block and args.pid: 
+            pred_fourvec, particle_prob, particle_cls_logits, attn_w = model_clustering(hit_embed, query, hit_mask=hit_mask)
 
         attn_weight = match_hits_to_queries(attn_w[-1]).to('cpu').detach().numpy().copy()
         pred_fourvec_np = pred_fourvec.to('cpu').detach().numpy().copy()

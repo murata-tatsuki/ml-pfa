@@ -20,7 +20,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
 from model import get_model, get_model_branch
 from lcr_module import truth_based_assignment, HungarianMatcher, LCR, LCR_withPID, LCR_withClass, LCR_Block, LCR_Block_modifiedOutput, LCR_Block_modifiedOutput_moreParameters, LCR_Block_modifiedOutput_moreParameters_trackQuery, hungarian_set_loss, hungarian_set_loss_bbox_only, hungarian_set_loss_new, hungarian_set_loss_new_sub, hungarian_set_loss_new_sub_mask, soft_matching_loss
-from lcr_module_loss import lcr_hungarian_loss, attention_cluster_loss
+from lcr_module_loss import lcr_hungarian_loss, clustering_loss
 
 #from ReadText import ReadText
 import sys
@@ -38,6 +38,8 @@ from torch.nn.utils.rnn import pad_sequence
 
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(True)
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 
 
@@ -76,42 +78,93 @@ def query_construction(hit_embed, hit_mask=None, k=50):
     device = hit_embed.device
     # --- seed 選択 (可変長 + パディング) ---
     is_trk = (hit_embed[:,:,12] == 1)
-    print(is_trk.shape, is_trk)
+    # print(is_trk.shape, is_trk)
     # seed_mask = (hit_embed[:,:,0] >= self.beta_threshold)
     nk = min(N, k)
     masked_scores = hit_embed[:,:,0].masked_fill(is_trk, 0)
+    # print(masked_scores)
     _, idx = torch.topk(masked_scores, nk, dim=1)
     seed_mask = torch.zeros_like(hit_embed[:,:,0], dtype=torch.bool)  # (B, N)
     seed_mask.scatter_(1, idx, True)
-    print(seed_mask.shape, is_trk.shape)
+    # print(seed_mask.shape, is_trk.shape)
+    # print(seed_mask.nonzero().shape)
     # print(seed_mask, is_trk)
     if hit_mask is not None:
         seed_mask = hit_mask.bool() & (seed_mask | is_trk)
     max_seeds = seed_mask.sum(dim=1).max().item()
     
     seeds_padded = torch.zeros(B, max_seeds, D, device=device)
-    seed_padding_mask = torch.ones(B, max_seeds, dtype=torch.bool, device=device)
-    seed_track_mask = torch.ones(B, max_seeds, dtype=torch.bool, device=device)
-    query_indices_in_key = -torch.ones(B, N, device=device)
+    seed_padding_mask = torch.zeros(B, max_seeds, dtype=torch.bool, device=device)
+    seed_track_mask = torch.zeros(B, max_seeds, dtype=torch.bool, device=device)
+    query_indices_in_key = torch.zeros(B, max_seeds, device=device)
     for b in range(B):
-        selected = hit_embed[b][seed_mask[b]]
+        # --- TRACK: sort by hit_embed[:,14] descending ---
+        track_hits = hit_embed[b][is_trk[b]]
+        track_momentum = track_hits[:, 14:17].norm(dim=1)
+        n_seed_trk = track_hits.size(0)
+        if track_hits.size(0) > 0:
+            trk_sort_val, trk_sort_idx = torch.sort(track_momentum, descending=True)
+            track_hits = track_hits[trk_sort_idx]
+            seed_track_mask[b, :n_seed_trk] = True
+        
+        # --- NON-TRACK: top-k by hit_embed[:,0], then sort ---
+        nontrk_mask = (~is_trk[b]) & seed_mask[b]
+        nontrk_hits = hit_embed[b][nontrk_mask]
+        if nontrk_hits.size(0) > 0:
+            ksel = min(nontrk_hits.size(0), k)
+            topk_val, topk_idx = torch.topk(nontrk_hits[:, 0], ksel)
+            nontrk_hits = nontrk_hits[topk_idx]
+
+            # sort by hit_embed[:,0] descending
+            nontrk_sort_val, nontrk_sort_idx = torch.sort(nontrk_hits[:, 0], descending=True)
+            nontrk_hits = nontrk_hits[nontrk_sort_idx]
+
+        # --- CONCATENATE: track first, then non-track ---
+        selected = torch.cat([track_hits, nontrk_hits], dim=0)
         n_seed = selected.size(0)
+
+        # --- PAD TO seeds_padded ---
         if n_seed > 0:
             seeds_padded[b, :n_seed] = selected
-            seed_padding_mask[b, :n_seed] = False
+            seed_padding_mask[b, :n_seed] = True
+
         
-        selected_trk = hit_embed[b][is_trk[b]]
-        n_seed_trk = selected_trk.size(0)
-        if n_seed_trk > 0:
-            seed_track_mask[b, :n_seed_trk] = False
+
+        # original index
+        track_idx = is_trk[b].nonzero().flatten()
+        nontrk_idx = nontrk_mask.nonzero().flatten()
         
-        nkey = seed_mask[b].nonzero().flatten().shape[0]
-        query_indices_in_key[b,:nkey] = seed_mask[b].nonzero().flatten()
+        # top-k + sort の順序に合わせて index も並び替え
+        ordered_indices = torch.cat([track_idx[trk_sort_idx], 
+                                     nontrk_idx[topk_idx][nontrk_sort_idx]], dim=0)
+        
+        nkey = ordered_indices.size(0)
+        query_indices_in_key[b, :nkey] = ordered_indices
+
+
+
+
+        # selected = hit_embed[b][seed_mask[b]]
+        # n_seed = selected.size(0)
+        # if n_seed > 0:
+        #     seeds_padded[b, :n_seed] = selected
+        #     seed_padding_mask[b, :n_seed] = True
+        
+        # selected_trk = hit_embed[b][is_trk[b]]
+        # n_seed_trk = selected_trk.size(0)
+        # if n_seed_trk > 0:
+        #     seed_track_mask[b, :n_seed_trk] = True
+        
+        # nkey = seed_mask[b].nonzero().shape[0]
+        # query_indices_in_key[b,:nkey] = seed_mask[b].nonzero().flatten()
     
-    print(seeds_padded.shape, seed_padding_mask.shape, seed_track_mask.shape)
+    # print(seeds_padded.shape, seed_padding_mask.shape, seed_track_mask.shape)
     # print(seeds_padded, seed_padding_mask)
 
-    return seeds_padded, seed_padding_mask, query_indices_in_key, seed_track_mask
+    # print("query_indices_in_key", query_indices_in_key)
+    
+
+    return seeds_padded, seed_padding_mask, query_indices_in_key.long(), seed_track_mask
 
 
 def pad_and_mask_batch(tensor, batch):
@@ -278,6 +331,8 @@ def formatted_loss_components_string(components: dict) -> str:
         '\n   loss_pid                 = {loss_pid}'
         '\n   loss_charged             = {loss_charged}'
         '\n   loss_neutral             = {loss_neutral}'
+        '\n   loss_attn_pad            = {loss_attn_pad}'
+        '\n   loss_attn_dead           = {loss_attn_dead}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
@@ -298,6 +353,8 @@ def formatted_loss_components_string_train(components: dict) -> str:
         '\n   train loss_pid                 = {loss_pid}'
         '\n   train loss_charged             = {loss_charged}'
         '\n   train loss_neutral             = {loss_neutral}'
+        '\n   train loss_attn_pad            = {loss_attn_pad}'
+        '\n   train loss_attn_dead           = {loss_attn_dead}'
         .format(L=total_loss,**{k : fkey(k) for k in components})
         )
     return s
@@ -1049,15 +1106,15 @@ def main():
                     pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
                     # pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
 
-                    unique_label = split_by_batch(data.label[:,1:4], data.batch)
-                    unique_label = [torch.unique(t, dim=0) for t in unique_label]
-                    true_cls = [pdg_id_to_class(t[:,1], t[:,2]) for t in unique_label]
-                true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-                # truth_four_vector = torch.cat((data.label[:,5:8], true_energy.reshape(true_energy.shape[0],1)), 1)
-                truth_four_vector_torchTensor = torch.cat((true_energy.reshape(true_energy.shape[0],1), data.label[:,5:8]), 1)
-                truth_four_vector = split_by_batch_unique(truth_four_vector_torchTensor, data.batch)
-                truth_four_vector_torchTensor, true_mask = split_by_batch_padded(truth_four_vector_torchTensor, data.batch)
-                # truth_four_vector = [torch.unique(t, dim=0) for t in truth_four_vector]
+                #     unique_label = split_by_batch(data.label[:,1:4], data.batch)
+                #     unique_label = [torch.unique(t, dim=0) for t in unique_label]
+                #     true_cls = [pdg_id_to_class(t[:,1], t[:,2]) for t in unique_label]
+                # true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+                # # truth_four_vector = torch.cat((data.label[:,5:8], true_energy.reshape(true_energy.shape[0],1)), 1)
+                # truth_four_vector_torchTensor = torch.cat((true_energy.reshape(true_energy.shape[0],1), data.label[:,5:8]), 1)
+                # truth_four_vector = split_by_batch_unique(truth_four_vector_torchTensor, data.batch)
+                # truth_four_vector_torchTensor, true_mask = split_by_batch_padded(truth_four_vector_torchTensor, data.batch)
+                # # truth_four_vector = [torch.unique(t, dim=0) for t in truth_four_vector]
 
                 # print(pred_fourvec, pred_cls, truth_four_vector, unique_label)
                 # print(pred_cls.shape)
@@ -1074,11 +1131,11 @@ def main():
                 #     else: loss = hungarian_set_loss_new(pred_fourvec, truth_four_vector)
                 # print(particle_cls_logits, pred_fourvec, true_cls, truth_four_vector)
 
-                indices = matcher(particle_cls_logits, pred_fourvec, true_cls, truth_four_vector, seed_padding_mask)
-                # mcid_by_batch, _ = pad_and_mask_batch(data.label[:,1], data.batch)
-                mcid_by_batch = split_by_batch_unique(data.label[:,1], data.batch)
-                # print(attn_w[-1].shape, data.batch.shape, mcid_by_batch.shape)
-                attn_list = get_attn_list(attn_w[-1], hit_mask)
+                # indices = matcher(particle_cls_logits, pred_fourvec, true_cls, truth_four_vector, seed_padding_mask)
+                # # mcid_by_batch, _ = pad_and_mask_batch(data.label[:,1], data.batch)
+                # mcid_by_batch = split_by_batch_unique(data.label[:,1], data.batch)
+                # # print(attn_w[-1].shape, data.batch.shape, mcid_by_batch.shape)
+                # attn_list = get_attn_list(attn_w[-1], hit_mask)
                 # attn_w_by_batch = split_by_batch(attn_w[-1], data.batch)
                 # for attn_list_, mcid_by_batch_, truth_four_vector_ in zip(attn_list, mcid_by_batch, truth_four_vector):
                 #     print(attn_list_.shape, mcid_by_batch_.shape, truth_four_vector_.shape)
@@ -1087,29 +1144,32 @@ def main():
                 # if args.lcr_block and args.pid and args.loss_specify: loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
                 if args.lcr_block and args.pid and args.loss_specify: 
                     cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
-                    loss, components = attention_cluster_loss(
+                    loss, components = clustering_loss(
                         attn_w[-1],
                         cluster_id_pad,
                         hit_embed[:,:,0],
                         seed_track_mask,
                         query_mask=seed_padding_mask,
                         key_mask=hit_mask,
-                        query_indices_in_key=query_indices_in_key
+                        query_indices_in_key=query_indices_in_key,
+                        particle_prob=particle_prob,
                     )
                 update(components)
                 train_loss += loss
                 loss.backward()
+                gradients.append([p.grad.norm().item() if p.grad is not None else 0.0 for p in lcr_model.parameters()])
+
 
                 if not args.no_clipping:
                     utils.clip_grad_value_(lcr_model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
                 if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
-                for name, p in lcr_model.named_parameters():
-                    if p.grad is None:
-                        print(f"No grad: {name}")
+                # for name, p in lcr_model.named_parameters():
+                #     if p.grad is None:
+                #         print(f"No grad: {name}")
 
-                gradients.append([p.grad.norm().item() for p in lcr_model.parameters()])
+                # gradients.append([p.grad.norm().item() for p in lcr_model.parameters()])
             # Divide by number of entries
             layer_grads = np.mean(np.array(gradients), axis=0)
             print(layer_grads)
@@ -1150,28 +1210,18 @@ def main():
                 if args.lcr_block and args.pid: 
                     pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
 
-                    unique_label = split_by_batch(data.label[:,1:4], data.batch)
-                    unique_label = [torch.unique(t, dim=0) for t in unique_label]
-                    true_cls = [pdg_id_to_class(t[:,1], t[:,2]) for t in unique_label]
-                true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-                truth_four_vector_torchTensor = torch.cat((true_energy.reshape(true_energy.shape[0],1), data.label[:,5:8]), 1)
-                truth_four_vector = split_by_batch_unique(truth_four_vector_torchTensor, data.batch)
-                truth_four_vector_torchTensor, true_mask = split_by_batch_padded(truth_four_vector_torchTensor, data.batch)
-                
-                indices = matcher(particle_cls_logits, pred_fourvec, true_cls, truth_four_vector, seed_padding_mask)
-                mcid_by_batch = split_by_batch_unique(data.label[:,1], data.batch)
-                attn_list = get_attn_list(attn_w[-1], hit_mask)
                 if args.lcr_block and args.pid and args.loss_specify:
                     # loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
                     cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
-                    loss, components = attention_cluster_loss(
+                    loss, components = clustering_loss(
                         attn_w[-1],
                         cluster_id_pad,
                         hit_embed[:,:,0],
                         seed_track_mask,
                         query_mask=seed_padding_mask,
                         key_mask=hit_mask,
-                        query_indices_in_key=query_indices_in_key
+                        query_indices_in_key=query_indices_in_key,
+                        particle_prob=particle_prob
                     )
                 test_loss += loss
                 update(components)

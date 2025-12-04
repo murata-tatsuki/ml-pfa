@@ -139,10 +139,10 @@ def run_ddp_training(rank, world_size, args):
     # Sampler
     # train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
     train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
-    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
-    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
+    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Model setup
     if args.model_ckpt=='':
@@ -345,9 +345,9 @@ def run_ddp_training(rank, world_size, args):
                 # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
                 optimizer.zero_grad()
-                if i == 0 : first_para = check_data(data)
+                # if i == 0 : first_para = check_data(data)
                 result: torch.Tensor = model(data.x, data.batch)
-                learning_para = check_coords(result,data)
+                # learning_para = check_coords(result,data)
                 if args.jit:
                     raise
                 else:
@@ -360,8 +360,8 @@ def run_ddp_training(rank, world_size, args):
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
-                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                data_y_list.append(learning_para["data.y.long"].tolist())
+                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
+                # data_y_list.append(learning_para["data.y.long"].tolist())
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
                 # if i == 2: raise Exception
             # Divide by number of entries
@@ -390,7 +390,8 @@ def run_ddp_training(rank, world_size, args):
                     if i_epoch > args.epochs_noLE:
                         return_loss += loss_components["L_E"]
             train_loss = return_loss.item() if rank == 0 else loss.item()
-            return train_loss,cluster_space_coords_list,data_y_list,data,first_para
+            # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
+            return train_loss,None,None,None,None
         except Exception:
             print('Exception encountered:', data, 'i:', i)
             raise
@@ -446,7 +447,7 @@ def run_ddp_training(rank, world_size, args):
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
-        train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
+        train_loss,_,_,_,_=train(i_epoch)
         if rank == 0:
             train_loss_history.append(train_loss)
             learning_rates.append(optimizer.param_groups[0]["lr"])

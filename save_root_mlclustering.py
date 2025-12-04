@@ -5,12 +5,13 @@ from distutils.util import strtobool
 import awkward as ak
 from model import get_model, get_model_branch, get_clustering_model
 from dataset import ILCDataset
-from test_yielder import TestYielder, TestYielderWithMLClustering
+from test_yielder import TestYielder, TestYielderWithMLClustering, TestYielderWithMLClustering_trackQuery, TestYielder_transformer_Like_Clustering
 from ROOT import TFile, TTree
 import argparse
 import torch
 from sed import minimum_enclosing_sphere
 from matching import matching_1to1, matching_hungarian_set_bbox_only, matching_hungarian_set_bbox_only_
+
 
 ## 1 to 1 match to reco-cluster and true cluster
 ## the largest edep_match reco-cluster is chosen
@@ -155,6 +156,31 @@ class PredData:
         t.Branch("delta_theta",this.delta_theta,"delta_theta/D")
         
 
+def match_hits_to_queries(attn_weights):
+    """
+    すでに計算済みの attention weight (B, N_query, N_hit) を用いて、
+    各 hit が最も強く結びついている query の index を返す関数。
+
+    Args:
+        attn_weights: Tensor, shape = (B, N_query, N_hit)
+                      query→hit の attention 確率（softmax後）
+
+    Returns:
+        hit_to_query: Tensor, shape = (B, N_hit)
+                      各 hit の最大 attention を持つ query index
+    """
+    # --- Step 1 ---
+    # attention map を転置して、(B, N_hit, N_query にする)
+    # こうすることで hit ごとの query 比較が簡単にできる
+    attn_hit_view = attn_weights.transpose(1, 2)  # (B, N_hit, N_query)
+
+    # --- Step 2 ---
+    # 各 hit について attention が最大の query を選ぶ
+    # dim=-1 は query 次元に沿って argmax を取る
+    hit_to_query = torch.argmax(attn_hit_view, dim=-1)  # (B, N_hit)
+
+    return hit_to_query
+
 
 # def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
 def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
@@ -177,15 +203,18 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
         output_dim += 1
         if energyRegressionCluster:
             output_dim += 1
+    if energyRegressionWeight:
+            output_dim += 5
     print(f"Loading gnn model from checkpoint {ckpt_gnn}")
     if energy_branch:
         model_gnn = get_model_branch(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
         model_gnn = get_model(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
-    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, ddp=args.ddp).to(device)
+    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, ddp=args.ddp, pid=args.pid).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp)
-    yielder = TestYielderWithMLClustering(model=model_gnn, model_clustering=model_clustering, dataset=dataset, device=device, pandora=pandora)
+    # yielder = TestYielderWithMLClustering_trackQuery(model=model_gnn, model_clustering=model_clustering, dataset=dataset, device=device, pandora=pandora)
+    yielder = TestYielder_transformer_Like_Clustering(model=model_gnn, dataset=dataset, device=device, pandora=pandora)
 
     nmax = None if nend==-1 else nend-nstart+1
     print("number of entry : ", nmax)
@@ -218,7 +247,9 @@ def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
     d3.setup_branch(t3)
     
         # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-    for i, (event_num, event_data, pred_fourvec, truth_fourvec, hit_mask, attn_w) in enumerate(yielder._iter_data(nmax=nmax)):
+    for i, (event_num, event_data, pred_fourvec, truth_fourvec, hit_mask, pcl_prob, cls_logits, attn_w) in enumerate(yielder._iter_data(nmax=nmax)):
+    # for i, (event, data, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=0.5, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
+
         if i == nmax: break
         if i < 10 or i%100 == 0:
             print("Event", i, "processing...")
@@ -484,6 +515,7 @@ def main():
     # parser.add_argument('--td', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
     parser.add_argument('--lcr-block', action='store_true', help='Use LCR block')
+    parser.add_argument('--pid', action='store_true', help='Use pid')
     parser.add_argument('--ddp', action='store_true', help='Use ddp for training')
     # parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
     # parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')

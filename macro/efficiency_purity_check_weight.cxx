@@ -24,12 +24,12 @@ using namespace std;
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_100betaSuppress_moreStats.root");
 
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl_cond_weight.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl_cond_weight.root");
 
 const bool saving_canvas = false;
 const string train_particle_type = "ntau_10to100GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10

@@ -42,11 +42,11 @@ momentumAmp=True
 
 
 
-# python display_h5_transformer.py ../h5/display/clustering/test.h5 html/transformer_clustering/test.html 0 10 ${virtual_space_coordinate_dim} # > test.log
+python display_h5_transformer.py ../h5/display/clustering/test.h5 html/transformer_clustering/test.html 0 10 ${virtual_space_coordinate_dim} # > test.log
 
 
 
 
 
 ## neutron
-python display_h5_transformer.py ../h5/display/clustering/test_neutron.h5 html/transformer_clustering/test_neutron.html 0 10 ${virtual_space_coordinate_dim} # > test.log
+# python display_h5_transformer.py ../h5/display/clustering/test_neutron.h5 html/transformer_clustering/test_neutron.html 0 10 ${virtual_space_coordinate_dim} # > test.log

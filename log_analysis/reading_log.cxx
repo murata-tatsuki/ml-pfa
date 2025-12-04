@@ -25,12 +25,16 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
 // const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_08_05_144744__momentum.log";
 
-
 // const string fileName = "../log/energy_regression/weighted_edep/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_17_105903_alpha_tracker_diff_log_perCluster.log";
-const string fileName = "../log/energy_regression/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_17_101654_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_17_101654_alpha_tracker_diff_log_perCluster.log";
 
 // const string fileName = "../log/energy_regression/backup/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_11_200202_alpha_tracker_diff_log_momentum.log";
 // const string fileName = "../log/energy_regression/weighted_edep/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_10_08_144911_weight.log";
+
+const string fileName = "../log/energy_regression/backup/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_09_30_105247_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_23_091328_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_mixed_timingcut_forcealpha_thetaphi_outputD5_2025_12_01_081855_alpha_tracker_diff_log_perCluster.log";
+
 
 
 vector<double> l_v;

@@ -448,7 +448,7 @@ def attention_cluster_loss(attn, truth_cluster, is_track_query, eps=1e-8):
     }
 """
 
-def attention_cluster_loss(
+def attention_loss(
     attn,                  # (B, Nq, Nk) softmax済み attention
     truth_cluster,         # (B, N_hits) int cluster ID
     beta,                  # (B, N_hits) in [0,1]
@@ -456,26 +456,57 @@ def attention_cluster_loss(
     query_mask=None,       # (B, Nq) bool mask, True if valid
     key_mask=None,         # (B, Nk) bool mask, True if valid
     query_indices_in_key=None,
+    particle_prob=None,
     eps=1e-8
-):
+    ):
     """
     β-weighted cross attention loss with padding mask support.
     """
     B, Nq, Nk = attn.shape
     assert(Nk == truth_cluster.shape[1])
-    print("attention_cluster_loss")
-    print(attn.shape)
-    print(truth_cluster.shape)
-    print(beta.shape)
-    print(is_track_query.shape)
-    print(query_mask.shape)
-    print(key_mask.shape)
 
     # --- cluster broadcast ---
     truth_cluster_q = truth_cluster.gather(1, query_indices_in_key)  # (B, Nq)
     q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
     k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
     pos_mask = (q_cluster == k_cluster)  # same cluster
+
+    valid_query_mask = query_mask if query_mask is not None else torch.ones(B, Nq, dtype=torch.bool, device=attn.device)
+    # -------------------------------
+    # Detect duplicate queries per (batch, cluster)
+    # - only consider queries with valid_query_mask == True
+    # - for each cluster keep the first (lowest index) query, mark others as dead
+    # dead_query_mask: (B, Nq) bool, True means "this is a duplicate (2nd+) query"
+    # -------------------------------
+    dead_query_mask = torch.zeros(B, Nq, dtype=torch.bool, device=attn.device)
+    for b in range(B):
+        qc = truth_cluster_q[b]         # (Nq,)
+        vmask = valid_query_mask[b]     # (Nq,)
+        # iterate in index order; record first occurrence of each cluster id
+        seen = {}
+        # go through only valid queries, in increasing index order
+        valid_idx = torch.nonzero(vmask, as_tuple=False).flatten()
+        for qi in valid_idx.tolist():
+            cid = int(qc[qi].item())
+            # If cluster id is padding-like (e.g. -1), skip marking (treat as no-cluster)
+            # (Assumes padding cluster ids are negative; adjust if different)
+            if cid < 0:
+                continue
+            if cid in seen:
+                # this is second+ occurrence -> mark dead
+                dead_query_mask[b, qi] = True
+            else:
+                seen[cid] = qi
+
+    # -------------------------------
+    # Remove pos_mask (truth matching) for dead queries so they do not get correct-target credit.
+    # We still keep their attention values (so we can penalize them), but they must not match truth.
+    # pos_mask: (B, Nq, Nk)
+    # -------------------------------
+    if dead_query_mask.any():
+        pos_mask = pos_mask.clone()
+        pos_mask[dead_query_mask.unsqueeze(2).expand_as(pos_mask)] = False
+
 
     # -------------------------------
     #  β-weighted truth adjacency
@@ -486,17 +517,19 @@ def attention_cluster_loss(
 
         # key mask がある場合 padding を 0 に
         if key_mask is not None:
-            truth_adj = truth_adj * key_mask.unsqueeze(0).unsqueeze(0)
+            truth_adj = truth_adj * key_mask.unsqueeze(1)
 
         denom = truth_adj.sum(dim=-1, keepdim=True)
+        # print("denom.min(), denom.max():", denom.min(), denom.max())
         zero_mask = denom < eps
+        # print("zero_mask.sum():", zero_mask.sum())
         truth_adj = truth_adj / (denom + eps)
 
         # fallback for zero-sum
         if zero_mask.any():
             fallback = pos_mask.float()
             if key_mask is not None:
-                fallback = fallback * key_mask.unsqueeze(0).unsqueeze(0)
+                fallback = fallback * key_mask.unsqueeze(1)
             fallback = fallback / (fallback.sum(dim=-1, keepdim=True) + eps)
             truth_adj[zero_mask.expand_as(truth_adj)] = fallback[zero_mask.expand_as(truth_adj)]
 
@@ -507,54 +540,126 @@ def attention_cluster_loss(
 
     # key mask
     if key_mask is not None:
-        attn_pos = attn_pos * key_mask.unsqueeze(0).unsqueeze(0)
+        attn_pos = attn_pos * key_mask.unsqueeze(1)
 
     sum_pos = attn_pos.sum(dim=-1)  # (B, Nq)
 
-    # query mask
-    valid_query_mask = query_mask if query_mask is not None else torch.ones(B, Nq, dtype=torch.bool, device=attn.device)
-
     track_pos = sum_pos[is_track_query & valid_query_mask]
-    loss_charged = -torch.log(track_pos + eps).mean()
+    # print(track_pos)
+    # loss_charged = -torch.log(track_pos + eps).mean()
+    # loss_charged = -torch.log(track_pos.clamp(min=eps)).mean()
+    track_pos_safe = torch.clamp(track_pos, min=eps)
+    loss_charged = -torch.log(track_pos_safe).mean()
+
 
     # -------------------------------
     # Neutral: KL divergence
     # -------------------------------
     neutral_mask = ~is_track_query & valid_query_mask
+    # print((~is_track_query).shape, (~is_track_query).nonzero().shape)
+    # print(neutral_mask.shape, neutral_mask.nonzero().shape)
 
     attn_neutral = attn[neutral_mask]  # (Nn, Nk)
     truth_neutral = truth_adj[neutral_mask]  # (Nn, Nk)
 
     if key_mask is not None:
-        attn_neutral = attn_neutral * key_mask.unsqueeze(0)
-        truth_neutral = truth_neutral * key_mask.unsqueeze(0)
+        key_mask_expanded = key_mask.unsqueeze(1).expand(B, Nq, Nk)
+        key_mask_neutral = key_mask_expanded[neutral_mask]  # (Nn, Nk)
+
+        attn_neutral = attn_neutral * key_mask_neutral
+        truth_neutral = truth_neutral * key_mask_neutral
 
     if attn_neutral.numel() > 0:
-        loss_neutral = F.kl_div(attn_neutral.log(), truth_neutral, reduction="batchmean")
+        attn_neutral_safe = torch.clamp(attn_neutral, min=eps)
+        loss_neutral = F.kl_div(attn_neutral_safe.log(), truth_neutral, reduction="batchmean")
+        # loss_neutral = F.kl_div(attn_neutral.log(), truth_neutral, reduction="batchmean")
     else:
         loss_neutral = torch.tensor(0.0, device=attn.device)
+    
+    # -------------------------------
+    # L1 penalty for dead (duplicate) queries
+    # -------------------------------
+    lambda_attn = 3.0
+    if dead_query_mask.any():
+        # dead_query_mask: (B, Nq) -> expand to (B, Nq, 1) to match attn shape
+        dead_mask_exp = dead_query_mask.unsqueeze(-1).float()  # (B, Nq, 1)
+        # L1 penalty: mean absolute attention over dead queries only
+        loss_attn_dead = lambda_attn * torch.mean(torch.abs(attn * dead_mask_exp))
+    else:
+        loss_attn_dead = torch.tensor(0.0, device=attn.device)
+
+    
+    # -------------------------------
+    # L1 penalty for invalid queries
+    # -------------------------------
+    if query_mask is not None:
+        invalid_query = (~query_mask).float().unsqueeze(-1)   # (B, Nq, 1)
+        loss_attn_pad = lambda_attn * torch.mean(torch.abs(attn * invalid_query))
+    else:
+        loss_attn_pad = torch.tensor(0.0, device=attn.device)
+    
+
+
+
+    # particle_prob : (B, Nq) with values in [0,1]
+
+    # teacher signal
+    # target = 1 for alive queries, 0 for padding & dead queries
+    alive_mask = valid_query_mask & (~dead_query_mask)
+
+    target_particle_prob = alive_mask.float()   # (B, Nq)
+    
+    # BCE loss
+    loss_particle_prob = F.binary_cross_entropy(
+        particle_prob.clamp(min=1e-6, max=1.0-1e-6),
+        target_particle_prob
+    )
+
 
     # -------------------------------
     # 合算
     # -------------------------------
-    total_loss = loss_charged + loss_neutral
+    loss_charged = loss_charged * 100
+    loss_neutral = loss_neutral * 100
+    loss_attn_pad = loss_attn_pad * 100
+    loss_particle_prob = loss_particle_prob * 100
+    
+    return loss_charged, loss_neutral, loss_attn_pad, loss_attn_dead, loss_particle_prob
 
-    return {
-        "loss": total_loss,
-        "loss_charged": loss_charged,
-        "loss_neutral": loss_neutral
-    }
+
+def clustering_loss(
+    attn,                  # (B, Nq, Nk) softmax済み attention
+    truth_cluster,         # (B, N_hits) int cluster ID
+    beta,                  # (B, N_hits) in [0,1]
+    is_track_query,        # (B, Nq) bool mask, True if query is track
+    query_mask=None,       # (B, Nq) bool mask, True if valid
+    key_mask=None,         # (B, Nk) bool mask, True if valid
+    query_indices_in_key=None,
+    particle_prob=None
+    ):
+
+    B, Nq, Nk = attn.shape
+
+
+    loss_charged, loss_neutral, loss_attn_pad, loss_attn_dead, loss_particle_prob = attention_loss(
+        attn, truth_cluster, beta, is_track_query, query_mask=query_mask, key_mask=key_mask, query_indices_in_key=query_indices_in_key ,particle_prob=particle_prob)
+    
+
+    total_loss = loss_charged + loss_neutral + loss_attn_pad + loss_particle_prob
+
+
 
     components = dict(
         loss = total_loss / B,
         loss_E = 0,
         loss_Mag = 0,
         loss_Dir = 0,
-        loss_pcl_prob = 0,
+        loss_pcl_prob = loss_particle_prob / B,
         loss_pid = 0,
         loss_charged = loss_charged / B,
-        loss_neutral = loss_neutral / B
-        # loss_attn = loss_attn / B
+        loss_neutral = loss_neutral / B,
+        loss_attn_pad = loss_attn_pad / B,
+        loss_attn_dead = loss_attn_dead / B,
     )
 
     return total_loss / B, components

@@ -1600,8 +1600,18 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
             nn.LayerNorm(embed_dim),
             nn.Linear(embed_dim, embed_dim),
             nn.ReLU(),
+            nn.Linear(embed_dim, embed_dim),
+            nn.ReLU(),
             nn.Linear(embed_dim, 4)
         )
+        # self.fourvec_head_neutral = nn.Sequential(
+        #     nn.LayerNorm(embed_dim),
+        #     nn.Linear(embed_dim, embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(embed_dim, embed_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(embed_dim, 4)
+        # )
         self.particle_head = nn.Sequential(
             nn.LayerNorm(embed_dim),
             nn.Linear(embed_dim, 1)
@@ -1623,7 +1633,6 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
 
     def forward(self, hit_embed, query, hit_mask=None):
         B, N, D = hit_embed.shape
-        print(B, N, D, hit_embed[0,0,:])
         device = hit_embed.device
 
         Q = self.q_embed(query)

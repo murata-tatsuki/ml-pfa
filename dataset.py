@@ -138,6 +138,49 @@ class ILCDataset(Dataset):
         print("Hits after timing window", ak.num(ak_feats,axis=1)[nstart:nstart+10])
 
         return ak_feats, ak_labels
+    
+    @staticmethod
+    def eventCut(ak_feats, ak_labels, nstart = 0, nend=-1):
+        feats_list = []
+        labels_list = []
+
+        print("Hits before event cut", ak.num(ak_feats,axis=1)[nstart:nend])
+
+
+        nhits = ak.num(ak_feats,axis=1)
+        n = ak.num(ak_feats,axis=0)
+        nend = n if n < nend or nend < 0 else nend
+        for i in range(nstart, nend):
+            if i%100 == 0: print(f'Timing & omega cut: processing {i} / {nend-nstart}', end='\r')
+            if nhits[i] < 2:
+                print(i, nhits[i], " ")
+                continue
+            feats2 = ak_feats[i]
+            labels2 = ak_labels[i]
+
+            feat_t = ak.to_numpy(feats2)
+            label_t = ak.to_numpy(labels2)
+
+            y = label_t[:,1]
+            mcids = label_t[:,1]
+            y = y[mcids!=-1]
+
+            cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=-1)
+            if np.all(cluster_index == 0): 
+                print(i, nhits[i], "cluster_index == 0")
+                continue
+
+            feats_list.append(feats2)
+            labels_list.append(labels2)
+            
+        print("Making ak_feats...")
+        ak_feats = ak.Array(feats_list)
+        print("Making ak_labels...")
+        ak_labels = ak.Array(labels_list)
+
+        print("Hits after event cut", ak.num(ak_feats,axis=1)[nstart:nstart+10])
+
+        return ak_feats, ak_labels
         
     def get(self,i):
         feat_t = ak.to_numpy(self.ak_feats[i])
