@@ -1211,9 +1211,10 @@ class LCR(nn.Module):
 
 
 class CrossAttnBlock(nn.Module):
-    def __init__(self, embed_dim, num_heads):
+    def __init__(self, embed_dim, num_heads, score_raw=False):
         super().__init__()
-        self.mha = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+        # self.mha = nn.MultiheadAttention(embed_dim, num_heads, batch_first=True)
+        self.mhaNS = MultiheadAttentionNoSoftmax(embed_dim, num_heads, batch_first=True, score_raw=score_raw)
         self.ffn = nn.Sequential(
             nn.Linear(embed_dim, embed_dim * 4),
             nn.ReLU(),
@@ -1223,11 +1224,172 @@ class CrossAttnBlock(nn.Module):
         self.norm2 = nn.LayerNorm(embed_dim)
 
     def forward(self, Q, K, V, key_padding_mask=None, attn_mask=None):
-        attn_out, attn_w = self.mha(Q, K, V, key_padding_mask=key_padding_mask, attn_mask=attn_mask, need_weights=True)
+        # attn_out, attn_w = self.mha(Q, K, V, key_padding_mask=key_padding_mask, attn_mask=attn_mask, need_weights=True)
+        attn_out, attn_w, raw_score = self.mhaNS(Q, K, V, key_padding_mask=key_padding_mask, attn_mask=attn_mask, need_weights=True)
+        # print(attn_out.shape, attn_w.shape, raw_score.shape)
         Q = self.norm1(Q + attn_out)                # residual
         ffn_out = self.ffn(Q)
         out = self.norm2(Q + ffn_out)               # residual
-        return out, attn_w
+        return out, attn_w, raw_score
+
+def safe_softmax(scores, mask=None, dim=-1, fill_value=-1e9, eps=1e-12):
+    """
+    scores: tensor (..., K)
+    mask: same shape as scores with False for masked positions OR shape (..., K) with 0/1
+          If mask is provided, True means valid (keeps), False means mask out.
+    Returns softmaxed tensor with NaN/Inf handled and rows that were fully masked set to zero.
+    """
+    s = scores
+    if mask is not None:
+        # normalize mask to boolean where True = valid
+        mask_bool = mask.to(torch.bool)
+        # put large negative value at masked positions (avoid -inf)
+        s = s.masked_fill(~mask_bool, fill_value)
+
+        # detect rows (along dim) where all were masked
+        all_masked = (~mask_bool).all(dim=dim, keepdim=True)  # True where entire row is masked
+    else:
+        all_masked = None
+
+    # stable softmax (PyTorch does subtraction of max internally)
+    out = torch.softmax(s, dim=dim)
+
+    # replace any NaN/Inf if present (safety net)
+    out = torch.nan_to_num(out, nan=0.0, posinf=1.0, neginf=0.0)
+
+    # if some rows were fully masked, ensure their output is all zeros (no NaN)
+    if all_masked is not None and all_masked.any():
+        out = out.masked_fill(all_masked.expand_as(out), 0.0)
+
+    # renormalize rows that have tiny rounding error so rows sum to 1 where valid
+    if mask is not None:
+        # compute row sum (only for rows not fully masked)
+        row_sum = out.sum(dim=dim, keepdim=True)
+        row_mask = (~all_masked) if all_masked is not None else (row_sum > eps)
+        out = torch.where(row_mask, out / (row_sum + eps), out)
+
+    return out
+
+
+class MultiheadAttentionNoSoftmax(nn.Module):
+    """
+    nn.MultiheadAttention のsoftmaxする前のQK^T/√d_kも返すようにしている
+    """
+    def __init__(self, embed_dim, num_heads, dropout=0.0, bias=True, batch_first=False, score_raw=False):
+        super().__init__()
+        assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
+
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.dropout = dropout
+        self.batch_first = batch_first
+        self.head_dim = embed_dim // num_heads
+        self.score_raw = score_raw
+
+        # Q, K, V projection
+        self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.k_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+        self.v_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+
+        # output projection
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+
+    def _shape(self, x):
+        # (B, S, E) -> (B, num_heads, S, head_dim)
+        return x.view(x.size(0), x.size(1), self.num_heads, self.head_dim).transpose(1, 2)
+
+    def forward(self,  query, key, value, attn_mask=None, key_padding_mask=None, need_weights=True):
+        """
+        Args:
+            query, key, value: (L, N, E) or (N, L, E) (batch_first)
+            attn_mask: (L, S) or (B*num_heads, L, S)
+            key_padding_mask: (N, S) where S is key length
+        Returns:
+            attn_output: (L, N, E)
+            attn_weights: (N, num_heads, L, S)  # not softmaxed raw score
+        """
+
+        # enforce batch_first
+        if not self.batch_first:
+            # convert (L, N, E) -> (N, L, E)
+            query = query.transpose(0, 1)
+            key   = key.transpose(0, 1)
+            value = value.transpose(0, 1)
+
+        B, L, _ = query.shape
+        S = key.size(1)
+
+        # Linear projection
+        Q = self.q_proj(query)
+        K = self.k_proj(key)
+        V = self.v_proj(value)
+
+        # reshape to multi-head
+        Q = self._shape(Q)   # (B, H, L, D)
+        K = self._shape(K)   # (B, H, S, D)
+        V = self._shape(V)   # (B, H, S, D)
+
+        # ★ softmax をしない attention score ★
+        scores = torch.matmul(Q, K.transpose(-2, -1))  # (B, H, L, S)
+        scores = scores / (self.head_dim ** 0.5)
+
+        # ------------------------------
+        # 1. attn_mask を適用
+        # ------------------------------
+        if attn_mask is not None:
+            # expand broadcast
+            if attn_mask.dim() == 2:
+                # (L, S) → (B, H, L, S)
+                scores = scores + attn_mask.unsqueeze(0).unsqueeze(0)
+            elif attn_mask.dim() == 3:
+                # (B*H, L, S) 形式
+                assert attn_mask.size(0) == B * self.num_heads
+                scores = scores.view(B * self.num_heads, L, S) + attn_mask
+                scores = scores.view(B, self.num_heads, L, S)
+            else:
+                raise ValueError("attn_mask must be (L, S) or (B*H, L, S)")
+
+        # ------------------------------
+        # 2. key_padding_mask を適用
+        # ------------------------------
+        if key_padding_mask is not None:
+            # key_padding_mask: (B, S) → (B, 1, 1, S)
+            mask = key_padding_mask.unsqueeze(1).unsqueeze(1)  # expand for heads/L
+            scores = scores.masked_fill(mask, -1e9)
+
+        # softmax の代わりに raw score で weighted sum
+        scores_raw = scores.clone()
+        if not self.score_raw:
+            score = safe_softmax(scores_raw, mask=attn_mask, dim=-2)
+            # score = torch.softmax(scores_raw, dim=-2)  # (B, H, L, S)
+            # score = torch.nan_to_num(score, nan=0.0)
+            attention_weight = score.mean(dim=1)
+        attn_weights = torch.softmax(scores, dim=-1)  # (B, H, L, S)
+        attn_output = torch.matmul(attn_weights, V)  # (B, H, L, D)
+
+        # combine heads
+        attn_output = (
+            attn_output.transpose(1, 2).contiguous().view(B, L, self.embed_dim)
+        )
+
+        # output projection
+        attn_output = self.out_proj(attn_output)
+
+        # enforce not batch_first
+        if not self.batch_first:
+            attn_output = attn_output.transpose(0, 1)  # (L, N, E)
+
+        # attn_weights の shape も MultiheadAttention に合わせる
+        if not self.score_raw:
+            if need_weights:
+                return attn_output, attn_weights, attention_weight
+            else:
+                return attn_output, None, attention_weight
+        if need_weights:
+            return attn_output, attn_weights, scores_raw
+        else:
+            return attn_output, None, scores_raw
+
 
 
 class LCR_Block(nn.Module):
@@ -1568,7 +1730,7 @@ class LCR_Block_modifiedOutput_moreParameters(nn.Module):
         return four_corr, particle_prob, particle_cls_logits, attn_w_all, seed_padding_mask
 
 class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
-    def __init__(self, embed_dim_=17, embed_dim=128, num_heads=8, num_layers=8, feat_dim=5, num_particle_classes=5):
+    def __init__(self, embed_dim_=17, embed_dim=128, num_heads=8, num_layers=8, feat_dim=5, num_particle_classes=5, score_raw=False):
         super().__init__()
         self.k_embed = nn.Sequential(
             nn.Linear(embed_dim_, embed_dim),
@@ -1588,7 +1750,8 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
 
         # Cross-attention blocks
         self.layers = nn.ModuleList([
-            CrossAttnBlock(embed_dim, num_heads) for _ in range(num_layers)
+            CrossAttnBlock(embed_dim, num_heads, score_raw) for _ in range(num_layers)
+            # MultiheadAttentionNoSoftmax(embed_dim, num_heads) for _ in range(num_layers)
         ])
 
         # self.mass_pred = nn.Linear(embed_dim, 1)
@@ -1641,11 +1804,13 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
 
         # --- stacked cross-attention ---
         attn_w_all = []
+        raw_scores = []
         for layer in self.layers:
-            Q_new, attn_w = layer(Q, K, V, key_padding_mask=(~hit_mask.bool() if hit_mask is not None else None))
+            Q_new, attn_w, score = layer(Q, K, V, key_padding_mask=(~hit_mask.bool() if hit_mask is not None else None))
             # Q = Q + Q_new
             Q = F.layer_norm(Q + Q_new, Q.shape[-1:])
             attn_w_all.append(attn_w)
+            raw_scores.append(score)
 
         attn_out = Q  # 最終出力 (B, Kmax, D)
         w = attn_w_all[-1]  # 最終層の attention map を返す
@@ -1665,7 +1830,7 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
         particle_cls_logits = self.classifier_head(attn_out)
         # particle_cls_logits = self.classifier_head(attn_out).softmax(-1)
 
-        return four_corr, particle_prob, particle_cls_logits, attn_w_all
+        return four_corr, particle_prob, particle_cls_logits, attn_w_all, raw_scores
 
 
 """

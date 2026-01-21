@@ -887,6 +887,7 @@ def main():
     parser.add_argument('--loss-specify', action='store_true', help='turn on pid in LCR')           
     parser.add_argument('--lcr-block', action='store_true', help='Use LCR block')
     parser.add_argument('--soft-matching', action='store_true', help='Use soft matching loss')
+    parser.add_argument('--score-raw', action='store_true', help='Use raw scaled dot product (not softmaxed)')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -994,7 +995,7 @@ def main():
     # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
     # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
 
-    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5).to(device)
+    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5, score_raw=args.score_raw).to(device)
     lcr_model.to(device)
     
     # optimizer = torch.optim.AdamW(lcr_model.parameters(), lr=2e-4, weight_decay=1e-2)
@@ -1103,7 +1104,7 @@ def main():
                 #     unique_label = [torch.unique(t[:,1:3], dim=0) for t in unique_label]
                 #     unique_label = [pdg_id_to_class(t[:,1]) for t in unique_label]
                 if args.lcr_block and args.pid: 
-                    pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
+                    pred_fourvec, particle_prob, particle_cls_logits, attn_w, raw_scores = lcr_model(hit_embed, query, hit_mask=hit_mask)
                     # pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
 
                 #     unique_label = split_by_batch(data.label[:,1:4], data.batch)
@@ -1141,11 +1142,25 @@ def main():
                 #     print(attn_list_.shape, mcid_by_batch_.shape, truth_four_vector_.shape)
                 # indices = truth_based_assignment(attn_list, mcid_by_batch)
 
+                # print(raw_scores[-1])
+                # print(attn_w[-1])
+                if args.score_raw:
+                    key_to_query = torch.softmax(raw_scores[-1], dim=-2)
+                    key_to_query = torch.nan_to_num(key_to_query, nan=0.0)
+                    attention_weight = key_to_query.mean(dim=1)
+                    # raw_scores_t = raw_scores[-1].transpose(-2, -1)
+                    # key_to_query = torch.softmax(raw_scores_t, dim=-1)
+                    # key_to_query = key_to_query.transpose(-2, -1)
+                    # key_to_query_attn_w = key_to_query.mean(dim=1)
+                else:
+                    attention_weight = raw_scores[-1]
+
                 # if args.lcr_block and args.pid and args.loss_specify: loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
                 if args.lcr_block and args.pid and args.loss_specify: 
                     cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
                     loss, components = clustering_loss(
-                        attn_w[-1],
+                        attention_weight,
+                        raw_scores[-1],
                         cluster_id_pad,
                         hit_embed[:,:,0],
                         seed_track_mask,
@@ -1208,13 +1223,21 @@ def main():
                 query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
 
                 if args.lcr_block and args.pid: 
-                    pred_fourvec, particle_prob, particle_cls_logits, attn_w = lcr_model(hit_embed, query, hit_mask=hit_mask)
+                    pred_fourvec, particle_prob, particle_cls_logits, attn_w, raw_scores = lcr_model(hit_embed, query, hit_mask=hit_mask)
+                
+                if args.score_raw:
+                    key_to_query = torch.softmax(raw_scores[-1], dim=-2)
+                    key_to_query = torch.nan_to_num(key_to_query, nan=0.0)
+                    attention_weight = key_to_query.mean(dim=1)
+                else:
+                    attention_weight = raw_scores[-1]
 
                 if args.lcr_block and args.pid and args.loss_specify:
                     # loss, components = lcr_hungarian_loss(pred_fourvec, truth_four_vector, particle_prob, indices, particle_cls_logits, true_cls, attn_w[-1], mcid_by_batch)
                     cluster_id_pad, cluster_id_mask = split_by_batch_padded_1d(data.label[:,1], data.batch)
                     loss, components = clustering_loss(
-                        attn_w[-1],
+                        attention_weight,
+                        raw_scores[-1],
                         cluster_id_pad,
                         hit_embed[:,:,0],
                         seed_track_mask,
@@ -1261,7 +1284,7 @@ def main():
         learning_rates.append(optimizer.param_groups[0]["lr"])
         print("learning rate : ", learning_rates)
         train_loss_history.append(train_loss)
-        print("train loss : ", train_loss)
+        # print("train loss : ", train_loss)
         write_checkpoint(i_epoch)
 
         test_loss= test(i_epoch)

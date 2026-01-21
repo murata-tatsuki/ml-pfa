@@ -129,11 +129,13 @@ alphbeta=alpha
 ## nnqq
 outputD=5
 ncuda=3
-# alphbeta=alpha_tracker_diff_log_perCluster
+alphbeta=alpha_tracker_diff_log_perCluster
 sumdis=sum_log_perCluster
 # python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-4 --lr-policy cosineReduce --clip-value 10 --l-beta-suppression --ddp > log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
 # alphbeta=weight
 # python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/train -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --LE-track ${alphbeta} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp > log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
+## nnqq brems cut
+python train.py -i /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/train -ii /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-4 --lr-policy cosineReduce --clip-value 10 --ddp > log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
 
 
 
@@ -150,7 +152,9 @@ alphbeta=alpha_tracker_diff_log_perCluster
 
 ## fine tuning using nnqq, neutron, gamma, kaon samples
 ckpt=checkpoint/energy_regression/ckpts_gravnet_new02_2025_09_30_105247_outputD5/ckpt_499_1.pth.tar
-# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/mixed/train/less_sample/eventCut/eventCut -ii /data/suehara/mldata/pfa/murata/data/tc/mixed/validation/less_sample/eventCut/eventCut --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 2e-5 --lr-policy cosineReduce --clip-value 10 --ddp --model-ckpt ${ckpt} > log/energy_regression/tc_mixed_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
+# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/mixed/train/less_sample/eventCut/eventCut -ii /data/suehara/mldata/pfa/murata/data/tc/mixed/validation/less_sample/eventCut/eventCut --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 2e-5 --lr-policy cosineReduce --clip-value 10 --ddp --model-ckpt ${ckpt} --epochs-nobeta -1 --epochs-noLE -1 > log/energy_regression/tc_mixed_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
+
+
 
 
 outputD=5

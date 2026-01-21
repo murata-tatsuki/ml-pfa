@@ -137,7 +137,7 @@ def save_pred(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
         model_gnn = get_model_branch(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
         model_gnn = get_model(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
-    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, pid=args.pid, ddp=args.ddp)
+    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, pid=args.pid, ddp=args.ddp, score_raw=args.score_raw)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp)
     yielder = TestYielder_transformer_Like_Clustering(model=model_gnn, dataset=dataset, device=device, pandora=pandora)
@@ -259,9 +259,17 @@ def save_pred(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, t
         hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
         query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
         if args.lcr_block and args.pid: 
-            pred_fourvec, particle_prob, particle_cls_logits, attn_w = model_clustering(hit_embed, query, hit_mask=hit_mask)
+            pred_fourvec, particle_prob, particle_cls_logits, attn_w, raw_scores = model_clustering(hit_embed, query, hit_mask=hit_mask)
 
-        attn_weight = match_hits_to_queries(attn_w[-1]).to('cpu').detach().numpy().copy()
+        attention = raw_scores[-1].mean(dim=1)
+        torch.set_printoptions(edgeitems=10000)
+        print(attention.transpose(1, 2)[0,0,:])
+        print(attention.transpose(1, 2).shape)
+        attention = F.softmax(attention, dim=1)
+
+        attn_weight = match_hits_to_queries(attention).to('cpu').detach().numpy().copy()
+        np.set_printoptions(threshold=10000)
+        print(attn_weight)
         pred_fourvec_np = pred_fourvec.to('cpu').detach().numpy().copy()
 
         trans_clustering = attn_weight[0].reshape(-1,1)
@@ -344,6 +352,7 @@ def main():
     parser.add_argument('--ddp', action='store_true', help='Use ddp for training')
     parser.add_argument('--classification', action='store_true', help='turn on claasification in LCR')
     parser.add_argument('--pid', action='store_true', help='turn on pid in LCR')
+    parser.add_argument('--score-raw', action='store_true', help='Use raw score for cross attention')
 
     args = parser.parse_args()
     

@@ -19,9 +19,9 @@ outfile=test.root
 # python save_root_mlclustering.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 10 False 7 5 --energy-regression --energy-regression-cluster  --momentum --momentum-amp
 # python save_root_mlclustering.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 10 False 7 5 --device cuda:1 --energy-regression --energy-regression-cluster  --momentum --momentum-amp --lcr-block
 checkpoint_gnn=energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_499_1.pth.tar
-checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_11_30_064534_outputD5/ckpt_74_1.pth.tar
-outfile=test_1130.root
-python save_root_mlclustering_edit.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 50000 False 7 5 --device cuda:0 --energy-regression --energy-regression-cluster  --momentum --momentum-amp --lcr-block --pid
+checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_12_19_164650_outputD5/ckpt_79_1.pth.tar
+outfile=test_1220.root
+python save_root_mlclustering_edit_rawScore.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} test/${outfile} 0 50000 False 7 5 --device cpu --energy-regression --energy-regression-cluster --momentum --momentum-amp --lcr-block --pid --score-raw
 
 ## nnqq
 checkpoint_gnn=energy_regression/ckpts_gravnet_new02_2025_09_10_154302_outputD5/ckpt_495_1.pth.tar

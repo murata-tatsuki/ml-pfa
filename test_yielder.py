@@ -572,10 +572,11 @@ def match_hits_to_queries(attn_weights):
     return hit_to_query
 
 class TestYielderWithMLClustering_trackQuery(TestYielder):
-    def __init__(self, model_clustering=None, energyRegression=False, energyRegressionCluster=False, energyRegressionWeight=False, classification=False, pid=False, *args, **kwargs):
+    def __init__(self, model_clustering=None, energyRegression=False, energyRegressionCluster=False, energyRegressionWeight=False, classification=False, pid=False, score_raw=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.classification = classification
         self.pid = pid
+        self.score_raw = score_raw
         self.model_clustering = get_model(jit=False) if model_clustering is None else model_clustering
         self.energyRegression=energyRegression
         self.energyRegressionCluster=energyRegressionCluster
@@ -710,7 +711,16 @@ class TestYielderWithMLClustering_trackQuery(TestYielder):
                 hit_embed, hit_mask     = self.pad_and_mask_batch(hit_features, data.batch)
 
                 query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
-                pred_fourvec, particle_prob, particle_cls_logits, attn_w = self.model_clustering(hit_embed, query, hit_mask=hit_mask)
+                pred_fourvec, particle_prob, particle_cls_logits, attn_w, raw_scores = self.model_clustering(hit_embed, query, hit_mask=hit_mask)
+
+                if self.score_raw:
+                    key_to_query  = raw_scores[-1].mean(dim=1)
+                    attention_weight = torch.softmax(key_to_query, dim=1)
+                    # key_to_query = torch.softmax(raw_scores[-1], dim=-2)
+                    # key_to_query = torch.nan_to_num(key_to_query, nan=0.0)
+                    # attention_weight = key_to_query.mean(dim=1)
+                else:
+                    attention_weight = attn_w[-1]
 
                 unique_label = self.split_by_batch(data.label[:,1:4], data.batch)
                 unique_label = [torch.unique(t, dim=0) for t in unique_label]
@@ -721,12 +731,12 @@ class TestYielderWithMLClustering_trackQuery(TestYielder):
                 truth_four_vector = self.split_by_batch_unique(truth_four_vector_torchTensor, data.batch)
                 truth_four_vector_torchTensor, true_mask = self.split_by_batch_padded(truth_four_vector_torchTensor, data.batch)
 
-                yield i, data, out_gravnet, pred_fourvec, truth_four_vector, hit_mask, particle_prob, particle_cls_logits, attn_w
+                yield i, data, out_gravnet, pred_fourvec, truth_four_vector, hit_mask, particle_prob, particle_cls_logits, attn_w, attention_weight
 
     def iter_pred(self, nmax=None):
         with torch.no_grad():
             self.model.eval()
-            for i, data, out_gravnet, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn in self.iter_clustering_model(nmax):
+            for i, data, out_gravnet, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn, attention_weight in self.iter_clustering_model(nmax):
                 
                 event = Event(data, self.pandora, self.event_energy)
 
@@ -804,12 +814,16 @@ class TestYielderWithMLClustering_trackQuery(TestYielder):
                     prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None, None, None, None, None) #w/o noise
                     # print(event.pand)
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
-                yield i, event, prediction, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn
+                yield i, event, prediction, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn, attention_weight
 
     def iter_clustering(self, nmax=None):
-        for event_num, event, prediction, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn in self.iter_pred(nmax):
-            attn_weight = match_hits_to_queries(attn[-1]).detach().numpy().copy()
-            trans_clustering = attn_weight[0]
+        for event_num, event, prediction, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn, attention_weight in self.iter_pred(nmax):
+            if self.score_raw:
+                attn_weight = match_hits_to_queries(attention_weight).detach().numpy().copy()
+                trans_clustering = attn_weight[0]
+            else:
+                attn_weight = match_hits_to_queries(attn[-1]).detach().numpy().copy()
+                trans_clustering = attn_weight[0]
             yield event_num, event, prediction, pred_fourvec, truth_four_vector, mask, pcl_prob, cls_logits, attn, trans_clustering
 
     def iter_matches(self, nmax=None):

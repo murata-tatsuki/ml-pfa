@@ -448,7 +448,7 @@ def attention_cluster_loss(attn, truth_cluster, is_track_query, eps=1e-8):
     }
 """
 
-def attention_loss(
+def attention_loss_old(
     attn,                  # (B, Nq, Nk) softmax済み attention
     truth_cluster,         # (B, N_hits) int cluster ID
     beta,                  # (B, N_hits) in [0,1]
@@ -626,9 +626,133 @@ def attention_loss(
     
     return loss_charged, loss_neutral, loss_attn_pad, loss_attn_dead, loss_particle_prob
 
+def attention_loss(
+    attn,                  # (B, Nq, Nk) softmax済み attention
+    raw_score,             # (B, H, Nq, Nk) softmaxしていない raw な attention
+    truth_cluster,         # (B, N_hits) int cluster ID
+    beta,                  # (B, N_hits) in [0,1]
+    is_track_query,        # (B, Nq) bool mask, True if query is track
+    query_mask=None,       # (B, Nq) bool mask, True if valid
+    key_mask=None,         # (B, Nk) bool mask, True if valid
+    query_indices_in_key=None,
+    particle_prob=None,
+    eps=1e-8
+    ):
+    """
+    β-weighted cross attention loss with padding mask support.
+    """
+    B, Nq, Nk = attn.shape
+    assert(Nk == truth_cluster.shape[1])
+
+    # --- cluster broadcast ---
+    truth_cluster_q = truth_cluster.gather(1, query_indices_in_key)  # (B, Nq)
+    q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
+    k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
+    pos_mask = (q_cluster == k_cluster)  # same cluster
+    torch.set_printoptions(edgeitems=10000)
+    print(q_cluster[0])
+    print(k_cluster[0])
+    print(pos_mask.shape)
+    print(pos_mask[0])
+
+    valid_query_mask = query_mask if query_mask is not None else torch.ones(B, Nq, dtype=torch.bool, device=attn.device)
+    # -------------------------------
+    # Detect duplicate queries per (batch, cluster)
+    # - only consider queries with valid_query_mask == True
+    # - for each cluster keep the first (lowest index) query, mark others as dead
+    # dead_query_mask: (B, Nq) bool, True means "this is a duplicate (2nd+) query"
+    # -------------------------------
+    dead_query_mask = torch.zeros(B, Nq, dtype=torch.bool, device=attn.device)
+    for b in range(B):
+        qc = truth_cluster_q[b]         # (Nq,)
+        vmask = valid_query_mask[b]     # (Nq,)
+        # iterate in index order; record first occurrence of each cluster id
+        seen = {}
+        # go through only valid queries, in increasing index order
+        valid_idx = torch.nonzero(vmask, as_tuple=False).flatten()
+        for qi in valid_idx.tolist():
+            cid = int(qc[qi].item())
+            # If cluster id is padding-like (e.g. -1), skip marking (treat as no-cluster)
+            # (Assumes padding cluster ids are negative; adjust if different)
+            if cid < 0:
+                continue
+            if cid in seen:
+                # this is second+ occurrence -> mark dead
+                dead_query_mask[b, qi] = True
+            else:
+                seen[cid] = qi
+
+    # -------------------------------
+    # Remove pos_mask (truth matching) for dead queries so they do not get correct-target credit.
+    # We still keep their attention values (so we can penalize them), but they must not match truth.
+    # pos_mask: (B, Nq, Nk)
+    # -------------------------------
+    # if dead_query_mask.any():
+    #     pos_mask = pos_mask.clone()
+    #     pos_mask[dead_query_mask.unsqueeze(2).expand_as(pos_mask)] = False
+
+    # -------------------------------
+    # cross attention matching: Cross Entropy style
+    # -------------------------------
+    loss_charged = hitwise_clustering_ce_loss(raw_score, pos_mask, query_mask, key_mask)
+    # loss_charged = hitwise_clustering_ce_loss_from_probs(attn, pos_mask, query_mask, key_mask)
+    loss_neutral = torch.tensor(0.0, device=attn.device)
+    
+    # -------------------------------
+    # L1 penalty for dead (duplicate) queries
+    # -------------------------------
+    lambda_attn = 3.0
+    if dead_query_mask.any():
+        # dead_query_mask: (B, Nq) -> expand to (B, Nq, 1) to match attn shape
+        dead_mask_exp = dead_query_mask.unsqueeze(-1).float()  # (B, Nq, 1)
+        # L1 penalty: mean absolute attention over dead queries only
+        loss_attn_dead = lambda_attn * torch.mean(torch.abs(attn * dead_mask_exp))
+    else:
+        loss_attn_dead = torch.tensor(0.0, device=attn.device)
+
+    
+    # -------------------------------
+    # L1 penalty for invalid queries
+    # -------------------------------
+    if query_mask is not None:
+        invalid_query = (~query_mask).float().unsqueeze(-1)   # (B, Nq, 1)
+        loss_attn_pad = lambda_attn * torch.mean(torch.abs(attn * invalid_query))
+    else:
+        loss_attn_pad = torch.tensor(0.0, device=attn.device)
+    
+
+
+
+    # particle_prob : (B, Nq) with values in [0,1]
+
+    # teacher signal
+    # target = 1 for alive queries, 0 for padding & dead queries
+    alive_mask = valid_query_mask & (~dead_query_mask)
+
+    target_particle_prob = alive_mask.float()   # (B, Nq)
+    
+    # BCE loss
+    loss_particle_prob = F.binary_cross_entropy(
+        particle_prob.clamp(min=1e-6, max=1.0-1e-6),
+        target_particle_prob
+    )
+
+
+    # -------------------------------
+    # 合算
+    # -------------------------------
+    # loss_charged = loss_charged * 100
+    loss_charged = loss_charged
+    loss_neutral = loss_neutral * 100
+    loss_attn_pad = loss_attn_pad * 100
+    loss_particle_prob = loss_particle_prob * 100
+    
+    return loss_charged, loss_neutral, loss_attn_pad, loss_attn_dead, loss_particle_prob
+
 
 def clustering_loss(
     attn,                  # (B, Nq, Nk) softmax済み attention
+    raw_score,             # (B, Nq, Nk) softmaxしていない rawな attention
     truth_cluster,         # (B, N_hits) int cluster ID
     beta,                  # (B, N_hits) in [0,1]
     is_track_query,        # (B, Nq) bool mask, True if query is track
@@ -642,7 +766,7 @@ def clustering_loss(
 
 
     loss_charged, loss_neutral, loss_attn_pad, loss_attn_dead, loss_particle_prob = attention_loss(
-        attn, truth_cluster, beta, is_track_query, query_mask=query_mask, key_mask=key_mask, query_indices_in_key=query_indices_in_key ,particle_prob=particle_prob)
+        attn, raw_score, truth_cluster, beta, is_track_query, query_mask=query_mask, key_mask=key_mask, query_indices_in_key=query_indices_in_key ,particle_prob=particle_prob)
     
 
     total_loss = loss_charged + loss_neutral + loss_attn_pad + loss_particle_prob
@@ -663,6 +787,126 @@ def clustering_loss(
     )
 
     return total_loss / B, components
+
+
+def hitwise_clustering_ce_loss(
+    logits,             # (B, H, Nq, Nk)
+    truth_clustering,   # (B, Nq, Nk)
+    query_mask,         # (B, Nq)
+    key_mask,           # (B, Nk)
+    eps=1e-12
+    ):
+    logits = logits.mean(dim=1)
+    B, Nq, Nk = logits.shape
+
+    if query_mask is not None:
+        q_mask = torch.logical_not(query_mask.unsqueeze(2).expand(B, Nq, Nk))
+        truth_clustering[q_mask] = False
+    if key_mask is not None:
+        k_mask = torch.logical_not(key_mask.unsqueeze(1).expand(B, Nq, Nk))
+        truth_clustering[k_mask] = False
+
+    # --------------------------------------------------
+    # hit をバッチ軸に展開
+    # --------------------------------------------------
+    # (B, Nq, Nk) -> (B, Nk, Nq)
+    logits = logits.permute(0, 2, 1)
+    truth  = truth_clustering.permute(0, 2, 1)
+
+    # (B, Nk, Nq) -> (B*Nk, Nq)
+    logits = logits.reshape(B * Nk, Nq)
+    truth  = truth.reshape(B * Nk, Nq)
+
+    print(logits[0])
+    print(truth[0])
+
+    # --------------------------------------------------
+    # mask 整形
+    # --------------------------------------------------
+    hit_mask   = key_mask.reshape(B * Nk)           # (B*Nk)
+    query_mask = query_mask.unsqueeze(1)             # (B,1,Nq)
+    query_mask = query_mask.expand(B, Nk, Nq)
+    query_mask = query_mask.reshape(B * Nk, Nq)      # (B*Nk,Nq)
+
+    # --------------------------------------------------
+    # 無効 query を softmax 競合から除外
+    # --------------------------------------------------
+    logits = logits.masked_fill(query_mask == 0, -1e4)
+
+    # --------------------------------------------------
+    # log-softmax（query 方向）
+    # --------------------------------------------------
+    log_probs = F.log_softmax(logits, dim=-1)
+
+    # --------------------------------------------------
+    # cross entropy（soft label 対応）
+    # --------------------------------------------------
+    loss_per_hit = -(truth * log_probs).sum(dim=-1)  # (B*Nk)
+
+    # --------------------------------------------------
+    # 無効 hit を除外
+    # --------------------------------------------------
+    loss_per_hit = loss_per_hit * hit_mask
+
+    # --------------------------------------------------
+    # 正規化
+    # --------------------------------------------------
+    loss = loss_per_hit.sum() / hit_mask.sum().clamp_min(eps)
+
+    return loss
+
+def hitwise_clustering_ce_loss_from_probs(
+    probs,              # (B, Nq, Nk), softmax over Nq
+    truth_clustering,   # (B, Nq, Nk)
+    query_mask,         # (B, Nq)
+    key_mask,           # (B, Nk)
+    eps=1e-12
+    ):
+    B, Nq, Nk = probs.shape
+
+    # --------------------------------------------------
+    # hit をサンプル軸に展開
+    # --------------------------------------------------
+    # (B, Nq, Nk) -> (B, Nk, Nq)
+    probs = probs.permute(0, 2, 1)
+    truth = truth_clustering.permute(0, 2, 1)
+
+    # (B, Nk, Nq) -> (B*Nk, Nq)
+    probs = probs.reshape(B * Nk, Nq)
+    truth = truth.reshape(B * Nk, Nq)
+
+    # --------------------------------------------------
+    # mask 整形
+    # --------------------------------------------------
+    hit_mask = key_mask.reshape(B * Nk)               # (B*Nk)
+
+    query_mask = query_mask.unsqueeze(1)              # (B,1,Nq)
+    query_mask = query_mask.expand(B, Nk, Nq)
+    query_mask = query_mask.reshape(B * Nk, Nq)
+
+    # --------------------------------------------------
+    # 無効 query を除外 → 再正規化
+    # --------------------------------------------------
+    probs = probs * query_mask
+    probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(eps)
+
+    # --------------------------------------------------
+    # cross entropy（soft label 対応）
+    # --------------------------------------------------
+    log_probs = torch.log(probs.clamp_min(eps))
+    loss_per_hit = -(truth * log_probs).sum(dim=-1)   # (B*Nk)
+
+    # --------------------------------------------------
+    # 無効 hit を除外
+    # --------------------------------------------------
+    loss_per_hit = loss_per_hit * hit_mask
+
+    # --------------------------------------------------
+    # 正規化
+    # --------------------------------------------------
+    loss = loss_per_hit.sum() / hit_mask.sum().clamp_min(eps)
+
+    return loss
 
 
 

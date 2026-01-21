@@ -1,0 +1,2210 @@
+from typing import Tuple, Union, Dict
+import numpy as np
+import torch
+import torch.nn.functional
+from torch_scatter import scatter_max, scatter_add, scatter_mean
+
+
+def assert_no_nans(x):
+    """
+    Raises AssertionError if there is a nan in the tensor
+    """
+    assert not torch.isnan(x).any()
+
+
+# FIXME: Use a logger instead of this
+DEBUG = False
+def debug(*args, **kwargs):
+    if DEBUG: print(*args, **kwargs)
+
+def calc_L_E(
+    tracker_energy: torch.Tensor,
+    mcp_energy: torch.Tensor, # mc truth energy
+    detected_energy: torch.Tensor,
+    beta: torch.Tensor,
+    index_alpha, index_alpha_track, is_trk, object_index,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    pred_cluster_energy = None,
+    batch_object=torch.tensor(1),
+    n_objects_per_event=torch.tensor(1),
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    device = beta.device
+
+    # ________________________________      ## need to modify
+    # energy regression term condensation point energy
+    # L_E = torch.tensor(0).to(device)
+    L_E_cond = torch.tensor(0).to(device)
+    L_E_charge = torch.tensor(0).to(device)
+    # mse = torch.square(tracker_energy - mcp_energy)                             ## betaMSE
+    # mse = torch.square(tracker_energy - mcp_energy)[index_alpha]        ## alphaMSE
+    # print(mse)
+    # print(mse[is_trk])
+    # L_E = torch.sum(mse[is_trk]) / torch.numel(mse[is_trk])
+    # L_E = torch.dot(mse,beta) / torch.numel(mse)                                              ## betaMSE
+    # L_E = torch.dot(mse[index_alpha],beta[index_alpha]) / torch.numel(mse)        ## alphaMSE
+    if LE_track == 'alpha':
+        mse = torch.square(tracker_energy - mcp_energy)
+        L_E_cond = torch.sum(mse[index_alpha])                                                   ## alphaMSE     no beta
+    if LE_track == 'alpha_tracker':
+        mse = torch.square(tracker_energy - mcp_energy)
+        L_E_cond = torch.sum(mse[index_alpha_track])
+    if LE_track == 'alpha_rmsle':
+        mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha] + 1), torch.log(mcp_energy[index_alpha] + 1))
+        L_E_cond = torch.sqrt(mse)
+    if LE_track == 'alpha_tracker_rmsle':
+        mse = torch.nn.functional.mse_loss(torch.log(tracker_energy[index_alpha_track] + 1), torch.log(mcp_energy[index_alpha_track] + 1))
+        L_E_cond = torch.sqrt(mse)
+    if LE_track == 'alpha_tracker_diff_log':
+        mse = torch.log( torch.abs(tracker_energy[index_alpha_track] - mcp_energy[index_alpha_track])+1.0 )
+        L_E_cond = torch.sum(mse)
+    if LE_track == 'alpha_tracker_diff_log_perCluster':
+        mse = torch.log( torch.abs(tracker_energy[index_alpha_track] - mcp_energy[index_alpha_track])+1.0 )
+        L_E_cond = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+    if LE_track == 'alpha_modifing':
+        mse = torch.square(tracker_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E_cond = torch.sum(mse[index_alpha])
+    if LE_track == 'alpha_sqrtdiv':
+        mse = torch.square(tracker_energy - mcp_energy)/mcp_energy
+        L_E_cond = torch.sum(mse[index_alpha])
+    if LE_track == 'alpha_tracker_sqrtdiv':
+        mse = torch.square(tracker_energy - mcp_energy)/mcp_energy
+        L_E_cond = torch.sum(mse[index_alpha_track])
+    if LE_track == 'alpha_tracker_modifing':
+        mse = torch.square(tracker_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E_cond = torch.sum(mse[index_alpha_track])
+    if LE_track == 'alpha_tracker_modifing_all0':
+        mse = torch.square(tracker_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E_cond = torch.sum(mse[index_alpha])
+    if LE_track == 'alpha_tracker_modifing_charged0':
+        mse = torch.square(tracker_energy - mcp_energy)
+        mse = mse[torch.where(mcp_energy>0)]
+        L_E_charge = torch.sum(mse[index_alpha_track])
+        L_E_cond = torch.sum(mse[index_alpha])
+    elif LE_track == 'alpha_ratio':
+        mse = torch.square(tracker_energy - mcp_energy)
+        mse = mse[index_alpha]
+        # mse = torch.square((tracker_energy - mcp_energy)/mcp_energy)
+        energy2 = torch.square(mcp_energy)
+        energy2 = energy2[index_alpha]
+        L_E_cond = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
+    elif LE_track == 'betaE':
+        # L_E = torch.norm(tracker_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
+        L_E_cond = torch.sum(torch.square(tracker_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
+
+    ## cluster energy (neutral particle energy regression) truth are Edep/sum(Edep) * Emc sumasion is for a truth cluser
+    L_E_cluster = torch.tensor(0).to(device)
+    if Ecl_regression:
+        assert(pred_cluster_energy is not None)
+        assert(pred_cluster_energy.size()==detected_energy.size())
+        # print(is_trk.size(), detected_energy.size())
+        cluster_energy_truth = cluster_energy_distribution(cluster_id=object_index[~is_trk], detected_energy=detected_energy[~is_trk], truth_energy=mcp_energy[~is_trk])
+        target = torch.zeros(pred_cluster_energy[is_trk].size()[0]).to(device)
+
+        LE_cluster_coef = 1 if (LE_cluster == 'sum_log' or LE_cluster == 'sum_log_perCluster') else 5
+
+        if LE_cluster == 'distribution':
+            ##
+            # L_E_cluster = torch.nn.functional.mse_loss(input=pred_cluster_energy[~is_trk], target=cluster_energy_truth, reduction='none').sum()
+            ##
+            # L_E_cluster = torch.nn.functional.mse_loss(input=pred_cluster_energy[~is_trk], target=cluster_energy_truth)
+            # L_E_cluster += torch.nn.functional.mse_loss(input=pred_cluster_energy[is_trk], target=target)
+            ##
+            L_E_cluster = torch.nn.functional.mse_loss(input=pred_cluster_energy[~is_trk], target=cluster_energy_truth, reduction='none').sum()
+            L_E_cluster += torch.nn.functional.mse_loss(input=pred_cluster_energy[is_trk], target=target, reduction='none').sum()
+            ##
+            L_E_cluster = L_E_cluster * LE_cluster_coef
+        if LE_cluster == 'sum' or LE_cluster == 'sum_log':
+            # L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk]) * 2
+            L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk], batch_object=batch_object, n_objects_per_event=n_objects_per_event,loss_=LE_cluster) * LE_cluster_coef
+        if LE_cluster == 'sum_log_perCluster':
+            L_E_cluster = calc_caloCluster_loss(cluster_id=object_index, predicted_energy=pred_cluster_energy, truth_energy=mcp_energy, batch_object=batch_object, n_objects_per_event=n_objects_per_event,loss_=LE_cluster) * LE_cluster_coef
+        ##
+    # L_E += L_E_cluster
+
+    L_E_cond = L_E_cond * er_coef
+    L_E_charge = L_E_charge * er_coef
+    L_E_cluster = L_E_cluster * er_coef
+    L_E = L_E_cond + L_E_cluster
+
+    return L_E_cond, L_E_charge, L_E_cluster, L_E
+
+def calc_L_E_weight(
+    tracker_energy: torch.Tensor,
+    mcp_energy: torch.Tensor, # mc truth energy
+    detected_energy: torch.Tensor,
+    beta: torch.Tensor,
+    index_alpha, index_alpha_track, is_trk, object_index,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    pred_cluster_energy = None,
+    batch_object=torch.tensor(1),
+    n_objects_per_event=torch.tensor(1),
+    mcpdg = torch.tensor(1),
+    weight_photon = torch.tensor(1),
+    weight_hadron = torch.tensor(1),
+    weight_muon = torch.tensor(1),
+    weight_electron = torch.tensor(1),
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    device = beta.device
+
+    # ________________________________      ## need to modify
+    # energy regression term condensation point energy
+    L_E_w_photon = torch.tensor(0).to(device)
+    L_E_w_hadron = torch.tensor(0).to(device)
+    L_E_w_muon = torch.tensor(0).to(device)
+    L_E_w_electron = torch.tensor(0).to(device)
+
+    print(detected_energy.size(), weight_photon.size(), weight_hadron.size(), weight_muon.size(), weight_electron.size(), mcpdg.size())
+
+    print(object_index.size(), n_objects_per_event)
+    
+    if LE_track == 'weight':
+        pdg_ids = [ torch.tensor([-22, 22], device=device), torch.tensor([-13, 13], device=device), torch.tensor([-11, 11], device=device)]
+
+        weights = [weight_photon, weight_muon, weight_electron]
+        loss = [L_E_w_photon, L_E_w_muon, L_E_w_electron]
+
+        for idx, (pdg_id, weight) in enumerate(zip(pdg_ids, weights)):
+            mcens = mcp_energy.clone()
+            mask = torch.isin(mcpdg, pdg_id)
+            mcens[~mask] = 0
+
+            weighted_edep = torch.mul(detected_energy, weight)
+
+            pred_energy_sum = scatter_add(weighted_edep, object_index)
+            truth_cluster_energy, argmax = scatter_max(mcens, object_index)
+
+            mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
+            loss[idx] = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+
+        mcens = mcp_energy.clone()
+        mask = torch.isin(mcpdg, torch.tensor([22, -13, 13, -11, 11], device=mcpdg.device))
+        mcens[mask] = 0
+
+        weighted_edep = torch.mul(detected_energy, weight_hadron)
+
+        pred_energy_sum = scatter_add(weighted_edep, object_index)
+        truth_cluster_energy, argmax = scatter_max(mcens, object_index)
+
+        mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
+        L_E_w_hadron = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+
+    L_E_w_photon, L_E_w_muon, L_E_w_electron = loss
+        
+
+    L_E_w_photon = L_E_w_photon * er_coef
+    L_E_w_hadron = L_E_w_hadron * er_coef
+    L_E_w_muon = L_E_w_muon * er_coef
+    L_E_w_electron = L_E_w_electron * er_coef
+
+    return L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron
+    
+
+def calc_L_E_weight_fast(
+    tracker_energy: torch.Tensor,
+    mcp_energy: torch.Tensor, # mc truth energy
+    detected_energy: torch.Tensor,
+    beta: torch.Tensor,
+    index_alpha, index_alpha_track, is_trk, object_index,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    pred_cluster_energy = None,
+    batch_object=torch.tensor(1),
+    n_objects_per_event=torch.tensor(1),
+    mcpdg = torch.tensor(1),
+    mccharge = torch.tensor(1),
+    weight_photon = torch.tensor(1),
+    weight_charged_hadron = torch.tensor(1),
+    weight_neutral_hadron = torch.tensor(1),
+    weight_muon = torch.tensor(1),
+    weight_electron = torch.tensor(1),
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
+    device = beta.device
+
+    # --- PDGグループ定義 ---
+    pdg_groups = torch.tensor([
+        [-22, 22],      # photon
+        [-13, 13],      # muon
+        [-11, 11],      # electron
+    ], device=device)
+    
+    weights = torch.stack([weight_photon, weight_muon, weight_electron], dim=1)  # (N_hit, 3)
+    
+    # --- 各ヒットがどのPDGカテゴリに属するかを判定 ---
+    # shape: (N_hit, 3)
+    mask_matrix = torch.stack([
+        torch.isin(mcpdg, pdg_groups[i]) for i in range(pdg_groups.size(0))
+    ], dim=1)
+    
+    # 各ヒットのtruth energyを各カテゴリに適用
+    # shape: (N_hit, 3)
+    mcens_matrix = mcp_energy.unsqueeze(1) * mask_matrix.float()
+    
+    # 重みづけされたedep (N_hit, 3)
+    weighted_edep_matrix = detected_energy.unsqueeze(1) * weights
+    
+    # clusterごとにsummation (broadcast)
+    # scatter_addは1D indexに対してのみ働くため、列ごとに一度に処理
+    pred_energy_sum = torch.stack([
+        scatter_add(weighted_edep_matrix[:, i], object_index)
+        for i in range(weighted_edep_matrix.size(1))
+    ], dim=1)  # shape: (N_cluster, 3)
+    
+    truth_cluster_energy = torch.stack([
+        scatter_max(mcens_matrix[:, i], object_index)[0]
+        for i in range(mcens_matrix.size(1))
+    ], dim=1)
+    
+    # loss計算
+    mse = torch.log(torch.abs(pred_energy_sum - truth_cluster_energy) + 1.0)
+    
+    # eventごとの正規化
+    loss = torch.stack([
+        (scatter_add(mse[:, i], batch_object) / n_objects_per_event).sum()
+        for i in range(mse.size(1))
+    ], dim=0)  # shape: (3,)
+    
+    # 残り（hadron: それ以外）
+    mask_all = mask_matrix.any(dim=1)
+    mask_hadron = ~mask_all
+    mask_neutral = mccharge==0
+    mask_charged = ~mask_neutral
+    
+    mcens_charged_hadron = mcp_energy * mask_hadron.float() * mask_charged.float()
+    mcens_neutral_hadron = mcp_energy * mask_hadron.float() * mask_neutral.float()
+    weighted_edep_charged_hadron = detected_energy * weight_charged_hadron
+    weighted_edep_neutral_hadron = detected_energy * weight_neutral_hadron
+
+    pred_energy_sum_charged_hadron = scatter_add(weighted_edep_charged_hadron, object_index)
+    pred_energy_sum_neutral_hadron = scatter_add(weighted_edep_neutral_hadron, object_index)
+    truth_cluster_energy_charged_hadron = scatter_max(mcens_charged_hadron, object_index)[0]
+    truth_cluster_energy_neutral_hadron = scatter_max(mcens_neutral_hadron, object_index)[0]
+    
+    mse_charged_hadron = torch.log(torch.abs(pred_energy_sum_charged_hadron - truth_cluster_energy_charged_hadron) + 1.0)
+    mse_neutral_hadron = torch.log(torch.abs(pred_energy_sum_neutral_hadron - truth_cluster_energy_neutral_hadron) + 1.0)
+    L_E_w_charged_hadron = (scatter_add(mse_charged_hadron, batch_object) / n_objects_per_event).sum()
+    L_E_w_neutral_hadron = (scatter_add(mse_neutral_hadron, batch_object) / n_objects_per_event).sum()
+    
+    # 結果
+    L_E_w_photon, L_E_w_muon, L_E_w_electron = loss
+
+    return L_E_w_photon, L_E_w_charged_hadron, L_E_w_neutral_hadron, L_E_w_muon, L_E_w_electron
+
+
+
+
+def calc_LV_Lbeta(
+    beta: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
+    charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option
+    cluster_index_per_event: torch.Tensor, # Truth hit->cluster index
+    mcp_energy: torch.Tensor, # mc truth energy
+    batch: torch.Tensor,
+    # From here on just parameters
+    qmin: float = 1.,
+    s_B: float = .1,
+    noise_cluster_index: int = 0, # cluster_index entries with this value are noise/noise
+    beta_stabilizing = 'soft_q_scaling',
+    huberize_norm_for_V_attractive = True,
+    beta_term_option = 'paper',
+    return_components = False,
+    beta_track_term = False,
+    beta_track_term_beginning = False,
+    force_track_alpha = False,
+    cluster_track_index: torch.Tensor = torch.empty(0),
+    tracker_energy = None,
+    detected_energy = None,
+    er_coef: float = 1.,
+    LE_track='betaE',
+    LE_cluster='distribution',
+    Ecl_regression=False,
+    weight_regression=False,
+    pred_cluster_energy = None,
+    l_beta_suppression = False,
+    epoch = 0,
+    mcpdg = torch.empty(0),
+    mccharge = torch.empty(0),
+    weight_photon = None,
+    weight_charged_hadron = None,
+    weight_neutral_hadron = None,
+    weight_muon = None,
+    weight_electron = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+    """
+    Calculates the L_V and L_beta object condensation losses.
+
+    Concepts:
+    - A hit belongs to exactly one cluster (cluster_index_per_event is (n_hits,)),
+      and to exactly one event (batch is (n_hits,))
+    - A cluster index of `noise_cluster_index` means the cluster is a noise cluster.
+      There is typically one noise cluster per event. Any hit in a noise cluster
+      is a 'noise hit'. A hit in an object is called a 'signal hit' for lack of a
+      better term.
+    - An 'object' is a cluster that is *not* a noise cluster. 
+
+    beta_stabilizing: Choices are ['paper', 'clip', 'soft_q_scaling']:
+        paper: beta is sigmoid(model_output), q = beta.arctanh()**2 + qmin
+        clip:  beta is clipped to 1-1e-4, q = beta.arctanh()**2 + qmin
+        soft_q_scaling: beta is sigmoid(model_output), q = (clip(beta)/1.002).arctanh()**2 + qmin
+
+    huberize_norm_for_V_attractive: Huberizes the norms when used in the attractive potential
+
+    beta_term_option: Choices are ['paper', 'short-range-potential']:
+        Choosing 'short-range-potential' introduces a short range potential around high
+        beta points, acting like V_attractive.
+
+    Note this function has modifications w.r.t. the implementation in 2002.03605:
+    - The norms for V_repulsive are now Gaussian (instead of linear hinge)
+    """
+    device = beta.device
+
+    # ________________________________
+    # Calculate a bunch of needed counts and indices locally
+
+    # cluster_index: unique index over events
+    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
+    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
+    cluster_index, n_clusters_per_event = batch_cluster_indices(cluster_index_per_event, batch)
+    n_clusters = n_clusters_per_event.sum()
+    n_hits, cluster_space_dim = cluster_space_coords.size()
+    batch_size = batch.max()+1
+    n_hits_per_event = scatter_count(batch)
+
+    # Index of cluster -> event (n_clusters,)
+    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
+
+    # Per-hit boolean, indicating whether hit is sig or noise
+    is_noise = cluster_index_per_event == noise_cluster_index
+    is_sig = ~is_noise
+    is_trk = is_sig & (cluster_track_index == 1)
+    n_hits_sig = is_sig.sum()
+    n_sig_hits_per_event = scatter_count(batch[is_sig])
+
+    # mark hits that should be associated to tracks
+    is_trk_cluster = is_trk.to(torch.float)
+    is_trk_cluster_prev = is_trk_cluster.clone() #for debug
+    
+
+    # Per-cluster boolean, indicating whether cluster is an object or noise
+    is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
+    is_object_track = scatter_max(is_trk.long(), cluster_index)[0].bool()
+    is_noise_cluster = ~is_object
+
+    # FIXME: This assumes noise_cluster_index == 0!!
+    # Not sure how to do this in a performant way in case noise_cluster_index != 0
+    if noise_cluster_index != 0: raise NotImplementedError
+    object_index_per_event = cluster_index_per_event[is_sig] - 1
+    object_index, n_objects_per_event = batch_cluster_indices(object_index_per_event, batch[is_sig])
+    n_hits_per_object = scatter_count(object_index)
+    batch_object = batch_cluster[is_object]
+    batch_object_track = batch_cluster[is_object_track]
+    n_objects = is_object.sum()
+    n_objects_track = is_object_track.sum()
+
+    assert object_index.size() == (n_hits_sig,)
+    assert is_object.size() == (n_clusters,)
+    assert torch.all(n_hits_per_object > 0)
+    assert object_index.max()+1 == n_objects
+
+    # ________________________________
+    # L_V term
+
+    # Calculate q
+    if beta_stabilizing == 'paper':
+        q = beta.arctanh()**2 + qmin
+    elif beta_stabilizing == 'clip':
+        beta = beta.clip(0., 1-1e-4)
+        q = beta.arctanh()**2 + qmin
+    elif beta_stabilizing == 'soft_q_scaling':
+        q = (beta.clip(0., 1-1e-4)/1.002).arctanh()**2 + qmin
+    else:
+        raise ValueError(f'beta_stablizing mode {beta_stabilizing} is not known')
+    assert_no_nans(q)
+    assert q.device == device
+    assert q.size() == (n_hits,)
+
+    # Calculate q_alpha, the max q per object, and the indices of said maxima
+    q_alpha, index_alpha = scatter_max(q[is_sig], object_index)
+    assert q_alpha.size() == (n_objects,)
+
+    if force_track_alpha:
+        q_track = q.clone().detach()
+        q_track[~is_trk] = 0
+
+        q_track_alpha, index_track_alpha = scatter_max(q_track[is_sig], object_index)
+        assert q_track_alpha.size() == (n_objects,)
+
+        q_alpha = torch.where(q_track_alpha > 0, q_track_alpha, q_alpha)
+        index_alpha = torch.where(q_track_alpha > 0, index_track_alpha, index_alpha)
+        #q_alpha = [qt_a if qt_a > 0 else q_a for qt_a, q_a in zip(q_track_alpha, q_alpha)]
+        #index_alpha = [idxt_a if qt_a > 0 else idx_a for idxt_a, qt_a, idx_a in zip(index_track_alpha, q_track_alpha, index_alpha)]
+
+    # Get the cluster space coordinates and betas for these maxima hits too
+    x_alpha = cluster_space_coords[is_sig][index_alpha]
+    beta_alpha = beta[is_sig][index_alpha]
+    assert x_alpha.size() == (n_objects, cluster_space_dim)
+    assert beta_alpha.size() == (n_objects,)
+
+    # Connectivity matrix from hit (row) -> cluster (column)
+    # Index to matrix, e.g.:
+    # [1, 3, 1, 0] --> [
+    #     [0, 1, 0, 0],
+    #     [0, 0, 0, 1],
+    #     [0, 1, 0, 0],
+    #     [1, 0, 0, 0]
+    #     ]
+    M = torch.nn.functional.one_hot(cluster_index).long()
+
+    # Anti-connectivity matrix; be sure not to connect hits to clusters in different events!
+    M_inv = get_inter_event_norms_mask(batch, n_clusters_per_event) - M
+
+    # Throw away noise cluster columns; we never need them
+    M = M[:,is_object]
+    M_inv = M_inv[:,is_object]
+    assert M.size() == (n_hits, n_objects)
+    assert M_inv.size() == (n_hits, n_objects)
+
+    # Calculate all norms
+    # Warning: Should not be used without a mask!
+    # Contains norms between hits and objects from different events
+    # (n_hits, 1, cluster_space_dim) - (1, n_objects, cluster_space_dim)
+    #   gives (n_hits, n_objects, cluster_space_dim)
+    norms = (cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)).norm(dim=-1)
+    assert norms.size() == (n_hits, n_objects)
+
+
+    # -------
+    # Attractive potential term
+
+    # First get all the relevant norms: We only want norms of signal hits
+    # w.r.t. the object they belong to, i.e. no noise hits and no noise clusters.
+    # First select all norms of all signal hits w.r.t. all objects, mask out later
+    norms_att = norms[is_sig]
+
+    # Power-scale the norms
+    if huberize_norm_for_V_attractive:
+        # Huberized version (linear but times 4)
+        # Be sure to not move 'off-diagonal' away from zero
+        # (i.e. norms of hits w.r.t. clusters they do _not_ belong to)
+        norms_att = huber(norms_att+1e-5, 4.)
+    else:
+        # Paper version is simply norms squared (no need for mask)
+        norms_att = norms_att**2
+    assert norms_att.size() == (n_hits_sig, n_objects)
+
+    # Now apply the mask to keep only norms of signal hits w.r.t. to the object
+    # they belong to
+    norms_att *= M[is_sig]
+
+    # Final potential term
+    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
+    V_attractive = q[is_sig].unsqueeze(-1) * q_alpha.unsqueeze(0) * norms_att
+    assert V_attractive.size() == (n_hits_sig, n_objects)
+    with torch.no_grad():
+        V_attractive_all = V_attractive
+
+    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum over events
+    V_attractive = scatter_add(V_attractive.sum(dim=0), batch_object) / n_hits_per_event
+    assert V_attractive.size() == (batch_size,)
+    L_V_attractive = V_attractive.sum()
+
+    assert is_sig.size()==is_trk.size()
+    with torch.no_grad():
+        is_trk_clu = get_clusters_with_track(cluster_index, is_trk)
+        V_attractive_charged = scatter_add(V_attractive_all[is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
+        L_V_attractive_charged = V_attractive_charged.sum()
+        V_attractive_neutral = scatter_add(V_attractive_all[~is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
+        L_V_attractive_neutral = V_attractive_neutral.sum()
+
+
+    # -------
+    # Repulsive potential term
+
+    # Get all the relevant norms: We want norms of any hit w.r.t. to 
+    # objects they do *not* belong to, i.e. no noise clusters.
+    # We do however want to keep norms of noise hits w.r.t. objects
+    # Power-scale the norms: Gaussian scaling term instead of a cone
+    # Mask out the norms of hits w.r.t. the cluster they belong to
+    norms_rep = torch.exp(-4.*norms**2) * M_inv
+    
+    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
+    V_repulsive = q.unsqueeze(1) * q_alpha.unsqueeze(0) * norms_rep
+    # No need to apply a V = max(0, V); by construction V>=0
+    assert V_repulsive.size() == (n_hits, n_objects)
+    with torch.no_grad():
+        V_repulsive_all = V_repulsive
+
+    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum up events
+    L_V_repulsive = (scatter_add(V_repulsive.sum(dim=0), batch_object)/n_hits_per_event).sum()
+    L_V = L_V_attractive + L_V_repulsive
+
+    with torch.no_grad():
+        L_V_repulsive_charged = (scatter_add(V_repulsive_all[is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
+        L_V_repulsive_neutral = (scatter_add(V_repulsive_all[~is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
+
+
+    # ________________________________
+    # L_beta term
+
+    # -------
+    # L_beta noise term
+    L_beta_noise = 0
+    
+    # n_noise_hits_per_event = scatter_count(batch[is_noise])
+    # L_beta_noise = s_B * (torch.where(n_noise_hits_per_event == 0, torch.zeros_like(n_noise_hits_per_event,dtype=torch.float32), (scatter_add(beta[is_noise], batch[is_noise])) / n_noise_hits_per_event)).sum()
+
+    #print(f'noise/event = {n_noise_hits_per_event}')
+    #print(f'L_beta_noise = {L_beta_noise}')
+    
+    # -------
+    # L_beta signal term
+    L_beta_suppress = 0
+
+    if beta_term_option == 'paper':
+        L_beta_sig = (scatter_add((1-beta_alpha), batch_object) / n_objects_per_event).sum()
+        
+    elif beta_term_option == 'short-range-potential':
+            
+        # First collect the norms: We only want norms of hits w.r.t. the object they
+        # belong to (like in V_attractive)
+        # Apply transformation first, and then apply mask to keep only the norms we want,
+        # then sum over hits, so the result is (n_objects,)
+        norms_beta_sig = (1./(20.*norms[is_sig]**2+1.) * M[is_sig]).sum(dim=0)
+        assert torch.all(norms_beta_sig >= 1.) and torch.all(norms_beta_sig <= n_hits_per_object)
+        # Subtract from 1. to remove self interaction, divide by number of hits per object
+        norms_beta_sig = (1. - norms_beta_sig) / n_hits_per_object
+        assert torch.all(norms_beta_sig >= -1.) and torch.all(norms_beta_sig <= 0.)
+        norms_beta_sig *= beta_alpha
+        # Conclusion:
+        # lower beta --> higher loss (less negative)
+        # higher norms --> higher loss
+
+        # Sum over objects, divide by number of objects per event, then sum over events
+        L_beta_norms_term = (scatter_add(norms_beta_sig, batch_object) / n_objects_per_event).sum()
+        assert L_beta_norms_term >= -batch_size and L_beta_norms_term <= 0.
+
+        # Logbeta term: Take -.2*torch.log(beta_alpha[is_object]+1e-9), sum it over objects,
+        # divide by n_objects_per_event, then sum over events (same pattern as above)
+        # lower beta --> higher loss
+        L_beta_logbeta_term = (
+            scatter_add(-.2*torch.log(beta_alpha+1e-9), batch_object) / n_objects_per_event
+            ).sum()
+        
+        if l_beta_suppression:
+            if epoch > 100:
+                beta_sq_sum = scatter_add((beta[is_sig]**2), object_index)
+                beta_sq_alpha = beta_alpha**2
+                non_alpha_sq = beta_sq_sum - beta_sq_alpha
+                non_alpha_term = non_alpha_sq / (n_hits_per_object + 1e-8)
+                L_beta_suppress = (scatter_add(non_alpha_term, batch_object) / n_objects_per_event).sum() * 100
+            else:
+                L_beta_suppress = 0
+
+            # # # lambda_secondary = 1.0  # strength of penalty; tune as hyperparameter
+            # # # # beta for signal hits only (is_sig mask applied earlier)
+            # # # # object_index maps each signal hit -> object id in [0, n_objects)
+            # # # beta_sum_per_object = scatter_add(beta[is_sig], object_index)  # (n_objects,)
+            # # # # leftover beta excluding the alpha (the largest beta in the object)
+            # # # non_alpha_sum = beta_sum_per_object - beta_alpha  # (n_objects,)
+            # # # # normalize by hits-per-object to make term size-insensitive to object multiplicity
+            # # # non_alpha_avg = non_alpha_sum / (n_hits_per_object + 1e-8)  # (n_objects,)
+            # # # # aggregate to events: sum per event then divide by n_objects_per_event
+            # # # L_beta_suppress = (scatter_add(non_alpha_avg, batch_object) / n_objects_per_event).sum()
+            # # # L_beta_suppress = lambda_secondary * L_beta_suppress
+
+            # beta_sig = beta[is_sig]
+            # obj_idx = batch_object
+            # # mask: exclude condensation hits (index_alpha gives condensation per object)
+            # mask_non_alpha = torch.ones_like(beta_sig, dtype=torch.bool)
+            # mask_non_alpha[index_alpha] = False
+            # beta_non_alpha = beta_sig[mask_non_alpha]
+            # penalty term for non-condensation betas
+            # L_beta_suppress = 0.1 * (scatter_add(beta_non_alpha**2, obj_idx[mask_non_alpha]) / (n_objects_per_event)).sum()
+
+
+        # Final L_beta term
+        L_beta_sig = L_beta_norms_term + L_beta_logbeta_term + L_beta_suppress
+
+    else:
+        valid_options = ['paper', 'short-range-potential']
+        raise ValueError(f'beta_term_option "{beta_term_option}" is not valid, choose from {valid_options}')
+    
+    L_beta = L_beta_noise + L_beta_sig
+
+    # ________________________________
+    # L_track term
+    L_beta_track = 0.
+
+    if beta_track_term:
+
+        q_track = q.clone().detach()
+        q_track[~is_trk] = 0
+
+        beta_track = beta.clone().detach()
+        beta_track[~is_trk] = 0
+        
+        # Calculate q_alpha, the max q per object, and the indices of said maxima
+        q_alpha_track, index_alpha_track = scatter_max(q_track[is_sig], object_index)
+ 
+        assert q_alpha_track.size() == (n_objects,)
+
+        # Get the cluster space coordinates and betas for these maxima hits too
+        #x_alpha_track = cluster_space_coords[is_sig][index_alpha_track]
+        beta_alpha_track = beta_track[is_sig][index_alpha_track]
+
+        L_beta_track = (scatter_add((1-beta_alpha_track), batch_object) / n_objects_per_event).sum()
+
+        if beta_track_term_beginning:
+            L_V += L_beta_track
+        else:
+            L_beta += L_beta_track
+
+
+    # ________________________________
+    # L_charged_cluster term
+    L_charged_cluster = 0.
+    if charged_cluster_likeness is not None:
+
+        track_pos = torch.flatten( torch.argwhere(is_trk>0) )
+        for pos in track_pos:
+            cl = cluster_index_per_event[pos]
+            ba = batch[pos]
+            # check before pos
+            i=pos-1
+            while i>=0:
+                if cluster_index_per_event[i] != cl or batch[i] != ba:
+                    break
+                is_trk_cluster[i] = 1
+                i -= 1
+            # check after pos
+            i=pos+1
+            while i<len(batch):
+                if cluster_index_per_event[i] != cl or batch[i] != ba:
+                    break
+                is_trk_cluster[i] = 1
+                i += 1
+
+        ## removed to compile the function
+        # debug = False
+        # if debug is True:
+        #     for ba,cl,trk1,trk2 in zip(batch, cluster_index_per_event, is_trk_cluster_prev, is_trk_cluster):
+        #         b=ba.detach().cpu().item()
+        #         c=cl.detach().cpu().item()
+        #         t1=trk1.to(int).detach().cpu().item()
+        #         t2=trk2.to(int).detach().cpu().item()
+        #         print(f"{b=},{c=},{t1=},{t2=}")
+        
+        L_charged_cluster = torch.nn.functional.binary_cross_entropy(input=charged_cluster_likeness,target=is_trk_cluster)
+        #print(f"BCE:",L_charged_cluster)
+        L_charged_cluster *= batch_size
+    L_V += L_charged_cluster
+
+
+
+
+    # ________________________________
+    # L_E term
+    L_E_cond = torch.tensor(0).to(device)
+    L_E_charge = torch.tensor(0).to(device)
+    L_E_cluster = torch.tensor(0).to(device)
+    L_E = torch.tensor(0).to(device)
+    L_E_w_photon = torch.tensor(0).to(device)
+    L_E_w_charged_hadron = torch.tensor(0).to(device)
+    L_E_w_neutral_hadron = torch.tensor(0).to(device)
+    L_E_w_muon = torch.tensor(0).to(device)
+    L_E_w_electron = torch.tensor(0).to(device)
+    if weight_regression and weight_photon is not None:
+        # L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron = calc_L_E_weight(
+        #     tracker_energy=tracker_energy,
+        #     mcp_energy=mcp_energy,
+        #     detected_energy=detected_energy,
+        #     beta=beta,
+        #     index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+        #     er_coef=er_coef,
+        #     LE_track=LE_track,
+        #     LE_cluster=LE_cluster,
+        #     Ecl_regression=Ecl_regression,
+        #     pred_cluster_energy=pred_cluster_energy,
+        #     batch_object=batch_object,
+        #     n_objects_per_event=n_objects_per_event,
+        #     mcpdg=mcpdg,
+        #     weight_photon = weight_photon,
+        #     weight_hadron = weight_hadron,
+        #     weight_muon = weight_muon,
+        #     weight_electron = weight_electron
+        #     )
+        # print(L_E_w_photon, L_E_w_hadron, L_E_w_muon, L_E_w_electron)
+        L_E_w_photon, L_E_w_charged_hadron, L_E_w_neutral_hadron, L_E_w_muon, L_E_w_electron = calc_L_E_weight_fast(
+            tracker_energy=tracker_energy,
+            mcp_energy=mcp_energy,
+            detected_energy=detected_energy,
+            beta=beta,
+            index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+            er_coef=er_coef,
+            LE_track=LE_track,
+            LE_cluster=LE_cluster,
+            Ecl_regression=Ecl_regression,
+            pred_cluster_energy=pred_cluster_energy,
+            batch_object=batch_object,
+            n_objects_per_event=n_objects_per_event,
+            mcpdg=mcpdg,
+            mccharge=mccharge,
+            weight_photon = weight_photon,
+            weight_charged_hadron = weight_charged_hadron,
+            weight_neutral_hadron = weight_neutral_hadron,
+            weight_muon = weight_muon,
+            weight_electron = weight_electron
+            )
+        # print(fast_L_E_w_photon, fast_L_E_w_hadron, fast_L_E_w_muon, fast_L_E_w_electron)
+        # L_E = L_E_w_photon + L_E_w_hadron + L_E_w_muon + L_E_w_electron
+    if tracker_energy is not None:
+        L_E_cond, L_E_charge, L_E_cluster, L_E = calc_L_E(
+            tracker_energy=tracker_energy,
+            mcp_energy=mcp_energy,
+            detected_energy=detected_energy,
+            beta=beta,
+            index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+            er_coef=er_coef,
+            LE_track=LE_track,
+            LE_cluster=LE_cluster,
+            Ecl_regression=Ecl_regression,
+            pred_cluster_energy=pred_cluster_energy,
+            batch_object=batch_object,
+            n_objects_per_event=n_objects_per_event,
+            )
+    L_E = L_E + (L_E_w_photon + L_E_w_charged_hadron + L_E_w_neutral_hadron + L_E_w_muon + L_E_w_electron) * 5
+
+
+
+    # ________________________________
+    # Returning
+    # Also divide by batch size here
+
+    # if return_components or DEBUG:
+    with torch.no_grad():
+        components = dict(
+            L_V = L_V / batch_size,
+            L_V_attractive = L_V_attractive / batch_size,
+            L_V_attractive_charged = L_V_attractive_charged / batch_size,
+            L_V_attractive_neutral = L_V_attractive_neutral / batch_size,
+            L_V_repulsive = L_V_repulsive / batch_size,
+            L_V_repulsive_charged = L_V_repulsive_charged / batch_size,
+            L_V_repulsive_neutral = L_V_repulsive_neutral / batch_size,
+            L_charged_cluster = L_charged_cluster / batch_size,
+            L_beta = L_beta / batch_size,
+            L_beta_noise = L_beta_noise / batch_size,
+            L_beta_sig = L_beta_sig / batch_size,
+            L_beta_suppress = L_beta_suppress / batch_size,
+            L_beta_track = L_beta_track / batch_size,
+            L_E = L_E / batch_size,
+            L_E_charge = L_E_charge / batch_size,
+            L_E_cond = L_E_cond / batch_size,
+            L_E_cluster = L_E_cluster / batch_size,
+            L_E_w_photon = L_E_w_photon / batch_size,
+            L_E_w_charged_hadron = L_E_w_charged_hadron / batch_size,
+            L_E_w_neutral_hadron = L_E_w_neutral_hadron / batch_size,
+            L_E_w_muon = L_E_w_muon / batch_size,
+            L_E_w_electron = L_E_w_electron / batch_size,
+            )
+        if beta_term_option == 'short-range-potential':
+            components['L_beta_norms_term'] = L_beta_norms_term / batch_size
+            components['L_beta_logbeta_term'] = L_beta_logbeta_term / batch_size
+    if DEBUG:
+        debug(formatted_loss_components_string(components))
+    return L_V/batch_size, L_beta/batch_size, L_E/batch_size, L_E_charge/batch_size, components
+
+
+def formatted_loss_components_string(components: dict) -> str:
+    """
+    Formats the components returned by calc_LV_Lbeta
+    """
+    total_loss = components['L_V']+components['L_beta']+components['L_E'] if 'L_E' in components else components['L_V']+components['L_beta']
+    fractions = { k : v/total_loss for k, v in components.items() }
+    fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
+    s = (
+        '  L_V                   = {L_V}'
+        '\n    L_V_attractive      = {L_V_attractive}'
+        '\n      L_V_attractive_charged      = {L_V_attractive_charged}'
+        '\n      L_V_attractive_neutral      = {L_V_attractive_neutral}'
+        '\n    L_V_repulsive       = {L_V_repulsive}'
+        '\n      L_V_repulsive_charged       = {L_V_repulsive_charged}'
+        '\n      L_V_repulsive_neutral       = {L_V_repulsive_neutral}'
+        '\n    L_charged_cluster   = {L_charged_cluster}'
+        '\n  L_beta              = {L_beta}'
+        '\n    L_beta_noise        = {L_beta_noise}'
+        '\n    L_beta_sig          = {L_beta_sig}'
+        '\n    L_beta_suppress     = {L_beta_suppress}'
+        '\n    L_beta_track        = {L_beta_track}'
+        .format(L=total_loss,**{k : fkey(k) for k in components})
+        )
+    if 'L_beta_norms_term' in components:
+        s += (
+            '\n      L_beta_norms_term   = {L_beta_norms_term}'
+            '\n      L_beta_logbeta_term = {L_beta_logbeta_term}'
+            .format(**{k : fkey(k) for k in components})
+            )
+    if 'L_noise_filter' in components:
+        s += f'\n  L_noise_filter = {fkey("L_noise_filter")}'
+    if 'L_E' in components:
+        s += (
+            '\n  L_E   = {L_E}'
+            '\n    L_E_charge = {L_E_charge}'
+            '\n    L_E_cond = {L_E_cond}'
+            '\n    L_E_cluster = {L_E_cluster}'
+            '\n    L_E_w_photon   = {L_E_w_photon}'
+            '\n    L_E_w_charged_hadron   = {L_E_w_charged_hadron}'
+            '\n    L_E_w_neutral_hadron   = {L_E_w_neutral_hadron}'
+            '\n    L_E_w_muon     = {L_E_w_muon}'
+            '\n    L_E_w_electron = {L_E_w_electron}'
+            .format(**{k : fkey(k) for k in components})
+            )
+    return s
+
+def formatted_loss_components_string_train(components: dict) -> str:
+    """
+    Formats the components returned by calc_LV_Lbeta
+    """
+    total_loss = components['L_V']+components['L_beta']+components['L_E'] if 'L_E' in components else components['L_V']+components['L_beta']
+    fractions = { k : v/total_loss for k, v in components.items() }
+    fkey = lambda key: f'{components[key]:+.4f} ({100.*fractions[key]:.1f}%)'
+    s = (
+        'train  L_V                   = {L_V}'
+        '\n train    L_V_attractive      = {L_V_attractive}'
+        '\n train      L_V_attractive_charged      = {L_V_attractive_charged}'
+        '\n train      L_V_attractive_neutral      = {L_V_attractive_neutral}'
+        '\n train    L_V_repulsive       = {L_V_repulsive}'
+        '\n train      L_V_repulsive_charged       = {L_V_repulsive_charged}'
+        '\n train      L_V_repulsive_neutral       = {L_V_repulsive_neutral}'
+        '\n train    L_charged_cluster   = {L_charged_cluster}'
+        '\n train  L_beta              = {L_beta}'
+        '\n train    L_beta_noise        = {L_beta_noise}'
+        '\n train    L_beta_sig          = {L_beta_sig}'
+        '\n train    L_beta_suppress     = {L_beta_suppress}'
+        '\n train    L_beta_track        = {L_beta_track}'
+        .format(L=total_loss,**{k : fkey(k) for k in components})
+        )
+    if 'L_beta_norms_term' in components:
+        s += (
+            '\n train      L_beta_norms_term   = {L_beta_norms_term}'
+            '\n train      L_beta_logbeta_term = {L_beta_logbeta_term}'
+            .format(**{k : fkey(k) for k in components})
+            )
+    if 'L_noise_filter' in components:
+        s += f'\n train  L_noise_filter = {fkey("L_noise_filter")}'
+    if 'L_E' in components:
+        s += (
+            '\n train  L_E   = {L_E}'
+            '\n train    L_E_charge = {L_E_charge}'
+            '\n train    L_E_cond = {L_E_cond}'
+            '\n train    L_E_cluster = {L_E_cluster}'
+            '\n train    L_E_w_photon   = {L_E_w_photon}'
+            '\n train    L_E_w_charged_hadron   = {L_E_w_charged_hadron}'
+            '\n train    L_E_w_neutral_hadron   = {L_E_w_neutral_hadron}'
+            '\n train    L_E_w_muon     = {L_E_w_muon}'
+            '\n train    L_E_w_electron = {L_E_w_electron}'
+            .format(**{k : fkey(k) for k in components})
+            )
+    return s
+
+def calc_simple_clus_space_loss(
+    cluster_space_coords: torch.Tensor, # Predicted by model
+    cluster_index_per_event: torch.Tensor, # Truth hit->cluster index
+    batch: torch.Tensor,
+    # From here on just parameters
+    noise_cluster_index: int = 0, # cluster_index entries with this value are noise/noise
+    huberize_norm_for_V_attractive = True,
+    pred_edc: torch.Tensor = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Isolating just the V_attractive and V_repulsive parts of object condensation,
+    w.r.t. the geometrical mean of truth cluster centers (rather than the highest
+    beta point of the truth cluster).
+
+    Most of this code is copied from `calc_LV_Lbeta`, so it's easier to try out
+    different scalings for the norms without breaking the main OC function.
+
+    `pred_edc`: Predicted estimated distance-to-center.
+    This is an optional column, that should be `n_hits` long. If it is
+    passed, a third loss component is calculated based on the truth distance-to-center
+    w.r.t. predicted distance-to-center. This quantifies how close a hit is to it's center,
+    which provides an ansatz for the clustering.
+
+    See also the 'Concepts' in the doc of `calc_LV_Lbeta`.
+    """
+    # ________________________________
+    # Calculate a bunch of needed counts and indices locally
+
+    # cluster_index: unique index over events
+    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
+    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
+    cluster_index, n_clusters_per_event = batch_cluster_indices(cluster_index_per_event, batch)
+    n_hits, cluster_space_dim = cluster_space_coords.size()
+    batch_size = batch.max()+1
+    n_hits_per_event = scatter_count(batch)
+
+    # Index of cluster -> event (n_clusters,)
+    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
+
+    # Per-hit boolean, indicating whether hit is sig or noise
+    is_noise = cluster_index_per_event == noise_cluster_index
+    is_sig = ~is_noise
+    n_hits_sig = is_sig.sum()
+
+    # Per-cluster boolean, indicating whether cluster is an object or noise
+    is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
+
+    # # FIXME: This assumes noise_cluster_index == 0!!
+    # # Not sure how to do this in a performant way in case noise_cluster_index != 0
+    # if noise_cluster_index != 0: raise NotImplementedError
+    # object_index_per_event = cluster_index_per_event[is_sig] - 1
+    batch_object = batch_cluster[is_object]
+    n_objects = is_object.sum()
+
+    # ________________________________
+    # Build the masks
+
+    # Connectivity matrix from hit (row) -> cluster (column)
+    # Index to matrix, e.g.:
+    # [1, 3, 1, 0] --> [
+    #     [0, 1, 0, 0],
+    #     [0, 0, 0, 1],
+    #     [0, 1, 0, 0],
+    #     [1, 0, 0, 0]
+    #     ]
+    M = torch.nn.functional.one_hot(cluster_index).long()
+
+    # Anti-connectivity matrix; be sure not to connect hits to clusters in different events!
+    M_inv = get_inter_event_norms_mask(batch, n_clusters_per_event) - M
+
+    # Throw away noise cluster columns; we never need them
+    M = M[:,is_object]
+    M_inv = M_inv[:,is_object]
+    assert M.size() == (n_hits, n_objects)
+    assert M_inv.size() == (n_hits, n_objects)
+
+    # ________________________________
+    # Loss terms
+
+    # First calculate all cluster centers, then throw out the noise clusters
+    cluster_centers = scatter_mean(cluster_space_coords, cluster_index, dim=0)
+    object_centers = cluster_centers[is_object]
+
+    # Calculate all norms
+    # Warning: Should not be used without a mask!
+    # Contains norms between hits and objects from different events
+    # (n_hits, 1, cluster_space_dim) - (1, n_objects, cluster_space_dim)
+    #   gives (n_hits, n_objects, cluster_space_dim)
+    norms = (cluster_space_coords.unsqueeze(1) - object_centers.unsqueeze(0)).norm(dim=-1)
+    assert norms.size() == (n_hits, n_objects)
+
+
+    # -------
+    # Attractive loss
+
+    # First get all the relevant norms: We only want norms of signal hits
+    # w.r.t. the object they belong to, i.e. no noise hits and no noise clusters.
+    # First select all norms of all signal hits w.r.t. all objects (filtering out
+    # the noise), mask out later
+    norms_att = norms[is_sig]
+
+    # Power-scale the norms
+    if huberize_norm_for_V_attractive:
+        # Huberized version (linear but times 4)
+        # Be sure to not move 'off-diagonal' away from zero
+        # (i.e. norms of hits w.r.t. clusters they do _not_ belong to)
+        norms_att = huber(norms_att+1e-5, 4.)
+    else:
+        # Paper version is simply norms squared (no need for mask)
+        norms_att = norms_att**2
+    assert norms_att.size() == (n_hits_sig, n_objects)
+
+    # Now apply the mask to keep only norms of signal hits w.r.t. to the object
+    # they belong to (throw away norms w.r.t. cluster they do *not* belong to)
+    norms_att *= M[is_sig]
+
+    # Sum norms_att over hits (dim=0), then sum per event, then divide by n_hits_per_event,
+    # then sum over events
+    L_attractive = (scatter_add(norms_att.sum(dim=0), batch_object) / n_hits_per_event).sum()
+
+    # -------
+    # Repulsive loss
+
+    # Get all the relevant norms: We want norms of any hit w.r.t. to 
+    # objects they do *not* belong to, i.e. no noise clusters.
+    # We do however want to keep norms of noise hits w.r.t. objects
+    # Power-scale the norms: Gaussian scaling term instead of a cone
+    # Mask out the norms of hits w.r.t. the cluster they belong to
+    norms_rep = torch.exp(-4.*norms**2) * M_inv
+
+    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum up events
+    L_repulsive = (scatter_add(norms_rep.sum(dim=0), batch_object)/n_hits_per_event).sum()
+    
+    L_attractive /= batch_size
+    L_repulsive /= batch_size
+
+    # -------
+    # Optional: edc column
+
+    if pred_edc is not None:
+        n_hits_per_cluster = scatter_count(cluster_index)
+        cluster_centers_expanded = torch.index_select(cluster_centers, 0, cluster_index)
+        assert cluster_centers_expanded.size() == (n_hits, cluster_space_dim)
+        truth_edc = (cluster_space_coords - cluster_centers_expanded).norm(dim=-1)
+        assert pred_edc.size() == (n_hits,)
+        d_per_hit = (pred_edc-truth_edc)**2
+        d_per_object = scatter_add(d_per_hit, cluster_index)[is_object]
+        assert d_per_object.size() == (n_objects,)
+        L_edc = (scatter_add(d_per_object, batch_object)/n_hits_per_event).sum()
+        return L_attractive, L_repulsive, L_edc
+
+    return L_attractive, L_repulsive
+
+@torch.jit.script
+def huber(d: torch.Tensor, delta:float):
+    """
+    See: https://en.wikipedia.org/wiki/Huber_loss#Definition
+    Multiplied by 2 w.r.t Wikipedia version (aligning with Jan's definition)
+    """
+    return torch.where(torch.abs(d)<=delta, d**2, 2.*delta*(torch.abs(d)-delta))
+
+
+def batch_cluster_indices(cluster_id: torch.Tensor, batch: torch.Tensor) -> Tuple[torch.LongTensor, torch.LongTensor]:
+    """
+    Turns cluster indices per event to an index in the whole batch
+
+    Example:
+
+    cluster_id = torch.LongTensor([0, 0, 1, 1, 2, 0, 0, 1, 1, 1, 0, 0, 1])
+    batch = torch.LongTensor([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2])
+    -->
+    offset = torch.LongTensor([0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 5, 5, 5])
+    output = torch.LongTensor([0, 0, 1, 1, 2, 3, 3, 4, 4, 4, 5, 5, 6])
+    """
+    device = cluster_id.device
+    assert cluster_id.device == batch.device
+    # Count the number of clusters per entry in the batch
+    n_clusters_per_event = scatter_max(cluster_id, batch, dim=-1)[0] + 1
+    # Offsets are then a cumulative sum
+    offset_values_nozero = n_clusters_per_event[:-1].cumsum(dim=-1)
+    # Prefix a zero
+    offset_values = torch.cat((torch.zeros(1, device=device), offset_values_nozero))
+    # Fill it per hit
+    offset = torch.gather(offset_values, 0, batch).long()
+    return offset + cluster_id, n_clusters_per_event
+
+def energy_deposit_weight(cluster_id: torch.Tensor, weighted_edep: torch.Tensor, truth_energy: torch.Tensor, pdg_id: torch.Tensor) -> torch.Tensor:
+    """
+    calculate loss for weighted energy deposit
+
+    """
+    device = cluster_id.device
+    assert cluster_id.device == weighted_edep.device
+    assert cluster_id.device == truth_energy.device
+
+    energy_pred_sum = scatter_add(weighted_edep, cluster_id)
+    energy_truth = scatter_max(truth_energy, cluster_id)
+
+    return torch.square(detected_energy/energy_sum * truth_energy).sum()
+
+
+def cluster_energy_distribution(cluster_id: torch.Tensor, detected_energy: torch.Tensor, truth_energy: torch.Tensor) -> torch.Tensor:
+    """
+    distribute MC truth energy to each hits
+    weight : detected energy / sum(detected energy)
+    calculated per cluster
+
+    Example:
+
+    cluster_id =      torch.Tensor([0,   0,  1,   1,          2,  3,   3,  3])
+    detected_energy = torch.Tensor([0.5, 1,  0.3, 1,          1,  1,   2,  3])
+    truth_energy =    torch.Tensor([3,   3,  1,   1,          2,  10, 10, 10])
+    -->
+    output =          torch.Tensor([1,   2,  0.3/1.3, 1/1.3,  2,  1/6, 2/6, 3/6])
+    """
+    device = cluster_id.device
+    assert cluster_id.device == detected_energy.device
+    assert cluster_id.device == truth_energy.device
+
+    energy_sum = scatter_add(detected_energy, cluster_id)
+    energy_sum = torch.gather(energy_sum, 0, cluster_id)
+
+    return torch.square(detected_energy/energy_sum * truth_energy).sum()
+
+def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tensor, truth_energy: torch.Tensor, batch_object: torch.Tensor, n_objects_per_event: torch.Tensor, loss_="sum", ) -> torch.Tensor:
+    """
+    calculate 
+    distribute MC truth energy to each hits
+    weight : detected energy / sum(detected energy)
+    calculated per cluster
+
+    Example:
+
+    cluster_id =       torch.Tensor([0,   0,  1,   1,          2,  3,   3,  3])
+    predicted_energy = torch.Tensor([0.5, 1,  0.3, 1,          1,  1,   2,  3])
+    truth_energy =     torch.Tensor([3,   3,  1,   1,          2,  10, 10, 10])
+    -->
+    output =          torch.Tensor([1,   2,  0.3/1.3, 1/1.3,  2,  1/6, 2/6, 3/6])
+    """
+    device = cluster_id.device
+    assert cluster_id.device == predicted_energy.device
+    assert cluster_id.device == truth_energy.device
+
+    pred_energy_sum = scatter_add(predicted_energy, cluster_id)
+    truth_cluster_energy, argmax = scatter_max(truth_energy, cluster_id)
+
+    if loss_=="sum":
+        loss = torch.sum(torch.square(pred_energy_sum - truth_cluster_energy))
+    elif loss_=="sum_log":
+        loss = torch.sum(torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 ))
+    elif loss_=="sum_log_perCluster":
+        mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
+        loss = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+    else:
+        loss = torch.tensor(0).to(device)
+
+    return loss
+
+def get_condpoints(betas: np.array, tbeta: float=.1) -> np.array:
+    """
+    Returns the condensation points
+    """
+    # Get indices passing the threshold
+    select_condpoints = betas > tbeta
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    return indices_condpoints
+
+def get_clusters_with_track(cluster_id: torch.Tensor, is_trk:torch.Tensor) -> torch.Tensor:
+    """
+    Returns the boolean tensor
+    true for the points which have track in MC 
+    """
+    clu_with_trk = cluster_id[is_trk]
+    return torch.isin(cluster_id, clu_with_trk)
+
+
+def get_clustering_np(event, betas: np.array, X: np.array, charged_hits: np.array, tbeta: float=.1, td: float=1.) -> np.array:
+    """
+    (Original object condensation code that does merging by highest beta)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+    # Get indices passing the threshold
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    # Order them by decreasing beta value
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+    # Assign points to condensation points
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+    unassigned = np.arange(n_points)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+    for index_condpoint in indices_condpoints:
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_condpoint = unassigned[d < td]
+        clustering[assigned_to_this_condpoint] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+    
+    return clustering
+
+def get_clustering_np_td_momentum(event, betas: np.array, X: np.array, charged_hits: np.array, tbeta: float=.1, td: float=1.) -> np.array:
+    """
+    (Original object condensation code that does merging by highest beta)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+
+    modified clustering algorithm to use momentum information if the point is from track     Jul. 9, 2024
+    clustering does not occur from the highest beta point
+    it occurs from track point (this should be the highest beta points if it is trained well ...)
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+    # Get indices passing the threshold
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    # Order them by decreasing beta value
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+    # Assign points to condensation points
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+    unassigned = np.arange(n_points)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+    for index_condpoint in indices_condpoints:
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_condpoint = unassigned[d < td]
+        clustering[assigned_to_this_condpoint] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+    
+    return clustering
+
+
+def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.array,
+        tbeta: float=.7, td: float=0.5) -> np.array:
+    """
+    (Modified object condensation code that do not merge high beta objects, but merges everything else)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+
+    # 
+    condensation_points = np.zeros(n_points, dtype=np.int32)
+    # condensation_points[select_condpoints] = 1
+
+
+    # Get indices passing the threshold
+    # Order them by decreasing beta value
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+
+    # Create indices not passing the threshold (to be merged later)
+    indices_condpoints2 = np.nonzero(~select_condpoints)[0]
+    indices_condpoints2 = indices_condpoints2[np.argsort(-betas[~select_condpoints])]
+
+
+    debug = False
+    # First look at condensation points with beta higher than the threshold (tbeta)
+    # and attach other points to the closest condensation points (within distance td)
+    unassigned = np.array([], dtype=np.int32)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+
+    if any(select_condpoints):
+        for i in np.arange(n_points):
+            x = X[i]
+            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
+            argmin = np.argmin(d, axis=-1)
+            index_condpoint = indices_condpoints[argmin]
+            if (d[argmin] < td):
+                clustering[i] = index_condpoint
+                if debug:
+                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
+            else:
+                unassigned = np.append(unassigned,i)
+    else: 
+        unassigned = np.arange(n_points)
+
+    # Now merge the rest of the points, highest beta first
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+
+    for index_condpoint in indices_condpoints2:
+        # condensation_points[index_condpoint] = 1
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_cluster = unassigned[d < td]
+        clustering[assigned_to_this_cluster] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+
+    # print(betas.shape[0])
+    # print(betas)
+    # print(clustering)
+    condensation_points_beta, condensation_points_index = scatter_max(torch.from_numpy(betas.astype(np.int64)), torch.from_numpy(clustering.astype(np.int64)))
+    # print(type(condensation_points_index), condensation_points_index)
+    condensation_points_index = condensation_points_index.detach().numpy()
+    # print(type(condensation_points_index), condensation_points_index)
+    # print(condensation_points_index[condensation_points_index < betas.shape[0]])
+    condensation_points[condensation_points_index[condensation_points_index < betas.shape[0]]] = 1
+    # print(type(condensation_points), condensation_points)
+
+    return clustering, condensation_points
+
+def get_clustering_np_new2(event, betas: np.array, X: np.array, charged_hits: np.array,
+        tbeta: float=.7, td: float=0.5) -> np.array:
+    """
+    (Modified object condensation code that do not merge high beta objects, but merges everything else)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+
+    modified indices_condpoints2 loop to only merge to the unassigned points 
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+
+    # 
+    condensation_points = np.zeros(n_points, dtype=np.int32)
+    condensation_points[select_condpoints] = 1
+
+
+    # Get indices passing the threshold
+    # Order them by decreasing beta value
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+
+    # Create indices not passing the threshold (to be merged later)
+    indices_condpoints2 = np.nonzero(~select_condpoints)[0]
+    indices_condpoints2 = indices_condpoints2[np.argsort(-betas[~select_condpoints])]
+
+
+    debug = False
+    # First look at condensation points with beta higher than the threshold (tbeta)
+    # and attach other points to the closest condensation points (within distance td)
+    unassigned = np.array([], dtype=np.int32)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+
+    if any(select_condpoints):
+        for i in np.arange(n_points):
+            x = X[i]
+            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
+            argmin = np.argmin(d, axis=-1)
+            index_condpoint = indices_condpoints[argmin]
+            if (d[argmin] < td):
+                clustering[i] = index_condpoint
+                if debug:
+                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
+            else:
+                unassigned = np.append(unassigned,i)
+    else: 
+        unassigned = np.arange(n_points)
+
+    # Now merge the rest of the points, highest beta first
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+
+    for index_condpoint in indices_condpoints2:
+        if np.any(unassigned==index_condpoint): continue
+        # condensation_points[index_condpoint] = 1
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_cluster = unassigned[d < td]
+        clustering[assigned_to_this_cluster] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+
+    return clustering, condensation_points
+
+def get_clustering_np_new_momentum(event, betas: np.array, X: np.array, charged_hits: np.array,
+        tbeta: float=.7, td: float=0.5) -> np.array:
+    """
+    (Modified object condensation code that do not merge high beta objects, but merges everything else)
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes numpy arrays as input.
+    """
+    n_points = betas.shape[0]
+    select_condpoints = betas > tbeta
+
+    trackness = event.feat[:,5]
+
+    # 
+    condensation_points = np.zeros(n_points, dtype=np.int32)
+    # condensation_points[select_condpoints] = 1
+
+
+    # Get indices passing the threshold
+    # Order them by decreasing beta value
+    indices_condpoints = np.nonzero(select_condpoints)[0]
+    indices_condpoints = indices_condpoints[np.argsort(-betas[select_condpoints])]
+
+    # Create indices not passing the threshold (to be merged later)
+    indices_condpoints2 = np.nonzero(~select_condpoints)[0]
+    indices_condpoints2 = indices_condpoints2[np.argsort(-betas[~select_condpoints])]
+
+
+    debug = False
+    # First look at condensation points with beta higher than the threshold (tbeta)
+    # and attach other points to the closest condensation points (within distance td)
+    unassigned = np.array([], dtype=np.int32)
+    clustering = -1 * np.ones(n_points, dtype=np.int32)
+
+    if any(select_condpoints):
+        for i in np.arange(n_points):
+            x = X[i]
+            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
+            argmin = np.argmin(d, axis=-1)
+            index_condpoint = indices_condpoints[argmin]
+            if (d[argmin] < td):
+                clustering[i] = index_condpoint
+                if debug:
+                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
+            else:
+                unassigned = np.append(unassigned,i)
+    else: 
+        unassigned = np.arange(n_points)
+
+    # Now merge the rest of the points, highest beta first
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+
+    for index_condpoint in indices_condpoints2:
+        # condensation_points[index_condpoint] = 1
+        d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
+        assigned_to_this_cluster = unassigned[d < td]
+        clustering[assigned_to_this_cluster] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+
+    # attach track hit to cluster if unassigned
+    clustering_indices, clustering_frequency = np.unique(clustering, return_counts=True)
+    clustering_count = dict(zip(clustering_indices,clustering_frequency))
+    charged_hits = charged_hits.astype(int)
+    charged_index = clustering[charged_hits==1]
+
+    charged_is_cluster = np.isin(charged_index, clustering_indices)
+    if (~np.all(charged_is_cluster)):
+        print("charge index NOT found in cluster")
+        debug = False
+
+    remapCharged = {}
+    for charged_i in charged_index:
+
+        # skip tracks that do not satisfy beta threshold (-1)
+        if (charged_i == -1):
+            print("track -1 skipped")
+            continue
+
+        # find track cluster with only one hit, combine with closest cluster
+        if (clustering_count[charged_i] == 1):
+            charged_cluster_distance = {}
+            for clustering_i in clustering_indices:
+                if clustering_i == charged_i:
+                    continue
+                d = np.linalg.norm(X[charged_i] - X[clustering_i], axis=-1)
+                charged_cluster_distance[clustering_i] = d
+
+            index_min = min(charged_cluster_distance, key=charged_cluster_distance.get)
+            remapCharged[charged_i] = index_min
+
+    for k,v in remapCharged.items():
+        clustering[clustering==k] = v
+
+    # print(betas.shape[0])
+    # print(betas)
+    # print(clustering)
+    condensation_points_beta, condensation_points_index = scatter_max(torch.from_numpy(betas.astype(np.int64)), torch.from_numpy(clustering.astype(np.int64)))
+    # print(type(condensation_points_index), condensation_points_index)
+    condensation_points_index = condensation_points_index.detach().numpy()
+    # print(type(condensation_points_index), condensation_points_index)
+    # print(condensation_points_index[condensation_points_index < betas.shape[0]])
+    condensation_points[condensation_points_index[condensation_points_index < betas.shape[0]]] = 1
+    # print(type(condensation_points), condensation_points)
+
+    return clustering, condensation_points
+
+
+
+def get_clustering(betas: torch.Tensor, X: torch.Tensor, tbeta=.1, td=1.):
+    """
+    Returns a clustering of hits -> cluster_index, based on the GravNet model
+    output (predicted betas and cluster space coordinates) and the clustering
+    parameters tbeta and td.
+    Takes torch.Tensors as input.
+    """
+    n_points = betas.size(0)
+    select_condpoints = betas > tbeta
+    # Get indices passing the threshold
+    indices_condpoints = select_condpoints.nonzero()
+    # Order them by decreasing beta value
+    indices_condpoints = indices_condpoints[(-betas[select_condpoints]).argsort()]
+    # Assign points to condensation points
+    # Only assign previously unassigned points (no overwriting)
+    # Points unassigned at the end are bkg (-1)
+    unassigned = torch.arange(n_points)
+    clustering = -1 * torch.ones(n_points, dtype=torch.long)
+    for index_condpoint in indices_condpoints:
+        d = torch.norm(X[unassigned] - X[index_condpoint], dim=-1)
+        assigned_to_this_condpoint = unassigned[d < td]
+        clustering[assigned_to_this_condpoint] = index_condpoint
+        unassigned = unassigned[~(d < td)]
+    return clustering
+
+
+def scatter_count(input: torch.Tensor):
+    """
+    Returns ordered counts over an index array
+
+    Example:
+    >>> scatter_count(torch.Tensor([0, 0, 0, 1, 1, 2, 2])) # input
+    >>> [3, 2, 2]
+
+    Index assumptions work like in torch_scatter, so:
+    >>> scatter_count(torch.Tensor([1, 1, 1, 2, 2, 4, 4]))
+    >>> tensor([0, 3, 2, 0, 2])
+    """
+    return scatter_add(torch.ones_like(input, dtype=torch.long), input.long())
+
+
+def scatter_counts_to_indices(input: torch.LongTensor) -> torch.LongTensor:
+    """
+    Converts counts to indices. This is the inverse operation of scatter_count
+    Example:
+    input:  [3, 2, 2]
+    output: [0, 0, 0, 1, 1, 2, 2]
+    """
+    return torch.repeat_interleave(torch.arange(input.size(0), device=input.device), input).long()
+
+
+def get_inter_event_norms_mask(batch: torch.LongTensor, nclusters_per_event: torch.LongTensor):
+    """
+    Creates mask of (nhits x nclusters) that is only 1 if hit i is in the same event as cluster j
+
+    Example:
+    cluster_id_per_event = torch.LongTensor([0, 0, 1, 1, 2, 0, 0, 1, 1, 1, 0, 0, 1])
+    batch = torch.LongTensor([0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2])
+
+    Should return:
+    torch.LongTensor([
+        [1, 1, 1, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0],
+        [0, 0, 0, 1, 1, 0, 0],
+        [0, 0, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 1, 1],
+        ])
+    """
+    device = batch.device
+    # Following the example:
+    # Expand batch to the following (nhits x nevents) matrix (little hacky, boolean mask -> long):
+    # [[1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #  [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+    #  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]]
+    batch_expanded_as_ones = (batch == torch.arange(batch.max()+1, dtype=torch.long, device=device).unsqueeze(-1) ).long()
+    # Then repeat_interleave it to expand it to nclusters rows, and transpose to get (nhits x nclusters)
+    return batch_expanded_as_ones.repeat_interleave(nclusters_per_event, dim=0).T
+
+def isin(ar1, ar2):
+    """To be replaced by torch.isin for newer releases of torch"""
+    return (ar1[..., None] == ar2).any(-1)
+
+def reincrementalize(y: torch.Tensor, batch: torch.Tensor) -> torch.Tensor:
+    """Re-indexes y so that missing clusters are no longer counted.
+
+    Example:
+        >>> y = torch.LongTensor([
+            0, 0, 0, 1, 1, 3, 3,
+            0, 0, 0, 0, 0, 2, 2, 3, 3,
+            0, 0, 1, 1
+            ])
+        >>> batch = torch.LongTensor([
+            0, 0, 0, 0, 0, 0, 0,
+            1, 1, 1, 1, 1, 1, 1, 1, 1,
+            2, 2, 2, 2,
+            ])
+        >>> print(reincrementalize(y, batch))
+        tensor([0, 0, 0, 1, 1, 2, 2, 0, 0, 0, 0, 0, 1, 1, 2, 2, 0, 0, 1, 1])
+    """
+    y_offset, n_per_event = batch_cluster_indices(y, batch)
+    offset = y_offset - y
+    n_clusters = n_per_event.sum()
+    holes = (~isin(torch.arange(n_clusters, device=y.device), y_offset)).nonzero().squeeze(-1)
+    n_per_event_without_holes = n_per_event.clone()
+    n_per_event_cumsum = n_per_event.cumsum(0)
+    for hole in holes.sort(descending=True).values:
+        y_offset[y_offset > hole] -= 1
+        i_event = (hole > n_per_event_cumsum).long().argmin()
+        n_per_event_without_holes[i_event] -= 1
+    offset_per_event = torch.zeros_like(n_per_event_without_holes)
+    offset_per_event[1:] = n_per_event_without_holes.cumsum(0)[:-1]
+    offset_without_holes = torch.gather(offset_per_event,0, batch).long()
+    reincrementalized = y_offset - offset_without_holes
+    return reincrementalized
+
+
+
+
+## torchScript coding
+@torch.jit.script
+def calculate_q(beta: torch.Tensor, beta_stabilizing: str, qmin: float) -> torch.Tensor:
+    if beta_stabilizing == 'paper':
+        q = beta.arctanh()**2 + qmin
+    elif beta_stabilizing == 'clip':
+        beta = beta.clip(0., 1-1e-4)
+        q = beta.arctanh()**2 + qmin
+    elif beta_stabilizing == 'soft_q_scaling':
+        q = (beta.clip(0., 1-1e-4)/1.002).arctanh()**2 + qmin
+    else:
+        raise ValueError(f'beta_stablizing mode {beta_stabilizing} is not known')
+
+    return q
+
+
+@torch.jit.script
+def track_loop_jit(track_pos: torch.Tensor, cluster_index_per_event: torch.Tensor, batch: torch.Tensor, is_trk_cluster: torch.Tensor) -> torch.Tensor:
+    print("track_loop_jit")
+    for pos in track_pos:
+        cl = cluster_index_per_event[pos]
+        ba = batch[pos]
+        # check before pos
+        i=pos-1
+        while i>=0:
+            if cluster_index_per_event[i] != cl or batch[i] != ba:
+                break
+            is_trk_cluster[i] = 1
+            i -= 1
+        # check after pos
+        i=pos+1
+        while i<len(batch):
+            if cluster_index_per_event[i] != cl or batch[i] != ba:
+                break
+            is_trk_cluster[i] = 1
+            i += 1
+    print("track_loop_jit finish")
+    return is_trk_cluster
+
+
+@torch.jit.script
+def L_E_loss(tracker_energy: torch.Tensor, mcp_energy: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+    tracker_energy_val = tracker_energy[index]
+    mcp_energy_val = mcp_energy[index]
+    return torch.nn.functional.mse_loss(input=tracker_energy_val, target=mcp_energy_val, reduction='none').sum()
+
+
+# @torch.jit.script
+def calc_LV_Lbeta_Eregression_jit(
+    beta: torch.Tensor, tracker_energy: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
+    charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option
+    cluster_index_per_event: torch.Tensor, # Truth hit->cluster index
+    mcp_energy: torch.Tensor, # mc truth energy
+    batch: torch.Tensor,
+    # From here on just parameters
+    qmin: float = 1.,
+    s_B: float = .1,
+    noise_cluster_index: int = 0, # cluster_index entries with this value are noise/noise
+    beta_stabilizing: str = 'soft_q_scaling',
+    huberize_norm_for_V_attractive: bool = True,
+    beta_term_option: str = 'paper',
+    return_components: bool = True,
+    beta_track_term: bool = False,
+    beta_track_term_beginning: bool = False,
+    force_track_alpha: bool = False,
+    cluster_track_index: torch.Tensor = torch.empty(0),
+    er_coef: float = 1.,
+    LE_track: str ='betaE',
+    use_charged_cluster_likeness: bool = False,
+    use_cluster_energy: bool = False,
+    cluster_energy_: torch.Tensor = torch.empty(0),
+    ) -> Dict[str, torch.Tensor]:
+    """
+    Calculates the L_V and L_beta object condensation losses.
+
+    Concepts:
+    - A hit belongs to exactly one cluster (cluster_index_per_event is (n_hits,)),
+      and to exactly one event (batch is (n_hits,))
+    - A cluster index of `noise_cluster_index` means the cluster is a noise cluster.
+      There is typically one noise cluster per event. Any hit in a noise cluster
+      is a 'noise hit'. A hit in an object is called a 'signal hit' for lack of a
+      better term.
+    - An 'object' is a cluster that is *not* a noise cluster. 
+
+    beta_stabilizing: Choices are ['paper', 'clip', 'soft_q_scaling']:
+        paper: beta is sigmoid(model_output), q = beta.arctanh()**2 + qmin
+        clip:  beta is clipped to 1-1e-4, q = beta.arctanh()**2 + qmin
+        soft_q_scaling: beta is sigmoid(model_output), q = (clip(beta)/1.002).arctanh()**2 + qmin
+
+    huberize_norm_for_V_attractive: Huberizes the norms when used in the attractive potential
+
+    beta_term_option: Choices are ['paper', 'short-range-potential']:
+        Choosing 'short-range-potential' introduces a short range potential around high
+        beta points, acting like V_attractive.
+
+    Note this function has modifications w.r.t. the implementation in 2002.03605:
+    - The norms for V_repulsive are now Gaussian (instead of linear hinge)
+    """
+    device = beta.device
+
+    # ________________________________
+    # Calculate a bunch of needed counts and indices locally
+
+    # cluster_index: unique index over events
+    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
+    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
+    cluster_index, n_clusters_per_event = batch_cluster_indices(cluster_index_per_event, batch)
+    n_clusters = n_clusters_per_event.sum()
+    n_hits, cluster_space_dim = cluster_space_coords.size()
+    batch_size = batch.max()+1
+    n_hits_per_event = scatter_count(batch)
+
+    # Index of cluster -> event (n_clusters,)
+    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
+
+    # Per-hit boolean, indicating whether hit is sig or noise
+    is_noise = cluster_index_per_event == noise_cluster_index
+    is_sig = ~is_noise
+    is_trk = is_sig & (cluster_track_index == 1)
+    n_hits_sig = is_sig.sum()
+    n_sig_hits_per_event = scatter_count(batch[is_sig])
+
+    # mark hits that should be associated to tracks
+    is_trk_cluster = is_trk.to(torch.float)
+
+    # Per-cluster boolean, indicating whether cluster is an object or noise
+    is_object = scatter_max(is_sig.long(), cluster_index)[0].to(torch.bool)
+    is_object_track = scatter_max(is_trk.long(), cluster_index)[0].to(torch.bool)
+    is_noise_cluster = ~is_object
+
+    # FIXME: This assumes noise_cluster_index == 0!!
+    # Not sure how to do this in a performant way in case noise_cluster_index != 0
+    if noise_cluster_index != 0: raise NotImplementedError
+    object_index_per_event = cluster_index_per_event[is_sig] - 1
+    object_index, n_objects_per_event = batch_cluster_indices(object_index_per_event, batch[is_sig])
+    n_hits_per_object = scatter_count(object_index)
+    batch_object = batch_cluster[is_object]
+    batch_object_track = batch_cluster[is_object_track]
+    n_objects = is_object.sum()
+    n_objects_track = is_object_track.sum()
+
+    assert object_index.size()[0] == n_hits_sig
+    assert is_object.size()[0] == n_clusters
+    assert torch.all(n_hits_per_object > 0)
+    assert object_index.max()+1 == n_objects
+
+    # ________________________________
+    # L_V term
+
+    # Calculate q
+    q = calculate_q(beta, beta_stabilizing, qmin)
+    assert_no_nans(q)
+    assert q.device == device
+    assert q.size() == (n_hits,)
+
+    # Calculate q_alpha, the max q per object, and the indices of said maxima
+    q_alpha, index_alpha = scatter_max(q[is_sig], object_index)
+    assert q_alpha.size()[0] == n_objects
+
+    if force_track_alpha:
+        q_track = q.clone().detach()
+        q_track[~is_trk] = 0
+
+        q_track_alpha, index_track_alpha = scatter_max(q_track[is_sig], object_index)
+        assert q_track_alpha.size() == n_objects
+
+        q_alpha = torch.where(q_track_alpha > 0, q_track_alpha, q_alpha)
+        index_alpha = torch.where(q_track_alpha > 0, index_track_alpha, index_alpha)
+        #q_alpha = [qt_a if qt_a > 0 else q_a for qt_a, q_a in zip(q_track_alpha, q_alpha)]
+        #index_alpha = [idxt_a if qt_a > 0 else idx_a for idxt_a, qt_a, idx_a in zip(index_track_alpha, q_track_alpha, index_alpha)]
+
+    # Get the cluster space coordinates and betas for these maxima hits too
+    x_alpha = cluster_space_coords[is_sig][index_alpha]
+    beta_alpha = beta[is_sig][index_alpha]
+    assert x_alpha.size()[0] == n_objects
+    assert x_alpha.size()[1] == cluster_space_dim
+    assert beta_alpha.size()[0] == n_objects
+
+    # Connectivity matrix from hit (row) -> cluster (column)
+    # Index to matrix, e.g.:
+    # [1, 3, 1, 0] --> [
+    #     [0, 1, 0, 0],
+    #     [0, 0, 0, 1],
+    #     [0, 1, 0, 0],
+    #     [1, 0, 0, 0]
+    #     ]
+    M = torch.nn.functional.one_hot(cluster_index).long()
+
+    # Anti-connectivity matrix; be sure not to connect hits to clusters in different events!
+    M_inv = get_inter_event_norms_mask(batch, n_clusters_per_event) - M
+
+    # Throw away noise cluster columns; we never need them
+    M = M[:,is_object]
+    M_inv = M_inv[:,is_object]
+    assert M.size()[0] == n_hits
+    assert M.size()[1] == n_objects
+    assert M_inv.size()[0] == n_hits
+    assert M_inv.size()[1] == n_objects
+
+    # Calculate all norms
+    # Warning: Should not be used without a mask!
+    # Contains norms between hits and objects from different events
+    # (n_hits, 1, cluster_space_dim) - (1, n_objects, cluster_space_dim)
+    #   gives (n_hits, n_objects, cluster_space_dim)
+    norms = (cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)).norm(p=2, dim=-1)
+    assert norms.size()[0] == n_hits
+    assert norms.size()[1] == n_objects
+
+    # -------
+    # Attractive potential term
+
+    # First get all the relevant norms: We only want norms of signal hits
+    # w.r.t. the object they belong to, i.e. no noise hits and no noise clusters.
+    # First select all norms of all signal hits w.r.t. all objects, mask out later
+    norms_att = norms[is_sig]
+
+    # Power-scale the norms
+    if huberize_norm_for_V_attractive:
+        # Huberized version (linear but times 4)
+        # Be sure to not move 'off-diagonal' away from zero
+        # (i.e. norms of hits w.r.t. clusters they do _not_ belong to)
+        norms_att = huber(norms_att+1e-5, 4.)
+    else:
+        # Paper version is simply norms squared (no need for mask)
+        norms_att = norms_att**2
+    assert norms_att.size()[0] == n_hits_sig
+    assert norms_att.size()[1] == n_objects
+
+    # Now apply the mask to keep only norms of signal hits w.r.t. to the object
+    # they belong to
+    norms_att *= M[is_sig]
+
+    # Final potential term
+    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
+    V_attractive = q[is_sig].unsqueeze(-1) * q_alpha.unsqueeze(0) * norms_att
+    assert V_attractive.size()[0] == n_hits_sig
+    assert V_attractive.size()[1] == n_objects
+
+    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum over events
+    V_attractive = scatter_add(V_attractive.sum(dim=0), batch_object) / n_hits_per_event
+    assert V_attractive.size()[0] == batch_size
+    L_V_attractive = V_attractive.sum()
+
+    # -------
+    # Repulsive potential term
+
+    # Get all the relevant norms: We want norms of any hit w.r.t. to 
+    # objects they do *not* belong to, i.e. no noise clusters.
+    # We do however want to keep norms of noise hits w.r.t. objects
+    # Power-scale the norms: Gaussian scaling term instead of a cone
+    # Mask out the norms of hits w.r.t. the cluster they belong to
+    norms_rep = torch.exp(-4.*norms**2) * M_inv
+    
+    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
+    V_repulsive = q.unsqueeze(1) * q_alpha.unsqueeze(0) * norms_rep
+    # No need to apply a V = max(0, V); by construction V>=0
+    assert V_repulsive.size()[0] == n_hits
+    assert V_repulsive.size()[1] == n_objects
+
+    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum up events
+    L_V_repulsive = (scatter_add(V_repulsive.sum(dim=0), batch_object)/n_hits_per_event).sum()
+    L_V = L_V_attractive + L_V_repulsive
+
+    # ________________________________
+    # L_beta term
+
+    # -------
+    # L_beta noise term
+    L_beta_noise = 0
+
+    # n_noise_hits_per_event = scatter_count(batch[is_noise])
+    # L_beta_noise = s_B * (torch.where(n_noise_hits_per_event == 0, torch.zeros_like(n_noise_hits_per_event,dtype=torch.float32), (scatter_add(beta[is_noise], batch[is_noise])) / n_noise_hits_per_event)).sum()
+
+    #print(f'noise/event = {n_noise_hits_per_event}')
+    #print(f'L_beta_noise = {L_beta_noise}')
+    
+    # -------
+    # L_beta signal term
+    L_beta_norms_term = 0.
+    L_beta_logbeta_term = 0.
+    L_beta_sig = 0.
+
+    if beta_term_option == 'paper':
+        L_beta_sig = (scatter_add((1-beta_alpha), batch_object) / n_objects_per_event).sum()
+        
+    elif beta_term_option == 'short-range-potential':
+            
+        # First collect the norms: We only want norms of hits w.r.t. the object they
+        # belong to (like in V_attractive)
+        # Apply transformation first, and then apply mask to keep only the norms we want,
+        # then sum over hits, so the result is (n_objects,)
+        norms_beta_sig = (1./(20.*norms[is_sig]**2+1.) * M[is_sig]).sum(dim=0)
+        assert torch.all(norms_beta_sig >= 1.) and torch.all(norms_beta_sig <= n_hits_per_object)
+        # Subtract from 1. to remove self interaction, divide by number of hits per object
+        norms_beta_sig = (1. - norms_beta_sig) / n_hits_per_object
+        assert torch.all(norms_beta_sig >= -1.) and torch.all(norms_beta_sig <= 0.)
+        norms_beta_sig *= beta_alpha
+        # Conclusion:
+        # lower beta --> higher loss (less negative)
+        # higher norms --> higher loss
+
+        # Sum over objects, divide by number of objects per event, then sum over events
+        L_beta_norms_term = (scatter_add(norms_beta_sig, batch_object) / n_objects_per_event).sum().item()
+        assert L_beta_norms_term >= -batch_size and L_beta_norms_term <= 0.
+
+        # Logbeta term: Take -.2*torch.log(beta_alpha[is_object]+1e-9), sum it over objects,
+        # divide by n_objects_per_event, then sum over events (same pattern as above)
+        # lower beta --> higher loss
+        L_beta_logbeta_term = (
+            scatter_add(-.2*torch.log(beta_alpha+1e-9), batch_object) / n_objects_per_event
+            ).sum().item()
+
+        # Final L_beta term
+        L_beta_sig = L_beta_norms_term + L_beta_logbeta_term
+
+    else:
+        valid_options = ['paper', 'short-range-potential']
+        raise ValueError(f'beta_term_option "{beta_term_option}" is not valid, choose from {valid_options}')
+    
+    L_beta = L_beta_noise + L_beta_sig
+
+    # ________________________________
+    # L_track term
+    L_beta_track = 0.
+    index_alpha_track = torch.zeros(1,)
+    if beta_track_term:
+
+        q_track = q.clone().detach()
+        q_track[~is_trk] = 0
+
+        beta_track = beta.clone().detach()
+        beta_track[~is_trk] = 0
+        
+        # Calculate q_alpha, the max q per object, and the indices of said maxima
+        q_alpha_track, index_alpha_track = scatter_max(q_track[is_sig], object_index)
+ 
+        assert q_alpha_track.size()[0] == n_objects
+
+        # Get the cluster space coordinates and betas for these maxima hits too
+        #x_alpha_track = cluster_space_coords[is_sig][index_alpha_track]
+        beta_alpha_track = beta_track[is_sig][index_alpha_track]
+
+        L_beta_track = (scatter_add((1-beta_alpha_track), batch_object) / n_objects_per_event).sum().detach()
+
+        if beta_track_term_beginning:
+            L_V += L_beta_track
+        else:
+            L_beta += L_beta_track
+
+
+    # ________________________________
+    # L_charged_cluster term
+    L_charged_cluster = 0.
+    if use_charged_cluster_likeness:
+        # mark hits that should be associated to tracks
+        track_pos = torch.flatten( torch.argwhere(is_trk>0) )
+        is_trk_cluster = track_loop_jit(track_pos=track_pos, cluster_index_per_event=cluster_index_per_event, batch=batch, is_trk_cluster=is_trk_cluster)
+        L_charged_cluster = torch.nn.functional.binary_cross_entropy(input=charged_cluster_likeness,target=is_trk_cluster)
+        #print(f"BCE:",L_charged_cluster)
+        L_charged_cluster *= batch_size
+    L_V += L_charged_cluster
+
+    # ________________________________      ## need to modify
+    # energy regression term
+    ## charged track energy
+    L_E = torch.tensor(0).to(device)
+    L_E_charge = torch.tensor(0).to(device)
+    
+    if LE_track == 'alpha':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha)
+    if LE_track == 'alpha_tracker':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+    if LE_track == 'alpha_modifing':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha)
+        # L_E = torch.nn.functional.mse_loss(tracker_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # mse = torch.square(tracker_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha])
+    if LE_track == 'alpha_tracker_modifing':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+        # L_E = torch.nn.functional.mse_loss(tracker_energy[index_alpha_track], mcp_energy[index_alpha_track], reduction='sum')
+        # mse = torch.square(tracker_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha_track])
+    if LE_track == 'alpha_tracker_modifing_all0':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha)
+        # L_E = torch.nn.functional.mse_loss(tracker_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # mse = torch.square(tracker_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E = torch.sum(mse[index_alpha])
+    if LE_track == 'alpha_tracker_modifing_charged0':
+        L_E = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha)
+        L_E_charge = L_E_loss(tracker_energy=tracker_energy, mcp_energy=mcp_energy, index=index_alpha_track)
+        # L_E = torch.nn.functional.mse_loss(tracker_energy[index_alpha], mcp_energy[index_alpha], reduction='sum')
+        # L_E_charge = torch.nn.functional.mse_loss(tracker_energy[index_alpha_track], mcp_energy[index_alpha_track], reduction='sum')
+        # mse = torch.square(tracker_energy - mcp_energy)
+        # mse = mse[torch.where(mcp_energy>0)[0]]
+        # L_E_charge = torch.sum(mse[index_alpha_track])
+        # L_E = torch.sum(mse[index_alpha])
+    elif LE_track == 'alpha_ratio':
+        energy2 = torch.nn.functional.mse_loss(mcp_energy[index_alpha], mcp_energy[index_alpha], reduction='none')
+        mse = torch.nn.functional.mse_loss(tracker_energy[index_alpha], mcp_energy[index_alpha], reduction='none')
+        L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])
+        # mse = torch.square(tracker_energy - mcp_energy)
+        # mse = mse[index_alpha]
+        # # mse = torch.square((tracker_energy - mcp_energy)/mcp_energy)
+        # energy2 = torch.square(mcp_energy)
+        # energy2 = energy2[index_alpha]
+        # L_E = torch.sum(mse[torch.where(energy2>0)]/energy2[torch.where(energy2>0)])                                                   ## alpha_ratio
+    elif LE_track == 'betaE':
+        # L_E = torch.norm(tracker_energy - beta * mcp_energy) / torch.norm(beta)                   ## betaE
+        L_E = torch.sum(torch.square(tracker_energy - beta * mcp_energy)) / torch.sum(beta*beta)                   ## betaE
+
+    ## cluster energy
+    L_E_cluster = torch.tensor(0).to(device)
+    L_E  += L_E_cluster
+
+    L_E = L_E * er_coef
+    L_E_charge = L_E_charge * er_coef
+    L_E_cluster = L_E_cluster * er_coef
+
+
+    # ________________________________
+    # Returning
+    # Also divide by batch size here
+
+    components = {
+        "L_V": L_V / batch_size,
+        "L_V_attractive" : L_V_attractive / batch_size,
+        "L_V_repulsive" : L_V_repulsive / batch_size,
+        "L_charged_cluster" : L_charged_cluster / batch_size,
+        "L_beta" : L_beta / batch_size,
+        "L_beta_noise" : L_beta_noise / batch_size,
+        "L_beta_sig" : L_beta_sig / batch_size,
+        "L_beta_track" : L_beta_track / batch_size,
+        "L_E" : L_E / batch_size,
+        "L_E_charge" : L_E_charge / batch_size,
+        "L_E_cluster" : L_E_cluster / batch_size,
+    }
+    if beta_term_option == 'short-range-potential':
+        components['L_beta_norms_term'] = L_beta_norms_term / batch_size
+        components['L_beta_logbeta_term'] = L_beta_logbeta_term / batch_size
+    # return components if return_components else (L_V/batch_size, L_beta/batch_size, L_E/batch_size, L_E_charge/batch_size)
+    return components
+
+def formatting_return(components: dict, return_components = False) -> Union[Tuple[torch.Tensor, torch.Tensor], dict]:
+    return components if return_components else (components["L_V"], components["L_beta"], components["L_E"], components["L_E_charge"])

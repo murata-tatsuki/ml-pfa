@@ -59,15 +59,15 @@ outD=5
 # checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_10_11_120344_outputD5/ckpt_499_1.pth.tar
 checkpoint_gnn=energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_499_1.pth.tar
 # checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_11_02_093202_outputD5/ckpt_180_1.pth.tar
-checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_11_23_065354_outputD5/ckpt_61_1.pth.tar
+# checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_11_23_065354_outputD5/ckpt_61_1.pth.tar
+checkpoint_clustering=clustering/ckpts_gravnet_new02_2025_12_19_164650_outputD5/ckpt_79_1.pth.tar
 
 # outfile=test_.root
 # python save_pred_clustering.py /data/suehara/mldata/pfa/murata/code_test_ntau/test/tc ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} h5/display/clustering/test.h5 0 1 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --pid --lcr-block #> log/h5/test_2025_01_30_161918.log
-python save_pred_clustering.py /data/suehara/mldata/pfa/murata/code_test_ntau/test/tc ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} h5/display/clustering/test.h5 0 10 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --pid --lcr-block #> log/h5/test_2025_01_30_161918.log
+python save_pred_clustering.py /data/suehara/mldata/pfa/murata/code_test_ntau/test/tc ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} h5/display/clustering/test.h5 0 10 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --pid --lcr-block --score-raw #> log/h5/test_2025_01_30_161918.log
 # python save_pred_clustering.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/test ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} h5/display/clustering/test.h5 0 10 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --pid --lcr-block #> log/h5/test_2025_01_30_161918.log
 
-
-
+# python save_pred_clustering.py /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/train ${checkpoint_path}/${checkpoint_gnn} ${checkpoint_path}/${checkpoint_clustering} h5/display/clustering/test.h5 0 10 False ${input_dim} ${outD} --energy-regression --energy-regression-cluster --momentum --momentum-amp --pid --lcr-block --score-raw #> log/h5/test_2025_01_30_161918.log
 
 
 

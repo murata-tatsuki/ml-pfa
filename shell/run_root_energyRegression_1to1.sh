@@ -452,13 +452,14 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
 ## energy regression of mixed events  nnqq, neutron, kaon, gamma
   train_particle=nnqq
-  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/mixed_finetuning_valid.root
-  test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
-  test_path=/data/suehara/mldata/pfa/murata/data/tc/mixed/validation
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/mixed_finetuning_rawTest.root
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/mixed/train/less_sample/eventCut/eventCut
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/mixed/test
+  test_path=/data/suehara/mldata/pfa/murata/data/raw/mix/test
   checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_12_01_081855_outputD5
-  epoch=249
-  epoch=371
-  # python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 50000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster --truth-clustering
+  epoch=499
+  python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster
 ##
 
 ## pandora energy prediction

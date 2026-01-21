@@ -13,6 +13,7 @@ def main():
     args = parser.parse_args()
 
     ak_feats, ak_labels, _, _, _, _, _ = la.load_awkward2(args.input)
+    ak_feats, ak_labels = ILCDataset.timingCut(ak_feats, ak_labels, args.maximumTime,args.minimumPt,args.nstart,args.nend)
     ak_feats, ak_labels = ILCDataset.eventCut(ak_feats, ak_labels,args.nstart,args.nend)
 
     print(f'Saving to {args.output}')
