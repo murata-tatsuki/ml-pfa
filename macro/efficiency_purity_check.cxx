@@ -33,7 +33,9 @@ using namespace std;
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/mixed_finetuning_rawTest.root");
 
 // const string fileName = Form("/data/murata/test/test_1130.root");
-const string fileName = Form("/data/murata/test/test_1220.root");
+// const string fileName = Form("/data/murata/test/test_1220.root");
+
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_merged.root");
 
 
 // const string fileName = Form("../test/test_1130.root");

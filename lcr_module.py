@@ -1816,8 +1816,9 @@ class LCR_Block_modifiedOutput_moreParameters_trackQuery(nn.Module):
         w = attn_w_all[-1]  # 最終層の attention map を返す
 
         four_raw = self.fourvec_head(attn_out)
-        E = F.softplus(four_raw[..., :1]) + 1e-6
+        # E = F.softplus(four_raw[..., :1]) + 1e-6
         p = four_raw[..., 1:]
+        E = torch.sqrt(p.pow(2).sum(-1, keepdim=True) + F.softplus(four_raw[..., :1])**2 + 1e-8)
         four_corr = torch.cat([E, p], dim=-1)
 
         # --- ② particle / non-particle 判定 ---

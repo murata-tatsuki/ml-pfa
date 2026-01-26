@@ -649,11 +649,11 @@ def attention_loss(
     q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
     k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
     pos_mask = (q_cluster == k_cluster)  # same cluster
-    torch.set_printoptions(edgeitems=10000)
-    print(q_cluster[0])
-    print(k_cluster[0])
-    print(pos_mask.shape)
-    print(pos_mask[0])
+    # torch.set_printoptions(edgeitems=10000)
+    # print(q_cluster[0])
+    # print(k_cluster[0])
+    # print(pos_mask.shape)
+    # print(pos_mask[0])
 
     valid_query_mask = query_mask if query_mask is not None else torch.ones(B, Nq, dtype=torch.bool, device=attn.device)
     # -------------------------------
@@ -732,17 +732,18 @@ def attention_loss(
     target_particle_prob = alive_mask.float()   # (B, Nq)
     
     # BCE loss
-    loss_particle_prob = F.binary_cross_entropy(
-        particle_prob.clamp(min=1e-6, max=1.0-1e-6),
-        target_particle_prob
-    )
+    # loss_particle_prob = F.binary_cross_entropy(
+    #     particle_prob.clamp(min=1e-6, max=1.0-1e-6),
+    #     target_particle_prob
+    # )
+    loss_particle_prob = 0
 
 
     # -------------------------------
     # 合算
     # -------------------------------
-    # loss_charged = loss_charged * 100
-    loss_charged = loss_charged
+    loss_charged = loss_charged * 100
+    # loss_charged = loss_charged
     loss_neutral = loss_neutral * 100
     loss_attn_pad = loss_attn_pad * 100
     loss_particle_prob = loss_particle_prob * 100
@@ -800,11 +801,13 @@ def hitwise_clustering_ce_loss(
     B, Nq, Nk = logits.shape
 
     if query_mask is not None:
-        q_mask = torch.logical_not(query_mask.unsqueeze(2).expand(B, Nq, Nk))
-        truth_clustering[q_mask] = False
+        truth_clustering &= query_mask.unsqueeze(2)
+        # q_mask = torch.logical_not(query_mask.unsqueeze(2).expand(B, Nq, Nk))
+        # truth_clustering[q_mask] = False
     if key_mask is not None:
-        k_mask = torch.logical_not(key_mask.unsqueeze(1).expand(B, Nq, Nk))
-        truth_clustering[k_mask] = False
+        truth_clustering &= key_mask.unsqueeze(1)
+        # k_mask = torch.logical_not(key_mask.unsqueeze(1).expand(B, Nq, Nk))
+        # truth_clustering[k_mask] = False
 
     # --------------------------------------------------
     # hit をバッチ軸に展開
@@ -817,8 +820,11 @@ def hitwise_clustering_ce_loss(
     logits = logits.reshape(B * Nk, Nq)
     truth  = truth.reshape(B * Nk, Nq)
 
-    print(logits[0])
-    print(truth[0])
+    # print(logits[0])
+    # print(truth)
+    truth &= (truth.cumsum(dim=1) == 1)
+    # print(truth)
+
 
     # --------------------------------------------------
     # mask 整形

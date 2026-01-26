@@ -1091,6 +1091,14 @@ def main():
                 hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
                 hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
                 hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
+                # concat = torch.cat([hit_features, pred_betas.unsqueeze(-1), data.feat], dim=1)
+                # hit_padded, hit_mask = pad_and_mask_batch(concat, data.batch)
+                # hit_embed = hit_padded[..., :gnn_dim]
+                # hit_beta  = hit_padded[..., gnn_dim].squeeze(-1)
+                # hit_feat  = hit_padded[..., gnn_dim+1:]
+
+
+
 
                 query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
 

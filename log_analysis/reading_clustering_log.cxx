@@ -25,7 +25,7 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_06_19_160635_alpha_tracker_diff_log_perCluster_momentum.log";
 
 // const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_12_16_072322_momentum.log";
-const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2025_12_19_164650_momentum.log";
+const string fileName = "../log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD5_2026_01_23_145238_momentum.log";
 
 
 vector<double> l_v;
@@ -487,7 +487,7 @@ void reading_clustering_log(){
     }
 
     // if(train_l_v.size()==0) continue;
-    g_train_loss->SetPoint(i,i,train_loss[i*2]);
+    g_train_loss->SetPoint(i,i,train_loss[i]);
     // g_train_loss->SetPoint(i,i,train_l_E[i]+train_l_Mag[i]+train_l_Dir[i]);
     g_train_clustering_LE->SetPoint(i,i,train_l_E.size()==0?0:train_l_E[i]);
     g_train_clustering_LMag->SetPoint(i,i,train_l_Mag.size()==0?0:train_l_Mag[i]);
