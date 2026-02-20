@@ -153,6 +153,7 @@ class PredData:
     weight_neutral_hadron = np.array([0], dtype=np.float64)
     weight_muon = np.array([0], dtype=np.float64)
     weight_electron = np.array([0], dtype=np.float64)
+    pred_clusterid = np.array([0], dtype=np.int32)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
@@ -178,6 +179,7 @@ class PredData:
         t.Branch("weight_neutral_hadron",this.weight_neutral_hadron,"weight_neutral_hadron/D")
         t.Branch("weight_muon",this.weight_muon,"weight_muon/D")
         t.Branch("weight_electron",this.weight_electron,"weight_electron/D")
+        t.Branch("pred_clusterid",this.pred_clusterid,"pred_clusterid/I")
 
 class EventData:
     ''' TTree data for MCParticle
@@ -236,6 +238,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     debug = False
     pandora=args.pandora
     event_energy=args.event_total_energy
+    dijet_energy=args.dijet_energy
     energyRegression=args.energy_regression
     energyRegressionCluster=args.energy_regression_cluster
     energyRegressionWeight=args.energy_regression_weight
@@ -692,6 +695,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                         d3.weight_neutral_hadron[0] = prediction.pred_weight_neutral_hadron[ihit] if energyRegressionWeight else 0
                         d3.weight_muon[0] = prediction.pred_weight_muon[ihit] if energyRegressionWeight else 0
                         d3.weight_electron[0] = prediction.pred_weight_electron[ihit] if energyRegressionWeight else 0
+                        d3.pred_clusterid[0] = clustering[ihit]
 
                         if (not d3.mcid[0] == -1): # skip if track does not have hit
                             t3.Fill()
@@ -763,6 +767,7 @@ def main():
     parser.add_argument('output_dim', type=int)
     parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
     parser.add_argument('--event-total-energy', action='store_true', help='Use event visible energy')
+    parser.add_argument('--dijet-energy', action='store_true', help='Use event visible energy')
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
     parser.add_argument('--energy-regression-weight', action='store_true', help='Turn on energy regression term on loss function and output (enegy weight loss)')

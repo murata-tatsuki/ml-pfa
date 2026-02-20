@@ -36,9 +36,9 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_mixed_timingcut_forcealpha_thetaphi_outputD5_2025_12_01_081855_alpha_tracker_diff_log_perCluster.log";
 
 
-const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_19_144839_alpha_tracker_diff_log_perCluster.log";
-// const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_23_164640_alpha_tracker_diff_log_perCluster.log";
+const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_23_164640_alpha_tracker_diff_log_perCluster.log";
 
 
 vector<double> l_v;

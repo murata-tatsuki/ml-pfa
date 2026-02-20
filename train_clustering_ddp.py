@@ -37,9 +37,14 @@ import torch.nn.utils as utils
 from torch.nn.utils.rnn import pad_sequence
 
 #torch.manual_seed(1009)
-torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(False)
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+
+
+def count_parameters(model):
+    return sum(param.numel() for param in model.parameters() if param.requires_grad)
 
 
 
@@ -73,7 +78,7 @@ def feat_format(gnn_output, feat):
     feat[:,7:10] = feat[:,7:10] / 3
     return torch.cat((gnn_output, feat), dim=-1)
 
-def query_construction(hit_embed, hit_mask=None, k=50):
+def query_construction(hit_embed, hit_mask=None, k=100):
     B, N, D = hit_embed.shape
     device = hit_embed.device
     # --- seed 選択 (可変長 + パディング) ---
@@ -96,7 +101,7 @@ def query_construction(hit_embed, hit_mask=None, k=50):
     seeds_padded = torch.zeros(B, max_seeds, D, device=device)
     seed_padding_mask = torch.zeros(B, max_seeds, dtype=torch.bool, device=device)
     seed_track_mask = torch.zeros(B, max_seeds, dtype=torch.bool, device=device)
-    query_indices_in_key = torch.zeros(B, max_seeds, device=device)
+    query_indices_in_key = torch.zeros(B, max_seeds, dtype=torch.int32, device=device)
     for b in range(B):
         # --- TRACK: sort by hit_embed[:,14] descending ---
         track_hits = hit_embed[b][is_trk[b]]
@@ -995,8 +1000,11 @@ def main():
     # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput(embed_dim_=7,embed_dim=128, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
     # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=4, feat_dim=4, num_particle_classes=5).to(device)
 
-    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5, score_raw=args.score_raw).to(device)
+    # if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=256, num_heads=8, num_layers=8, feat_dim=4, num_particle_classes=5, score_raw=args.score_raw).to(device)
+    if args.lcr_block and args.pid: lcr_model = LCR_Block_modifiedOutput_moreParameters_trackQuery(embed_dim_=17,embed_dim=128, num_heads=4, num_layers=4, feat_dim=4, num_particle_classes=5, score_raw=args.score_raw).to(device)
     lcr_model.to(device)
+
+    print(f"Total trainable parameters: {count_parameters(lcr_model)}")
     
     # optimizer = torch.optim.AdamW(lcr_model.parameters(), lr=2e-4, weight_decay=1e-2)
     # scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=4e-4, total_steps=N_steps)
@@ -1087,16 +1095,19 @@ def main():
                 # hit_feat, _         = pad_and_mask_batch(data.feat, data.batch)
                 gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
                 hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
-                hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
-                hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
-                hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
-                hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
-                # concat = torch.cat([hit_features, pred_betas.unsqueeze(-1), data.feat], dim=1)
-                # hit_padded, hit_mask = pad_and_mask_batch(concat, data.batch)
-                # hit_embed = hit_padded[..., :gnn_dim]
-                # hit_beta  = hit_padded[..., gnn_dim].squeeze(-1)
-                # hit_feat  = hit_padded[..., gnn_dim+1:]
+                B1, D1 = hit_features.shape
+                B2, D2 = pred_betas.unsqueeze(-1).shape
+                B3, D3 = data.feat.shape
+                all_combined = torch.cat([hit_features, pred_betas.unsqueeze(-1), data.feat], dim=-1)
+                padded_all, hit_mask = pad_and_mask_batch(all_combined, data.batch)
+                hit_embed = padded_all[:, :, :D1]
+                hit_beta  = padded_all[:, :, D1 : D1+1].squeeze(-1)
+                hit_feat  = padded_all[:, :, D1+1:]
 
+                # hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
+                # hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+                # hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+                # hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
 
 
 
@@ -1221,12 +1232,22 @@ def main():
             lcr_model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
+                # gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
+                # hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
+                # hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
+                # hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
+                # hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
+                # hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
                 gnn_outputs, pred_betas = get_gnn_output_allFeat(data)
                 hit_features = feat_format(gnn_outputs, data.feat[:,:-3])
-                hit_embed, hit_mask     = pad_and_mask_batch(hit_features, data.batch)
-                hit_beta, _             = pad_and_mask_batch(pred_betas.unsqueeze(-1), data.batch)
-                hit_beta                = hit_beta.squeeze(-1)  # 元のshapeに戻す
-                hit_feat, _             = pad_and_mask_batch(data.feat, data.batch)
+                B1, D1 = hit_features.shape
+                B2, D2 = pred_betas.unsqueeze(-1).shape
+                B3, D3 = data.feat.shape
+                all_combined = torch.cat([hit_features, pred_betas.unsqueeze(-1), data.feat], dim=-1)
+                padded_all, hit_mask = pad_and_mask_batch(all_combined, data.batch)
+                hit_embed = padded_all[:, :, :D1]
+                hit_beta  = padded_all[:, :, D1 : D1+1].squeeze(-1)
+                hit_feat  = padded_all[:, :, D1+1:]
 
                 query, seed_padding_mask, query_indices_in_key, seed_track_mask = query_construction(hit_embed, hit_mask=hit_mask)
 

@@ -646,9 +646,10 @@ def attention_loss(
 
     # --- cluster broadcast ---
     truth_cluster_q = truth_cluster.gather(1, query_indices_in_key)  # (B, Nq)
-    q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
-    k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
-    pos_mask = (q_cluster == k_cluster)  # same cluster
+    # q_cluster = truth_cluster_q.unsqueeze(2).expand(B, Nq, Nk)
+    # k_cluster = truth_cluster.unsqueeze(1).expand(B, Nq, Nk)
+    # pos_mask = (q_cluster == k_cluster)  # same cluster
+    pos_mask = (truth_cluster_q.unsqueeze(2) == truth_cluster.unsqueeze(1))
     # torch.set_printoptions(edgeitems=10000)
     # print(q_cluster[0])
     # print(k_cluster[0])
@@ -662,25 +663,50 @@ def attention_loss(
     # - for each cluster keep the first (lowest index) query, mark others as dead
     # dead_query_mask: (B, Nq) bool, True means "this is a duplicate (2nd+) query"
     # -------------------------------
-    dead_query_mask = torch.zeros(B, Nq, dtype=torch.bool, device=attn.device)
-    for b in range(B):
-        qc = truth_cluster_q[b]         # (Nq,)
-        vmask = valid_query_mask[b]     # (Nq,)
-        # iterate in index order; record first occurrence of each cluster id
-        seen = {}
-        # go through only valid queries, in increasing index order
-        valid_idx = torch.nonzero(vmask, as_tuple=False).flatten()
-        for qi in valid_idx.tolist():
-            cid = int(qc[qi].item())
-            # If cluster id is padding-like (e.g. -1), skip marking (treat as no-cluster)
-            # (Assumes padding cluster ids are negative; adjust if different)
-            if cid < 0:
-                continue
-            if cid in seen:
-                # this is second+ occurrence -> mark dead
-                dead_query_mask[b, qi] = True
-            else:
-                seen[cid] = qi
+    # with torch.no_grad():
+    #     dead_query_mask = torch.zeros(B, Nq, dtype=torch.bool, device=attn.device)
+    #     for b in range(B):
+    #         qc = truth_cluster_q[b]         # (Nq,)
+    #         vmask = valid_query_mask[b]     # (Nq,)
+    #         # iterate in index order; record first occurrence of each cluster id
+    #         seen = {}
+    #         # go through only valid queries, in increasing index order
+    #         valid_idx = torch.nonzero(vmask, as_tuple=False).flatten()
+    #         for qi in valid_idx.tolist():
+    #             cid = int(qc[qi].item())
+    #             # If cluster id is padding-like (e.g. -1), skip marking (treat as no-cluster)
+    #             # (Assumes padding cluster ids are negative; adjust if different)
+    #             if cid < 0:
+    #                 continue
+    #             if cid in seen:
+    #                 # this is second+ occurrence -> mark dead
+    #                 dead_query_mask[b, qi] = True
+    #             else:
+    #                 seen[cid] = qi
+    with torch.no_grad():
+        # クエリ同士のクラスターIDの一致判定 (B, Nq, Nq)
+        # q_id_match[b, i, j] は クエリi と クエリj が同じクラスターなら True
+        q_id_match = (truth_cluster_q.unsqueeze(1) == truth_cluster_q.unsqueeze(2))
+
+        # 自分より前のインデックス(j < i)だけをチェックするための下三角マスク
+        # [0, 0, 0]
+        # [1, 0, 0]
+        # [1, 1, 0] ... のような行列
+        idx_range = torch.arange(Nq, device=attn.device)
+        tril_mask = idx_range.unsqueeze(0) > idx_range.unsqueeze(1) # (Nq, Nq)
+
+        # 「自分より前に」「有効な(valid)」「同じクラスターIDの」クエリがあるか
+        # 以前のクエリが有効かどうか: (B, 1, Nq) を (B, Nq, Nq) へブロードキャスト
+        earlier_valid = valid_query_mask.unsqueeze(1) 
+        
+        # 重複判定条件: (同じID) かつ (自分より前) かつ (相手が有効)
+        # かつ (IDが負ではない＝パディングではない)
+        is_duplicate_matrix = q_id_match & tril_mask & earlier_valid & (truth_cluster_q.unsqueeze(2) >= 0)
+
+        # いずれかの過去インデックスで重複があれば True
+        dead_query_mask = is_duplicate_matrix.any(dim=2) # (B, Nq)
+        # そもそも自分が無効なら dead ではない（計算対象外）
+        dead_query_mask &= valid_query_mask
 
     # -------------------------------
     # Remove pos_mask (truth matching) for dead queries so they do not get correct-target credit.
@@ -790,7 +816,7 @@ def clustering_loss(
     return total_loss / B, components
 
 
-def hitwise_clustering_ce_loss(
+def hitwise_clustering_ce_loss_old(
     logits,             # (B, H, Nq, Nk)
     truth_clustering,   # (B, Nq, Nk)
     query_mask,         # (B, Nq)
@@ -858,6 +884,60 @@ def hitwise_clustering_ce_loss(
     # 正規化
     # --------------------------------------------------
     loss = loss_per_hit.sum() / hit_mask.sum().clamp_min(eps)
+
+    return loss
+
+def hitwise_clustering_ce_loss(
+    logits,             # (B, H, Nq, Nk)
+    truth_clustering,   # (B, Nq, Nk)
+    query_mask,         # (B, Nq)
+    key_mask,           # (B, Nk)
+    eps=1e-12
+    ):
+    # 1. ヘッド方向に平均をとる (B, Nq, Nk)
+    logits = logits.mean(dim=1)
+    B, Nq, Nk = logits.shape
+
+    # 勾配計算が不要なマスク作成を no_grad で囲む
+    with torch.no_grad():
+        # bool型であることを確実にする
+        t_mask = truth_clustering.bool()
+        if query_mask is not None:
+            t_mask &= query_mask.unsqueeze(2)  # (B, Nq, 1) とブロードキャスト
+        if key_mask is not None:
+            t_mask &= key_mask.unsqueeze(1)    # (B, 1, Nk) とブロードキャスト
+
+        # hit を中心に考えるため (B, Nk, Nq) に変換
+        truth = t_mask.permute(0, 2, 1)
+        # 各ヒットに対して、最初にマッチしたクエリのみを正解とする (重複排除)
+        # dim=2 は Nq 次元
+        truth = truth & (truth.cumsum(dim=2) == 1)
+
+    # 2. Logits を (B, Nk, Nq) に変換
+    logits = logits.permute(0, 2, 1)
+
+    # 3. 無効な query を softmax 前にマスク (B, 1, Nq) から自動ブロードキャスト
+    # reshape する前に行うことで、RuntimeError を回避
+    if query_mask is not None:
+        # ~query_mask.unsqueeze(1) は (B, 1, Nq)
+        # logits (B, Nk, Nq) に対して自動で Nk 次元分コピーされる
+        logits.masked_fill_(~query_mask.unsqueeze(1), -1e4)
+
+    # 4. log-softmax（query 方向 = dim=-1）
+    log_probs = F.log_softmax(logits, dim=-1)
+
+    # 5. Cross Entropy (soft label 対応)
+    # truth.float() * log_probs は (B, Nk, Nq)
+    loss_per_hit = -(truth.float() * log_probs).sum(dim=-1)  # (B, Nk)
+
+    # 6. 無効な hit (key) を除外
+    if key_mask is not None:
+        loss_per_hit = loss_per_hit * key_mask.float()
+
+    # 7. 正規化
+    # 全有効ヒット数で割る
+    denom = key_mask.sum() if key_mask is not None else torch.tensor(B * Nk, device=logits.device)
+    loss = loss_per_hit.sum() / denom.clamp_min(eps)
 
     return loss
 

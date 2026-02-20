@@ -13,10 +13,10 @@ lr=1e-4
 # python train_clustering.py -i /data/suehara/mldata/pfa/murata/code_test_ntau/train -ii /data/suehara/mldata/pfa/murata/code_test_ntau/validation                    --no-split --thetaphi --gnn-model-ckpt checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_${epoch}_1.pth.tar --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size ${batch_size} --output-dimension ${outputD} --ckptdir checkpoint/clustering/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate 5e-4 --lr-policy cosineReduce --energy-regression --energy-regression-cluster --momentum --momentum-amp --clip-value 10 --loss-specify  #> log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_momentum.log
 
 
-batch_size=16
+batch_size=10
 outputD=5
 epoch=499
-ncuda=1
+ncuda=0
 # lr=5e-6
 lr=5e-5
 # python train_clustering.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/train -ii /data/suehara/mldata/pfa/murata/data/tc/tc_ntau_10GeV_10/validation --no-split --thetaphi --gnn-model-ckpt checkpoint/energy_regression/ckpts_gravnet_new02_2025_06_19_160635_outputD5/ckpt_${epoch}_1.pth.tar --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size ${batch_size} --output-dimension ${outputD} --ckptdir checkpoint/clustering/ckpts_gravnet_new02_${DATE}_outputD${outputD} --learning-rate ${lr} --lr-policy cosineReduce --energy-regression --energy-regression-cluster --momentum --momentum-amp --loss-specify > log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_momentum.log #> log/clustering/tc_ntau_10GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_momentum.log

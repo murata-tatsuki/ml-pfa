@@ -463,16 +463,26 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 ##
 
 ## energy regression of merged nnqq
-  train_particle=nnqq
-  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_merged.root
-  # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq/test
-  # test_path=/data/suehara/mldata/pfa/murata/data/tc/mixed/train/less_sample/eventCut/eventCut
-  # test_path=/data/suehara/mldata/pfa/murata/data/tc/mixed/test
-  test_path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/test
+  train_particle=nnqq_brems
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/test
+  test_path=/data/suehara/mldata/pfa/murata/data/raw/nnqq_brems/test
   checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2026_01_23_164640_outputD5
-  epoch=86
+  epoch=195
+  # python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1 --energy-regression-cluster --beta-d-scan --event-total-energy --tbeta 0.1
+##
+
+## fixed uds
+  train_particle=fixed_uds
+  energy=500
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${energy}GeV/tbeta090td050.root
+  # test_path=/data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/${energy}GeV
+  test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/${energy}GeV/less_samples
+  checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_30_151610_outputD5
+  epoch=444
   python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster
 ##
+
 
 ## pandora energy prediction
   ###### train_particle=ntau_10GeV_10
