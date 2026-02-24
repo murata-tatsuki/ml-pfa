@@ -12,37 +12,32 @@
 
 using namespace std;
 
+const int qq_energy = 91;
+const double c_event_clean_threshold = 0.1;
+
+
+const double reco_truth_energy_min =
+    qq_energy == 40  ? 0  :
+    qq_energy == 91  ? 60  :
+    qq_energy == 200 ? 150 :
+    qq_energy == 350 ? 300 :
+    qq_energy == 500 ? 400 : -1.0;
+
+const double reco_truth_energy_max =
+    qq_energy == 40  ? 60  :
+    qq_energy == 91  ? 150  :
+    qq_energy == 200 ? 300 :
+    qq_energy == 350 ? 400 :
+    qq_energy == 500 ? 600 : -1.0;
+
+    
+
 // conditions
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster/tbeta090td050.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_pandora.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1/tbeta090td050.root");
-
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_ntau_10GeV_10/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_tbeta09td05_truthClustering.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_tbeta09td05_eventTotalEnergy_moreStats_truthClustering.root");
-
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/alpha_tracker_diff_log_perCluster__sum_log_perCluster_Ecoef1_100betaSuppress_moreStats.root");
-
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_truthcl.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_cond_cluster.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_neutron_1to100GeV/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/weight/test_cond_weight.root");
-
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/neutron_finetuning.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/mixed_finetuning_rawTest.root");
-
-// const string fileName = Form("/data/murata/test/test_1130.root");
-// const string fileName = Form("/data/murata/test/test_1220.root");
-
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_merged.root");
-// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_brems/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/tbeta090td050.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/200GeV/tbeta090td050.root");
-
-// const string fileName = Form("../test/test_1130.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/tbeta090td050.root", qq_energy);
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/test.root", qq_energy);
 
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10to100GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const bool kaon_neutron = true;
 const bool jet_regression = false;
@@ -57,7 +52,7 @@ const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particl
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
 const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
-void efficiency_purity_check_detail(){ 
+void efficiency_purity_check_reco(){ 
     int rawfilenum = 1;
 
     // if(hyper_parameter && fine_tuning){ // condition check
@@ -68,6 +63,7 @@ void efficiency_purity_check_detail(){
     TFile *filein[rawfilenum];
     TTree *tree[rawfilenum];
     TTree *tree_pred[rawfilenum];
+    TTree *tree_reco[rawfilenum];
     TTree *tree_event[rawfilenum];
     TTree *tree_jet[rawfilenum];
     int entry_max[rawfilenum];
@@ -82,6 +78,7 @@ void efficiency_purity_check_detail(){
         tree[i] = (TTree*) filein[i]->Get("t");
         entry_max[i] = tree[i]->GetEntries();
         tree_pred[i] = (TTree*) filein[i]->Get("prediction");
+        tree_reco[i] = (TTree*) filein[i]->Get("reco");
         tree_event[i] = (TTree*) filein[i]->Get("event");
         if(jet_regression) tree_jet[i] = (TTree*) filein[i]->Get("jet");
     }
@@ -94,6 +91,22 @@ void efficiency_purity_check_detail(){
     double _mcmass, _mcpx, _mcpy, _mcpz, _mcen, _edep, _edep_reco, _edep_match, _pred_edep, _pred_edep_cluster, _pred_beta;
 
     double _MC_jet_energy, _total_predicted_energy_truthBase, _total_predicted_energy_predBase;
+
+    int reco_event, reco_cluster, reco_nhits, reco_mcid, reco_mcpdg, reco_mccharge, reco_mcstatus, reco_ntrack_hits, reco_cond_is_track, reco_matched_truth_pdgid, reco_npdg_comp;
+    int reco_pdg_comp_ids[64];
+    double reco_mcmass, reco_mcpx, reco_mcpy, reco_mcpz, reco_mcen, reco_edep_reco, reco_edep_mc, reco_edep_match, reco_pred_edep, reco_pred_edep_cluster, reco_cond_beta, reco_matched_truth_edep_frac;
+
+    struct EventRecoEnergySummary {
+        double pred_energy_reco_track = 0.0;
+        double pred_energy_cond_track = 0.0;
+    };
+    struct EventConfusionSummary {
+        double reco_energy_sum = 0.0;
+        double confusion_weighted_sum = 0.0;
+    };
+    struct EventTrackCategoryEnergySummary {
+        double pred_energy_sum[6] = {0,0,0,0,0,0};
+    };
 
 
 
@@ -128,7 +141,6 @@ void efficiency_purity_check_detail(){
     int rebin_factor = 0.025 / E_res_binWidth;
 
     const int nEnergy_jet = 12;
-    
     const int nEnergy = 10;
     const double energy_interval = energyMaximum / nEnergy;
     TH1F *purity[nParticle];
@@ -148,6 +160,23 @@ void efficiency_purity_check_detail(){
     TH1F *energy_resolution[nParticle];
     TH1F *energy_resolution_per_energy[nParticle][nEnergy];
     TH1F *energy_resolution_per_energy_cluster[nParticle][nEnergy];
+    TH1F *event_energy_diff_per_energy_reco_track[nEnergy_jet];
+    TH1F *event_energy_diff_per_energy_cond_track[nEnergy_jet];
+    TH1F *event_energy_sum_reco_track_distribution;
+    TH1F *event_energy_sum_cond_track_distribution;
+    TH2F *event_energy2d_reco_track;
+    TH2F *event_energy2d_cond_track;
+    TH1F *clustering_correct_ratio_by_particle;
+    TH2F *clustering_composition_matrix;
+    TH1F *track_pdg_charge_relation_ratio;
+    TH2F *track_pdg_charge_vs_condbeta;
+    TH1F *event_pred_energy_sum_by_track_category[6];
+    TH1F *c_event_distribution;
+    TH2F *c_event_vs_truth_energy;
+    TH1F *event_residual_all_reco_track;
+    TH1F *event_residual_clean_reco_track;
+    TH1F *event_residual_all_cond_track;
+    TH1F *event_residual_clean_cond_track;
     TH2F *eff_vs_Ediff[nParticle];
     TH2F *pur_vs_Ediff[nParticle];
     TH2F *condbeta_vs_eff[nParticle];
@@ -231,16 +260,133 @@ void efficiency_purity_check_detail(){
         }
     }
     TH2F *jet_energy2d = new TH2F(Form("jet_energy2d"), Form(";MC jet energy;predicted jet energy"), 1200,0,120,1200,0,120);
+    event_energy2d_reco_track = new TH2F(
+        Form("event_energy2d_reco_track"),
+        Form("Event energy (reco cluster track-based);MC event energy;predicted event energy"),
+        600,0,600,600,0,600
+    );
+    event_energy2d_cond_track = new TH2F(
+        Form("event_energy2d_cond_track"),
+        Form("Event energy (condensation track-based);MC event energy;predicted event energy"),
+        600,0,600,600,0,600
+    );
+    event_energy_sum_reco_track_distribution = new TH1F(
+        Form("event_energy_sum_reco_track_distribution"),
+        Form("Event reconstructed energy sum (reco cluster track-based);reconstructed event energy sum;entries"),
+        600,0,600
+    );
+    event_energy_sum_cond_track_distribution = new TH1F(
+        Form("event_energy_sum_cond_track_distribution"),
+        Form("Event reconstructed energy sum (condensation track-based);reconstructed event energy sum;entries"),
+        600,0,600
+    );
+    clustering_correct_ratio_by_particle = new TH1F(
+        Form("clustering_correct_ratio_by_particle"),
+        Form("Reco clustering correctness by particle;particle;correct clustering ratio"),
+        nParticle, 0, nParticle
+    );
+    clustering_composition_matrix = new TH2F(
+        Form("clustering_composition_matrix"),
+        Form("Reco clustering composition matrix;true particle;component particle in cluster"),
+        nParticle, 0, nParticle, nParticle, 0, nParticle
+    );
+    for(int ip=0; ip<nParticle; ip++){
+        clustering_correct_ratio_by_particle->GetXaxis()->SetBinLabel(ip+1, particleNames[ip].c_str());
+        clustering_composition_matrix->GetXaxis()->SetBinLabel(ip+1, particleNames[ip].c_str());
+        clustering_composition_matrix->GetYaxis()->SetBinLabel(ip+1, particleNames[ip].c_str());
+    }
+    track_pdg_charge_relation_ratio = new TH1F(
+        Form("track_pdg_charge_relation_ratio"),
+        Form("Track presence vs MC charge ratio;category;ratio"),
+        6, 0, 6
+    );
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(1, "track&charged&condTrack");
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(2, "track&charged&!condTrack");
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(3, "track&neutral&condTrack");
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(4, "track&neutral&!condTrack");
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(5, "no track & charged");
+    track_pdg_charge_relation_ratio->GetXaxis()->SetBinLabel(6, "no track & neutral");
+    track_pdg_charge_vs_condbeta = new TH2F(
+        Form("track_pdg_charge_vs_condbeta"),
+        Form("Track/charge category vs condensation beta;track/charge category;condensation point beta"),
+        6, 0, 6, 100, 0, 1
+    );
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(1, "track&charged&condTrack");
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(2, "track&charged&!condTrack");
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(3, "track&neutral&condTrack");
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(4, "track&neutral&!condTrack");
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(5, "no track & charged");
+    track_pdg_charge_vs_condbeta->GetXaxis()->SetBinLabel(6, "no track & neutral");
+    const char* track_category_labels[6] = {
+        "track&charged&condTrack",
+        "track&charged&!condTrack",
+        "track&neutral&condTrack",
+        "track&neutral&!condTrack",
+        "no track & charged",
+        "no track & neutral"
+    };
+    for(int ic=0; ic<6; ic++){
+        event_pred_energy_sum_by_track_category[ic] = new TH1F(
+            Form("event_pred_energy_sum_by_track_category_%d",ic+1),
+            Form("%s;event pred energy sum;entries", track_category_labels[ic]),
+            1000, 0, 100
+        );
+    }
+    c_event_distribution = new TH1F(
+        Form("c_event_distribution"),
+        Form("Event confusion index C_{event};C_{event};entries"),
+        100, 0, 1
+    );
+    c_event_vs_truth_energy = new TH2F(
+        Form("c_event_vs_truth_energy"),
+        Form("Event confusion index vs truth energy;truth event energy;C_{event}"),
+        600, 0, 600, 100, 0, 1
+    );
+    event_residual_all_reco_track = new TH1F(
+        Form("event_residual_all_reco_track"),
+        Form("Reco-track based;(pred-truth)/truth;entries"),
+        Eres_nbin, -Eres_range, Eres_range
+    );
+    event_residual_clean_reco_track = new TH1F(
+        Form("event_residual_clean_reco_track"),
+        Form("Reco-track based clean;(pred-truth)/truth;entries"),
+        Eres_nbin, -Eres_range, Eres_range
+    );
+    event_residual_all_cond_track = new TH1F(
+        Form("event_residual_all_cond_track"),
+        Form("Cond-track based;(pred-truth)/truth;entries"),
+        Eres_nbin, -Eres_range, Eres_range
+    );
+    event_residual_clean_cond_track = new TH1F(
+        Form("event_residual_clean_cond_track"),
+        Form("Cond-track based clean;(pred-truth)/truth;entries"),
+        Eres_nbin, -Eres_range, Eres_range
+    );
     TH1F *jet_energy_resolution_per_energy[nEnergy_jet];
     for(int ie=0;ie<nEnergy_jet;ie++){
         string title = ie==0 ? Form("jet;(predicted - truth) / truth") : Form("jet (%d-%d GeV);(predicted - truth) / truth",(int)(ie*energy_interval),(int)((ie+1)*energy_interval));
         jet_energy_resolution_per_energy[ie] = new TH1F(Form("energy_resolution_per_energy_%d",ie), title.c_str(), 400,-0.5,0.5);
+
+        string diff_title = Form("Event energy (%d-%d GeV);predicted energy - truth energy",(int)(ie*10),(int)((ie+1)*10));
+        string res_title = Form("Event energy (%d-%d GeV);(predicted - truth) / truth",(int)(ie*10),(int)((ie+1)*10));
+        event_energy_diff_per_energy_reco_track[ie] = new TH1F(Form("event_energy_diff_per_energy_reco_track_%d",ie), diff_title.c_str(), Eres_nbin,-Eres_range,Eres_range);
+        event_energy_diff_per_energy_cond_track[ie] = new TH1F(Form("event_energy_diff_per_energy_cond_track_%d",ie), diff_title.c_str(), Eres_nbin,-Eres_range,Eres_range);
     }
 
 
     // data をとってきてる
+    int clustering_total_by_particle[nParticle] = {0};
+    int clustering_correct_by_particle[nParticle] = {0};
+    int track_charge_total = 0;
+    int n_track_cond_charged = 0;
+    int n_track_notcond_charged = 0;
+    int n_track_cond_neutral = 0;
+    int n_track_notcond_neutral = 0;
+    int n_notrack_charged = 0;
+    int n_notrack_neutral = 0;
     for(int irawfile=0; irawfile<rawfilenum; irawfile++){
         if(rawfilenum>1) cout << irawfile << "/" << rawfilenum << endl;
+        map<int, double> event_truth_energy_sum_ttree;
 
         tree[irawfile]->SetBranchAddress("event", &event);
         tree[irawfile]->SetBranchAddress("hitid", &hitid);
@@ -257,6 +403,9 @@ void efficiency_purity_check_detail(){
 
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             tree[irawfile]->GetEntry(ientry);
+            if(mcen>0){
+                event_truth_energy_sum_ttree[event] += mcen;
+            }
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
             if(cond_beta<beta_threshold) continue;
@@ -343,7 +492,183 @@ void efficiency_purity_check_detail(){
             }
         }
 
+        if(tree_reco[irawfile]){
+            map<int, EventRecoEnergySummary> event_energy_summary;
+            map<int, EventConfusionSummary> event_confusion_summary;
+            map<int, EventTrackCategoryEnergySummary> event_track_category_energy_summary;
+            tree_reco[irawfile]->SetBranchAddress("event", &reco_event);
+            tree_reco[irawfile]->SetBranchAddress("cluster", &reco_cluster);
+            tree_reco[irawfile]->SetBranchAddress("nhits", &reco_nhits);
+            tree_reco[irawfile]->SetBranchAddress("mcid", &reco_mcid);
+            tree_reco[irawfile]->SetBranchAddress("mcpdg", &reco_mcpdg);
+            tree_reco[irawfile]->SetBranchAddress("mccharge", &reco_mccharge);
+            tree_reco[irawfile]->SetBranchAddress("mcmass", &reco_mcmass);
+            tree_reco[irawfile]->SetBranchAddress("mcpx", &reco_mcpx);
+            tree_reco[irawfile]->SetBranchAddress("mcpy", &reco_mcpy);
+            tree_reco[irawfile]->SetBranchAddress("mcpz", &reco_mcpz);
+            tree_reco[irawfile]->SetBranchAddress("mcen", &reco_mcen);
+            tree_reco[irawfile]->SetBranchAddress("mcstatus", &reco_mcstatus);
+            tree_reco[irawfile]->SetBranchAddress("edep_reco", &reco_edep_reco);
+            tree_reco[irawfile]->SetBranchAddress("edep_mc", &reco_edep_mc);
+            tree_reco[irawfile]->SetBranchAddress("edep_match", &reco_edep_match);
+            tree_reco[irawfile]->SetBranchAddress("pred_edep", &reco_pred_edep);
+            tree_reco[irawfile]->SetBranchAddress("pred_edep_cluster", &reco_pred_edep_cluster);
+            tree_reco[irawfile]->SetBranchAddress("ntrack_hits", &reco_ntrack_hits);
+            tree_reco[irawfile]->SetBranchAddress("cond_beta", &reco_cond_beta);
+            tree_reco[irawfile]->SetBranchAddress("cond_is_track", &reco_cond_is_track);
+            tree_reco[irawfile]->SetBranchAddress("matched_truth_pdgid", &reco_matched_truth_pdgid);
+            tree_reco[irawfile]->SetBranchAddress("matched_truth_edep_frac", &reco_matched_truth_edep_frac);
+            tree_reco[irawfile]->SetBranchAddress("npdg_comp", &reco_npdg_comp);
+            tree_reco[irawfile]->SetBranchAddress("pdg_comp_ids", reco_pdg_comp_ids);
+
+            for(int ientry=0; ientry<tree_reco[irawfile]->GetEntries(); ientry++){
+                tree_reco[irawfile]->GetEntry(ientry);
+                if(reco_cond_beta<beta_threshold) continue;
+                auto truth_it_reco = event_truth_energy_sum_ttree.find(reco_event);
+                if(truth_it_reco == event_truth_energy_sum_ttree.end()) continue;
+                const double truth_energy_reco = truth_it_reco->second;
+                if(truth_energy_reco<reco_truth_energy_min || truth_energy_reco>reco_truth_energy_max) continue;
+
+                auto &sum = event_energy_summary[reco_event];
+                sum.pred_energy_reco_track += (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
+                sum.pred_energy_cond_track += (reco_cond_is_track!=0 ? reco_pred_edep : reco_pred_edep_cluster);
+                auto &conf_sum = event_confusion_summary[reco_event];
+                const double f_main = reco_matched_truth_edep_frac < 0 ? 0.0 : (reco_matched_truth_edep_frac > 1.0 ? 1.0 : reco_matched_truth_edep_frac);
+                conf_sum.reco_energy_sum += reco_edep_reco;
+                conf_sum.confusion_weighted_sum += reco_edep_reco * (1.0 - f_main);
+
+                if(reco_mccharge!=-1){
+                    const bool has_track = (reco_ntrack_hits>0);
+                    const bool is_charged = (reco_mccharge!=0);
+                    const bool cond_is_track_flag = (reco_cond_is_track!=0);
+                    track_charge_total += 1;
+                    int track_charge_category = -1;
+                    if(has_track && is_charged && cond_is_track_flag){
+                        n_track_cond_charged += 1;
+                        track_charge_category = 1;
+                    }
+                    else if(has_track && is_charged && !cond_is_track_flag){
+                        n_track_notcond_charged += 1;
+                        track_charge_category = 2;
+                    }
+                    else if(has_track && !is_charged && cond_is_track_flag){
+                        n_track_cond_neutral += 1;
+                        track_charge_category = 3;
+                    }
+                    else if(has_track && !is_charged && !cond_is_track_flag){
+                        n_track_notcond_neutral += 1;
+                        track_charge_category = 4;
+                    }
+                    else if(!has_track && is_charged){
+                        n_notrack_charged += 1;
+                        track_charge_category = 5;
+                    }
+                    else {
+                        n_notrack_neutral += 1;
+                        track_charge_category = 6;
+                    }
+                    track_pdg_charge_vs_condbeta->Fill(track_charge_category - 0.5, reco_cond_beta);
+                    const double pred_energy_for_category = (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
+                    event_track_category_energy_summary[reco_event].pred_energy_sum[track_charge_category-1] += pred_energy_for_category;
+                }
+
+                auto true_itr = find(particledgValues.begin(), particledgValues.end(), reco_matched_truth_pdgid);
+                if(true_itr != particledgValues.end()){
+                    int true_pid = particledgValues_itr[distance(particledgValues.begin(), true_itr)];
+                    clustering_total_by_particle[true_pid] += 1;
+                    bool is_correct_cluster = true;
+                    const int ncomp = reco_npdg_comp < 64 ? reco_npdg_comp : 64;
+                    for(int ic=0; ic<ncomp; ic++){
+                        auto comp_itr = find(particledgValues.begin(), particledgValues.end(), reco_pdg_comp_ids[ic]);
+                        if(comp_itr == particledgValues.end()) continue;
+                        int comp_pid = particledgValues_itr[distance(particledgValues.begin(), comp_itr)];
+                        clustering_composition_matrix->Fill(true_pid + 0.5, comp_pid + 0.5);
+                        if(comp_pid != true_pid) is_correct_cluster = false;
+                    }
+                    if(is_correct_cluster) clustering_correct_by_particle[true_pid] += 1;
+                }
+            }
+
+            for(const auto &entry : event_energy_summary){
+                const EventRecoEnergySummary &sum = entry.second;
+                event_energy_sum_reco_track_distribution->Fill(sum.pred_energy_reco_track);
+                event_energy_sum_cond_track_distribution->Fill(sum.pred_energy_cond_track);
+
+                double c_event = -1.0;
+                auto conf_it = event_confusion_summary.find(entry.first);
+                if(conf_it != event_confusion_summary.end() && conf_it->second.reco_energy_sum>0){
+                    c_event = conf_it->second.confusion_weighted_sum / conf_it->second.reco_energy_sum;
+                    c_event_distribution->Fill(c_event);
+                }
+
+                auto truth_it = event_truth_energy_sum_ttree.find(entry.first);
+                if(truth_it == event_truth_energy_sum_ttree.end()) continue;
+                const double truth_energy = truth_it->second;
+                if(c_event>=0){
+                    c_event_vs_truth_energy->Fill(truth_energy, c_event);
+                }
+                if(truth_energy<=0) continue;
+                const double residual_reco_track = (sum.pred_energy_reco_track - truth_energy) / truth_energy;
+                const double residual_cond_track = (sum.pred_energy_cond_track - truth_energy) / truth_energy;
+                event_residual_all_reco_track->Fill(residual_reco_track);
+                event_residual_all_cond_track->Fill(residual_cond_track);
+                if(c_event>=0 && c_event<c_event_clean_threshold){
+                    event_residual_clean_reco_track->Fill(residual_reco_track);
+                    event_residual_clean_cond_track->Fill(residual_cond_track);
+                }
+                // if(truth_energy<=0) continue;
+                // int itr_energy = truth_energy / 10.0;
+                // if(itr_energy<0 || itr_energy>=nEnergy_jet) continue;
+
+                // event_energy_diff_per_energy_reco_track[itr_energy]->Fill(sum.pred_energy_reco_track - truth_energy);
+                // event_energy_diff_per_energy_cond_track[itr_energy]->Fill(sum.pred_energy_cond_track - truth_energy);
+                event_energy2d_reco_track->Fill(truth_energy, sum.pred_energy_reco_track);
+                event_energy2d_cond_track->Fill(truth_energy, sum.pred_energy_cond_track);
+            }
+            for(const auto &entry : event_track_category_energy_summary){
+                auto truth_it = event_truth_energy_sum_ttree.find(entry.first);
+                if(truth_it == event_truth_energy_sum_ttree.end()) continue;
+                const double truth_energy_reco = truth_it->second;
+                if(truth_energy_reco<reco_truth_energy_min || truth_energy_reco>reco_truth_energy_max) continue;
+                const EventTrackCategoryEnergySummary &cat_sum = entry.second;
+                for(int ic=0; ic<6; ic++){
+                    event_pred_energy_sum_by_track_category[ic]->Fill(cat_sum.pred_energy_sum[ic]);
+                }
+            }
+        }
+
     }
+
+    for(int ip=0; ip<nParticle; ip++){
+        double ratio = clustering_total_by_particle[ip] > 0 ? (double)clustering_correct_by_particle[ip] / clustering_total_by_particle[ip] : 0.0;
+        clustering_correct_ratio_by_particle->SetBinContent(ip+1, ratio);
+        double err = clustering_total_by_particle[ip] > 0 ? sqrt(ratio * (1.0-ratio) / clustering_total_by_particle[ip]) : 0.0;
+        clustering_correct_ratio_by_particle->SetBinError(ip+1, err);
+        cout << "clustering correctness " << particleNames[ip]
+             << " : " << clustering_correct_by_particle[ip] << "/" << clustering_total_by_particle[ip]
+             << " = " << ratio << endl;
+    }
+    if(track_charge_total>0){
+        track_pdg_charge_relation_ratio->SetBinContent(1, (double)n_track_cond_charged / track_charge_total);
+        track_pdg_charge_relation_ratio->SetBinContent(2, (double)n_track_notcond_charged / track_charge_total);
+        track_pdg_charge_relation_ratio->SetBinContent(3, (double)n_track_cond_neutral / track_charge_total);
+        track_pdg_charge_relation_ratio->SetBinContent(4, (double)n_track_notcond_neutral / track_charge_total);
+        track_pdg_charge_relation_ratio->SetBinContent(5, (double)n_notrack_charged / track_charge_total);
+        track_pdg_charge_relation_ratio->SetBinContent(6, (double)n_notrack_neutral / track_charge_total);
+    }
+    cout << "track/charge relation ratios (total-normalized)" << endl;
+    cout << "  track & charged & condTrack : " << n_track_cond_charged << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_track_cond_charged/track_charge_total : 0) << endl;
+    cout << "  track & charged & !condTrack : " << n_track_notcond_charged << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_track_notcond_charged/track_charge_total : 0) << endl;
+    cout << "  track & neutral & condTrack : " << n_track_cond_neutral << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_track_cond_neutral/track_charge_total : 0) << endl;
+    cout << "  track & neutral & !condTrack : " << n_track_notcond_neutral << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_track_notcond_neutral/track_charge_total : 0) << endl;
+    cout << "  no track & charged : " << n_notrack_charged << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_notrack_charged/track_charge_total : 0) << endl;
+    cout << "  no track & neutral : " << n_notrack_neutral << "/" << track_charge_total
+         << " = " << (track_charge_total>0 ? (double)n_notrack_neutral/track_charge_total : 0) << endl;
     
 
     
@@ -355,6 +680,7 @@ void efficiency_purity_check_detail(){
     gStyle->SetStatW(0.4);
     // legends をもう少し大きくする
 
+    /*
     TCanvas *compare = new TCanvas("compare","compare",1);
     compare->Divide(nParticle,2);
     for(int ip=0;ip<nParticle*2;ip++){
@@ -495,7 +821,7 @@ void efficiency_purity_check_detail(){
             pur_vs_Ediff[ip-nParticle]->Draw("colz");
         }
     }
-    */
+    *
 
 
     TLegend *legend[nParticle];
@@ -562,7 +888,9 @@ void efficiency_purity_check_detail(){
     double resolution_rms[nParticle][nEnergy];
     double resolution_sigma[nParticle][nEnergy];
     double resolution_sigma_error[nParticle][nEnergy];
+    */
     TF1 *gaus = new TF1("gaus", "gaus", -3,3);
+    /*
     TGraphErrors *energy_resolution_rms[nParticle];
     TGraphErrors *energy_resolution_sigma[nParticle];
     TLegend *legend_res = new TLegend( 0.5, 0.6, 0.9, 0.9);
@@ -757,7 +1085,7 @@ void efficiency_purity_check_detail(){
         }
         // else MCtruth_energy[ip-nParticle]->Draw();
     }
-    */
+    *
 
 
 
@@ -965,22 +1293,186 @@ void efficiency_purity_check_detail(){
     jet_energy_resolution_rms->Draw("AP");
     jet_energy_resolution_sigma->Draw("P");
     legend_jet_res->Draw("same");
+    */
+
+    TCanvas *canvas_event_energy_resolution = new TCanvas("canvas_event_energy_resolution","canvas_event_energy_resolution",1400,500);
+    canvas_event_energy_resolution->Divide(2,1);
+    gStyle->SetOptFit(1111);
+    gStyle->SetStatX(0.9);
+    gStyle->SetStatY(0.9);
+    gStyle->SetStatW(0.2);
+    gStyle->SetStatH(0.14);
+    TF1 *gaus_event_reco_track = new TF1("gaus_event_reco_track","gaus",0,600);
+    TF1 *gaus_event_cond_track = new TF1("gaus_event_cond_track","gaus",0,600);
+    gaus_event_reco_track->SetLineColor(kRed);
+    gaus_event_cond_track->SetLineColor(kRed);
+    canvas_event_energy_resolution->cd(1);
+    event_energy_sum_reco_track_distribution->SetStats(1);
+    event_energy_sum_reco_track_distribution->SetLineColor(kBlack);
+    event_energy_sum_reco_track_distribution->Draw("HIST");
+    if(event_energy_sum_reco_track_distribution->GetEntries()>30){
+        gaus_event_reco_track->SetParameters(
+            event_energy_sum_reco_track_distribution->GetMaximum(),
+            event_energy_sum_reco_track_distribution->GetMean(),
+            event_energy_sum_reco_track_distribution->GetStdDev()>1e-6 ? event_energy_sum_reco_track_distribution->GetStdDev() : 10.0
+        );
+        event_energy_sum_reco_track_distribution->Fit("gaus_event_reco_track","Q","",0,qq_energy*1.5);
+        gaus_event_reco_track->Draw("same");
+    }
+    canvas_event_energy_resolution->cd(2);
+    event_energy_sum_cond_track_distribution->SetStats(1);
+    event_energy_sum_cond_track_distribution->SetLineColor(kBlack);
+    event_energy_sum_cond_track_distribution->Draw("HIST");
+    if(event_energy_sum_cond_track_distribution->GetEntries()>30){
+        gaus_event_cond_track->SetParameters(
+            event_energy_sum_cond_track_distribution->GetMaximum(),
+            event_energy_sum_cond_track_distribution->GetMean(),
+            event_energy_sum_cond_track_distribution->GetStdDev()>1e-6 ? event_energy_sum_cond_track_distribution->GetStdDev() : 10.0
+        );
+        event_energy_sum_cond_track_distribution->Fit("gaus_event_cond_track","Q","",0,qq_energy*1.5);
+        gaus_event_cond_track->Draw("same");
+    }
+    cout << "event reconstructed energy sum gaussian fit" << endl;
+    if(event_energy_sum_reco_track_distribution->GetEntries()>30){
+        cout << "  reco cluster track-based : mean=" << gaus_event_reco_track->GetParameter(1)
+             << ", sigma=" << gaus_event_reco_track->GetParameter(2) << endl;
+    }
+    if(event_energy_sum_cond_track_distribution->GetEntries()>30){
+        cout << "  condensation track-based : mean=" << gaus_event_cond_track->GetParameter(1)
+             << ", sigma=" << gaus_event_cond_track->GetParameter(2) << endl;
+    }
+
+    TCanvas *canvas_event_energy_2d = new TCanvas("canvas_event_energy_2d","canvas_event_energy_2d",1400,500);
+    canvas_event_energy_2d->Divide(2,1);
+    canvas_event_energy_2d->cd(1);
+    event_energy2d_reco_track->SetStats(0);
+    event_energy2d_reco_track->Draw("colz");
+    canvas_event_energy_2d->cd(2);
+    event_energy2d_cond_track->SetStats(0);
+    event_energy2d_cond_track->Draw("colz");
+
+    TCanvas *canvas_clustering_quality = new TCanvas("canvas_clustering_quality","canvas_clustering_quality",1800,1800);
+    canvas_clustering_quality->Divide(2,2);
+    canvas_clustering_quality->cd(1);
+    clustering_correct_ratio_by_particle->SetMinimum(0);
+    clustering_correct_ratio_by_particle->SetMaximum(1.05);
+    clustering_correct_ratio_by_particle->SetStats(0);
+    clustering_correct_ratio_by_particle->Draw("E1");
+    canvas_clustering_quality->cd(2);
+    clustering_composition_matrix->SetStats(0);
+    gPad->SetLogz();
+    clustering_composition_matrix->Draw("colz");
+    canvas_clustering_quality->cd(3);
+    track_pdg_charge_relation_ratio->SetStats(0);
+    track_pdg_charge_relation_ratio->SetMinimum(0);
+    track_pdg_charge_relation_ratio->SetMaximum(1.05);
+    track_pdg_charge_relation_ratio->Draw("HIST");
+    canvas_clustering_quality->cd(4);
+    track_pdg_charge_vs_condbeta->SetStats(0);
+    track_pdg_charge_vs_condbeta->Draw("colz");
+
+    TCanvas *canvas_c_event = new TCanvas("canvas_c_event","canvas_c_event",1400,500);
+    canvas_c_event->Divide(2,1);
+    canvas_c_event->cd(1);
+    c_event_distribution->SetStats(1);
+    c_event_distribution->Draw("HIST");
+    canvas_c_event->cd(2);
+    c_event_vs_truth_energy->SetStats(0);
+    c_event_vs_truth_energy->Draw("colz");
+
+    TCanvas *canvas_event_pred_energy_by_track_category = new TCanvas("canvas_event_pred_energy_by_track_category","canvas_event_pred_energy_by_track_category",1800,900);
+    canvas_event_pred_energy_by_track_category->Divide(3,2);
+    for(int ic=0; ic<6; ic++){
+        canvas_event_pred_energy_by_track_category->cd(ic+1);
+        gPad->SetLogy();
+        event_pred_energy_sum_by_track_category[ic]->SetLineColor(kBlack);
+        event_pred_energy_sum_by_track_category[ic]->SetStats(1);
+        event_pred_energy_sum_by_track_category[ic]->Draw("HIST");
+    }
+
+    TCanvas *canvas_confusion_eval = new TCanvas("canvas_confusion_eval","canvas_confusion_eval",1400,500);
+    canvas_confusion_eval->Divide(2,1);
+    TF1 *gaus_conf_reco_all = new TF1("gaus_conf_reco_all","gaus",-Eres_fit_range,Eres_fit_range);
+    TF1 *gaus_conf_reco_clean = new TF1("gaus_conf_reco_clean","gaus",-Eres_fit_range,Eres_fit_range);
+    TF1 *gaus_conf_cond_all = new TF1("gaus_conf_cond_all","gaus",-Eres_fit_range,Eres_fit_range);
+    TF1 *gaus_conf_cond_clean = new TF1("gaus_conf_cond_clean","gaus",-Eres_fit_range,Eres_fit_range);
+
+    const double sigma_all_reco = event_residual_all_reco_track->GetStdDev();
+    const double sigma_clean_reco = event_residual_clean_reco_track->GetStdDev();
+    const double sigma_conf_reco = sqrt(max(0.0, sigma_all_reco*sigma_all_reco - sigma_clean_reco*sigma_clean_reco));
+    const double sigma_all_cond = event_residual_all_cond_track->GetStdDev();
+    const double sigma_clean_cond = event_residual_clean_cond_track->GetStdDev();
+    const double sigma_conf_cond = sqrt(max(0.0, sigma_all_cond*sigma_all_cond - sigma_clean_cond*sigma_clean_cond));
+
+    canvas_confusion_eval->cd(1);
+    event_residual_all_reco_track->SetLineColor(kBlack);
+    event_residual_clean_reco_track->SetLineColor(kBlue);
+    event_residual_all_reco_track->SetStats(0);
+    event_residual_clean_reco_track->SetStats(0);
+    event_residual_all_reco_track->Draw("HIST");
+    event_residual_clean_reco_track->Draw("HIST SAME");
+    if(event_residual_all_reco_track->GetEntries()>30) event_residual_all_reco_track->Fit("gaus_conf_reco_all","NQ","",-Eres_fit_range,Eres_fit_range);
+    if(event_residual_clean_reco_track->GetEntries()>30) event_residual_clean_reco_track->Fit("gaus_conf_reco_clean","NQ","",-Eres_fit_range,Eres_fit_range);
+    gaus_conf_reco_all->SetLineColor(kRed);
+    gaus_conf_reco_clean->SetLineColor(kMagenta+1);
+    if(event_residual_all_reco_track->GetEntries()>30) gaus_conf_reco_all->Draw("same");
+    if(event_residual_clean_reco_track->GetEntries()>30) gaus_conf_reco_clean->Draw("same");
+    TLegend *legend_conf_reco = new TLegend(0.45,0.62,0.88,0.88);
+    legend_conf_reco->AddEntry(event_residual_all_reco_track, Form("all sigma=%.4f", sigma_all_reco), "l");
+    legend_conf_reco->AddEntry(event_residual_clean_reco_track, Form("clean (C_{event}<%.2f) sigma=%.4f", c_event_clean_threshold, sigma_clean_reco), "l");
+    legend_conf_reco->AddEntry((TObject*)0, Form("confusion term=%.4f", sigma_conf_reco), "");
+    legend_conf_reco->SetFillStyle(0);
+    legend_conf_reco->Draw("same");
+
+    canvas_confusion_eval->cd(2);
+    event_residual_all_cond_track->SetLineColor(kBlack);
+    event_residual_clean_cond_track->SetLineColor(kBlue);
+    event_residual_all_cond_track->SetStats(0);
+    event_residual_clean_cond_track->SetStats(0);
+    event_residual_all_cond_track->Draw("HIST");
+    event_residual_clean_cond_track->Draw("HIST SAME");
+    if(event_residual_all_cond_track->GetEntries()>30) event_residual_all_cond_track->Fit("gaus_conf_cond_all","NQ","",-Eres_fit_range,Eres_fit_range);
+    if(event_residual_clean_cond_track->GetEntries()>30) event_residual_clean_cond_track->Fit("gaus_conf_cond_clean","NQ","",-Eres_fit_range,Eres_fit_range);
+    gaus_conf_cond_all->SetLineColor(kRed);
+    gaus_conf_cond_clean->SetLineColor(kMagenta+1);
+    if(event_residual_all_cond_track->GetEntries()>30) gaus_conf_cond_all->Draw("same");
+    if(event_residual_clean_cond_track->GetEntries()>30) gaus_conf_cond_clean->Draw("same");
+    TLegend *legend_conf_cond = new TLegend(0.45,0.62,0.88,0.88);
+    legend_conf_cond->AddEntry(event_residual_all_cond_track, Form("all sigma=%.4f", sigma_all_cond), "l");
+    legend_conf_cond->AddEntry(event_residual_clean_cond_track, Form("clean (C_{event}<%.2f) sigma=%.4f", c_event_clean_threshold, sigma_clean_cond), "l");
+    legend_conf_cond->AddEntry((TObject*)0, Form("confusion term=%.4f", sigma_conf_cond), "");
+    legend_conf_cond->SetFillStyle(0);
+    legend_conf_cond->Draw("same");
+
+    cout << "confusion term evaluation (fixed-energy, no energy bin split)" << endl;
+    cout << "  reco-track based: sigma_all=" << sigma_all_reco
+         << ", sigma_clean=" << sigma_clean_reco
+         << ", sigma_conf=" << sigma_conf_reco << endl;
+    cout << "  cond-track based: sigma_all=" << sigma_all_cond
+         << ", sigma_clean=" << sigma_clean_cond
+         << ", sigma_conf=" << sigma_conf_cond << endl;
 
 
     
     if(saving_canvas){  // saving canvases
         
-        compare->SaveAs(Form("%s/efficiency_purity.pdf",picDirectory.c_str()));
+        // compare->SaveAs(Form("%s/efficiency_purity.pdf",picDirectory.c_str()));
         // compare2d->SaveAs(Form("%s/efficiency_purity_vs_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
         // compare_energy->SaveAs(Form("%s/per_energy%s.pdf",picDirectory.c_str(),suffix.c_str()));
         // compare_energy_normalized->SaveAs(Form("%s/per_energy_norm%s.pdf",picDirectory.c_str(),suffix.c_str()));
         // canvas_energy->SaveAs(Form("%s/energy_truth_vs_pred.pdf",picDirectory.c_str()));
-        canvas_energy_scan->SaveAs(Form("%s/energy_scan.pdf",picDirectory.c_str()));
-        canvas_energy_resolution_scan->SaveAs(Form("%s/energy_resolution_scan.pdf",picDirectory.c_str()));
+        // canvas_energy_scan->SaveAs(Form("%s/energy_scan.pdf",picDirectory.c_str()));
+        // canvas_energy_resolution_scan->SaveAs(Form("%s/energy_resolution_scan.pdf",picDirectory.c_str()));
         // canvas_beta_energy->SaveAs(Form("%s/beta_vs_energy.pdf",picDirectory.c_str()));
         // canvas_beta_ediff->SaveAs(Form("%s/beta_vs_energy_ediff.pdf",picDirectory.c_str()));
         // canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen.pdf",picDirectory.c_str()));
-        canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
+        // canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.pdf",picDirectory.c_str()));
+        canvas_event_energy_resolution->SaveAs(Form("%s/event_energy_resolution_scan.pdf",picDirectory.c_str()));
+        canvas_event_energy_2d->SaveAs(Form("%s/event_energy_truth_vs_pred_2d.pdf",picDirectory.c_str()));
+        canvas_clustering_quality->SaveAs(Form("%s/reco_clustering_quality.pdf",picDirectory.c_str()));
+        canvas_c_event->SaveAs(Form("%s/c_event_distribution.pdf",picDirectory.c_str()));
+        canvas_event_pred_energy_by_track_category->SaveAs(Form("%s/event_pred_energy_sum_by_track_category.pdf",picDirectory.c_str()));
+        canvas_confusion_eval->SaveAs(Form("%s/confusion_term_evaluation.pdf",picDirectory.c_str()));
     }
     
 
