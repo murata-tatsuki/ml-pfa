@@ -35,10 +35,13 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../log/energy_regression/tc_neutron_1to100GeV_timingcut_forcealpha_thetaphi_outputD5_2025_11_23_091328_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_mixed_timingcut_forcealpha_thetaphi_outputD5_2025_12_01_081855_alpha_tracker_diff_log_perCluster.log";
 
-
 // const string fileName = "../log/energy_regression/tc_nnqq_timingcut_forcealpha_thetaphi_outputD5_2025_06_30_151610_alpha_tracker_diff_log_perCluster.log";
 // const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_19_144839_alpha_tracker_diff_log_perCluster.log";
-const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_23_164640_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_01_23_164640_alpha_tracker_diff_log_perCluster.log";
+
+// const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_03_18_161726_alpha_tracker_diff_log_perCluster.log";
+const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_03_18_163427_alpha_tracker_diff_log_perCluster.log";
+// const string fileName = "../log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD5_2026_03_18_211824_alpha_tracker_diff_log_perCluster.log";
 
 
 vector<double> l_v;
@@ -465,7 +468,7 @@ void reading_log(){
     if(train_l_e_w_muon.size()>0) g_train_LE_w_muon->SetPoint(i,i,train_l_e_w_muon[i]);
     if(train_l_e_w_electron.size()>0) g_train_LE_w_electron->SetPoint(i,i,train_l_e_w_electron[i]);
   }
-  cout << "epoch : " << minimum_loss_epoch << "  minimum loss : " << minimum_loss << endl;
+  cout << "epoch : " << minimum_loss_epoch << "/" << nepoch << "  minimum loss : " << minimum_loss << endl;
 
   TCanvas *c1 = new TCanvas("c1","validation loss all range",1);
   c1->cd();

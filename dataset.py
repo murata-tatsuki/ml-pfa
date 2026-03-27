@@ -57,8 +57,10 @@ class ILCDataset(Dataset):
         self.mctpe = mctpe
 
         if(not recreate):
+            if path.endswith(".h5"): filenames = [path]
+            else: filenames = list(sorted(glob.iglob(path + '/*.h5')))
             print(f"ILCDataset: {path=}")
-            filenames = list(sorted(glob.iglob(path + '/*.h5')))
+            ## ここ変更すれば1fileだけ使えそう
             self.ak_feats, self.ak_labels = la.load_awkwards(filenames)
             if(pandora): self.ak_pandoras = la.load_awkwards_pandora(filenames)
             if(event_energy): self.ak_eventEnergy = la.load_awkwards_eventEnergy(filenames)
@@ -418,7 +420,7 @@ class ILCDataset(Dataset):
         left.ak_labels = self.ak_labels[:split_index]
         right.ak_feats = self.ak_feats[split_index:]
         right.ak_labels = self.ak_labels[split_index:]
-#        print(left.ak_feats.type, left.ak_labels.type, right.ak_feats.type, right.ak_labels.type)
+        #　print(left.ak_feats.type, left.ak_labels.type, right.ak_feats.type, right.ak_labels.type)
         return left, right
 
     def shaper_tanh(self,x, a=1.0, b=1.0, c=0.0, d=0.0):

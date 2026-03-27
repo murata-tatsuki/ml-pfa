@@ -518,7 +518,7 @@ def main():
     parser.add_argument('--min-lr', type=float, default=1e-7, help='')
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
-    parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use (e.g., '0,1')")
+    parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use with --ddp (e.g., '0,1,2'). If not specified, all available GPUs are used.")
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
     parser.add_argument('--nrestart-cosreduce', type=int, default=3, help='number of restart without reducing the maximum learning rate')
     parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
@@ -539,15 +539,28 @@ def main():
 
 
     if args.ddp:
+        # GPU選択: --gpus で指定されたGPUのみを使用。未指定の場合は全GPUを使用
         if args.gpus is not None:
+            visible_gpus = [int(x.strip()) for x in args.gpus.split(',') if x.strip()]
+            if not visible_gpus:
+                print("Error: --gpus must specify at least one GPU (e.g., --gpus 0,1)")
+                sys.exit(1)
+            # 指定されたGPUが存在するか検証
+            n_gpus = torch.cuda.device_count()
+            invalid = [g for g in visible_gpus if g < 0 or g >= n_gpus]
+            if invalid:
+                print(f"Error: Invalid GPU id(s) {invalid}. Available GPUs: 0-{n_gpus-1}")
+                sys.exit(1)
             os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
-            visible_gpus = list(map(int, args.gpus.split(',')))
+            print(f"DDP: Using selected GPUs: {visible_gpus} (CUDA_VISIBLE_DEVICES={args.gpus})")
         else:
             visible_gpus = list(range(torch.cuda.device_count()))
+            if not visible_gpus:
+                print("Error: No CUDA GPUs available")
+                sys.exit(1)
+            print(f"DDP: Using all available GPUs: {visible_gpus}")
 
         world_size = len(visible_gpus)
-
-        # world_size = torch.cuda.device_count()
         mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
 
         sys.exit()

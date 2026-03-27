@@ -474,17 +474,22 @@ checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_02_07_1
 
 ## fixed uds
   train_particle=fixed_uds
-  energy=200
+  energy=91
+  qq=dd
   # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/code_test
   # outdir=test.root
-  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${energy}GeV/tbeta090td050.root
-  # test_path=/data/suehara/mldata/pfa/murata/data/raw/fixed_uds/${energy}GeV
+  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${energy}GeV/tbeta090td050_truthClustering.root
+  outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${energy}GeV/truth_clustering/dd_095.root
+  # outdir=skimmed/tc_${train_particle}/${D}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${energy}GeV/raw_${qq}.root
+  # test_path=/data/suehara/mldata/pfa/murata/data/raw/fixed_uds/${qq}/${energy}GeV
+  # test_path=/data/suehara/mldata/pfa/murata/data/raw/fixed_uds/${qq}/${energy}GeV/dd_095.h5
   # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/${energy}GeV
-  test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/${energy}GeV/less_samples
+  # test_path=/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/${energy}GeV/less_samples
+  # test_path=/home/murata/data_murata/data/tc/tc_fixed_uds/code_test/40GeV_1file
   checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_30_151610_outputD5
   epoch=444
   # python save_root_____edit.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster
-  python save_root_reco.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster
+  python save_root_reco.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:1 --tbeta 0.9 --td 0.5 --energy-regression-cluster --truth-clustering
 ##
 
 

@@ -37,14 +37,15 @@ using namespace std;
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_merged.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_brems/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/tbeta090td050.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/200GeV/tbeta090td050.root");
+const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/40GeV/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/40GeV/tbeta090td050_truthClustering.root");
 
 // const string fileName = Form("../test/test_1130.root");
 
 const bool saving_canvas = false;
-const string train_particle_type = "uds91";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
+const string train_particle_type = "ntau_10to100GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
-const bool kaon_neutron = true;
+const bool kaon_neutron = false;
 const bool jet_regression = false;
 const bool pandora = false;
 const bool ECluster = true;
