@@ -15,6 +15,30 @@ import objectcondensation as oc
 
 from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
 from dataset import ILCDataset
+from dataset_ilc_sharded import ILCDatasetSharded
+
+
+def make_ilc_dataset(args, inputdir):
+    """ILCDataset と ILCDatasetSharded を引数で切り替え（デフォルトは従来どおり ILCDataset）。"""
+    common = dict(
+        timingCut=args.timing_cut,
+        thetaphi=args.thetaphi,
+        test_mode=True,
+        momentum=args.momentum,
+        momentumAmp=args.momentum_amp,
+        mctpe=args.mctpe,
+    )
+    if getattr(args, "ilc_sharded", False):
+        print(
+            "Using ILCDatasetSharded (per-file load, no concatenate). "
+            f"file_cache_size={getattr(args, 'ilc_file_cache', 2)}"
+        )
+        return ILCDatasetSharded(
+            inputdir,
+            **common,
+            file_cache_size=getattr(args, "ilc_file_cache", 2),
+        )
+    return ILCDataset(inputdir, **common)
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
@@ -113,7 +137,7 @@ def run_ddp_training(rank, world_size, args):
     print(f'thetaphi at main: {args.thetaphi}')
     print("Loading dataset...")
     # Dataset
-    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+    dataset = make_ilc_dataset(args, args.inputdir)
     if reduce_noise:
         dataset.reduce_noise = .70
         multiply_batch_size = 1
@@ -126,7 +150,7 @@ def run_ddp_training(rank, world_size, args):
         dataset, _ = dataset.split(keep)
     if (args.no_split):
         train_dataset = dataset
-        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
     else:
         train_dataset, test_dataset = dataset.split(.8)
 
@@ -136,11 +160,11 @@ def run_ddp_training(rank, world_size, args):
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
 
-    # Sampler
-    # train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=local_rank)
-    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank)
+    # Sampler（検証も各 rank でデータを分割し、all_reduce で損失を集約）
+    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+    test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=4, pin_memory=True)
     # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
     # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -364,11 +388,14 @@ def run_ddp_training(rank, world_size, args):
                 # data_y_list.append(learning_para["data.y.long"].tolist())
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
                 # if i == 2: raise Exception
-            # Divide by number of entries
+            # 全 rank のバッチ数の合計で割る（各 rank が担当するバッチ数が微妙に違う場合に対応）
             layer_grads = np.mean(np.array(gradients), axis=0)
+            nb_train = torch.tensor([N_train], device=device, dtype=torch.long)
+            dist.all_reduce(nb_train, op=dist.ReduceOp.SUM)
+            total_train_batches = nb_train.item()
             for key in loss_components:
                 dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-                loss_components[key] /= (world_size * N_train)  # 平均化
+                loss_components[key] /= total_train_batches
             if rank == 0:
                 # print(f"Epoch {epoch} Loss terms:")
                 # for k, v in loss_components.items():
@@ -415,10 +442,12 @@ def run_ddp_training(rank, world_size, args):
                     raise
                 else:
                     update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-        # Divide by number of entries
+        nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
+        dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
+        total_test_batches = nb_test.item()
         for key in loss_components:
             dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-            loss_components[key] /= (world_size * N_test)  # 平均化
+            loss_components[key] /= total_test_batches
         # Compute total loss and do printout
         test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
         if rank == 0:
@@ -447,6 +476,8 @@ def run_ddp_training(rank, world_size, args):
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
+        train_sampler.set_epoch(i_epoch)
+        test_sampler.set_epoch(i_epoch)
         train_loss,_,_,_,_=train(i_epoch)
         if rank == 0:
             train_loss_history.append(train_loss)
@@ -477,7 +508,7 @@ def main():
     parser.add_argument('-d', '--dry', action='store_true', help='Turn off checkpoint saving and run limited number of events')
     parser.add_argument('-v', '--verbose', action='store_true', help='Print more output')
     parser.add_argument('--settings-Sep01', action='store_true', help='Use 21Sep01 settings')
-    parser.add_argument('--reduce-noise', action='store_true', help='Randomly kills 95% of noise')
+    parser.add_argument('--reduce-noise', action='store_true', help='Randomly kills 95%% of noise')
     parser.add_argument('--timing-cut', action='store_true', help='Eliminate hits outside timing window (4-14 nsec)')
     parser.add_argument('--thetaphi', action='store_true', help='Input theta and phi made from px, py, pz')
     parser.add_argument('--use-charged-cluster-loss', action='store_true', help='Turn on loss function for charged cluster matching')
@@ -495,6 +526,8 @@ def main():
     parser.add_argument('-i', '--inputdir', type=str, required=True, help='Specify input directory for training (required)')
     parser.add_argument('--no-split', action='store_true', help='Do not split sample into training/validating')
     parser.add_argument('-ii', '--inputdir-validate', type=str, help='Specify input directory for validating')
+    parser.add_argument('--ilc-sharded', action='store_true', help='Load HDF5 per file without concatenating (lower RAM). Use with many .h5 under -i / -ii.')
+    parser.add_argument('--ilc-file-cache', type=int, default=2, help='LRU number of HDF5 files to keep decoded per worker (--ilc-sharded only)')
     parser.add_argument('-i-tune', '--inputdir-tune', type=str, help='Specify input directory for training (option)')                   ## not using now
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
@@ -588,9 +621,9 @@ def main():
     print("Loading dataset...")
 
     
-    dataset = ILCDataset(args.inputdir,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+    dataset = make_ilc_dataset(args, args.inputdir)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        dataset_tune = ILCDataset(args.inputdir_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+        dataset_tune = make_ilc_dataset(args, args.inputdir_tune)
 
     if reduce_noise:
         dataset.reduce_noise = .70
@@ -605,10 +638,10 @@ def main():
 
     if (args.no_split):
         train_dataset = dataset
-        test_dataset = ILCDataset(args.inputdir_validate,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):
             train_dataset_tune = dataset_tune
-            test_dataset_tune = ILCDataset(args.inputdir_validate_tune,timingCut=args.timing_cut,thetaphi=args.thetaphi,test_mode=True,momentum=args.momentum,momentumAmp=args.momentum_amp,mctpe=args.mctpe)
+            test_dataset_tune = make_ilc_dataset(args, args.inputdir_validate_tune)
     else:
         train_dataset, test_dataset = dataset.split(.8)
         if (args.inputdir_tune and args.inputdir_validate_tune is not None):

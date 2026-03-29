@@ -183,175 +183,122 @@ class ILCDataset(Dataset):
         print("Hits after event cut", ak.num(ak_feats,axis=1)[nstart:nstart+10])
 
         return ak_feats, ak_labels
-        
-    def get(self,i):
-        feat_t = ak.to_numpy(self.ak_feats[i])
-        label_t = ak.to_numpy(self.ak_labels[i])
-        if(self.pandora): pandora_t = ak.to_numpy(self.ak_pandoras[i])
-        if(self.event_energy): 
-            event_energy_t = ak.to_numpy(self.ak_eventEnergy[i][2])
-            jet_energy_t = ak.to_numpy(self.ak_eventEnergy[i][:2])
 
-        # explicit deepcopy
-        feat = copy.deepcopy(feat_t)
-        label = copy.deepcopy(label_t)
-        if(self.pandora): 
-            pand = copy.deepcopy(pandora_t)
-        if(self.event_energy): 
-            eventE = copy.deepcopy(event_energy_t)
-            jetE = copy.deepcopy(jet_energy_t)
-        # print(feat)
-        # print(label)
-        # print(pand)
+    @staticmethod
+    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds):
+        """
+        Build a PyG Data object from numpy hit arrays. Shared by ILCDataset.get and ILCDatasetSharded.
+        ds must expose: thetaphi, momentum, momentumAmp, max_momentum, mctpe, test_mode,
+        pandora, event_energy, noise_index, and shaper_tanh(self,x,a,b,c,d).
+        pand / eventE / jetE may be None when unused.
+        """
+        x = feat[:, np.r_[0:4, 5:6]]
+        y = label[:, 1]
+        momenta = feat[:, 7:10] / ds.max_momentum
+        momentaAmp = np.sqrt(np.sum(feat[:, 7:10] ** 2, axis=1)) / ds.max_momentum
+        momentaAmp = momentaAmp.reshape(momentaAmp.shape[0], 1)
 
-        x = feat[:,np.r_[0:4,5:6] ] # 0,1,2,3,5
-        y = label[:,1]
-        momenta = feat[:,7:10]/self.max_momentum # 7,8,9
-        momentaAmp = np.sqrt(np.sum(feat[:,7:10] ** 2, axis=1))/self.max_momentum
-        momentaAmp = momentaAmp.reshape(momentaAmp.shape[0],1)
-
-        if self.mctpe:
-            vitualHit = feat[:,5]
+        if ds.mctpe:
+            vitualHit = feat[:, 5]
             vitualHit_momenta = vitualHit
-            vitualHit_momenta = np.reshape(vitualHit_momenta, (vitualHit_momenta.shape[0],1))
+            vitualHit_momenta = np.reshape(vitualHit_momenta, (vitualHit_momenta.shape[0], 1))
             vitualHit_momenta = np.concatenate([vitualHit_momenta, vitualHit_momenta, vitualHit_momenta], axis=1)
-            momenta_MCT = label[:,5:8]/self.max_momentum 
-            momenta_MCT = np.where(vitualHit_momenta==0, 0, momenta_MCT)
-            momentaAmp_MCT = np.sqrt(np.sum(label[:,4:8] ** 2, axis=1))
-            momentaAmp_MCT = np.where(vitualHit==0, 0, momentaAmp_MCT)
-            momentaAmp_MCT = momentaAmp_MCT.reshape(momentaAmp_MCT.shape[0],1)/self.max_momentum
-
+            momenta_MCT = label[:, 5:8] / ds.max_momentum
+            momenta_MCT = np.where(vitualHit_momenta == 0, 0, momenta_MCT)
+            momentaAmp_MCT = np.sqrt(np.sum(label[:, 4:8] ** 2, axis=1))
+            momentaAmp_MCT = np.where(vitualHit == 0, 0, momentaAmp_MCT)
+            momentaAmp_MCT = momentaAmp_MCT.reshape(momentaAmp_MCT.shape[0], 1) / ds.max_momentum
             momenta = momenta_MCT
             momentaAmp = momentaAmp_MCT
 
-
-        if self.thetaphi:
-            psum = np.linalg.norm(x[:,1:4],axis=1)
-            pt = np.linalg.norm(x[:,1:3],axis=1)
-            theta = np.arccos(x[:,3] / psum)
+        if ds.thetaphi:
+            psum = np.linalg.norm(x[:, 1:4], axis=1)
+            pt = np.linalg.norm(x[:, 1:3], axis=1)
+            theta = np.arccos(x[:, 3] / psum)
             theta[np.isnan(theta)] = 0
-            phi = np.arccos(np.sign(x[:,2]) * x[:,1] / pt)
+            phi = np.arccos(np.sign(x[:, 2]) * x[:, 1] / pt)
             phi[np.isnan(phi)] = 0
-            #print(f'theta.shape = {theta.shape}')
-            x = np.append(x, theta.reshape(-1,1), axis=1)
-            x = np.append(x, phi.reshape(-1,1), axis=1)
-        #print(f'x.isnan: {np.count_nonzero(np.isnan(x))}')
+            x = np.append(x, theta.reshape(-1, 1), axis=1)
+            x = np.append(x, phi.reshape(-1, 1), axis=1)
 
-        if self.momentum:
+        if ds.momentum:
             x = np.append(x, momenta, axis=1)
-            if self.momentumAmp:
+            if ds.momentumAmp:
                 x = np.append(x, momentaAmp, axis=1)
 
+        x[:, 0] = ds.shaper_tanh(x[:, 0] - 0.01, 1.0, 1.0, 0.0, 0.0)
+        x[:, 1] = x[:, 1] / 2000
+        x[:, 2] = x[:, 2] / 2000
+        x[:, 3] = x[:, 3] / 2000
 
-        x[:,0] = self.shaper_tanh(x[:, 0]-0.01,1.0,1.0,0.0,0.0) #Energy
-        x[:,1] = x[:, 1]/2000 #x
-        x[:,2] = x[:, 2]/2000 #y
-        x[:,3] = x[:, 3]/2000 #z
-        #x = np.delete(x,4,1) #Delete Time
+        mcids = label[:, 1]
+        x = x[mcids != -1, :]
+        y = y[mcids != -1]
+        if ds.pandora:
+            pand = pand[mcids != -1, :]
+        feat = feat[mcids != -1, :]
+        label = label[mcids != -1, :]
 
-        ## excluding hits without mcid
-        mcids = label[:,1]
-        x = x[mcids!=-1,:]
-        y = y[mcids!=-1]
-        if (self.pandora):
-            pand = pand[mcids!=-1,:]
-        feat = feat[mcids!=-1,:]
-        label = label[mcids!=-1,:]
-        ##
+        cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=ds.noise_index)
+        if np.all(cluster_index == 0):
+            print("WARNING: No objects in event", event_index)
 
-        """
-        if self.reduce_noise:
-            # Throw away a fraction of noise
-            # Have to be careful to throw away to same noise upon
-            # future calls of this function.
-            mask = self.noise_mask_cache.setdefault(i, mask_fraction_of_noise(y, self.reduce_noise, self.noise_index))
-            x = x[mask]
-            y = y[mask]
-        """
-        cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=self.noise_index)
-        if np.all(cluster_index == 0): print('WARNING: No objects in event', i)
-        
-        # Calculate geom centers(Fake)
-        """
-        n_hits = np.random.randint(50, 70)
-        n_bkg = np.random.randint(10, 20)
-        n_clusters = min(np.random.randint(1, 6), n_hits)
-        X, y = make_blobs(
-                n_samples=n_hits,
-                centers=n_clusters, n_features=self.cluster_space_dim,
-                random_state=i+self.seed_offset
-                )
-        y += 1 # To reserve index 0 for background
-        cluster_space_min = np.min(X, axis=0)
-        cluster_space_max = np.max(X, axis=0)
-        cluster_space_width = cluster_space_max - cluster_space_min
-        X_bkg = cluster_space_min + np.random.rand(n_bkg, self.cluster_space_dim)*cluster_space_width
-        y_bkg = np.zeros(n_bkg)
-        X = np.concatenate((X,X_bkg))
-        y = np.concatenate((y,y_bkg))
-        truth_cluster_props = np.zeros((n_hits+n_bkg,2))
-        for i in range(1,n_clusters+1):
-            truth_cluster_props[y==i] = np.mean(X[y==i], axis=0)
-        """
-        #truth_cluster_props = np.hstack((
-        #    d['recHitTruthEnergy'],
-        #    d['recHitTruthPosition'],
-        #    d['recHitTruthTime'],
-        #    d['recHitTruthID'],
-        #    ))
-        #if self.reduce_noise: truth_cluster_props = truth_cluster_props[mask]
-        #assert truth_cluster_props.shape == (x.shape[0], 5)
         order = cluster_index.argsort()
-        #print("cluster_index[order]", cluster_index[order])
-        #print("x.shape", x.shape)
-        #print("y.shape", y.shape)
-        #return Data(
-        #    x = torch.from_numpy(x[order]).type(torch.float),
-        #    y = torch.from_numpy(cluster_index[order]).type(torch.int),
-            #truth_cluster_props = torch.from_numpy(truth_cluster_props[order]).type(torch.float),
-        #    inpz = torch.Tensor([i])
-        #    )
-
-        # noise not taken care of
         yclus = cluster_index
-        ytrk = np.where(label[:,0]<0, 1, 0)
-        y = np.stack( (yclus, ytrk), axis=1 )
+        ytrk = np.where(label[:, 0] < 0, 1, 0)
+        y = np.stack((yclus, ytrk), axis=1)
 
-        if (not self.test_mode):
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int)
+        if not ds.test_mode:
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
             )
-        elif (self.pandora):
+        if ds.pandora:
             pand_inst = torch.from_numpy(pand[order]).type(torch.float).cpu()
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int),
-                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-                pand = pand_inst[:,2:5],
-                # pandora_prediction = pand_inst[:,3:5],
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
+                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+                pand=pand_inst[:, 2:5],
             )
-        elif (self.event_energy):
-            # eventE_inst = torch.from_numpy(eventE[order]).type(torch.float).cpu()
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int),
-                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-                jet = torch.from_numpy(jetE).type(torch.float).cpu(),
-                event = torch.from_numpy(eventE).type(torch.float).cpu(),
-                # pandora_prediction = pand_inst[:,3:5],
+        if ds.event_energy:
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
+                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+                jet=torch.from_numpy(jetE).type(torch.float).cpu(),
+                event=torch.from_numpy(eventE).type(torch.float).cpu(),
             )
-        else:
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int),
-                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-            )
+        return Data(
+            x=torch.from_numpy(x[order]).type(torch.float),
+            y=torch.from_numpy(y[order]).type(torch.int),
+            feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+            label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+        )
 
-        return data
+    def get(self, i):
+        feat_t = ak.to_numpy(self.ak_feats[i])
+        label_t = ak.to_numpy(self.ak_labels[i])
+        pand = None
+        eventE = None
+        jetE = None
+        if self.pandora:
+            pandora_t = ak.to_numpy(self.ak_pandoras[i])
+        if self.event_energy:
+            event_energy_t = ak.to_numpy(self.ak_eventEnergy[i][2])
+            jet_energy_t = ak.to_numpy(self.ak_eventEnergy[i][:2])
+
+        feat = copy.deepcopy(feat_t)
+        label = copy.deepcopy(label_t)
+        if self.pandora:
+            pand = copy.deepcopy(pandora_t)
+        if self.event_energy:
+            eventE = copy.deepcopy(event_energy_t)
+            jetE = copy.deepcopy(jet_energy_t)
+
+        return self.featurize_from_numpy(feat, label, pand, eventE, jetE, i, self)
 
     @staticmethod
     def momentum_normalization(ak_feats):
