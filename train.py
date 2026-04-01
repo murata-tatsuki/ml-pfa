@@ -1,9 +1,7 @@
 import os, os.path as osp
-from contextlib import nullcontext
 from time import strftime
 import tqdm
 import torch
-from torch.cuda.amp import GradScaler, autocast
 from torch_geometric.loader import DataLoader
 import argparse
 import matplotlib.pylab as plt
@@ -18,6 +16,7 @@ import objectcondensation as oc
 from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
 from data_loading import prepare_train_val_datasets
 from training.loss import loss_fn, loss_fn_jit
+from training.loops import amp_autocast, amp_grad_scaler, forward_training_loss, backward_with_optimizer_step, training_batch_step, eval_batch_loss_components, ddp_all_reduce_loss_totals
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
@@ -38,22 +37,6 @@ import torch.nn.utils as utils
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(False)
 
-
-def amp_autocast(args):
-    """AMP オフ時は空のコンテキスト（従来と同じ挙動）。"""
-    if not getattr(args, "amp", False):
-        return nullcontext()
-    dt = torch.bfloat16 if args.amp_dtype == "bf16" else torch.float16
-    return autocast(enabled=True, dtype=dt)
-
-
-def amp_grad_scaler(args):
-    """fp16 のときのみ GradScaler を使う。AMP オフ時は None。"""
-    if not getattr(args, "amp", False):
-        return None
-    if args.amp_dtype == "fp16":
-        return GradScaler()
-    return None
 
 def run_requirements(args):
     if (args.no_split and args.inputdir_validate is None):
@@ -173,6 +156,7 @@ def run_ddp_training(rank, world_size, args):
         print(
             f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
         )
+    scheduler = None
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
             print("use ReduceLROnPlateau scheduler")
@@ -215,38 +199,27 @@ def run_ddp_training(rank, world_size, args):
                     loss_components[key] = value.detach().clone()
                 else:
                     loss_components[key] += value.detach()
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
+        if scheduler is not None and not args.settings_Sep01:
+            if not args.ReduceLROnPlateau:
+                scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
             pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
-                optimizer.zero_grad()
-                # if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    result: torch.Tensor = model(data.x, data.batch)
-                    # learning_para = check_coords(result,data)
-                    if args.jit:
-                        raise
-                    else:
-                        loss, components = loss_fn(result, data, args, qmin, loss_offset, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                        update(components)
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
+                loss, components = training_batch_step(
+                    model,
+                    data,
+                    device,
+                    optimizer,
+                    scaler,
+                    args,
+                    qmin,
+                    loss_offset,
+                    epoch,
+                    scheduler,
+                )
+                update(components)
                 pbar.set_postfix({'loss': float(loss)})
                 # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 # data_y_list.append(learning_para["data.y.long"].tolist())
@@ -254,12 +227,7 @@ def run_ddp_training(rank, world_size, args):
                 # if i == 2: raise Exception
             # 全 rank のバッチ数の合計で割る（各 rank が担当するバッチ数が微妙に違う場合に対応）
             layer_grads = np.mean(np.array(gradients), axis=0)
-            nb_train = torch.tensor([N_train], device=device, dtype=torch.long)
-            dist.all_reduce(nb_train, op=dist.ReduceOp.SUM)
-            total_train_batches = nb_train.item()
-            for key in loss_components:
-                dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-                loss_components[key] /= total_train_batches
+            ddp_all_reduce_loss_totals(loss_components, N_train, device)
             if rank == 0:
                 # print(f"Epoch {epoch} Loss terms:")
                 # for k, v in loss_components.items():
@@ -269,16 +237,16 @@ def run_ddp_training(rank, world_size, args):
                 print(oc.formatted_loss_components_string_train(loss_components))
                 return_loss = loss_components["L_V"] + loss_offset
                 if args.LE_track == 'alpha_tracker_modifing_charged0':
-                    if i_epoch > args.epochs_nobeta:
+                    if epoch > args.epochs_nobeta:
                         return_loss += loss_components["L_beta"]
-                    if i_epoch > 15:
+                    if epoch > 15:
                         return_loss += loss_components["L_E"]
                     else: 
                         return_loss += loss_components["L_E_charge"]
                 else:
-                    if i_epoch > args.epochs_nobeta:
+                    if epoch > args.epochs_nobeta:
                         return_loss += loss_components["L_beta"]
-                    if i_epoch > args.epochs_noLE:
+                    if epoch > args.epochs_noLE:
                         return_loss += loss_components["L_E"]
             train_loss = return_loss.item() if rank == 0 else loss.item()
             # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
@@ -300,19 +268,18 @@ def run_ddp_training(rank, world_size, args):
         with torch.no_grad():
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    result = model(data.x, data.batch)
-                    if args.jit:
-                        raise
-                    else:
-                        update(loss_fn(result, data, args, qmin, loss_offset, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-        nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
-        dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
-        total_test_batches = nb_test.item()
-        for key in loss_components:
-            dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-            loss_components[key] /= total_test_batches
+                update(
+                    eval_batch_loss_components(
+                        model,
+                        data,
+                        device,
+                        args,
+                        qmin,
+                        loss_offset,
+                        epoch,
+                    )
+                )
+        ddp_all_reduce_loss_totals(loss_components, N_test, device)
         # Compute total loss and do printout
         test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
         if rank == 0:
@@ -522,6 +489,7 @@ def main():
             f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
         )
 
+    scheduler = None
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
             print("use ReduceLROnPlateau scheduler")
@@ -567,8 +535,9 @@ def main():
             for key, value in components.items():
                 if not key in loss_components: loss_components[key] = 0.
                 loss_components[key] += value
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
+        if scheduler is not None and not args.settings_Sep01:
+            if not args.ReduceLROnPlateau:
+                scheduler.step()
         try:
             pbar = tqdm.tqdm(train_loader, total=len(train_loader))
             pbar.set_postfix({'loss': '?'})
@@ -576,30 +545,16 @@ def main():
                 # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
                 optimizer.zero_grad()
-                if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    result: torch.Tensor = model(data.x, data.batch)
-                    learning_para = check_coords(result,data)
-                    if args.jit:
-                        # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                        raise
-                    else:
-                        loss, components = loss_fn(result, data, args, qmin, loss_offset, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                        update(components)
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
+                if i == 0:
+                    first_para = check_data(data)
+                loss, components, result = forward_training_loss(
+                    model, data, device, args, qmin, loss_offset, epoch
+                )
+                learning_para = check_coords(result, data)
+                update(components)
+                backward_with_optimizer_step(
+                    loss, model, optimizer, scaler, args, scheduler
+                )
                 pbar.set_postfix({'loss': float(loss)})
                 cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 data_y_list.append(learning_para["data.y.long"].tolist())
@@ -628,16 +583,17 @@ def main():
 
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    result = model(data.x, data.batch)
-                    if args.jit:
-                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                        raise
-                    else:
-                        update(
-                            loss_fn(result, data, args, qmin, loss_offset, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss)
-                        )
+                update(
+                    eval_batch_loss_components(
+                        model,
+                        data,
+                        device,
+                        args,
+                        qmin,
+                        loss_offset,
+                        epoch,
+                    )
+                )
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
