@@ -14,6 +14,10 @@ import awkward as ak
 import tools.load_awkward as la
 import copy
 
+import matplotlib.pyplot as plt
+import scipy.stats
+
+
 """
 def get_dataset(timingCut=False):
     dataset = ilc_dataset(timingCut=timingCut, test_mode=True)
@@ -36,7 +40,7 @@ class ILCDataset(Dataset):
         reduce_noise (float): Randomly delete a fraction of noise. Useful
             to speed up training.
     """
-    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False):
+    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False, event_energy=False):
         super(ILCDataset, self).__init__(path)
 
         self.flip = flip
@@ -46,12 +50,20 @@ class ILCDataset(Dataset):
         self.thetaphi = thetaphi
         self.test_mode = test_mode
         self.pandora = pandora
+        self.event_energy = event_energy
+        self.momentum = momentum
+        self.momentumAmp = momentumAmp
+        self.max_momentum = 1.0
+        self.mctpe = mctpe
 
         if(not recreate):
+            if path.endswith(".h5"): filenames = [path]
+            else: filenames = list(sorted(glob.iglob(path + '/*.h5')))
             print(f"ILCDataset: {path=}")
-            filenames = list(sorted(glob.iglob(path + '/*.h5')))
+            ## ここ変更すれば1fileだけ使えそう
             self.ak_feats, self.ak_labels = la.load_awkwards(filenames)
             if(pandora): self.ak_pandoras = la.load_awkwards_pandora(filenames)
+            if(event_energy): self.ak_eventEnergy = la.load_awkwards_eventEnergy(filenames)
 
             if timingCut:
                 # need to update hits so we need to recreate awk arrays
@@ -69,6 +81,9 @@ class ILCDataset(Dataset):
                 if(pandora):
                     print("Making ak_pandoras...")
                     self.ak_pandoras = self.ak_pandoras[nstart:nstart+nend] 
+                if(event_energy):
+                    print("Making ak_eventEnergy...")
+                    self.ak_eventEnergy = self.ak_eventEnergy[nstart:nstart+nend] 
 
             # eliminate events with zero hits
             feats1 = self.ak_feats
@@ -78,6 +93,12 @@ class ILCDataset(Dataset):
             self.ak_feats = self.ak_feats[ not_empty ]
             self.ak_labels = self.ak_labels[ not_empty ]
             if(pandora): self.ak_pandoras = self.ak_pandoras[ not_empty ]
+            if(event_energy): self.ak_eventEnergy = self.ak_eventEnergy[ not_empty ]
+        
+        if self.momentum:
+            self.max_momentum = self.momentum_normalization(self.ak_feats)
+        # self.plotting(self.ak_feats, self.ak_labels)
+
 
         # TODO: implement update of ak with time cuts
 
@@ -119,133 +140,215 @@ class ILCDataset(Dataset):
         print("Hits after timing window", ak.num(ak_feats,axis=1)[nstart:nstart+10])
 
         return ak_feats, ak_labels
-        
-    def get(self,i):
+    
+    @staticmethod
+    def eventCut(ak_feats, ak_labels, nstart = 0, nend=-1):
+        feats_list = []
+        labels_list = []
+
+        print("Hits before event cut", ak.num(ak_feats,axis=1)[nstart:nend])
+
+
+        nhits = ak.num(ak_feats,axis=1)
+        n = ak.num(ak_feats,axis=0)
+        nend = n if n < nend or nend < 0 else nend
+        for i in range(nstart, nend):
+            if i%100 == 0: print(f'Timing & omega cut: processing {i} / {nend-nstart}', end='\r')
+            if nhits[i] < 2:
+                print(i, nhits[i], " ")
+                continue
+            feats2 = ak_feats[i]
+            labels2 = ak_labels[i]
+
+            feat_t = ak.to_numpy(feats2)
+            label_t = ak.to_numpy(labels2)
+
+            y = label_t[:,1]
+            mcids = label_t[:,1]
+            y = y[mcids!=-1]
+
+            cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=-1)
+            if np.all(cluster_index == 0): 
+                print(i, nhits[i], "cluster_index == 0")
+                continue
+
+            feats_list.append(feats2)
+            labels_list.append(labels2)
+            
+        print("Making ak_feats...")
+        ak_feats = ak.Array(feats_list)
+        print("Making ak_labels...")
+        ak_labels = ak.Array(labels_list)
+
+        print("Hits after event cut", ak.num(ak_feats,axis=1)[nstart:nstart+10])
+
+        return ak_feats, ak_labels
+
+    @staticmethod
+    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds):
+        """
+        Build a PyG Data object from numpy hit arrays. Shared by ILCDataset.get and ILCDatasetSharded.
+        ds must expose: thetaphi, momentum, momentumAmp, max_momentum, mctpe, test_mode,
+        pandora, event_energy, noise_index, and shaper_tanh(self,x,a,b,c,d).
+        pand / eventE / jetE may be None when unused.
+        """
+        x = feat[:, np.r_[0:4, 5:6]]
+        y = label[:, 1]
+        momenta = feat[:, 7:10] / ds.max_momentum
+        momentaAmp = np.sqrt(np.sum(feat[:, 7:10] ** 2, axis=1)) / ds.max_momentum
+        momentaAmp = momentaAmp.reshape(momentaAmp.shape[0], 1)
+
+        if ds.mctpe:
+            vitualHit = feat[:, 5]
+            vitualHit_momenta = vitualHit
+            vitualHit_momenta = np.reshape(vitualHit_momenta, (vitualHit_momenta.shape[0], 1))
+            vitualHit_momenta = np.concatenate([vitualHit_momenta, vitualHit_momenta, vitualHit_momenta], axis=1)
+            momenta_MCT = label[:, 5:8] / ds.max_momentum
+            momenta_MCT = np.where(vitualHit_momenta == 0, 0, momenta_MCT)
+            momentaAmp_MCT = np.sqrt(np.sum(label[:, 4:8] ** 2, axis=1))
+            momentaAmp_MCT = np.where(vitualHit == 0, 0, momentaAmp_MCT)
+            momentaAmp_MCT = momentaAmp_MCT.reshape(momentaAmp_MCT.shape[0], 1) / ds.max_momentum
+            momenta = momenta_MCT
+            momentaAmp = momentaAmp_MCT
+
+        if ds.thetaphi:
+            psum = np.linalg.norm(x[:, 1:4], axis=1)
+            pt = np.linalg.norm(x[:, 1:3], axis=1)
+            theta = np.arccos(x[:, 3] / psum)
+            theta[np.isnan(theta)] = 0
+            phi = np.arccos(np.sign(x[:, 2]) * x[:, 1] / pt)
+            phi[np.isnan(phi)] = 0
+            x = np.append(x, theta.reshape(-1, 1), axis=1)
+            x = np.append(x, phi.reshape(-1, 1), axis=1)
+
+        if ds.momentum:
+            x = np.append(x, momenta, axis=1)
+            if ds.momentumAmp:
+                x = np.append(x, momentaAmp, axis=1)
+
+        x[:, 0] = ds.shaper_tanh(x[:, 0] - 0.01, 1.0, 1.0, 0.0, 0.0)
+        x[:, 1] = x[:, 1] / 2000
+        x[:, 2] = x[:, 2] / 2000
+        x[:, 3] = x[:, 3] / 2000
+
+        mcids = label[:, 1]
+        x = x[mcids != -1, :]
+        y = y[mcids != -1]
+        if ds.pandora:
+            pand = pand[mcids != -1, :]
+        feat = feat[mcids != -1, :]
+        label = label[mcids != -1, :]
+
+        cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=ds.noise_index)
+        if np.all(cluster_index == 0):
+            print("WARNING: No objects in event", event_index)
+
+        order = cluster_index.argsort()
+        yclus = cluster_index
+        ytrk = np.where(label[:, 0] < 0, 1, 0)
+        y = np.stack((yclus, ytrk), axis=1)
+
+        if not ds.test_mode:
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
+            )
+        if ds.pandora:
+            pand_inst = torch.from_numpy(pand[order]).type(torch.float).cpu()
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
+                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+                pand=pand_inst[:, 2:5],
+            )
+        if ds.event_energy:
+            return Data(
+                x=torch.from_numpy(x[order]).type(torch.float),
+                y=torch.from_numpy(y[order]).type(torch.int),
+                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+                jet=torch.from_numpy(jetE).type(torch.float).cpu(),
+                event=torch.from_numpy(eventE).type(torch.float).cpu(),
+            )
+        return Data(
+            x=torch.from_numpy(x[order]).type(torch.float),
+            y=torch.from_numpy(y[order]).type(torch.int),
+            feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
+            label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+        )
+
+    def get(self, i):
         feat_t = ak.to_numpy(self.ak_feats[i])
         label_t = ak.to_numpy(self.ak_labels[i])
-        if(self.pandora): pandora_t = ak.to_numpy(self.ak_pandoras[i])
+        pand = None
+        eventE = None
+        jetE = None
+        if self.pandora:
+            pandora_t = ak.to_numpy(self.ak_pandoras[i])
+        if self.event_energy:
+            event_energy_t = ak.to_numpy(self.ak_eventEnergy[i][2])
+            jet_energy_t = ak.to_numpy(self.ak_eventEnergy[i][:2])
 
-        # explicit deepcopy
         feat = copy.deepcopy(feat_t)
         label = copy.deepcopy(label_t)
-        if(self.pandora): 
+        if self.pandora:
             pand = copy.deepcopy(pandora_t)
-        # print(feat)
-        # print(label)
-        # print(pand)
+        if self.event_energy:
+            eventE = copy.deepcopy(event_energy_t)
+            jetE = copy.deepcopy(jet_energy_t)
 
-        x = feat[:,np.r_[0:4,5:6] ] # 0,1,2,3,5
-        y = label[:,1]
+        return self.featurize_from_numpy(feat, label, pand, eventE, jetE, i, self)
 
-        #if self.flip and np.mean(x[:,4]) < 0:
-            # Negative endcap: Flip z-dependent coordinates
-            #x[:,1] *= -1 # eta
-        #    x[:,3] *= -1 # z
-
-        if self.thetaphi:
-            # psum = np.linalg.norm(x[:,1:3],axis=1)
-            # pt = np.linalg.norm(x[:,1:2],axis=1)
-            psum = np.linalg.norm(x[:,1:4],axis=1)
-            pt = np.linalg.norm(x[:,1:3],axis=1)
-            theta = np.arccos(x[:,3] / psum)
-            theta[np.isnan(theta)] = 0
-            phi = np.arccos(np.sign(x[:,2]) * x[:,1] / pt)
-            phi[np.isnan(phi)] = 0
-            #print(f'theta.shape = {theta.shape}')
-            x = np.append(x, theta.reshape(-1,1), axis=1)
-            x = np.append(x, phi.reshape(-1,1), axis=1)
-        #print(f'x.isnan: {np.count_nonzero(np.isnan(x))}')
-        
-        x[:,0] = self.shaper_tanh(x[:, 0]-0.01,1.0,1.0,0.0,0.0) #Energy
-        x[:,1] = x[:, 1]/2000 #x
-        x[:,2] = x[:, 2]/2000 #y
-        x[:,3] = x[:, 3]/2000 #z
-        #x = np.delete(x,4,1) #Delete Time
-
+    @staticmethod
+    def momentum_normalization(ak_feats):
         """
-        if self.reduce_noise:
-            # Throw away a fraction of noise
-            # Have to be careful to throw away to same noise upon
-            # future calls of this function.
-            mask = self.noise_mask_cache.setdefault(i, mask_fraction_of_noise(y, self.reduce_noise, self.noise_index))
-            x = x[mask]
-            y = y[mask]
+        # print(ak.to_numpy(ak_feats[:][:,:]).shape)
+        flat = np.ndarray([])
+        flat_log = np.array([])
+        max_momentum = 0
+        for index, ak_feat in enumerate(ak_feats):
+            feat_t = ak.to_numpy(ak_feat[:,7:10])
+            max_momentum = np.nanmax(np.abs(feat_t)) if max_momentum < np.nanmax(np.abs(feat_t)) else max_momentum
+            if np.any(feat_t>400):
+                print(index, feat_t.shape, feat_t, feat_t[feat_t>400])
+            # print(feat_t)
+            # flat = np.append(flat, feat_t[np.all(feat_t==0,axis=1),:],axis=0) if index != 0 else feat_t
+            flat = np.append(flat, feat_t[feat_t!=0].flatten())
+            # momenta = feat_t[feat_t!=0].flatten()
+            # flat_log = np.append(flat_log, np.sign(momenta) * np.log10(np.abs(momenta)+1))
+        print(flat.shape)
+        std = np.std(flat)
+        print(std)
+        # plt.hist(flat,bins=10000)
+        # plt.hist(flat_log,bins=10000)
+        # plt.show()
+        print("maximum momentum : ",  max_momentum)
+        print("momentum stdDev: ",  std)
         """
-        cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=self.noise_index)
-        if np.all(cluster_index == 0): print('WARNING: No objects in event', i)
-        
-        # Calculate geom centers(Fake)
-        """
-        n_hits = np.random.randint(50, 70)
-        n_bkg = np.random.randint(10, 20)
-        n_clusters = min(np.random.randint(1, 6), n_hits)
-        X, y = make_blobs(
-                n_samples=n_hits,
-                centers=n_clusters, n_features=self.cluster_space_dim,
-                random_state=i+self.seed_offset
-                )
-        y += 1 # To reserve index 0 for background
-        cluster_space_min = np.min(X, axis=0)
-        cluster_space_max = np.max(X, axis=0)
-        cluster_space_width = cluster_space_max - cluster_space_min
-        X_bkg = cluster_space_min + np.random.rand(n_bkg, self.cluster_space_dim)*cluster_space_width
-        y_bkg = np.zeros(n_bkg)
-        X = np.concatenate((X,X_bkg))
-        y = np.concatenate((y,y_bkg))
-        truth_cluster_props = np.zeros((n_hits+n_bkg,2))
-        for i in range(1,n_clusters+1):
-            truth_cluster_props[y==i] = np.mean(X[y==i], axis=0)
-        """
-        #truth_cluster_props = np.hstack((
-        #    d['recHitTruthEnergy'],
-        #    d['recHitTruthPosition'],
-        #    d['recHitTruthTime'],
-        #    d['recHitTruthID'],
-        #    ))
-        #if self.reduce_noise: truth_cluster_props = truth_cluster_props[mask]
-        #assert truth_cluster_props.shape == (x.shape[0], 5)
-        order = cluster_index.argsort()
-        #print("order:", order)
-        #print("cluster_index[order]", cluster_index[order])
-        #print("x.shape", x.shape)
-        #print("y.shape", y.shape)
-        #return Data(
-        #    x = torch.from_numpy(x[order]).type(torch.float),
-        #    y = torch.from_numpy(cluster_index[order]).type(torch.int),
-            #truth_cluster_props = torch.from_numpy(truth_cluster_props[order]).type(torch.float),
-        #    inpz = torch.Tensor([i])
-        #    )
 
-        # noise not taken care of
-        yclus = cluster_index
-        ytrk = np.where(label[:,0]<0, 1, 0)
-        y = np.stack( (yclus, ytrk), axis=1 )
-        # print("before ", pand)
+        return 3
+        # return std
+        # return max_momentum
 
-        if (not self.test_mode):
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int)
-            )
-        elif (self.pandora):
-            pand_inst = torch.from_numpy(pand[order]).type(torch.float).cpu()
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int),
-                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-                pand = pand_inst[:,2],
-            )
-        else:
-            data = Data(
-                x = torch.from_numpy(x[order]).type(torch.float),
-                y = torch.from_numpy(y[order]).type(torch.int),
-                feat = torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label = torch.from_numpy(label[order]).type(torch.float).cpu(),
-            )
+    @staticmethod
+    def plotting(ak_feats, ak_labels):
+        momentum = np.ndarray([])
+        energy = np.ndarray([])
+        for (ak_feat, ak_label) in zip(ak_feats, ak_labels):
+            feat_momentums = ak.to_numpy(ak_feat[:,7:10])
+            label_Es = ak.to_numpy(ak_label[:,4:8])
+            feat_momentums = np.sum(feat_momentums ** 2, axis=1)
+            label_Es = np.sum(label_Es ** 2, axis=1)
 
-        return data
-    
+            momentum = np.append(momentum, feat_momentums.flatten())
+            energy = np.append(energy, label_Es.flatten())
+        plt.scatter(momentum, energy)
+        plt.show()
+
+        return 0
+
+
     def __len__(self):
         return ak.num(self.ak_feats,axis=0)
     def len(self):
@@ -264,7 +367,7 @@ class ILCDataset(Dataset):
         left.ak_labels = self.ak_labels[:split_index]
         right.ak_feats = self.ak_feats[split_index:]
         right.ak_labels = self.ak_labels[split_index:]
-#        print(left.ak_feats.type, left.ak_labels.type, right.ak_feats.type, right.ak_labels.type)
+        #　print(left.ak_feats.type, left.ak_labels.type, right.ak_feats.type, right.ak_labels.type)
         return left, right
 
     def shaper_tanh(self,x, a=1.0, b=1.0, c=0.0, d=0.0):

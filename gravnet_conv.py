@@ -81,7 +81,8 @@ class GravNetConv(MessagePassing):
         # print("GravnetConv: space coordinate shape:", s_l.shape)
         # print("GravnetConv: space coordinate:", s_l)
 
-        edge_index = knn_graph(s_l, self.k, b)
+        # torch_cmspepr.select_knn は BFloat16 未対応（"set_defaults" not implemented for 'BFloat16'）
+        edge_index = knn_graph(s_l.to(dtype=torch.float32), self.k, b)
 
         edge_weight = (s_l[edge_index[1]] - s_l[edge_index[0]]).pow(2).sum(-1)
         edge_weight = torch.exp(-10. * edge_weight)  # 10 gives a better spread

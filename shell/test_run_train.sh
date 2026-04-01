@@ -4,8 +4,11 @@ cd ..
 
 DATE=`date '+%Y_%m_%d_%H%M%S'`
 
-python train.py -i /home/murata/data_murata/code_test/train -ii /home/murata/data_murata/code_test/validation --no-split --thetaphi --cuda cuda:1 --epochs 15 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir test/checkpoint/
-# python train.py -i /home/murata/data_murata/code_test/train -ii /home/murata/data_murata/code_test/validation --no-split --thetaphi --cuda cuda:1 --epochs 1 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir test/checkpoint/
+# python train.py -i /home/murata/data_murata/code_test/train -ii /home/murata/data_murata/code_test/validation --no-split --thetaphi --cuda cuda:1 --epochs 15 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir test/checkpoint/
+# python train_multigpu.py -i /home/murata/data_murata/code_test/train -ii /home/murata/data_murata/code_test/validation --no-split --thetaphi --cuda cuda:0 --epochs 15 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir test/checkpoint/
+# python train_multigpu.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:0 --epochs 15 --beta-track --force-track-alpha --batch-size 50 --output-dimension 5 --ckptdir test/checkpoint/
+# python train_multigpu_ddpacce.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:0 --epochs 15 --beta-track --force-track-alpha --batch-size 1 --output-dimension 5 --ckptdir test/checkpoint/
+# python train.py -i /home/murata/data_murata/code_test/train -ii /home/murata/data_murata/code_test/validation --no-split --thetaphi --cuda cuda:1 --epochs 15 --beta-track --force-track-alpha --batch-size 10 --output-dimension 5 --ckptdir test/checkpoint/
 
 #python train.py -i mydata/ntau_one --epochs=1
 #python train.py --no-split -i mydata/ntau_one -ii mydata/ntau_one_validate --epochs=1 --batch-size=50

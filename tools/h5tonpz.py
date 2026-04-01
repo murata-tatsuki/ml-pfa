@@ -14,7 +14,7 @@ files = list(sorted(glob.iglob(inputdir + '/*.h5')))
 
 for path in files:
     print("processing ", path)
-    ak_feats, ak_labels = la.load_awkward2(path)
+    ak_feats, ak_labels, _, _, _, _, _ = la.load_awkward2(path)
     basename=os.path.splitext(os.path.basename(path))[0]
 
     n = ak.num(ak_feats, axis=0)

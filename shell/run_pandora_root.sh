@@ -45,7 +45,7 @@ checkpoint_path=/home/murata/master/checkpoint
 # ntau
 # python save_root.py /home/murata/data_murata/skimmed/ntau_10GeV_10/test/ ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_13_052149_outputD5/ckpt_19_1.pth.tar output/skimmed/ntau_to_ntau/pandora/tc_ntau_timingcut_forcealpha_thetaphi_49_ntau.root 0 100000 False 7 5 True
 # uds
-python save_root.py /home/murata/data_murata/skimmed/uds91/test/ ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_13_052149_outputD5/ckpt_19_1.pth.tar output/skimmed/uds_to_uds/pandora/tc_uds_timingcut_forcealpha_thetaphi_49_uds.root 0 100000 False 7 5 True
+# python save_root.py /home/murata/data_murata/skimmed/uds91/test/ ${checkpoint_path}/output_dimensions/ckpts_gravnet_new02_2024_07_13_052149_outputD5/ckpt_19_1.pth.tar output/skimmed/uds_to_uds/pandora/tc_uds_timingcut_forcealpha_thetaphi_49_uds.root 0 100000 False 7 5 True
 
 
 ##### hyperparameter tuning 

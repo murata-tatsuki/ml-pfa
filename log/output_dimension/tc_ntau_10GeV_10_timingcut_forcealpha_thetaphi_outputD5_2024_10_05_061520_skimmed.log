@@ -1,1 +1,0 @@
-python train.py -i /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/train -ii /data/suehara/mldata/pfa/murata/skimmed/ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:1 --epochs 50 --beta-track --force-track-alpha --batch-size 5 --output-dimension 5 --ckptdir checkpoint/output_dimensions/ckpts_gravnet_new02_2024_10_05_061520_outputD5_skimmed

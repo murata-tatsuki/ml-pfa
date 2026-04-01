@@ -1,0 +1,529 @@
+import sys
+import numpy as np
+from distutils.util import strtobool
+#import evaluation_noNoise as ev
+import awkward as ak
+from model import get_model, get_model_branch, get_clustering_model
+from dataset import ILCDataset
+from test_yielder import TestYielder, TestYielderWithMLClustering, TestYielderWithMLClustering_trackQuery, TestYielder_transformer_Like_Clustering
+from ROOT import TFile, TTree
+import argparse
+import torch
+from sed import minimum_enclosing_sphere
+from matching import matching_1to1, matching_hungarian_set_bbox_only, matching_hungarian_set_bbox_only_
+
+
+## 1 to 1 match to reco-cluster and true cluster
+## the largest edep_match reco-cluster is chosen
+
+class Data:
+    ''' TTree data for MCParticle
+        to be used for evaluating the efficiency
+    '''
+    event = np.array([0], dtype=np.int32)
+    hitid = np.array([0], dtype=np.int32)
+    mcid = np.array([0], dtype=np.int32)
+    truthid = np.array([0], dtype=np.int32)
+    mcpdg = np.array([0], dtype=np.int32)
+    mccharge = np.array([0], dtype=np.int32)
+    mcmass = np.array([0], dtype=np.float64)
+    mcpx = np.array([0], dtype=np.float64)
+    mcpy = np.array([0], dtype=np.float64)
+    mcpz = np.array([0], dtype=np.float64)
+    mcen = np.array([0], dtype=np.float64)
+    mcstatus = np.array([0], dtype=np.int32)
+    edep = np.array([0], dtype=np.float64)
+    edep_reco = np.array([0], dtype=np.float64)
+    edep_match = np.array([0], dtype=np.float64)
+    ncluster = np.array([0], dtype=np.int32)
+    matched_ncluster = np.array([0], dtype=np.int32)
+    matched_cluster = np.array([0], dtype=np.int32)
+    pred_edep = np.array([0], dtype=np.float64)
+    pred_edep_cluster = np.array([0], dtype=np.float64)
+    cond_beta = np.array([0], dtype=np.float64)
+    cond_track = np.array([0], dtype=np.int32)
+    sed_radius = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
+
+
+    def setup_branch(this,t):
+        t.Branch("event",this.event,"event/I")
+        t.Branch("hitid",this.hitid,"hitid/I")
+        t.Branch("mcid",this.mcid,"mcid/I")
+        t.Branch("truthid",this.truthid,"truthid/I")
+        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
+        t.Branch("mccharge",this.mccharge,"mccharge/I")
+        t.Branch("mcmass",this.mcmass,"mcmass/D")
+        t.Branch("mcpx",this.mcpx,"mcpx/D")
+        t.Branch("mcpy",this.mcpy,"mcpy/D")
+        t.Branch("mcpz",this.mcpz,"mcpz/D")
+        t.Branch("mcen",this.mcen,"mcen/D")
+        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
+        t.Branch("edep",this.edep,"edep/D")
+        t.Branch("edep_reco",this.edep_reco,"edep_reco/D")
+        t.Branch("edep_match",this.edep_match,"edep_match/D")
+        t.Branch("ncluster",this.matched_ncluster,"ncluster/I")
+        t.Branch("matched_ncluster",this.matched_ncluster,"matched_ncluster/I")
+        t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
+        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
+        t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
+        t.Branch("cond_track",this.cond_track,"cond_track/I")
+        t.Branch("sed_radius",this.sed_radius,"sed_radius/D")
+
+#   ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
+#   ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
+
+class RecoData:
+    ''' TTree data for reconstructed cluster
+        to be used for evaluating the purity
+    '''
+    event = np.array([0], dtype=np.int32)
+    cluster = np.array([0], dtype=np.int32)
+    nhits = np.array([0], dtype=np.int32)
+    mcid = np.array([0], dtype=np.int32)
+    mcpdg = np.array([0], dtype=np.int32)
+    mccharge = np.array([0], dtype=np.int32)
+    mcmass = np.array([0], dtype=np.float64)
+    mcpx = np.array([0], dtype=np.float64)
+    mcpy = np.array([0], dtype=np.float64)
+    mcpz = np.array([0], dtype=np.float64)
+    mcen = np.array([0], dtype=np.float64)
+    mcstatus = np.array([0], dtype=np.int32)
+    edep_reco = np.array([0], dtype=np.float64)
+    edep_mc = np.array([0], dtype=np.float64)
+    edep_match = np.array([0], dtype=np.float64)
+    pred_edep = np.array([0], dtype=np.float64)
+    pred_edep_cluster = np.array([0], dtype=np.float64)
+
+    def setup_branch(this,t):
+        t.Branch("event",this.event,"event/I")
+        t.Branch("cluster",this.cluster,"cluster/I")
+        t.Branch("nhits",this.nhits,"nhits/I")
+        t.Branch("mcid",this.mcid,"mcid/I")
+        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
+        t.Branch("mccharge",this.mccharge,"mccharge/I")
+        t.Branch("mcmass",this.mcmass,"mcmass/D")
+        t.Branch("mcpx",this.mcpx,"mcpx/D")
+        t.Branch("mcpy",this.mcpy,"mcpy/D")
+        t.Branch("mcpz",this.mcpz,"mcpz/D")
+        t.Branch("mcen",this.mcen,"mcen/D")
+        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
+        t.Branch("edep_reco",this.edep_reco,"edep_reco/D")
+        t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
+        t.Branch("edep_match",this.edep_match,"edep_match/D")
+        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
+        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
+
+class PredData:
+    ''' TTree data for predicted (output of GravNet)
+        to be used for evaluating the purity
+    '''
+    event = np.array([0], dtype=np.int32)
+    mcpdg = np.array([0], dtype=np.int32)
+    mccharge = np.array([0], dtype=np.int32)
+    mcmass = np.array([0], dtype=np.float64)
+    mcpx = np.array([0], dtype=np.float64)
+    mcpy = np.array([0], dtype=np.float64)
+    mcpz = np.array([0], dtype=np.float64)
+    mcen = np.array([0], dtype=np.float64)
+    mcstatus = np.array([0], dtype=np.int32)
+    # edep_mc = np.array([0], dtype=np.float64)
+    pred_pdg = np.array([0], dtype=np.int32)
+    pred_en = np.array([0], dtype=np.float64)
+    pred_px = np.array([0], dtype=np.float64)
+    pred_py = np.array([0], dtype=np.float64)
+    pred_pz = np.array([0], dtype=np.float64)
+    delta_E = np.array([0], dtype=np.float64)
+    delta_theta = np.array([0], dtype=np.float64)
+
+    def setup_branch(this,t):
+        t.Branch("event",this.event,"event/I")
+        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
+        t.Branch("mccharge",this.mccharge,"mccharge/I")
+        t.Branch("mcmass",this.mcmass,"mcmass/D")
+        t.Branch("mcpx",this.mcpx,"mcpx/D")
+        t.Branch("mcpy",this.mcpy,"mcpy/D")
+        t.Branch("mcpz",this.mcpz,"mcpz/D")
+        t.Branch("mcen",this.mcen,"mcen/D")
+        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
+        # t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
+        t.Branch("pred_pdg",this.pred_pdg,"pred_pdg/D")
+        t.Branch("pred_en",this.pred_en,"pred_en/D")
+        t.Branch("pred_px",this.pred_px,"pred_px/D")
+        t.Branch("pred_py",this.pred_py,"pred_py/D")
+        t.Branch("pred_pz",this.pred_pz,"pred_pz/D")
+        t.Branch("delta_E",this.delta_E,"delta_E/D")
+        t.Branch("delta_theta",this.delta_theta,"delta_theta/D")
+        
+
+def match_hits_to_queries(attn_weights):
+    """
+    すでに計算済みの attention weight (B, N_query, N_hit) を用いて、
+    各 hit が最も強く結びついている query の index を返す関数。
+
+    Args:
+        attn_weights: Tensor, shape = (B, N_query, N_hit)
+                      query→hit の attention 確率（softmax後）
+
+    Returns:
+        hit_to_query: Tensor, shape = (B, N_hit)
+                      各 hit の最大 attention を持つ query index
+    """
+    # --- Step 1 ---
+    # attention map を転置して、(B, N_hit, N_query にする)
+    # こうすることで hit ごとの query 比較が簡単にできる
+    attn_hit_view = attn_weights.transpose(1, 2)  # (B, N_hit, N_query)
+
+    # --- Step 2 ---
+    # 各 hit について attention が最大の query を選ぶ
+    # dim=-1 は query 次元に沿って argmax を取る
+    hit_to_query = torch.argmax(attn_hit_view, dim=-1)  # (B, N_hit)
+
+    return hit_to_query
+
+
+# def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
+def save_root(datapath, ckpt_gnn, ckpt_clustering, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
+    debug = False
+    pandora=args.pandora
+    energyRegression=args.energy_regression
+    energyRegressionCluster=args.energy_regression_cluster
+    momentum=args.momentum
+    momentumAmp=args.momentum_amp
+    energy_branch=args.energy_branch
+    device=args.device
+    if 'cuda' in device: torch.cuda.set_device(device)
+
+    thetaphi = True if input_dim == 7 else False
+    if momentum:
+        input_dim += 3 
+        if momentumAmp:
+            input_dim += 1
+    if energyRegression:
+        output_dim += 1
+        if energyRegressionCluster:
+            output_dim += 1
+    if energyRegressionWeight:
+            output_dim += 5
+    print(f"Loading gnn model from checkpoint {ckpt_gnn}")
+    if energy_branch:
+        model_gnn = get_model_branch(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
+    else:
+        model_gnn = get_model(ckpt_gnn, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
+    model_clustering = get_clustering_model(ckpt_clustering, jit=False, input_dim=input_dim,output_dim=output_dim, lcr_block=args.lcr_block, ddp=args.ddp, pid=args.pid).to(device)
+    print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
+    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp)
+    # yielder = TestYielderWithMLClustering_trackQuery(model=model_gnn, model_clustering=model_clustering, dataset=dataset, device=device, pandora=pandora)
+    yielder = TestYielder_transformer_Like_Clustering(model=model_gnn, dataset=dataset, device=device, pandora=pandora)
+
+    nmax = None if nend==-1 else nend-nstart+1
+    print("number of entry : ", nmax)
+
+    """
+    ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
+        --> save edep, drop others
+    ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
+        --> save all labels
+    """
+    
+    outfileDir = outfile
+
+
+            # outfile = outfileDir + '/tbeta' + format(tbeta_now, '02') + '0td' + format(td_now, '02') + '0.root'
+
+    print("")
+    print(f"save_root()...  {outfile}")
+    print("")
+    file = TFile(outfile,"recreate")
+    
+    t = TTree("t","tree for MCParticle")
+    d = Data()
+    d.setup_branch(t)
+    t2 = TTree("reco","tree for reconstructed clusters")
+    d2 = RecoData()
+    d2.setup_branch(t2)
+    t3 = TTree("prediction","tree for model output")
+    d3 = PredData()
+    d3.setup_branch(t3)
+    
+        # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
+    for i, (event_num, event_data, pred_fourvec, truth_fourvec, hit_mask, pcl_prob, cls_logits, attn_w) in enumerate(yielder._iter_data(nmax=nmax)):
+    # for i, (event, data, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=0.5, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
+
+        if i == nmax: break
+        if i < 10 or i%100 == 0:
+            print("Event", i, "processing...")
+
+            # result = evaluate_particles(truth_fourvec, pred_fourvec)
+            result = evaluate_particles_(truth_fourvec, pred_fourvec)
+
+            # print("     Efficiency:", result['Efficiency'])
+            # print("     Purity:", result['Purity'])
+            # print("     Matched particles:", result['MatchedCount'])
+            # print("     Delta E:", result['DeltaE'])
+            # print("     Delta theta (rad):", result['DeltaTheta'])
+            
+            # print("     true four vector        : ", result['TrueVec'])
+            # print("     predicted four vector   : ", result['PredVec'])
+            # print("     Delta E                 : ", result['DeltaE'])
+            # print("     Delta theta (rad)       : ", result['DeltaTheta'])
+
+            hit_to_cluster, hit_contrib = get_hit_cluster_assignment_single_batch(attn_w, hit_mask)
+
+            # ヒットiの寄与クラスタ
+            print(hit_contrib)
+            for i, hit in enumerate(event_data):
+                print(f"ヒット{i} → クラスタ {hit_to_cluster[i].item()}, 寄与度 {hit_contrib[i].item():.3f}")
+
+
+            for ind, (true_vec, pred_vec) in enumerate(zip(result['TrueVec'], result['PredVec'])):
+                d3.event[0] = i
+                d3.mcpdg[0] = 0
+                d3.mccharge[0] = 0
+                d3.mcen[0] = true_vec[0]
+                d3.mcpx[0] = true_vec[1]
+                d3.mcpy[0] = true_vec[2]
+                d3.mcpz[0] = true_vec[3]
+                d3.pred_pdg[0] = 0
+                d3.pred_en[0] = pred_vec[0]
+                d3.pred_px[0] = pred_vec[1]
+                d3.pred_py[0] = pred_vec[2]
+                d3.pred_pz[0] = pred_vec[3]
+                d3.delta_E[0] = result['DeltaE'][ind]
+                d3.delta_theta[0] = result['DeltaTheta'][ind]
+
+                t3.Fill()
+
+
+
+
+
+
+
+
+    print(f"Saving to {outfile}")
+    file.Write()
+
+
+# def evaluate_particles(true_particles, pred_particles, cost_fn=None, eps_E=0.1, eps_theta=0.05, eps_hit=0.5):
+def evaluate_particles(true_particles, pred_particles, cost_fn=None, eps_E=0.1, eps_theta=0.05, eps_hit=0.5):
+    e_ind = 0
+    """
+    true_particles, pred_particles: list of dict
+        dict keys: 'E', 'p', 'hits' (optional)
+    cost_fn: function(t, p) -> float
+        マッチング用コスト関数。NoneならΔEでマッチング
+    eps_E, eps_theta, eps_hit: 正しいマッチの閾値
+    """
+    N_true = len(true_particles)
+    N_pred = len(pred_particles)
+    torch.set_printoptions(edgeitems=1000)
+    print(true_particles, pred_particles)
+    
+    # Hungarianマッチング
+    row_ind, col_ind = matching_hungarian_set_bbox_only_(pred_particles, true_particles)
+    
+    matched_correctly = 0
+    delta_E_list = []
+    delta_theta_list = []
+    
+    for i, j in zip(row_ind, col_ind):
+        t = true_particles[j]
+        p = pred_particles[i]
+        print(t, p)
+        
+        delta_E = abs(p[e_ind] - t[e_ind])
+        # delta_E = abs(p[e_ind] - t[e_ind]) / (t[e_ind] + 1e-8)
+        delta_theta = angle_between(p[1:], t[1:])
+        # if 'hits' in t and 'hits' in p:
+        #     jaccard = jaccard_index(t['hits'], p['hits'])
+        # else:
+            # jaccard = 1.0  # hits情報なしならスキップ
+        jaccard = 1.0  # hits情報なしならスキップ
+
+        print(delta_E, delta_theta)
+        
+        if delta_E < eps_E and delta_theta < eps_theta and jaccard > eps_hit:
+            matched_correctly += 1
+            delta_E_list.append(delta_E)
+            delta_theta_list.append(delta_theta)
+    
+    # Efficiency / Purity
+    efficiency = matched_correctly / N_true if N_true > 0 else 0
+    purity = matched_correctly / N_pred if N_pred > 0 else 0
+    
+    return {
+        'Efficiency': efficiency,
+        'Purity': purity,
+        'MatchedCount': matched_correctly,
+        'DeltaE': np.array(delta_E_list),
+        'DeltaTheta': np.array(delta_theta_list)
+    }
+
+def evaluate_particles_(true_particles, pred_particles, cost_fn=None, eps_E=0.1, eps_theta=0.05, eps_hit=0.5):
+    e_ind = 0
+    """
+    true_particles, pred_particles: list of dict
+        dict keys: 'E', 'p', 'hits' (optional)
+    cost_fn: function(t, p) -> float
+        マッチング用コスト関数。NoneならΔEでマッチング
+    eps_E, eps_theta, eps_hit: 正しいマッチの閾値
+    """
+    N_true = len(true_particles)
+    N_pred = len(pred_particles)
+    torch.set_printoptions(edgeitems=1000)
+    # print(true_particles, pred_particles)
+    
+    # Hungarianマッチング
+    row_ind, col_ind = matching_hungarian_set_bbox_only_(pred_particles, true_particles)
+    
+    matched_correctly = 0
+    true_vec_list = []
+    pred_vec_list = []
+    delta_E_list = []
+    delta_theta_list = []
+    
+    for i, j in zip(row_ind, col_ind):
+        t = true_particles[j]
+        p = pred_particles[i]
+        # print(t, p)
+        
+        delta_E = (p[e_ind] - t[e_ind])
+        # delta_E = abs(p[e_ind] - t[e_ind]) / (t[e_ind] + 1e-8)
+        delta_theta = angle_between(p[1:], t[1:])
+        # if 'hits' in t and 'hits' in p:
+        #     jaccard = jaccard_index(t['hits'], p['hits'])
+        # else:
+            # jaccard = 1.0  # hits情報なしならスキップ
+        jaccard = 1.0  # hits情報なしならスキップ
+
+        # print(delta_E, delta_theta)
+        
+        # if delta_E < eps_E and delta_theta < eps_theta and jaccard > eps_hit:
+        #     matched_correctly += 1
+        #     delta_E_list.append(delta_E)
+        #     delta_theta_list.append(delta_theta)
+        true_vec_list.append(t)
+        pred_vec_list.append(p)
+        delta_E_list.append(delta_E)
+        delta_theta_list.append(delta_theta)
+        
+    
+    # Efficiency / Purity
+    efficiency = matched_correctly / N_true if N_true > 0 else 0
+    purity = matched_correctly / N_pred if N_pred > 0 else 0
+    
+    return {
+        'TrueVec': true_vec_list,
+        'PredVec': pred_vec_list,
+        'DeltaE': np.array(delta_E_list),
+        'DeltaTheta': np.array(delta_theta_list)
+    }
+
+
+def angle_between(p1, p2):
+    """ベクトルp1, p2の間の角度（ラジアン）"""
+    cos_theta = np.dot(p1, p2) / (np.linalg.norm(p1) * np.linalg.norm(p2) + 1e-8)
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    return np.arccos(cos_theta)
+
+def jaccard_index(hit_true, hit_pred):
+    """Hit集合のJaccard指数"""
+    set_true = set(hit_true)
+    set_pred = set(hit_pred)
+    intersection = len(set_true & set_pred)
+    union = len(set_true | set_pred) + 1e-8
+    return intersection / union
+
+
+def get_hit_cluster_assignment(attn_weights, hit_mask=None):
+    """
+    各ヒットがどのクラスタ(seed)に最も寄与しているかを計算
+    
+    Args:
+        attn_weights: Tensor of shape (B, K, N_hit)
+        hit_mask: Optional mask (B, N_hit) for valid hits (1=valid,0=padding)
+    
+    Returns:
+        hit_to_cluster: Tensor of shape (B, N_hit), 
+                        各ヒットに対応するクラスタの index (-1 は無効)
+        max_contrib: Tensor of shape (B, N_hit), 寄与度
+    """
+    B, K, N = attn_weights.shape
+    device = attn_weights.device
+
+    # 各ヒットが最も寄与するクラスタを取得
+    # w_max_idx : (B,N), max_contrib: (B,N)
+    max_contrib, w_max_idx = attn_weights.max(dim=1)  
+
+    if hit_mask is not None:
+        w_max_idx = w_max_idx.masked_fill(~hit_mask.bool(), -1)
+        max_contrib = max_contrib.masked_fill(~hit_mask.bool(), 0.0)
+
+    return w_max_idx, max_contrib
+
+def get_hit_cluster_assignment_single_batch(attn_weights, hit_mask=None):
+    """
+    1バッチ分のヒットがどのクラスタ(seed)に最も寄与しているかを計算
+    
+    Args:
+        attn_weights: Tensor of shape (K, N_hit)
+        hit_mask: Optional mask (N_hit,) for valid hits (1=valid,0=padding)
+    
+    Returns:
+        hit_to_cluster: Tensor of shape (N_hit,), 各ヒットに対応するクラスタ index (-1は無効)
+        max_contrib: Tensor of shape (N_hit,), ヒットごとの寄与度
+    """
+    # ヒットごとに最大のクラスタを取得
+    max_contrib, hit_to_cluster = attn_weights.max(dim=0)  # (N_hit,)
+
+    if hit_mask is not None:
+        mask = hit_mask.bool()
+        hit_to_cluster = hit_to_cluster.masked_fill(~mask, -1)
+        max_contrib = max_contrib.masked_fill(~mask, 0.0)
+
+    return hit_to_cluster, max_contrib
+
+
+
+
+def main():
+    print(sys.argv)
+    if (len(sys.argv) < 9):
+        print("Usage: save_root.py datapath ckpt_gnn ckpt_clustering outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
+        return
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datapath')
+    parser.add_argument('ckpt_gnn')
+    parser.add_argument('ckpt_clustering')
+    parser.add_argument('outfile')
+    parser.add_argument('nstart', type=int)
+    parser.add_argument('nend', type=int)
+    parser.add_argument('timingCut')
+    parser.add_argument('input_dim', type=int)
+    parser.add_argument('output_dim', type=int)
+    parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
+    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
+    parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
+    parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')
+    parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
+    # parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
+    parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
+    # parser.add_argument('--beta-d-scan', action='store_true', help='Turn on beta and diameter scan')
+    # parser.add_argument('--tbeta', type=float, default=0.9)
+    # parser.add_argument('--td', type=float, default=0.5)
+    parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
+    parser.add_argument('--lcr-block', action='store_true', help='Use LCR block')
+    parser.add_argument('--pid', action='store_true', help='Use pid')
+    parser.add_argument('--ddp', action='store_true', help='Use ddp for training')
+    # parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
+    # parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
+
+    args = parser.parse_args()
+    
+    save_root(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],nstart=int(sys.argv[5]),nend=int(sys.argv[6]),timingCut=strtobool(sys.argv[7]),input_dim=int(sys.argv[8]), output_dim=int(sys.argv[9]), args=args)
+
+if __name__=='__main__':
+    main()
+    

@@ -2,7 +2,7 @@ import numpy as np
 from torch_geometric.data import Data
 
 class Event:
-    def __init__(self, data: Data, pandora=False):
+    def __init__(self, data: Data, pandora=False, event_energy=False):
         self.x = data.x.numpy()
         self.y = data.y.numpy()
         if hasattr(data, 'truth_cluster_props'):
@@ -15,6 +15,8 @@ class Event:
         self.feat = data.feat
         self.label = data.label
         self.pand = data.pand if pandora else None
+        self.event = data.event if event_energy else None
+        self.jet = data.jet if event_energy else None
 
     @property
     def truth_e_bound(self):

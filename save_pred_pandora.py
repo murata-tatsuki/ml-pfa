@@ -16,7 +16,7 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora)
-    yielder = TestYielder(model=model, dataset=dataset, use_charge_track_likeness=use_charge_track_likeness)
+    yielder = TestYielder(model=model, dataset=dataset, use_charge_track_likeness=use_charge_track_likeness, pandora=pandora)
 
     nmax = None if nend==-1 else nend-nstart+1
 
@@ -29,7 +29,8 @@ def save_pred(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     energy = []
 
     #for i, (event, prediction) in enumerate(yielder.iter_pred(nmax)):
-    for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
+    # for i, (event, prediction, clustering, matches) in enumerate(yielder.iter_matches(tbeta=0.2, td=0.5, nmax=nmax, pandora=pandora)):
+    for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.9, td=0.5, nmax=nmax)):
 
         if i == nmax: break
 
