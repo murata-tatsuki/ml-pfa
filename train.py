@@ -1,670 +1,98 @@
-import os, os.path as osp
-from time import strftime
-import tqdm
-import torch
-from torch_geometric.loader import DataLoader
 import argparse
+import sys
 import matplotlib.pylab as plt
 import numpy as np
+import torch
+from torch_geometric.loader import DataLoader
+import tqdm
 
-#from sklearn.metrics import accuracy_score
-#import torch_cmspepr.objectcondensation as oc
-# import objectcondensation as oc
 import objectcondensation as oc
-#import torch.nn.functional as f
-
-from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
-from data_loading import prepare_train_val_datasets
-from training.loss import loss_fn, loss_fn_jit
-from training.loops import amp_autocast, amp_grad_scaler, forward_training_loss, backward_with_optimizer_step, training_batch_step, eval_batch_loss_components, ddp_all_reduce_loss_totals
-from lrscheduler import CyclicLRWithRestarts
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-#from sklearn.manifold import TSNE
-from model import get_model, get_model_branch
 from cli import parse_train_args
+from gravnet_model import GravnetModel
+from training.loss import loss_fn
+from training.run import launch_ddp_training, run_training_single_gpu
 
-#from ReadText import ReadText
-import sys
-
-# for distributed data parallel
-import torch.distributed as dist
-import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data.distributed import DistributedSampler
-
-# clipping
 import torch.nn.utils as utils
 
-#torch.manual_seed(1009)
+# torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(False)
-
-
-def run_requirements(args):
-    if (args.no_split and args.inputdir_validate is None):
-        print("If --no-split is specified, it is required to set --inputdir-validate")
-        raise
-    if (args.regression_coefficinet and args.energy_regression is None):
-        print("If --regression-coefficinet is specified, it is required to set --energy-regression")
-        raise
-    if (args.energy_regression_cluster and args.energy_regression is None):
-        print("If --cluster-energy is specified, it is required to set --energy-regression")
-        raise
-
-def index_setup(args):
-    output_dimension = args.output_dimension
-    index_pred_tracker_energy = 0
-    index_pred_cluster_energy = 0
-    index_pred_cluster_space_coords = 0
-    if args.energy_regression_weight:
-        output_dimension += 5
-        index_pred_cluster_energy += 5
-    else:
-        if (args.energy_regression):
-            output_dimension += 1   # adding track energy to model output
-            index_pred_tracker_energy += 1
-            if (args.energy_regression_cluster):
-                output_dimension += 1   # adding cluster energy to model output
-                index_pred_cluster_energy += 2
-    if (args.use_charged_cluster_loss):
-        output_dimension += 1   # adding output dimension
-        index_pred_tracker_energy = index_pred_tracker_energy + 1 if index_pred_tracker_energy!=0 else 0
-        index_pred_cluster_energy = index_pred_cluster_energy + 1 if index_pred_cluster_energy!=0 else 0
-
-    additional_input_dimension = 0
-    if (args.momentum):
-        additional_input_dimension += 3   # adding momentum to model input
-        if (args.momentum_amp):
-            additional_input_dimension += 1     # adding momentum amplitude to model input
-    
-    return output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
-
-
-def setup_ddp(rank, world_size):
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
-
-def cleanup():
-    dist.destroy_process_group()
-
-def run_ddp_training(rank, world_size, args):
-    # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
-    # setup_ddp(local_rank, world_size)
-    # torch.cuda.set_device(local_rank)
-
-    setup_ddp(rank, world_size)
-    torch.cuda.set_device(rank)
-
-    # device = torch.device(f"cuda:{local_rank}")
-    device = torch.device(f"cuda:{rank}")
-    print(device)
-    run_requirements(args)
-    n_epochs = args.epochs
-    batch_size = args.batch_size
-    output_dimension = args.output_dimension
-    lr_input = args.learning_rate
-    weight_decay_input = args.weight_decay
-    er_coef = args.regression_coefficinet
-    qmin = args.qmin
-    min_lr=args.min_lr
-
-    batch_size = batch_size * world_size
-    lr_input = lr_input * world_size
-
-    shuffle = True
-
-    train_dataset, test_dataset, batch_size = prepare_train_val_datasets(args, batch_size)
-
-    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
-
-    print(f"Training dataset size:  {len(train_dataset)}")
-    print(f"Validating dataset size:  {len(test_dataset)}")
-    print(f"Batch size:  {batch_size}")
-
-    # Sampler（検証も各 rank でデータを分割し、all_reduce で損失を集約）
-    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
-    test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, pin_memory=True, persistent_workers=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True)
-    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
-    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
-
-    # Model setup
-    if args.model_ckpt=='':
-        if not args.energy_branch:
-            print(f"Loading GravnetModel")
-            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            print(f"Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
-            print(model)
-    else:
-        print(f"Loading model from checkpoint {args.model_ckpt}")
-        if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
-        else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
-    # model.to(local_rank)
-    # model = DDP(model, device_ids=[local_rank])
-    model.to(rank)
-    model = DDP(model, device_ids=[rank])
-
-    # optimizer, scheduler setting
-    epoch_size = len(train_loader.dataset)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
-    scaler = amp_grad_scaler(args)
-    if getattr(args, "amp", False) and rank == 0:
-        print(
-            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
-        )
-    scheduler = None
-    if not args.settings_Sep01:
-        if args.ReduceLROnPlateau:
-            print("use ReduceLROnPlateau scheduler")
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
-            nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
-            print("epochs to calculate patience ", nepoch_factor)
-        else:
-            print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
-    loss_offset =1. # To prevent a negative loss from ever occuring
-
-    def check_coords(out,data) :
-        learning_para={}
-        #pred_betas = torch.sigmoid(out[:,0])
-        pred_cluster_space_coords = out[:,1:]
-        #learning_para["pred_betas"] =pred_betas
-        learning_para["pred_cluster_space_coords"] =pred_cluster_space_coords
-        #print(f"coords_test_shape:{pred_cluster_space_coords.shape}")
-        learning_para["data.y.long"]=data.y.long()
-        learning_para["data.batch"] = data.batch
-        return learning_para
-
-    def check_data(data):
-        data_para={}
-        data_para["data.y.long"]=data.y.long()
-        data_para["data.x"]=data.x
-        return data_para
-
-    def train(epoch):
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        N_train = len(train_loader)
-        loss_components={}
-        gradients=[]
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: 
-                    loss_components[key] = value.detach().clone()
-                else:
-                    loss_components[key] += value.detach()
-        if scheduler is not None and not args.settings_Sep01:
-            if not args.ReduceLROnPlateau:
-                scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, data.x.shape, data.y.shape)
-                loss, components = training_batch_step(
-                    model,
-                    data,
-                    device,
-                    optimizer,
-                    scaler,
-                    args,
-                    qmin,
-                    loss_offset,
-                    epoch,
-                    scheduler,
-                )
-                update(components)
-                pbar.set_postfix({'loss': float(loss)})
-                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
-                # if i == 2: raise Exception
-            # 全 rank のバッチ数の合計で割る（各 rank が担当するバッチ数が微妙に違う場合に対応）
-            layer_grads = np.mean(np.array(gradients), axis=0)
-            ddp_all_reduce_loss_totals(loss_components, N_train, device)
-            if rank == 0:
-                # print(f"Epoch {epoch} Loss terms:")
-                # for k, v in loss_components.items():
-                #     print(f"  {k}: {v.item():.6f}")
-                print('Training epoch', epoch)
-                print(layer_grads)  ## is NOT the mean of all GPUs
-                print(oc.formatted_loss_components_string_train(loss_components))
-                return_loss = loss_components["L_V"] + loss_offset
-                if args.LE_track == 'alpha_tracker_modifing_charged0':
-                    if epoch > args.epochs_nobeta:
-                        return_loss += loss_components["L_beta"]
-                    if epoch > 15:
-                        return_loss += loss_components["L_E"]
-                    else: 
-                        return_loss += loss_components["L_E_charge"]
-                else:
-                    if epoch > args.epochs_nobeta:
-                        return_loss += loss_components["L_beta"]
-                    if epoch > args.epochs_noLE:
-                        return_loss += loss_components["L_E"]
-            train_loss = return_loss.item() if rank == 0 else loss.item()
-            # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
-            return train_loss,None,None,None,None
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
-    def test(epoch):
-        N_test = len(test_loader)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: 
-                    loss_components[key] = value.detach().clone()
-                else:
-                    loss_components[key] += value.detach()
-        with torch.no_grad():
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                update(
-                    eval_batch_loss_components(
-                        model,
-                        data,
-                        device,
-                        args,
-                        qmin,
-                        loss_offset,
-                        epoch,
-                    )
-                )
-        ddp_all_reduce_loss_totals(loss_components, N_test, device)
-        # Compute total loss and do printout
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
-        if rank == 0:
-            print('test ' + oc.formatted_loss_components_string(loss_components))
-            # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-            print(f'Returning {test_loss}')
-        return test_loss.item()
-
-    ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.module.state_dict()), ckpt)
-
-    min_loss = 1e9
-    train_loss_history=[]
-    test_loss_history=[]
-    epoch_history=[]
-    train_acc_history=[]
-    test_acc_history=[]
-    learning_rates=[]
-
-    for i_epoch in range(n_epochs):
-        train_sampler.set_epoch(i_epoch)
-        test_sampler.set_epoch(i_epoch)
-        train_loss,_,_,_,_=train(i_epoch)
-        if rank == 0:
-            train_loss_history.append(train_loss)
-            learning_rates.append(optimizer.param_groups[0]["lr"])
-            print("learning rate : ", learning_rates)
-            print("train loss : ", train_loss)
-            write_checkpoint(i_epoch)
-
-        test_loss= test(i_epoch)
-        if args.ReduceLROnPlateau:
-            if i_epoch > nepoch_factor: scheduler.step(test_loss)
-        #test_loss/=len(test_loader)
-        test_loss_history.append(test_loss)
-        if test_loss < min_loss:
-            min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
-
-    cleanup()
-
-
 
 
 def main():
     print(sys.argv)
     args = parse_train_args()
     if args.verbose: oc.DEBUG = True
-    n_epochs = args.epochs
-    batch_size = args.batch_size
-    output_dimension = args.output_dimension
-    lr_input = args.learning_rate
-    weight_decay_input = args.weight_decay
-    er_coef = args.regression_coefficinet
-    qmin = args.qmin
-    min_lr=args.min_lr
-
-
     if args.ddp:
-        # GPU選択: --gpus で指定されたGPUのみを使用。未指定の場合は全GPUを使用
-        if args.gpus is not None:
-            visible_gpus = [int(x.strip()) for x in args.gpus.split(',') if x.strip()]
-            if not visible_gpus:
-                print("Error: --gpus must specify at least one GPU (e.g., --gpus 0,1)")
-                sys.exit(1)
-            # 指定されたGPUが存在するか検証
-            n_gpus = torch.cuda.device_count()
-            invalid = [g for g in visible_gpus if g < 0 or g >= n_gpus]
-            if invalid:
-                print(f"Error: Invalid GPU id(s) {invalid}. Available GPUs: 0-{n_gpus-1}")
-                sys.exit(1)
-            os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
-            print(f"DDP: Using selected GPUs: {visible_gpus} (CUDA_VISIBLE_DEVICES={args.gpus})")
-        else:
-            visible_gpus = list(range(torch.cuda.device_count()))
-            if not visible_gpus:
-                print("Error: No CUDA GPUs available")
-                sys.exit(1)
-            print(f"DDP: Using all available GPUs: {visible_gpus}")
+        launch_ddp_training(args)
+        return
+    run_training_single_gpu(args)
 
-        world_size = len(visible_gpus)
-        mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
 
-        sys.exit()
- 
-
-    device = torch.device(args.cuda) if not args.dp else 'cuda'
-    print('Using device: ', device)
-    if not args.dp: torch.cuda.set_device(device)
-    if args.dp:
-        print("available number of cuda ", torch.cuda.device_count())
-        # batch_size = batch_size * torch.cuda.device_count()
-        # lr_input = lr_input * torch.cuda.device_count()
-        batch_size = batch_size * 2
-        lr_input = lr_input * 2
-    print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
-    if args.mctpe:
-        print("momentum and energy of virtual hits are MC truth")
-    else:
-        print("momentum and energy of virtual hits are NOT MC truth")
-        print("using detected values")
-
-    shuffle = True
-
-    train_dataset, test_dataset, batch_size = prepare_train_val_datasets(args, batch_size)
-
-    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
-
-    print(f"Training dataset size:  {len(train_dataset)}")
-    print(f"Validating dataset size:  {len(test_dataset)}")
-    print(f"Batch size:  {batch_size}")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
-
-    if args.model_ckpt=='':
-        if not args.energy_branch:
-            print(f"Loading GravnetModel")
-            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            print(f"Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
-            print(model)
-    else:
-        print(f"Loading model from checkpoint {args.model_ckpt}")
-        if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-    if not args.dp:
-        model.to(device)
-    else:
-        model.cuda()
-        model = torch.nn.DataParallel(model)
-        torch.backends.cudnn.benchmark = True
-
-    epoch_size = len(train_loader.dataset)
-    
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
-    scaler = amp_grad_scaler(args)
-    if getattr(args, "amp", False):
-        print(
-            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
-        )
-
-    scheduler = None
-    if not args.settings_Sep01:
-        if args.ReduceLROnPlateau:
-            print("use ReduceLROnPlateau scheduler")
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
-            nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
-            print("epochs to calculate patience ", nepoch_factor)
-        else:
-            print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
-
-    loss_offset =1. # To prevent a negative loss from ever occuring
-
-    train_accu=[]
-    test_accu=[]
-
-    def check_coords(out,data) :
-        learning_para={}
-        #pred_betas = torch.sigmoid(out[:,0])
-        pred_cluster_space_coords = out[:,1:]
-        #learning_para["pred_betas"] =pred_betas
-        learning_para["pred_cluster_space_coords"] =pred_cluster_space_coords
-        #print(f"coords_test_shape:{pred_cluster_space_coords.shape}")
-        learning_para["data.y.long"]=data.y.long()
-        learning_para["data.batch"] = data.batch
-        return learning_para
-
-    def check_data(data):
-        data_para={}
-        data_para["data.y.long"]=data.y.long()
-        data_para["data.x"]=data.x
-        return data_para
-
-    def train(epoch):
-        print('Training epoch', epoch)
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        N_train = len(train_loader)
-        loss_components={}
-        gradients=[]
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        if scheduler is not None and not args.settings_Sep01:
-            if not args.ReduceLROnPlateau:
-                scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
-                optimizer.zero_grad()
-                if i == 0:
-                    first_para = check_data(data)
-                loss, components, result = forward_training_loss(
-                    model, data, device, args, qmin, loss_offset, epoch
-                )
-                learning_para = check_coords(result, data)
-                update(components)
-                backward_with_optimizer_step(
-                    loss, model, optimizer, scaler, args, scheduler
-                )
-                pbar.set_postfix({'loss': float(loss)})
-                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
-                # if i == 2: raise Exception
-            # Divide by number of entries
-            layer_grads = np.mean(np.array(gradients), axis=0)
-            print(layer_grads)
-            for key in loss_components:
-                loss_components[key] /= N_train
-            print(oc.formatted_loss_components_string_train(loss_components))
-            return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
-    def test(epoch):
-        N_test = len(test_loader)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        with torch.no_grad():
-
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                update(
-                    eval_batch_loss_components(
-                        model,
-                        data,
-                        device,
-                        args,
-                        qmin,
-                        loss_offset,
-                        epoch,
-                    )
-                )
-        # Divide by number of entries
-        for key in loss_components:
-            loss_components[key] /= N_test
-        # Compute total loss and do printout
-        print('test ' + oc.formatted_loss_components_string(loss_components))
-        # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
-        print(f'Returning {test_loss}')
-        return test_loss.item()
-
-    ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.state_dict()), ckpt)
-
-    min_loss = 1e9
-    train_loss_history=[]
-    test_loss_history=[]
-    epoch_history=[]
-    train_acc_history=[]
-    test_acc_history=[]
-    learning_rates=[]
-
-    for i_epoch in range(n_epochs):
-        train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
-        learning_rates.append(optimizer.param_groups[0]["lr"])
-        print("learning rate : ", learning_rates)
-        train_loss_history.append(train_loss)
-        print("train loss : ", train_loss)
-        write_checkpoint(i_epoch)
-
-        test_loss= test(i_epoch)
-        if args.ReduceLROnPlateau:
-            if i_epoch > nepoch_factor: scheduler.step(test_loss)
-        #test_loss/=len(test_loader)
-        test_loss_history.append(test_loss)
-        if test_loss < min_loss:
-            min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
-
-        #if i_epoch==0 or i_epoch==30 : check_plots(cluster_space_para,data_y)
-        #if i_epoch==30 : check_plots(cluster_space_para,data_y)
-
-    # data_y = data.y.long().cpu().numpy()
-    # plot_history(train_loss_history,test_loss_history)
-
-def colorlabel(y,label):
-    unique_label=np.unique(label)
-    if y == unique_label[0] :
+def colorlabel(y, label):
+    unique_label = np.unique(label)
+    if y == unique_label[0]:
         return "b"
-    elif y == unique_label[1] :return "g"
+    elif y == unique_label[1]:
+        return "g"
 
-def check_plots(coords_list,data_y_list):
-    #coords_lists has the diferent numbers of elements for each row, so it cannot be converted to numpy!!!!!!!!!!!!!!!!!!!!!
-    coords_list=np.array(coords_list[0])
-    label=np.array(data_y_list[0][0:4000])
-    fig,ax = plt.subplots(figsize = (8,6))
-    l = 0
-    for x1,y1,label1 in zip(coords_list[0:4000,0],coords_list[0:4000,1],label):
-        ax.scatter(x1, y1,c=colorlabel(label1,label))
+
+def check_plots(coords_list, data_y_list):
+    coords_list = np.array(coords_list[0])
+    label = np.array(data_y_list[0][0:4000])
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for x1, y1, label1 in zip(
+        coords_list[0:4000, 0], coords_list[0:4000, 1], label
+    ):
+        ax.scatter(x1, y1, c=colorlabel(label1, label))
     plt.show()
 
-# def coord_tsne(Coords,Tag):
-#     tsne = TSNE(n_components=2,random_state=41,learning_rate='auto')
-#     Coord_reduced = tsne.fit_transform(Coords)
-
-#     plt.figure(figsize=(13,7))
-#     plt.scatter(Coord_reduced[0:4000,0],Coord_reduced[0:4000,1],c=Tag,cmap='jet',s=15,alpha=0.5)
-#     #plt.axis('off')
-#     plt.colorbar()
-#     plt.show()
 
 def debug():
     oc.DEBUG = True
-    dataset = TauDataset('data/taus')
-    dataset.npzs = [
-        # 'data/taus/49_nanoML_84.npz',
-        # 'data/taus/37_nanoML_4.npz',
-        #'data/taus/26_nanoML_93.npz',
-        # 'data/taus/142_nanoML_75.npz',
-        ]
-    for data in DataLoader(dataset, batch_size=len(dataset), shuffle=False): break
+    dataset = TauDataset("data/taus")
+    dataset.npzs = []
+    for data in DataLoader(dataset, batch_size=len(dataset), shuffle=False):
+        break
     print(data.y.sum())
     model = GravnetModel(input_dim=9, output_dim=4)
     with torch.no_grad():
         model.eval()
         out = model(data.x, data.batch)
-    pred_betas = torch.sigmoid(out[:,0])
-    pred_cluster_space_coords = out[:,1:4]
-    out_oc = oc.calc_LV_Lbeta_Eregression(
+    pred_betas = torch.sigmoid(out[:, 0])
+    pred_cluster_space_coords = out[:, 1:4]
+    oc.calc_LV_Lbeta_Eregression(
         pred_betas,
         pred_cluster_space_coords,
         data.y.long(),
-        data.batch.long()
+        data.batch.long(),
     )
 
-def plot_history(train_loss_history,test_loss_history):
-    loss_type = type(test_loss_history)
-    if(loss_type is list):
-        plt.figure(figsize=(8,6))
-        plt.plot(test_loss_history,label='test_loss', lw=3, c='b')
-        plt.plot(train_loss_history,label='train_loss',lw=3,c='green')
-        plt.title('loss function')
+
+def plot_history(train_loss_history, test_loss_history):
+    if isinstance(test_loss_history, list):
+        plt.figure(figsize=(8, 6))
+        plt.plot(test_loss_history, label="test_loss", lw=3, c="b")
+        plt.plot(train_loss_history, label="train_loss", lw=3, c="green")
+        plt.title("loss function")
         plt.legend(fontsize=14)
         plt.show()
 
-def plot_acc_history(train_acc_history,test_acc_history):
-    loss_type = type(test_acc_history)
-    if(loss_type is list):
-        plt.figure(figsize=(8,6))
-        plt.plot(test_acc_history,label='test_acc', lw=3, c='b')
-        plt.plot(train_acc_history,label='train_acc',lw=3,c='green')
-        plt.title('accuracy')
+
+def plot_acc_history(train_acc_history, test_acc_history):
+    if isinstance(test_acc_history, list):
+        plt.figure(figsize=(8, 6))
+        plt.plot(test_acc_history, label="test_acc", lw=3, c="b")
+        plt.plot(train_acc_history, label="train_acc", lw=3, c="green")
+        plt.title("accuracy")
         plt.legend(fontsize=14)
         plt.show()
+
 
 def run_profile():
-    from torch.profiler import profile, record_function, ProfilerActivity
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device', device)
+    from torch.profiler import ProfilerActivity, profile, record_function
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device", device)
 
     qmin = 1.0
     loss_offset = 1.0
@@ -690,28 +118,28 @@ def run_profile():
     batch_size = 2
     n_batches = 2
     shuffle = True
-    dataset = TauDataset('data/taus')
-    dataset.npzs = dataset.npzs[:batch_size*n_batches]
+    dataset = TauDataset("data/taus")
+    dataset.npzs = dataset.npzs[: batch_size * n_batches]
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
-    print(f'Running profiling for {len(dataset)} events, batch_size={batch_size}, {len(loader)} batches')
+    print(
+        f"Running profiling for {len(dataset)} events, batch_size={batch_size}, {len(loader)} batches"
+    )
 
     model = GravnetModel(input_dim=9, output_dim=8).to(device)
-    epoch_size = len(loader.dataset)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-7, weight_decay=1e-4)
 
-    print('Start limited training loop')
+    print("Start limited training loop")
     model.train()
     with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof:
         with record_function("model_inference"):
             pbar = tqdm.tqdm(loader, total=len(loader))
-            pbar.set_postfix({'loss': '?'})
+            pbar.set_postfix({"loss": "?"})
             for i, data in enumerate(pbar):
                 data = data.to(device)
                 optimizer.zero_grad()
                 result = model(data.x, data.batch)
                 if args.jit:
-                    # loss = loss_fn_jit(result, data, args, er_coef, loss_offset, use_charge_track_likeness=...)
-                    raise
+                    raise NotImplementedError
                 else:
                     loss, _ = loss_fn(
                         result,
@@ -721,19 +149,14 @@ def run_profile():
                         loss_offset,
                         use_charge_track_likeness=False,
                     )
-                print(f'loss={float(loss)}')
+                print(f"loss={float(loss)}")
                 loss.backward()
                 if not args.no_clipping:
                     utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
-                pbar.set_postfix({'loss': float(loss)})
+                pbar.set_postfix({"loss": float(loss)})
     print(prof.key_averages().table(sort_by="cpu_time", row_limit=10))
-    # Other valid keys:
-    # cpu_time, cuda_time, cpu_time_total, cuda_time_total, cpu_memory_usage,
-    # cuda_memory_usage, self_cpu_memory_usage, self_cuda_memory_usage, count
 
-if __name__ == '__main__':
-    pass
+
+if __name__ == "__main__":
     main()
-    # debug()
-    # run_profile()
