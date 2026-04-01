@@ -16,31 +16,7 @@ import objectcondensation as oc
 #import torch.nn.functional as f
 
 from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
-from dataset import ILCDataset
-from dataset_ilc_sharded import ILCDatasetSharded
-
-
-def make_ilc_dataset(args, inputdir):
-    """ILCDataset と ILCDatasetSharded を引数で切り替え（デフォルトは従来どおり ILCDataset）。"""
-    common = dict(
-        timingCut=args.timing_cut,
-        thetaphi=args.thetaphi,
-        test_mode=True,
-        momentum=args.momentum,
-        momentumAmp=args.momentum_amp,
-        mctpe=args.mctpe,
-    )
-    if getattr(args, "ilc_sharded", False):
-        print(
-            "Using ILCDatasetSharded (per-file load, no concatenate). "
-            f"file_cache_size={getattr(args, 'ilc_file_cache', 2)}"
-        )
-        return ILCDatasetSharded(
-            inputdir,
-            **common,
-            file_cache_size=getattr(args, "ilc_file_cache", 2),
-        )
-    return ILCDataset(inputdir, **common)
+from data_loading import prepare_train_val_datasets
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
@@ -138,7 +114,6 @@ def run_ddp_training(rank, world_size, args):
     device = torch.device(f"cuda:{rank}")
     print(device)
     run_requirements(args)
-    reduce_noise = args.reduce_noise
     n_epochs = args.epochs
     batch_size = args.batch_size
     output_dimension = args.output_dimension
@@ -153,25 +128,7 @@ def run_ddp_training(rank, world_size, args):
 
     shuffle = True
 
-    print(f'thetaphi at main: {args.thetaphi}')
-    print("Loading dataset...")
-    # Dataset
-    dataset = make_ilc_dataset(args, args.inputdir)
-    if reduce_noise:
-        dataset.reduce_noise = .70
-        multiply_batch_size = 1
-        print(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
-        print(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
-        batch_size *= multiply_batch_size
-    if args.dry:
-        keep = .005
-        print(f'Keeping only {100.*keep:.1f}% of events for debugging')
-        dataset, _ = dataset.split(keep)
-    if (args.no_split):
-        train_dataset = dataset
-        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
-    else:
-        train_dataset, test_dataset = dataset.split(.8)
+    train_dataset, test_dataset, batch_size = prepare_train_val_datasets(args, batch_size)
 
     output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
@@ -594,7 +551,6 @@ def main():
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
-    reduce_noise = args.reduce_noise
     n_epochs = args.epochs
     batch_size = args.batch_size
     output_dimension = args.output_dimension
@@ -651,28 +607,7 @@ def main():
 
     shuffle = True
 
-    print(f'thetaphi at main: {args.thetaphi}')
-    print("Loading dataset...")
-
-    
-    dataset = make_ilc_dataset(args, args.inputdir)
-
-    if reduce_noise:
-        dataset.reduce_noise = .70
-        multiply_batch_size = 1
-        print(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
-        print(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
-        batch_size *= multiply_batch_size
-    if args.dry:
-        keep = .005
-        print(f'Keeping only {100.*keep:.1f}% of events for debugging')
-        dataset, _ = dataset.split(keep)
-
-    if (args.no_split):
-        train_dataset = dataset
-        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
-    else:
-        train_dataset, test_dataset = dataset.split(.8)
+    train_dataset, test_dataset, batch_size = prepare_train_val_datasets(args, batch_size)
 
     output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
