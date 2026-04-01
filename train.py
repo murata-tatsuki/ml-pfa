@@ -1,7 +1,9 @@
 import os, os.path as osp
+from contextlib import nullcontext
 from time import strftime
 import tqdm
 import torch
+from torch.cuda.amp import GradScaler, autocast
 from torch_geometric.loader import DataLoader
 import argparse
 import matplotlib.pylab as plt
@@ -57,7 +59,24 @@ from torch.utils.data.distributed import DistributedSampler
 import torch.nn.utils as utils
 
 #torch.manual_seed(1009)
-torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(False)
+
+
+def amp_autocast(args):
+    """AMP オフ時は空のコンテキスト（従来と同じ挙動）。"""
+    if not getattr(args, "amp", False):
+        return nullcontext()
+    dt = torch.bfloat16 if args.amp_dtype == "bf16" else torch.float16
+    return autocast(enabled=True, dtype=dt)
+
+
+def amp_grad_scaler(args):
+    """fp16 のときのみ GradScaler を使う。AMP オフ時は None。"""
+    if not getattr(args, "amp", False):
+        return None
+    if args.amp_dtype == "fp16":
+        return GradScaler()
+    return None
 
 def run_requirements(args):
     if (args.no_split and args.inputdir_validate is None):
@@ -163,8 +182,8 @@ def run_ddp_training(rank, world_size, args):
     # Sampler（検証も各 rank でデータを分割し、all_reduce で損失を集約）
     train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
     test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, pin_memory=True, persistent_workers=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True)
     # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
     # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -191,6 +210,11 @@ def run_ddp_training(rank, world_size, args):
     # optimizer, scheduler setting
     epoch_size = len(train_loader.dataset)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+    scaler = amp_grad_scaler(args)
+    if getattr(args, "amp", False) and rank == 0:
+        print(
+            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
+        )
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
             print("use ReduceLROnPlateau scheduler")
@@ -370,17 +394,26 @@ def run_ddp_training(rank, world_size, args):
                 data = data.to(device)
                 optimizer.zero_grad()
                 # if i == 0 : first_para = check_data(data)
-                result: torch.Tensor = model(data.x, data.batch)
-                # learning_para = check_coords(result,data)
-                if args.jit:
-                    raise
+                with amp_autocast(args):
+                    result: torch.Tensor = model(data.x, data.batch)
+                    # learning_para = check_coords(result,data)
+                    if args.jit:
+                        raise
+                    else:
+                        loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                        update(components)
+                if scaler is not None:
+                    scaler.scale(loss).backward()
+                    if not args.no_clipping:
+                        scaler.unscale_(optimizer)
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    scaler.step(optimizer)
+                    scaler.update()
                 else:
-                    loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                    update(components)
-                loss.backward()
-                if not args.no_clipping:
-                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                optimizer.step()
+                    loss.backward()
+                    if not args.no_clipping:
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -437,11 +470,12 @@ def run_ddp_training(rank, world_size, args):
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
-                result = model(data.x, data.batch)
-                if args.jit:
-                    raise
-                else:
-                    update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                with amp_autocast(args):
+                    result = model(data.x, data.batch)
+                    if args.jit:
+                        raise
+                    else:
+                        update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
         nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
         dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
         total_test_batches = nb_test.item()
@@ -557,6 +591,8 @@ def main():
     parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
     parser.add_argument('--no-clipping', action='store_true', help='do not clip the gradients')           
     parser.add_argument('--l-beta-suppression', action='store_true', help='add to decrease beta of non-condensation point')           
+    parser.add_argument('--amp', action='store_true', help='Enable CUDA mixed precision (torch.cuda.amp.autocast). Off: same as before.')
+    parser.add_argument('--amp-dtype', type=str, default='bf16', choices=['bf16', 'fp16'], help='AMP compute dtype: bf16 (A100+), fp16 (uses GradScaler). Ignored unless --amp.')
 
     args = parser.parse_args()
     if args.verbose: oc.DEBUG = True
@@ -652,15 +688,15 @@ def main():
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
     # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,num_workers=16, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
         print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
+        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
+        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True,)
 
     if args.model_ckpt=='':
         if not args.energy_branch:
@@ -688,6 +724,11 @@ def main():
     epoch_size = epoch_size + epoch_size_tune
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+    scaler = amp_grad_scaler(args)
+    if getattr(args, "amp", False):
+        print(
+            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
+        )
 
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
@@ -956,18 +997,27 @@ def main():
                 data = data.to(device)
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
-                result: torch.Tensor = model(data.x, data.batch)
-                learning_para = check_coords(result,data)
-                if args.jit:
-                    # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                    raise
+                with amp_autocast(args):
+                    result: torch.Tensor = model(data.x, data.batch)
+                    learning_para = check_coords(result,data)
+                    if args.jit:
+                        # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                        raise
+                    else:
+                        loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                        update(components)
+                if scaler is not None:
+                    scaler.scale(loss).backward()
+                    if not args.no_clipping:
+                        scaler.unscale_(optimizer)
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    scaler.step(optimizer)
+                    scaler.update()
                 else:
-                    loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                    update(components)
-                loss.backward()
-                if not args.no_clipping:
-                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                optimizer.step()
+                    loss.backward()
+                    if not args.no_clipping:
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -1002,13 +1052,27 @@ def main():
                 data = data.to(device)
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
-                result = model(data.x, data.batch)
-                learning_para = check_coords(result,data)
-                loss = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                loss.backward()
-                if not args.no_clipping:
-                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                optimizer.step()
+                with amp_autocast(args):
+                    result = model(data.x, data.batch)
+                    learning_para = check_coords(result,data)
+                    loss, _components = loss_fn(
+                        result,
+                        data,
+                        i_epoch=epoch,
+                        use_charge_track_likeness=args.use_charged_cluster_loss,
+                    )
+                if scaler is not None:
+                    scaler.scale(loss).backward()
+                    if not args.no_clipping:
+                        scaler.unscale_(optimizer)
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    if not args.no_clipping:
+                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
@@ -1034,12 +1098,21 @@ def main():
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
-                result = model(data.x, data.batch)
-                if args.jit:
-                    # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                    raise
-                else:
-                    update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                with amp_autocast(args):
+                    result = model(data.x, data.batch)
+                    if args.jit:
+                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                        raise
+                    else:
+                        update(
+                            loss_fn(
+                                result,
+                                data,
+                                i_epoch=epoch,
+                                return_components=True,
+                                use_charge_track_likeness=args.use_charged_cluster_loss,
+                            )
+                        )
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
@@ -1063,12 +1136,21 @@ def main():
             model.eval()
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
-                result = model(data.x, data.batch)
-                if args.jit:
-                    # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                    raise
-                else:
-                    update(loss_fn(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                with amp_autocast(args):
+                    result = model(data.x, data.batch)
+                    if args.jit:
+                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                        raise
+                    else:
+                        update(
+                            loss_fn(
+                                result,
+                                data,
+                                i_epoch=epoch,
+                                return_components=True,
+                                use_charge_track_likeness=args.use_charged_cluster_loss,
+                            )
+                        )
         # Divide by number of entries
         for key in loss_components:
             loss_components[key] /= N_test
