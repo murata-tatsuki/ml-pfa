@@ -562,10 +562,8 @@ def main():
     parser.add_argument('-ii', '--inputdir-validate', type=str, help='Specify input directory for validating')
     parser.add_argument('--ilc-sharded', action='store_true', help='Load HDF5 per file without concatenating (lower RAM). Use with many .h5 under -i / -ii.')
     parser.add_argument('--ilc-file-cache', type=int, default=2, help='LRU number of HDF5 files to keep decoded per worker (--ilc-sharded only)')
-    parser.add_argument('-i-tune', '--inputdir-tune', type=str, help='Specify input directory for training (option)')                   ## not using now
-    parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
-    parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
-    parser.add_argument('--weight-decay', type=float, default=1e-4)                                                                     ## not using now
+    parser.add_argument('--learning-rate', type=float, default=9.0e-6)
+    parser.add_argument('--weight-decay', type=float, default=1e-4)
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--energy-regression-weight', action='store_true', help='Turn on energy regression term on loss function and output (weighted edep)')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (cluster energy for neutral particles)')
@@ -658,8 +656,6 @@ def main():
 
     
     dataset = make_ilc_dataset(args, args.inputdir)
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        dataset_tune = make_ilc_dataset(args, args.inputdir_tune)
 
     if reduce_noise:
         dataset.reduce_noise = .70
@@ -675,13 +671,8 @@ def main():
     if (args.no_split):
         train_dataset = dataset
         test_dataset = make_ilc_dataset(args, args.inputdir_validate)
-        if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-            train_dataset_tune = dataset_tune
-            test_dataset_tune = make_ilc_dataset(args, args.inputdir_validate_tune)
     else:
         train_dataset, test_dataset = dataset.split(.8)
-        if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-            train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
 
     output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
@@ -691,12 +682,6 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
     # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
-        print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
-        print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True,)
 
     if args.model_ckpt=='':
         if not args.energy_branch:
@@ -720,8 +705,6 @@ def main():
         torch.backends.cudnn.benchmark = True
 
     epoch_size = len(train_loader.dataset)
-    epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
-    epoch_size = epoch_size + epoch_size_tune
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
     scaler = amp_grad_scaler(args)
@@ -1036,55 +1019,6 @@ def main():
             print('Exception encountered:', data, 'i:', i)
             raise
 
-    def train_tune(epoch):
-        print('Training epoch', epoch)
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader_tune, total=len(train_loader_tune))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, len(data.x), len(data.y))
-                data = data.to(device)
-                optimizer.zero_grad()
-                if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    result = model(data.x, data.batch)
-                    learning_para = check_coords(result,data)
-                    loss, _components = loss_fn(
-                        result,
-                        data,
-                        i_epoch=epoch,
-                        use_charge_track_likeness=args.use_charged_cluster_loss,
-                    )
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
-                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                data_y_list.append(learning_para["data.y.long"].tolist())
-                # if i == 2: raise Exception
-            return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
-
     def test(epoch):
         N_test = len(test_loader)
         loss_components = {}
@@ -1120,43 +1054,6 @@ def main():
         print('test ' + oc.formatted_loss_components_string(loss_components))
         # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
-        print(f'Returning {test_loss}')
-        return test_loss.item()
-
-    def test_tune(epoch):
-        N_test = len(test_loader_tune)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        with torch.no_grad():
-
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    result = model(data.x, data.batch)
-                    if args.jit:
-                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                        raise
-                    else:
-                        update(
-                            loss_fn(
-                                result,
-                                data,
-                                i_epoch=epoch,
-                                return_components=True,
-                                use_charge_track_likeness=args.use_charged_cluster_loss,
-                            )
-                        )
-        # Divide by number of entries
-        for key in loss_components:
-            loss_components[key] /= N_test
-        # Compute total loss and do printout
-        print('test ' + oc.formatted_loss_components_string(loss_components))
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
         print(f'Returning {test_loss}')
         return test_loss.item()
 
@@ -1198,21 +1095,6 @@ def main():
 
         #if i_epoch==0 or i_epoch==30 : check_plots(cluster_space_para,data_y)
         #if i_epoch==30 : check_plots(cluster_space_para,data_y)
-
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        for ii_epoch in range(n_epochs):
-            i_epoch = ii_epoch + n_epochs
-            train_loss,cluster_space_para,data_y,data,first_para=train_tune(i_epoch)
-            train_loss_history.append(train_loss)
-            print("train loss : ", train_loss)
-            write_checkpoint(i_epoch)
-
-            test_loss = test(i_epoch)
-            if args.ReduceLROnPlateau: scheduler.step(test_loss)
-            #test_loss/=len(test_loader)
-            test_loss_history.append(test_loss)
-            if test_loss < min_loss:
-                min_loss = test_loss
 
     # data_y = data.y.long().cpu().numpy()
     # plot_history(train_loss_history,test_loss_history)
