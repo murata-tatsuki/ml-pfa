@@ -5,7 +5,7 @@ from distutils.util import strtobool
 import awkward as ak
 from model import get_model, get_model_branch
 from dataset import ILCDataset
-from test_yielder_edit import TestYielder
+from test_yielder import TestYielder
 from ROOT import TFile, TTree
 import argparse
 import torch
