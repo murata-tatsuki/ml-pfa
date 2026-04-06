@@ -21,8 +21,6 @@ export PATH=/opt/pyenv/bin:/opt/pyenv/shims:$PATH
 
 PyTorch Geometric extensions (`torch_scatter`, etc.) must be installed from **wheels matching your PyTorch version and CPU/GPU**. The header comments in `requirements.txt` include an example for Intel Mac / Linux CPU (torch 2.2).
 
-Pass the repository root as the first argument. If `.venv` exists, its `python` is prepended to `PATH`.
-
 ## Data
 
 Place **HDF5 (`.h5`)** files under a directory and pass that path with `train.py` `-i` / `-ii`. For large datasets you do not want to load entirely into memory, use `--ilc-sharded` for per-file loading (`dataset_ilc_sharded`).
