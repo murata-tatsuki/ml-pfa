@@ -54,7 +54,7 @@ python train.py -i /path/to/your/training_samples -ii /path/to/your/validation_s
 The entry point is **`train.py`**. The input directory `-i` is required.
 
 ```bash
-.venv/bin/python train.py -i /path/to/train_data --epochs 20 --batch-size 100 --cuda cuda:0
+python train.py -i /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/train -ii /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-4 --lr-policy cosineReduce --clip-value 10 --ddp > log/energy_regression/tc_nnqq_brems_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
 ```
 
 Common options:
