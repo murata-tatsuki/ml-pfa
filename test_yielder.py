@@ -9,7 +9,8 @@ from prediction import Prediction
 from clustering import cluster
 from matching import make_matches, matching_hungarian_set_bbox_only
 from torch.nn.utils.rnn import pad_sequence
-from train_clustering_ddp import pdg_id_to_class, query_construction
+from lcr_module import truth_based_assignment, HungarianMatcher
+from train_mlclustering import pdg_id_to_class, query_construction
 
 class TestYielder:
     def __init__(self, model=None, dataset=None, ckpt=None, device='cpu', timingCut=False, use_charge_track_likeness=False, pandora=False, event_energy=False):
@@ -89,19 +90,20 @@ class TestYielder:
                     #pass_noise_filter = pass_noise_filter.numpy() #NoiseFilter
                     pred_betas = torch.sigmoid(out_gravnet[:,0]).numpy()
 
+                    pred_charge_track_likeness = None
                     pred_tracker_energy = None
                     pred_cluster_energy = None
                     pred_weight_photon = None
-                    pred_weight_hadron = None
+                    pred_weight_charged_hadron = None
+                    pred_weight_neutral_hadron = None
                     pred_weight_muon = None
                     pred_weight_electron = None
 
-                    if (not energyRegression):
+                    if (not energyRegression and not energyRegressionWeight):
                         if (self.use_charge_track_likeness):
                             pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
                             pred_cluster_space_coords = out_gravnet[:,2:].numpy()
                         else:
-                            pred_charge_track_likeness = None
                             pred_cluster_space_coords = out_gravnet[:,1:].numpy()
 
                         # add track hits info
@@ -112,12 +114,9 @@ class TestYielder:
                                 if (self.use_charge_track_likeness):
                                     pred_charge_track_likeness = torch.sigmoid(out_gravnet[:,1]).numpy()
                                     pred_tracker_energy = out_gravnet[:,2].numpy()
-                                    pred_cluster_energy = None
                                     pred_cluster_space_coords = out_gravnet[:,3:].numpy()
                                 else:
-                                    pred_charge_track_likeness = None
                                     pred_tracker_energy = out_gravnet[:,1].numpy()
-                                    pred_cluster_energy = None
                                     pred_cluster_space_coords = out_gravnet[:,2:].numpy()
                             else:
                                 if (self.use_charge_track_likeness):
@@ -126,23 +125,40 @@ class TestYielder:
                                     pred_cluster_energy = out_gravnet[:,3].numpy()
                                     pred_cluster_space_coords = out_gravnet[:,4:].numpy()
                                 else:
-                                    pred_charge_track_likeness = None
                                     pred_tracker_energy = out_gravnet[:,1].numpy()
                                     pred_cluster_energy = out_gravnet[:,2].numpy()
                                     pred_cluster_space_coords = out_gravnet[:,3:].numpy()
                         else:
-                            pred_charge_track_likeness = None
-                            pred_weight_photon = out_gravnet[:,1].numpy()
-                            pred_weight_hadron = out_gravnet[:,2].numpy()
-                            pred_weight_muon = out_gravnet[:,3].numpy()
-                            pred_weight_electron = out_gravnet[:,4].numpy()
-                            pred_cluster_space_coords = out_gravnet[:,5:].numpy()
+                            if (not energyRegression):
+                                pred_weight_photon = out_gravnet[:,1].numpy()
+                                pred_weight_charged_hadron = out_gravnet[:,2].numpy()
+                                pred_weight_neutral_hadron = out_gravnet[:,3].numpy()
+                                pred_weight_muon = out_gravnet[:,4].numpy()
+                                pred_weight_electron = out_gravnet[:,5].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,6:].numpy()
+                            elif (energyRegression and not energyRegressionCluster):
+                                pred_tracker_energy = out_gravnet[:,1].numpy()
+                                pred_weight_photon = out_gravnet[:,2].numpy()
+                                pred_weight_charged_hadron = out_gravnet[:,3].numpy()
+                                pred_weight_neutral_hadron = out_gravnet[:,4].numpy()
+                                pred_weight_muon = out_gravnet[:,5].numpy()
+                                pred_weight_electron = out_gravnet[:,6].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,7:].numpy()
+                            elif (energyRegression and energyRegressionCluster):
+                                pred_tracker_energy = out_gravnet[:,1].numpy()
+                                pred_cluster_energy = out_gravnet[:,2].numpy()
+                                pred_weight_photon = out_gravnet[:,3].numpy()
+                                pred_weight_charged_hadron = out_gravnet[:,4].numpy()
+                                pred_weight_neutral_hadron = out_gravnet[:,5].numpy()
+                                pred_weight_muon = out_gravnet[:,6].numpy()
+                                pred_weight_electron = out_gravnet[:,7].numpy()
+                                pred_cluster_space_coords = out_gravnet[:,8:].numpy()
                         # add track hits info
                         charged_hits = event.x[:,4]
 
-                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy, pred_weight_photon, pred_weight_hadron, pred_weight_muon, pred_weight_electron) #w/o noise
+                    prediction = Prediction(pred_betas, pred_cluster_space_coords, pred_charge_track_likeness, charged_hits, pred_tracker_energy, pred_cluster_energy, pred_weight_photon, pred_weight_charged_hadron, pred_weight_neutral_hadron, pred_weight_muon, pred_weight_electron) #w/o noise
                 else:
-                    prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None, None, None, None, None) #w/o noise
+                    prediction = Prediction(None, None, None, event.x[:,4], event.pand[:,2], None, None, None, None, None, None, None, None) #w/o noise
                     # print(event.pand)
                 #f.write(f"prediction pass_noise_filter : {prediction.pass_noise_filter}\n")
                 yield event, prediction
@@ -359,9 +375,9 @@ class TestYielderWithMLClustering(TestYielder):
         hit_feat, _ = self.pad_and_mask_batch(data.feat, data.batch)
 
         if self.classification or self.pid:
-            pred_fourvec, pred_cls, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask)
+            pred_fourvec, pred_cls, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
         else:
-            pred_fourvec, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask)
+            pred_fourvec, attn_w = self.model_clustering(hit_embed, hit_beta, hit_feat, hit_mask=hit_mask)
         if self.classification:
             unique_label = self.split_by_batch(data.label, data.batch)
             unique_label = [torch.unique(t[:,1], dim=0) for t in unique_label]
