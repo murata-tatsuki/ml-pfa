@@ -4,7 +4,7 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 
 ## Requirements
 
-- **Python 3.10** (see comments in `requirements.txt`)
+- **Python 3.9.18 (see comments in `requirements.txt`)
 - For **CUDA**, install PyTorch / PyG builds that match your environment (CPU-only runs are possible; GPU is recommended for training)
 - Main dependencies: `torch==2.2.2`, `torch-geometric`, `numpy`, `h5py`, `awkward`, `scipy`, `scikit-learn`, `matplotlib`, `plotly`, `tqdm`
 
