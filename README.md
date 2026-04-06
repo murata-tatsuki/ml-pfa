@@ -39,8 +39,8 @@ Exceptions for GravNet-less Training > If you are running training sessions that
 The dataset is located at:
 ```/data/suehara/mldata/pfa/murata/data```
 
--`tc`  : Simulation samples with a timing cut applied (late-time hits have been removed).
--`raw` : Raw simulation data without any cuts applied.
+- `tc`  : Simulation samples with a timing cut applied (late-time hits have been removed).
+- `raw` : Raw simulation data without any cuts applied.
 
 The dataset contains two types of simulation samples:
 
