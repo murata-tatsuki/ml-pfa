@@ -12,10 +12,12 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 Environment Requirements
 The setup requirements vary depending on the GPU cluster you are using, primarily due to the compilation environment needed for GravNet.
 
-1. On bepp-gpu
+1. On ```bepp-gpu```
+
 You can run the training directly on the host system. No additional container setup is required.
 
-2. On iutgpu
+3. On ```iutgpu```
+
 A Singularity container is required to provide the necessary environment for GravNet compilation. Follow these steps to enter the environment:
 
 ```Bash
