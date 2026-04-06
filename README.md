@@ -36,7 +36,15 @@ Exceptions for GravNet-less Training > If you are running training sessions that
 
 ## Data
 
+The dataset is located at:
+```/data/suehara/mldata/pfa/murata/data```
+
+The dataset contains two types of simulation samples:
+
 Place **HDF5 (`.h5`)** files under a directory and pass that path with `train.py` `-i` / `-ii`. For large datasets you do not want to load entirely into memory, use `--ilc-sharded` for per-file loading (`dataset_ilc_sharded`).
+```
+/python train.py -i /path/to/your/training_samples -ii /path/to/your/validation_samples --ilc-sharded
+```
 
 ## Training
 
