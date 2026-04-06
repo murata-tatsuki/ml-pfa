@@ -8,18 +8,29 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 - For **CUDA**, install PyTorch / PyG builds that match your environment (CPU-only runs are possible; GPU is recommended for training)
 - Main dependencies: `torch==2.2.2`, `torch-geometric`, `numpy`, `h5py`, `awkward`, `scipy`, `scikit-learn`, `matplotlib`, `plotly`, `tqdm`
 
-## Setup
+## Setup (Proposal)
+Environment Requirements
+The setup requirements vary depending on the GPU cluster you are using, primarily due to the compilation environment needed for GravNet.
 
-Create a virtual environment and install dependencies:
+1. On bepp-gpu
+You can run the training directly on the host system. No additional container setup is required.
 
-```bash
+2. On iutgpu
+A Singularity container is required to provide the necessary environment for GravNet compilation. Follow these steps to enter the environment:
+
+```Bash
+# Navigate to the singularity directory
 cd /data/suehara/singularity
+
+# Launch the Singularity shell with necessary bindings
 singularity shell --nv --bind /data/suehara --bind /data/murata pfa.sif
+
+# Inside the container, enable the development toolset and set paths
 scl enable devtoolset-8 bash
 export PATH=/opt/pyenv/bin:/opt/pyenv/shims:$PATH
 ```
-
-PyTorch Geometric extensions (`torch_scatter`, etc.) must be installed from **wheels matching your PyTorch version and CPU/GPU**. The header comments in `requirements.txt` include an example for Intel Mac / Linux CPU (torch 2.2).
+[!NOTE]
+Exceptions for GravNet-less Training > If you are running training sessions that do not involve GravNet (e.g., downstream tasks using Cross-Attention), you can execute the code directly on the host even on iutgpu, as the specific compilation environment is not required.
 
 ## Data
 
