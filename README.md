@@ -13,8 +13,10 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 Create a virtual environment and install dependencies:
 
 ```bash
-python3.10 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+cd /data/suehara/singularity
+singularity shell --nv --bind /data/suehara --bind /data/murata pfa.sif
+scl enable devtoolset-8 bash
+export PATH=/opt/pyenv/bin:/opt/pyenv/shims:$PATH
 ```
 
 PyTorch Geometric extensions (`torch_scatter`, etc.) must be installed from **wheels matching your PyTorch version and CPU/GPU**. The header comments in `requirements.txt` include an example for Intel Mac / Linux CPU (torch 2.2).
