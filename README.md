@@ -21,12 +21,6 @@ export PATH=/opt/pyenv/bin:/opt/pyenv/shims:$PATH
 
 PyTorch Geometric extensions (`torch_scatter`, etc.) must be installed from **wheels matching your PyTorch version and CPU/GPU**. The header comments in `requirements.txt` include an example for Intel Mac / Linux CPU (torch 2.2).
 
-To prefer the project `python` and `bin/python` (a wrapper around `python3`) in your shell:
-
-```bash
-. "$(pwd)/shell/env.sh" "$(pwd)"
-```
-
 Pass the repository root as the first argument. If `.venv` exists, its `python` is prepended to `PATH`.
 
 ## Data
