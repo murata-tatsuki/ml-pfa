@@ -16,7 +16,7 @@ The setup requirements vary depending on the GPU cluster you are using, primaril
 
 You can run the training directly on the host system. No additional container setup is required.
 
-3. On ```iutgpu```
+2. On ```iutgpu```
 
 A Singularity container is required to provide the necessary environment for GravNet compilation. Follow these steps to enter the environment:
 
