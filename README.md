@@ -77,7 +77,7 @@ For the full list of arguments, see **`cli.py`**, function `build_train_argument
 |------|------|
 | `train_clustering.py` / `train_clustering_ddp.py` | Alternative clustering training entry points |
 | `prediction.py` | `Prediction` and related inference helpers |
-| `save_root*.py` | Utilities for ROOT output |
+| `save_root*.py` | Utilities for ROOT output (see `docs/save_root.md`) |
 | `tools/` | `h5` ↔ `npz` conversion, awkward loading, etc. |
 | `display/` | Event display and plotting |
 | `shell/` | Example / template shell commands (paths may need editing for your machine) |
