@@ -8,6 +8,35 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 - For **CUDA**, install PyTorch / PyG builds that match your environment (CPU-only runs are possible; GPU is recommended for training)
 - Main dependencies: `torch==2.2.2`, `torch-geometric`, `numpy`, `h5py`, `awkward`, `scipy`, `scikit-learn`, `matplotlib`, `plotly`, `tqdm`
 
+## 🗂️ Core Components
+
+This repository contains scripts for the following purposes. 
+
+> **⚠️ IMPORTANT:** The evaluation scripts (`test.py` and `test_cross_attn.py`) strictly require the **[ROOT](https://root.cern/)** framework (Data Analysis Framework for high-energy physics) to run.
+
+| Component | Main Script(s) | Description |
+| :--- | :--- | :--- |
+| 🏋️ **GravNet Training** | `train.py` | Scripts for training the GravNet model. |
+| 🧪 **GravNet Evaluation** | `save_root.py`<br>`macro/*.cc` | Performs GravNet model inference and generates `.root` files. <br>**⚠️ Requires ROOT.** |
+| 📊 **Event Display** | `event_display.py` | Data visualization and event display tools. |
+| 🧠 **Cross Attention Training** | 🚧 ~~`train_cross_attn.py`~~ | Training code for the model using Cross Attention. |
+| 🎯 **Cross Attention Evaluation** | 🚧 ~~`test_cross_attn.py`~~ | Performs Cross Attention model inference and generates `.root` files. <br>**⚠️ Requires ROOT.** |
+
+## ⚙️ Testing & Analysis Workflow
+
+The evaluation process is strictly divided into two steps:
+
+**1. Inference & ROOT File Generation**
+
+These scripts handle the testing phase by running the model inference and are solely responsible for saving the outputs as `.root` files:
+* **`save_root.py`** : For the GravNet model.
+* **🚧 ~~`test_cross_attn.py`~~** : For the Cross Attention model.
+
+**2. Subsequent Analysis (`macro/`)**
+
+The actual physical analysis of the generated `.root` files is performed using the macros located in the `macro/` directory.
+> 🚧 **Note:** The `macro/` directory is currently **under active development (WIP)**.
+
 ## Setup (Proposal)
 Environment Requirements
 The setup requirements vary depending on the GPU cluster you are using, primarily due to the compilation environment needed for GravNet.
