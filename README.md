@@ -105,10 +105,10 @@ Common options:
 | Use case | Flags |
 |----------|--------|
 | Separate validation directory | `-ii /path/to/val_data` with `--no-split` |
-| Timing window cut | `--timing-cut` |
-| Add θ, φ to inputs | `--thetaphi` |
-| Track β loss, etc. | `--beta-track`, `--force-track-alpha` |
-| Energy regression | `--energy-regression` (and optionally `--energy-regression-cluster`, etc.) |
+| Timing window cut | `--timing-cut` <br>💡 *Tip: It is recommended to use pre-cut samples generated via `timingcut.sh` instead.* |
+| Add θ, φ to inputs | `--thetaphi` *(Default: True)* |
+| Track β loss, etc. | `--beta-track`, `--force-track-alpha` *(Default: True)* |
+| Energy regression | `--energy-regression` *(Default: True)* (and optionally `--energy-regression-cluster` *(Default: True)*, etc.) |
 | Distributed training | `--ddp` (use `--gpus 0,1,...` to pick GPUs) |
 | Mixed precision | `--amp` (`--amp-dtype bf16` or `fp16`) |
 
