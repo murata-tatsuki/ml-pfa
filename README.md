@@ -95,6 +95,7 @@ python train.py -i /path/to/your/training_samples -ii /path/to/your/validation_s
 
 The entry point is **`train.py`**. The input directory `-i` is required.
 
+example options
 ```bash
 python train.py -i /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/train -ii /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_nnqq_brems/validation --cuda cuda:0 --epochs 500 --batch-size 20 --ckptdir checkpoint/checkpoint --ddp > log.log
 ```
