@@ -84,11 +84,17 @@ The dataset contains two types of simulation samples:
 - `raw` : Raw simulation data without any cuts applied.
 
 ntau_10GeV_10: tau sample (10 taus with 10 GeV orverlayed in one event)
+
 nnqq: di-jet sample with neutron (2 neutrons, 2 light quark jets (u,d,s))
+
 gamma: photon sample
+
 kaon: kaon sample
+
 neutron: neutron sample
+
 mix: mixed nnqq, gamma, kaon, neutron
+
 fixed_uds: fixed energy (40, 91, 200, 350, 500 GeV) jet sample (u, d, s, c, b quark jet)
 
 Place **HDF5 (`.h5`)** files under a directory and pass that path with `train.py` `-i` / `-ii`. For large datasets you do not want to load entirely into memory, use `--ilc-sharded` for per-file loading (`dataset_ilc_sharded`).
