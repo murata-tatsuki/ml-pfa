@@ -8,6 +8,7 @@ Training and inference for ILC calorimeter hits using **GravNet-style graph neur
 - For **CUDA**, install PyTorch / PyG builds that match your environment (CPU-only runs are possible; GPU is recommended for training)
 - Main dependencies: `torch==2.2.2`, `torch-geometric`, `numpy`, `h5py`, `awkward`, `scipy`, `scikit-learn`, `matplotlib`, `plotly`, `tqdm`
 
+
 ## 🗂️ Core Components
 
 This repository contains scripts for the following purposes. 
@@ -18,24 +19,32 @@ This repository contains scripts for the following purposes.
 | :--- | :--- | :--- |
 | 🏋️ **GravNet Training** | `train.py` | Scripts for training the GravNet model. |
 | 🧪 **GravNet Evaluation** | `save_root.py`<br>`macro/*.cc` | Performs GravNet model inference and generates `.root` files. <br>**⚠️ Requires ROOT.** |
-| 📊 **Event Display** | `event_display.py` | Data visualization and event display tools. |
 | 🧠 **Cross Attention Training** | 🚧 ~~`train_cross_attn.py`~~ | Training code for the model using Cross Attention. |
 | 🎯 **Cross Attention Evaluation** | 🚧 ~~`test_cross_attn.py`~~ | Performs Cross Attention model inference and generates `.root` files. <br>**⚠️ Requires ROOT.** |
+| 📊 **Event Display** | `event_display.py` | Data visualization and event display tools. Processes data into `.h5` format and outputs interactive `.html` displays. |
 
-## ⚙️ Testing & Analysis Workflow
+<br>
 
+## ⚙️ Workflows & Pipelines
+
+### 1. Testing & Analysis Workflow (ROOT)
 The evaluation process is strictly divided into two steps:
 
-**1. Inference & ROOT File Generation**
+* **Inference & File Generation:**
+  These scripts handle the testing phase by running the model inference and are solely responsible for saving the outputs as `.root` files:
+  * **`save_root.py`** : For the GravNet model.
+  * **🚧 ~~`test_cross_attn.py`~~** : For the Cross Attention model.
+* **Subsequent Analysis (`macro/`):**
+  The actual physical analysis of the generated `.root` files is performed using the macros located in the `macro/` directory. 
+  > 🚧 **Note:** The `macro/` directory is currently **under active development (WIP)**.
 
-These scripts handle the testing phase by running the model inference and are solely responsible for saving the outputs as `.root` files:
-* **`save_root.py`** : For the GravNet model.
-* **🚧 ~~`test_cross_attn.py`~~** : For the Cross Attention model.
+### 2. Event Display Pipeline (HDF5 & HTML)
+The event visualization is handled by `event_display.py` and follows a two-step data pipeline:
 
-**2. Subsequent Analysis (`macro/`)**
+1. **Data Conversion:** It processes the initial data and generates an intermediate **`.h5` (HDF5)** file.
+2. **HTML Generation:** It then reads the `.h5` file to render and output an interactive event display in **`.html`** format, which can be viewed in any web browser.
 
-The actual physical analysis of the generated `.root` files is performed using the macros located in the `macro/` directory.
-> 🚧 **Note:** The `macro/` directory is currently **under active development (WIP)**.
+<br>
 
 ## Setup (Proposal)
 Environment Requirements
@@ -63,6 +72,8 @@ export PATH=/opt/pyenv/bin:/opt/pyenv/shims:$PATH
 [!NOTE]
 Exceptions for GravNet-less Training > If you are running training sessions that do not involve GravNet (e.g., downstream tasks using Cross-Attention), you can execute the code directly on the host even on iutgpu, as the specific compilation environment is not required.
 
+<br>
+
 ## Data
 
 The dataset is located at:
@@ -77,6 +88,8 @@ Place **HDF5 (`.h5`)** files under a directory and pass that path with `train.py
 ```
 python train.py -i /path/to/your/training_samples -ii /path/to/your/validation_samples --ilc-sharded
 ```
+
+<br>
 
 ## Training
 
