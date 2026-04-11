@@ -260,6 +260,98 @@ class GravNetModelBranch(nn.Module):
         assert x.device == device
         return x
 
+class GravNetModelEnergyHead(nn.Module):
+
+    def __init__(
+        self, 
+        input_dim: int=5,
+        output_dim: int=2,
+        n_gravnet_blocks: int=4,
+        n_postgn_dense_blocks: int=4,
+        k: Union[List[int], int] = 40,
+        b_energy_head: bool = True,
+        ):
+        super(GravNetModelBranch, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.n_gravnet_blocks = n_gravnet_blocks
+        self.n_postgn_dense_blocks = n_postgn_dense_blocks
+
+        self.batchnorm1 = nn.BatchNorm1d(self.input_dim)
+        self.input = nn.Linear(4*input_dim, 64)
+
+        self.dense_nord = 128
+        self.b_energy_head = b_energy_head
+
+        print("Hello")
+        if self.b_energy_head:
+            print("!!!!energy branch separateed!!!!")
+
+        if isinstance(k, int):
+            k = n_gravnet_blocks*[k]
+
+        assert len(k) == n_gravnet_blocks
+        
+        # Note: out_channels of the internal gravnet layer
+        # not clearly specified in paper
+        self.gravnet_blocks = nn.ModuleList([
+            GravNetBlock(64 if i==0 else 96, k=k[i]) for i in range(self.n_gravnet_blocks)
+            ])
+
+        # Post-GravNet dense layers
+        postgn_dense_modules = nn.ModuleList()
+        for i in range(self.n_postgn_dense_blocks):
+            postgn_dense_modules.extend([
+                nn.Linear(4*96 if i==0 else self.dense_nord, self.dense_nord),
+                nn.ReLU(),
+                nn.BatchNorm1d(self.dense_nord),
+                ])
+        self.postgn_dense = nn.Sequential(*postgn_dense_modules)
+
+        # energy regression branch
+        self.energy_nord = 5    ## momentum, momentum norm, track bit
+        self.energy_branch = nn.Sequential(
+            nn.Linear(5, 5)
+        )
+        outblock_inNord = self.dense_nord + self.energy_nord if self.b_energy_head else self.dense_nord
+        
+        # Output block
+        self.output = nn.Sequential(
+            nn.Linear(outblock_inNord, 64),
+            nn.ReLU(),
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.output_dim)
+            )
+
+    def forward(self, x: Tensor, batch: Tensor) -> Tensor:
+        device = x.device
+        energy_var = x[:,-5:-1]
+        trackbit_var = x[:,4]
+        trackbit_var = trackbit_var.view(trackbit_var.size()[0],1)
+        energy_var = torch.cat([energy_var,trackbit_var], dim=-1)
+        device = energy_var.device
+        # print('forward called on device', device)
+        x = self.batchnorm1(x)
+        x = global_exchange(x, batch)
+        x = self.input(x)
+        assert x.device == device
+
+        x_gravnet_per_block = [] # To store intermediate outputs
+        for gravnet_block in self.gravnet_blocks:
+            x = gravnet_block(x, batch)
+            x_gravnet_per_block.append(x)
+        x = torch.cat(x_gravnet_per_block, dim=-1)
+        assert x.size() == (x.size(0), 4*96)
+        assert x.device == device
+
+        x = self.postgn_dense(x)
+        energy_var = self.energy_branch(energy_var)
+        x = torch.cat([x, energy_var], dim=-1)
+        x = self.output(x)
+        assert x.device == device
+        return x
+
 
 class NoiseFilterModel(nn.Module):
 
