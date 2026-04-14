@@ -40,7 +40,7 @@ class ILCDataset(Dataset):
         reduce_noise (float): Randomly delete a fraction of noise. Useful
             to speed up training.
     """
-    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False, event_energy=False):
+    def __init__(self, path, flip=True, reduce_noise: float=None,para_tanh=True, recreate=False, timingCut=False, thetaphi=False, test_mode=False, nstart=0, nend=-1, pandora=False, momentum=False, momentumAmp=False, mctpe=False, event_energy=False,timing = False):
         super(ILCDataset, self).__init__(path)
 
         self.flip = flip
@@ -55,6 +55,7 @@ class ILCDataset(Dataset):
         self.momentumAmp = momentumAmp
         self.max_momentum = 1.0
         self.mctpe = mctpe
+        self.timing = timing
 
         if(not recreate):
             if path.endswith(".h5"): filenames = [path]
@@ -192,7 +193,10 @@ class ILCDataset(Dataset):
         pandora, event_energy, noise_index, and shaper_tanh(self,x,a,b,c,d).
         pand / eventE / jetE may be None when unused.
         """
-        x = feat[:, np.r_[0:4, 5:6]]
+        if ds.timing:
+            x = feat[:, np.r_[0:6]]   # E, x, y, z, t, track_bit
+        else:
+            x = feat[:, np.r_[0:4, 5:6]]   # E, x, y, z, track_bit
         y = label[:, 1]
         momenta = feat[:, 7:10] / ds.max_momentum
         momentaAmp = np.sqrt(np.sum(feat[:, 7:10] ** 2, axis=1)) / ds.max_momentum
@@ -230,6 +234,8 @@ class ILCDataset(Dataset):
         x[:, 1] = x[:, 1] / 2000
         x[:, 2] = x[:, 2] / 2000
         x[:, 3] = x[:, 3] / 2000
+        if ds.timing:
+            x[:,4] = x[:,4] / 14.0   
 
         mcids = label[:, 1]
         x = x[mcids != -1, :]

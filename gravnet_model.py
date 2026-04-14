@@ -100,7 +100,7 @@ class GravnetModel(nn.Module):
 
     def __init__(
         self, 
-        input_dim: int=5,
+        input_dim: int=6,
         output_dim: int=2,
         n_gravnet_blocks: int=4,
         n_postgn_dense_blocks: int=4,

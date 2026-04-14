@@ -60,6 +60,7 @@ def build_train_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument('--l-beta-suppression', action='store_true', help='add to decrease beta of non-condensation point')           
     parser.add_argument('--amp', action='store_true', help='Enable CUDA mixed precision (torch.cuda.amp.autocast). Off: same as before.')
     parser.add_argument('--amp-dtype', type=str, default='bf16', choices=['bf16', 'fp16'], help='AMP compute dtype: bf16 (A100+), fp16 (uses GradScaler). Ignored unless --amp.')
+    parser.add_argument('--timing', action='store_true',help='Ajoute le temps comme feature (input_dim=6)')
     return parser
 
 

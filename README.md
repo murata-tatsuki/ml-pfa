@@ -25,7 +25,7 @@ The setup requirements vary depending on the GPU cluster you are using, primaril
 cd /data/suehara/singularity
 
 # Launch the Singularity shell with necessary bindings
-singularity shell --nv --bind /data/suehara --bind /data/murata pfa.sif
+singularity shell --nv --bind /data/suehara --bind /home/aschaeff/ml-pfa pfa.sif
 
 # Inside the container, enable the development toolset and set paths
 scl enable devtoolset-8 bash

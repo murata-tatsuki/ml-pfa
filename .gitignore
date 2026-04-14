@@ -39,3 +39,11 @@ Thumbs.db
 # Local env files (secrets)
 .env
 .env.*
+
+# Logs
+log_Arpad/
+
+#checkpoints
+checkpoint_arpad/
+
+

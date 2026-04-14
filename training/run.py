@@ -132,17 +132,17 @@ def run_training_ddp(rank, world_size, args):
     if args.model_ckpt == "":
         if not args.energy_branch:
             print("Loading GravnetModel")
-            model = GravnetModel(input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
+            model = GravnetModel(input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
         else:
             print("Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
+            model = GravNetModelBranch(input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
             print(model)
     else:
         print(f"Loading model from checkpoint {args.model_ckpt}")
         if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
         else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+            model = get_model(args.model_ckpt, jit=False, input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
     model.to(rank)
     model = DDP(model, device_ids=[rank])
 
@@ -350,17 +350,17 @@ def run_training_single_gpu(args):
     if args.model_ckpt == "":
         if not args.energy_branch:
             print("Loading GravnetModel")
-            model = GravnetModel(input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension,)
+            model = GravnetModel(input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension,)
         else:
             print("Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, b_energy_branch=True,)
+            model = GravNetModelBranch(input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension, b_energy_branch=True,)
             print(model)
     else:
         print(f"Loading model from checkpoint {args.model_ckpt}")
         if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
         else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5 + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
+            model = get_model(args.model_ckpt, jit=False, input_dim = (6 if args.timing else 5) + args.thetaphi * 2 + additional_input_dimension, output_dim=output_dimension)
     if not args.dp:
         model.to(device)
     else:

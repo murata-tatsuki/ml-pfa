@@ -44,6 +44,7 @@ class ILCDatasetSharded(Dataset):
         event_energy=False,
         file_cache_size=2,
         _entries=None,
+        timing=False,
     ):
         super().__init__(path)
         self.flip = flip
@@ -60,6 +61,7 @@ class ILCDatasetSharded(Dataset):
         self.mctpe = mctpe
         self.file_cache_size = max(1, int(file_cache_size))
         self._cache: OrderedDict[str, tuple] = OrderedDict()
+        self.timing = timing
 
         if _entries is not None:
             self.entries = list(_entries)
@@ -104,6 +106,7 @@ class ILCDatasetSharded(Dataset):
             mctpe=self.mctpe,
             event_energy=self.event_energy,
             file_cache_size=self.file_cache_size,
+            timing=self.timing,
         )
 
     def shaper_tanh(self, x, a=1.0, b=1.0, c=0.0, d=0.0):
