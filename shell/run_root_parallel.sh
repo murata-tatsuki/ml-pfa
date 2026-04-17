@@ -61,9 +61,9 @@ file="$2"
 idx="$1"
 NGPU=$(python -c "import torch; print(torch.cuda.device_count())")
 GPU=$((idx % ${NGPU}))
-GPU=1
+GPU=0
 # GPU=$((idx % 2))
-energy=200
+# energy=200
 train_particle=fixed_uds_brems
 
 base=$(basename "$file" .h5)
@@ -83,11 +83,12 @@ CUDA_VISIBLE_DEVICES=$GPU python save_root_reco.py \
   --device cuda:0 \
   --tbeta 0.9 \
   --td 0.5 \
-  --energy-regression-cluster
+  --energy-regression-cluster \
+  --event-total-energy
 
 
 
   # python save_root_reco.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster
 ##
-# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/40GeV/*.h5 | nl -v0 | xargs -n2 -P12 bash run_root_parallel.sh
+# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds/40GeV/*.h5 | nl -v0 | xargs -n2 -P8 bash run_root_parallel.sh
 # ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/40GeV/*.h5 | nl -v0 | xargs -n2 -P12 bash run_root_parallel.sh

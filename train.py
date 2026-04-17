@@ -15,7 +15,7 @@ import numpy as np
 import objectcondensation as oc
 #import torch.nn.functional as f
 
-from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter
+from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter,GravNetModelMultiHead
 from dataset import ILCDataset
 from dataset_ilc_sharded import ILCDatasetSharded
 
@@ -88,6 +88,12 @@ def run_requirements(args):
     if (args.energy_regression_cluster and args.energy_regression is None):
         print("If --cluster-energy is specified, it is required to set --energy-regression")
         raise
+    if args.use_multihead_model and args.energy_regression_weight:
+        print("--use-multihead-model does not support --energy-regression-weight yet")
+        raise
+    if args.use_multihead_model and args.energy_regression_cluster and args.multihead_regression_heads < 2:
+        print("--energy-regression-cluster with --use-multihead-model requires --multihead-regression-heads >= 2")
+        raise
 
 def index_setup(args):
     output_dimension = args.output_dimension
@@ -116,6 +122,69 @@ def index_setup(args):
             additional_input_dimension += 1     # adding momentum amplitude to model input
     
     return output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
+
+
+def load_checkpoint_state(model, ckpt_path):
+    checkpoint = torch.load(ckpt_path, map_location=torch.device("cpu"))
+    state_dict = checkpoint["model"] if "model" in checkpoint else checkpoint
+    from collections import OrderedDict
+    cleaned_state_dict = OrderedDict()
+    for key, value in state_dict.items():
+        name = key.replace("module.", "") if key.startswith("module.") else key
+        cleaned_state_dict[name] = value
+    model.load_state_dict(cleaned_state_dict, strict=False)
+    return model
+
+
+def get_model_outputs(result, args):
+    if args.use_multihead_model:
+        if not isinstance(result, dict):
+            raise ValueError("Expected dict output from GravNetModelMultiHead")
+        out = result["clustering"]
+        regression_heads = result.get("regressions", [])
+        return out, regression_heads
+    return result, None
+
+
+def build_model(args, input_dim, output_dimension, ddp=False):
+    if args.use_multihead_model:
+        clustering_output_dim = args.output_dimension + (1 if args.use_charged_cluster_loss else 0)
+        n_reg_heads = args.multihead_regression_heads if args.energy_regression else 0
+        n_heads = 1 + n_reg_heads
+        regression_dims = [1] * n_reg_heads
+        model = GravNetModelMultiHead(
+            input_dim=input_dim,
+            output_dim=clustering_output_dim,
+            n_heads=n_heads,
+            regression_output_dims=regression_dims if n_reg_heads > 0 else 1,
+            interaction_start_epoch=args.multihead_interaction_start_epoch,
+            interaction_mode=args.multihead_interaction_mode,
+        )
+        if args.model_ckpt != "":
+            print(f"Loading multi-head model from checkpoint {args.model_ckpt}")
+            model = load_checkpoint_state(model, args.model_ckpt)
+        else:
+            print(
+                "Loading GravNetModelMultiHead "
+                f"(heads={n_heads}, reg_heads={n_reg_heads}, interaction={args.multihead_interaction_mode})"
+            )
+        return model
+
+    if args.model_ckpt == "":
+        if not args.energy_branch:
+            print(f"Loading GravnetModel")
+            model = GravnetModel(input_dim=input_dim, output_dim=output_dimension)
+        else:
+            print(f"Loading GravnetModel with energy branch")
+            model = GravNetModelBranch(input_dim=input_dim, output_dim=output_dimension, b_energy_branch=True)
+            print(model)
+    else:
+        print(f"Loading model from checkpoint {args.model_ckpt}")
+        if args.energy_branch:
+            model = get_model_branch(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
+        else:
+            model = get_model(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
+    return model
 
 
 def setup_ddp(rank, world_size):
@@ -188,20 +257,12 @@ def run_ddp_training(rank, world_size, args):
     # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     # Model setup
-    if args.model_ckpt=='':
-        if not args.energy_branch:
-            print(f"Loading GravnetModel")
-            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            print(f"Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
-            print(model)
-    else:
-        print(f"Loading model from checkpoint {args.model_ckpt}")
-        if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
-        else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, ddp=args.ddp)
+    model = build_model(
+        args=args,
+        input_dim=5 + args.thetaphi * 2 + additional_input_dimension,
+        output_dimension=output_dimension,
+        ddp=args.ddp,
+    )
     # model.to(local_rank)
     # model = DDP(model, device_ids=[local_rank])
     model.to(rank)
@@ -243,7 +304,7 @@ def run_ddp_training(rank, world_size, args):
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -255,7 +316,19 @@ def run_ddp_training(rank, world_size, args):
         weight_neutral_hadron = None
         weight_muon = None
         weight_electron = None
-        if args.energy_regression_weight:
+        if args.use_multihead_model:
+            if use_charge_track_likeness:
+                pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                pred_cluster_space_coords = out[:,2:]
+                assert(pred_charge_track_likeness.device == device)
+            else:
+                pred_cluster_space_coords = out[:,1:]
+
+            if args.energy_regression and regression_heads is not None and len(regression_heads) > 0:
+                pred_tracker_energy = regression_heads[0].squeeze(-1)
+            if args.energy_regression and args.energy_regression_cluster and regression_heads is not None and len(regression_heads) > 1:
+                pred_cluster_energy = regression_heads[1].squeeze(-1)
+        elif args.energy_regression_weight:
             if args.energy_regression and not args.energy_regression_cluster:
                 pred_tracker_energy = out[:,1]
                 weight_photon = out[:,2]
@@ -395,12 +468,16 @@ def run_ddp_training(rank, world_size, args):
                 optimizer.zero_grad()
                 # if i == 0 : first_para = check_data(data)
                 with amp_autocast(args):
-                    result: torch.Tensor = model(data.x, data.batch)
-                    # learning_para = check_coords(result,data)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
+                    # learning_para = check_coords(out,data)
                     if args.jit:
                         raise
                     else:
-                        loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
                         update(components)
                 if scaler is not None:
                     scaler.scale(loss).backward()
@@ -471,11 +548,15 @@ def run_ddp_training(rank, world_size, args):
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 with amp_autocast(args):
-                    result = model(data.x, data.batch)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
                     if args.jit:
                         raise
                     else:
-                        update(loss_fn(result, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
+                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
         nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
         dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
         total_test_batches = nb_test.item()
@@ -577,6 +658,10 @@ def main():
     parser.add_argument('--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')                       ## not using now
     parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
+    parser.add_argument('--use-multihead-model', action='store_true', help='Use GravNetModelMultiHead instead of legacy GravNet models')
+    parser.add_argument('--multihead-regression-heads', type=int, default=1, help='Number of regression heads for multi-head model (head-0 is clustering)')
+    parser.add_argument('--multihead-interaction-start-epoch', type=int, default=5, help='Epoch to enable clustering->regression interaction in multi-head model')
+    parser.add_argument('--multihead-interaction-mode', type=str, default='concat', choices=['none', 'concat', 'add', 'gate'], help='Interaction mode for multi-head model')
     parser.add_argument('--restart-period', type=int, default=30)
     parser.add_argument('--jit', action='store_true', help='Use compiled python program')                                               ## not using now
     parser.add_argument('--model-ckpt', type=str, default='', help='Use trained model parameters')
@@ -698,20 +783,12 @@ def main():
         train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
         test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True,)
 
-    if args.model_ckpt=='':
-        if not args.energy_branch:
-            print(f"Loading GravnetModel")
-            model = GravnetModel(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            print(f"Loading GravnetModel with energy branch")
-            model = GravNetModelBranch(input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension, b_energy_branch=True)
-            print(model)
-    else:
-        print(f"Loading model from checkpoint {args.model_ckpt}")
-        if args.energy_branch:
-            model = get_model_branch(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
-        else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=5+args.thetaphi*2+additional_input_dimension, output_dim=output_dimension)
+    model = build_model(
+        args=args,
+        input_dim=5 + args.thetaphi * 2 + additional_input_dimension,
+        output_dimension=output_dimension,
+        ddp=args.ddp,
+    )
     if not args.dp:
         model.to(device)
     else:
@@ -762,7 +839,7 @@ def main():
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -774,7 +851,19 @@ def main():
         weight_neutral_hadron = None
         weight_muon = None
         weight_electron = None
-        if args.energy_regression_weight:
+        if args.use_multihead_model:
+            if use_charge_track_likeness:
+                pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                pred_cluster_space_coords = out[:,2:]
+                assert(pred_charge_track_likeness.device == device)
+            else:
+                pred_cluster_space_coords = out[:,1:]
+
+            if args.energy_regression and regression_heads is not None and len(regression_heads) > 0:
+                pred_tracker_energy = regression_heads[0].squeeze(-1)
+            if args.energy_regression and args.energy_regression_cluster and regression_heads is not None and len(regression_heads) > 1:
+                pred_cluster_energy = regression_heads[1].squeeze(-1)
+        elif args.energy_regression_weight:
             if args.energy_regression and not args.energy_regression_cluster:
                 pred_tracker_energy = out[:,1]
                 weight_photon = out[:,2]
@@ -998,13 +1087,17 @@ def main():
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
                 with amp_autocast(args):
-                    result: torch.Tensor = model(data.x, data.batch)
-                    learning_para = check_coords(result,data)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
+                    learning_para = check_coords(out,data)
                     if args.jit:
                         # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                         raise
                     else:
-                        loss, components = loss_fn(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
+                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
                         update(components)
                 if scaler is not None:
                     scaler.scale(loss).backward()
@@ -1053,13 +1146,18 @@ def main():
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
                 with amp_autocast(args):
-                    result = model(data.x, data.batch)
-                    learning_para = check_coords(result,data)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
+                    learning_para = check_coords(out,data)
                     loss, _components = loss_fn(
-                        result,
+                        out,
                         data,
                         i_epoch=epoch,
                         use_charge_track_likeness=args.use_charged_cluster_loss,
+                        regression_heads=regression_heads,
                     )
                 if scaler is not None:
                     scaler.scale(loss).backward()
@@ -1099,18 +1197,23 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 with amp_autocast(args):
-                    result = model(data.x, data.batch)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
                     if args.jit:
                         # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
                         raise
                     else:
                         update(
                             loss_fn(
-                                result,
+                                out,
                                 data,
                                 i_epoch=epoch,
                                 return_components=True,
                                 use_charge_track_likeness=args.use_charged_cluster_loss,
+                                regression_heads=regression_heads,
                             )
                         )
         # Divide by number of entries
@@ -1137,18 +1240,23 @@ def main():
             for data in tqdm.tqdm(test_loader, total=len(test_loader)):
                 data = data.to(device)
                 with amp_autocast(args):
-                    result = model(data.x, data.batch)
+                    if args.use_multihead_model:
+                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                    else:
+                        result = model(data.x, data.batch)
+                    out, regression_heads = get_model_outputs(result, args)
                     if args.jit:
                         # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
                         raise
                     else:
                         update(
                             loss_fn(
-                                result,
+                                out,
                                 data,
                                 i_epoch=epoch,
                                 return_components=True,
                                 use_charge_track_likeness=args.use_charged_cluster_loss,
+                                regression_heads=regression_heads,
                             )
                         )
         # Divide by number of entries

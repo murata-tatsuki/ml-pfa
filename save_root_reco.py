@@ -243,19 +243,17 @@ class JetData:
     ''' TTree data for MCParticle
         to be used for evaluating the efficiency
     '''
-    event = np.array([0], dtype=np.int32)
-    # ncluster = np.array([0], dtype=np.int32)
-    MC_jet_energy = np.array([0], dtype=np.float64)
-    total_predicted_energy_truthBase = np.array([0], dtype=np.float64)
-    total_predicted_energy_predBase = np.array([0], dtype=np.float64)
+    # jet_p4[MAX_JETS][4]: 行=ジェット、(E, px, py, pz)。実ジェット数は n_jets（以降の行は 0 埋め）
+    MAX_JETS = 2
 
+    event = np.array([0], dtype=np.int32)
+    n_jets = np.array([0], dtype=np.int32)
+    jet_p4 = np.zeros((MAX_JETS, 4), dtype=np.float64)
 
     def setup_branch(this,t):
         t.Branch("event",this.event,"event/I")
-        # t.Branch("ncluster",this.ncluster,"ncluster/I")
-        t.Branch("MC_jet_energy",this.MC_jet_energy,"MC_jet_energy/D")
-        t.Branch("total_predicted_energy_truthBase",this.total_predicted_energy_truthBase,"total_predicted_energy_truthBase/D")
-        t.Branch("total_predicted_energy_predBase",this.total_predicted_energy_predBase,"total_predicted_energy_predBase/D")
+        t.Branch("n_jets",this.n_jets,"n_jets/I")
+        t.Branch("jet_p4",this.jet_p4,f"jet_p4[{JetData.MAX_JETS}][4]/D")
 
 
 def calc_origin_quark(quarks: np.array, clusters: np.array):    # calcurated from closest angles
@@ -823,20 +821,27 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
                 d4.total_predicted_energy_pred[0] = total_predicted_energy
                 t4.Fill()
 
-                if event_energy:
-                    q_en_truthBase = calc_pred_jet_energy(np.array(pred_energy_truthBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_truthBase)))
-                    q_en_predBase = calc_pred_jet_energy(np.array(pred_energy_predBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_predBase)))
+                if event.jet is not None:
+                    # q_en_truthBase = calc_pred_jet_energy(np.array(pred_energy_truthBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_truthBase)))
+                    # q_en_predBase = calc_pred_jet_energy(np.array(pred_energy_predBase) , calc_origin_quark(np.array(jet_momentum), np.array(reco_momentum_predBase)))
                     # print(q_en_truthBase, q_en_predBase, MC_jet_energies)
+                    jet_np = to_numpy(event.jet)
+                    nj = int(min(jet_np.shape[0], JetData.MAX_JETS))
+                    d5.n_jets[0] = nj
+                    d5.jet_p4.fill(0.0)
+                    if nj > 0:
+                        n4 = min(4, jet_np.shape[1])
+                        d5.jet_p4[:nj, :n4] = jet_np[:nj, :n4]
                     d5.event[0] = i
-                    d5.MC_jet_energy[0] = MC_jet_energies[0]
-                    d5.total_predicted_energy_truthBase[0] = q_en_truthBase[0]
-                    d5.total_predicted_energy_predBase[0] = q_en_predBase[0]
+                    # d5.MC_jet_energy[0] = MC_jet_energies[0]
+                    # d5.total_predicted_energy_truthBase[0] = q_en_truthBase[0]
+                    # d5.total_predicted_energy_predBase[0] = q_en_predBase[0]
                     t5.Fill()
-                    d5.event[0] = i
-                    d5.MC_jet_energy[0] = MC_jet_energies[1]
-                    d5.total_predicted_energy_truthBase[0] = q_en_truthBase[1]
-                    d5.total_predicted_energy_predBase[0] = q_en_predBase[1]
-                    t5.Fill()
+                # d5.event[0] = i
+                # d5.MC_jet_energy[0] = MC_jet_energies[1]
+                # d5.total_predicted_energy_truthBase[0] = q_en_truthBase[1]
+                # d5.total_predicted_energy_predBase[0] = q_en_predBase[1]
+                # t5.Fill()
 
             print(f"Saving to {outfile}")
             file.Write()

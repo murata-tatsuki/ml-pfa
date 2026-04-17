@@ -260,97 +260,193 @@ class GravNetModelBranch(nn.Module):
         assert x.device == device
         return x
 
-class GravNetModelEnergyHead(nn.Module):
+class GravNetModelMultiHead(nn.Module):
+    """
+    Multi-head GravNet model.
+
+    - Trunk (before concatenating GravNet block outputs) is identical to the
+      baseline GravNet implementation.
+    - After concatenation, each head owns the full post-concat stack
+      (post-GravNet dense blocks + output block).
+    - Head-0 is intended for clustering (beta / virtual coordinate / etc.).
+    - Head-1..N are intended for regression tasks (1 head = 1 regression by design).
+    """
 
     def __init__(
-        self, 
-        input_dim: int=5,
-        output_dim: int=2,
-        n_gravnet_blocks: int=4,
-        n_postgn_dense_blocks: int=4,
+        self,
+        input_dim: int = 5,
+        output_dim: int = 2,
+        n_gravnet_blocks: int = 4,
+        n_postgn_dense_blocks: int = 4,
         k: Union[List[int], int] = 40,
-        b_energy_head: bool = True,
-        ):
-        super(GravNetModelBranch, self).__init__()
+        n_heads: int = 1,
+        regression_output_dims: Union[int, List[int]] = 1,
+        interaction_start_epoch: int = 0,
+        interaction_mode: str = "concat",
+    ):
+        super(GravNetModelMultiHead, self).__init__()
+        if n_heads < 1:
+            raise ValueError("n_heads must be >= 1")
+        if interaction_mode not in ["none", "concat", "add", "gate"]:
+            raise ValueError("interaction_mode must be one of: none, concat, add, gate")
+
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.n_gravnet_blocks = n_gravnet_blocks
         self.n_postgn_dense_blocks = n_postgn_dense_blocks
-
-        self.batchnorm1 = nn.BatchNorm1d(self.input_dim)
-        self.input = nn.Linear(4*input_dim, 64)
-
+        self.n_heads = n_heads
         self.dense_nord = 128
-        self.b_energy_head = b_energy_head
+        self.interaction_start_epoch = interaction_start_epoch
+        self.interaction_mode = interaction_mode
 
-        print("Hello")
-        if self.b_energy_head:
-            print("!!!!energy branch separateed!!!!")
+        # Keep the pre-concat trunk unchanged.
+        self.batchnorm1 = nn.BatchNorm1d(self.input_dim)
+        self.input = nn.Linear(4 * input_dim, 64)
 
         if isinstance(k, int):
-            k = n_gravnet_blocks*[k]
-
+            k = n_gravnet_blocks * [k]
         assert len(k) == n_gravnet_blocks
-        
-        # Note: out_channels of the internal gravnet layer
-        # not clearly specified in paper
-        self.gravnet_blocks = nn.ModuleList([
-            GravNetBlock(64 if i==0 else 96, k=k[i]) for i in range(self.n_gravnet_blocks)
-            ])
 
-        # Post-GravNet dense layers
+        self.gravnet_blocks = nn.ModuleList([
+            GravNetBlock(64 if i == 0 else 96, k=k[i]) for i in range(self.n_gravnet_blocks)
+        ])
+
+        self.head_output_dims = self._build_head_output_dims(output_dim, n_heads, regression_output_dims)
+
+        # One full post-concat head per task.
+        self.head_postgn_dense = nn.ModuleList([
+            self._make_postgn_dense() for _ in range(self.n_heads)
+        ])
+        self.head_output = nn.ModuleList([
+            self._make_output_block(self.head_output_dims[i]) for i in range(self.n_heads)
+        ])
+
+        # Interaction layers: from clustering head feature -> regression head feature.
+        self.interaction_layers = nn.ModuleList()
+        for _ in range(max(0, self.n_heads - 1)):
+            if self.interaction_mode == "concat":
+                self.interaction_layers.append(nn.Sequential(
+                    nn.Linear(2 * self.dense_nord, self.dense_nord),
+                    nn.ReLU(),
+                    nn.BatchNorm1d(self.dense_nord),
+                ))
+            elif self.interaction_mode in ["add", "gate"]:
+                self.interaction_layers.append(nn.Linear(self.dense_nord, self.dense_nord))
+
+    @staticmethod
+    def _build_head_output_dims(
+        clustering_output_dim: int,
+        n_heads: int,
+        regression_output_dims: Union[int, List[int]],
+    ) -> List[int]:
+        if n_heads == 1:
+            return [clustering_output_dim]
+
+        if isinstance(regression_output_dims, int):
+            regression_dims = [regression_output_dims] * (n_heads - 1)
+        else:
+            regression_dims = list(regression_output_dims)
+            if len(regression_dims) != (n_heads - 1):
+                raise ValueError("len(regression_output_dims) must be n_heads - 1")
+
+        return [clustering_output_dim] + regression_dims
+
+    def _make_postgn_dense(self) -> nn.Sequential:
         postgn_dense_modules = nn.ModuleList()
         for i in range(self.n_postgn_dense_blocks):
             postgn_dense_modules.extend([
-                nn.Linear(4*96 if i==0 else self.dense_nord, self.dense_nord),
+                nn.Linear(4 * 96 if i == 0 else self.dense_nord, self.dense_nord),
                 nn.ReLU(),
                 nn.BatchNorm1d(self.dense_nord),
-                ])
-        self.postgn_dense = nn.Sequential(*postgn_dense_modules)
+            ])
+        return nn.Sequential(*postgn_dense_modules)
 
-        # energy regression branch
-        self.energy_nord = 5    ## momentum, momentum norm, track bit
-        self.energy_branch = nn.Sequential(
-            nn.Linear(5, 5)
-        )
-        outblock_inNord = self.dense_nord + self.energy_nord if self.b_energy_head else self.dense_nord
-        
-        # Output block
-        self.output = nn.Sequential(
-            nn.Linear(outblock_inNord, 64),
+    @staticmethod
+    def _make_output_block(out_dim: int) -> nn.Sequential:
+        return nn.Sequential(
+            nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(64, self.output_dim)
-            )
+            nn.Linear(64, out_dim),
+        )
 
-    def forward(self, x: Tensor, batch: Tensor) -> Tensor:
+    def _is_interaction_active(self, epoch: Union[int, None]) -> bool:
+        if self.n_heads <= 1:
+            return False
+        if self.interaction_mode == "none":
+            return False
+        if epoch is None:
+            return False
+        return epoch >= self.interaction_start_epoch
+
+    def forward(
+        self,
+        x: Tensor,
+        batch: Tensor,
+        epoch: Union[int, None] = None,
+        return_dict: bool = True,
+    ):
         device = x.device
-        energy_var = x[:,-5:-1]
-        trackbit_var = x[:,4]
-        trackbit_var = trackbit_var.view(trackbit_var.size()[0],1)
-        energy_var = torch.cat([energy_var,trackbit_var], dim=-1)
-        device = energy_var.device
-        # print('forward called on device', device)
+
+        # Unchanged trunk before concatenating block outputs.
         x = self.batchnorm1(x)
         x = global_exchange(x, batch)
         x = self.input(x)
         assert x.device == device
 
-        x_gravnet_per_block = [] # To store intermediate outputs
+        x_gravnet_per_block = []
         for gravnet_block in self.gravnet_blocks:
             x = gravnet_block(x, batch)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
-        assert x.size() == (x.size(0), 4*96)
+        assert x.size() == (x.size(0), 4 * 96)
         assert x.device == device
 
-        x = self.postgn_dense(x)
-        energy_var = self.energy_branch(energy_var)
-        x = torch.cat([x, energy_var], dim=-1)
-        x = self.output(x)
-        assert x.device == device
-        return x
+        head_features = [head_dense(x) for head_dense in self.head_postgn_dense]
+        clustering_feature = head_features[0]
+        interaction_active = self._is_interaction_active(epoch)
+
+        outputs = []
+        # for i, feat in enumerate(head_features):
+        #     if i > 0 and interaction_active:
+        #         layer = self.interaction_layers[i - 1]
+        #         if self.interaction_mode == "concat":
+        #             feat = layer(torch.cat([feat, clustering_feature], dim=-1))
+        #         elif self.interaction_mode == "add":
+        #             feat = feat + layer(clustering_feature)
+        #         elif self.interaction_mode == "gate":
+        #             gate = torch.sigmoid(layer(clustering_feature))
+        #             feat = feat * gate
+        # 
+        #     out = self.head_output[i](feat)
+        #     outputs.append(out)
+        for i, feat in enumerate(head_features):
+            if i > 0 and interaction_active:
+                # head_0 (clustering) からの入力を計算
+                context = self.interaction_layers[i - 1](clustering_feature)
+
+                if self.interaction_mode == "gate":
+                    # 0~1のゲートを生成して要素ごとにスケーリング
+                    gate = torch.sigmoid(context)
+                    feat = feat * gate 
+                elif self.interaction_mode == "concat":
+                    # 既存実装通り
+                    feat = self.interaction_layers[i - 1](torch.cat([feat, clustering_feature], dim=-1))
+            out = self.head_output[i](feat)
+            outputs.append(out)
+
+        if not return_dict:
+            if self.n_heads == 1:
+                return outputs[0]
+            return tuple(outputs)
+
+        return {
+            "clustering": outputs[0],
+            "regressions": outputs[1:],
+            "all_heads": outputs,
+            "interaction_active": interaction_active,
+        }
 
 
 class NoiseFilterModel(nn.Module):
