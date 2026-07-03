@@ -18,10 +18,11 @@ import objectcondensation as oc
 from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter,GravNetModelMultiHead
 from dataset import ILCDataset
 from dataset_ilc_sharded import ILCDatasetSharded
+from dataset_ilc_streaming import ILCStreamingDataset
 
 
 def make_ilc_dataset(args, inputdir):
-    """ILCDataset と ILCDatasetSharded を引数で切り替え（デフォルトは従来どおり ILCDataset）。"""
+    """ILCDataset / sharded / streaming を引数で切り替え（デフォルトは従来どおり ILCDataset）。"""
     common = dict(
         timingCut=args.timing_cut,
         thetaphi=args.thetaphi,
@@ -30,6 +31,20 @@ def make_ilc_dataset(args, inputdir):
         momentumAmp=args.momentum_amp,
         mctpe=args.mctpe,
     )
+    if getattr(args, "ilc_streaming", False):
+        print(
+            "Using ILCStreamingDataset "
+            f"(shuffle_buffer={getattr(args, 'stream_shuffle_buffer', 256)}, "
+            f"seed={getattr(args, 'stream_seed', 1001)})"
+        )
+        return ILCStreamingDataset(
+            inputdir,
+            **common,
+            seed=getattr(args, "stream_seed", 1001),
+            shuffle=True,
+            shuffle_buffer_size=getattr(args, "stream_shuffle_buffer", 256),
+            pad_to_equal_workers=True,
+        )
     if getattr(args, "ilc_sharded", False):
         print(
             "Using ILCDatasetSharded (per-file load, no concatenate). "
@@ -41,6 +56,44 @@ def make_ilc_dataset(args, inputdir):
             file_cache_size=getattr(args, "ilc_file_cache", 2),
         )
     return ILCDataset(inputdir, **common)
+
+
+def is_streaming_dataset(dataset):
+    return isinstance(dataset, ILCStreamingDataset)
+
+
+def configure_streaming_dataset(dataset, epoch=None, shuffle=None, shuffle_buffer_size=None, pad_to_equal_workers=None):
+    if not is_streaming_dataset(dataset):
+        return
+    if epoch is not None:
+        dataset.set_epoch(epoch)
+    if shuffle is not None:
+        dataset.set_shuffle(shuffle)
+    if shuffle_buffer_size is not None:
+        dataset.set_shuffle_buffer_size(shuffle_buffer_size)
+    if pad_to_equal_workers is not None:
+        dataset.set_pad_to_equal_workers(pad_to_equal_workers)
+
+
+def data_loader_num_workers(args, ddp=False):
+    if getattr(args, "num_workers", None) is not None:
+        return args.num_workers
+    return 8 if ddp else 16
+
+
+def make_data_loader(dataset, batch_size, args, shuffle=False, ddp=False, sampler=None):
+    num_workers = data_loader_num_workers(args, ddp=ddp)
+    common = dict(
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+    if num_workers > 0 and not is_streaming_dataset(dataset):
+        common["persistent_workers"] = True
+
+    if is_streaming_dataset(dataset):
+        return DataLoader(dataset, shuffle=False, **common)
+    return DataLoader(dataset, shuffle=(shuffle and sampler is None), sampler=sampler, **common)
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
@@ -248,11 +301,27 @@ def run_ddp_training(rank, world_size, args):
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
 
-    # Sampler（検証も各 rank でデータを分割し、all_reduce で損失を集約）
-    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
-    test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, pin_memory=True, persistent_workers=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True)
+    configure_streaming_dataset(train_dataset, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=True)
+    configure_streaming_dataset(test_dataset, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+
+    # Sampler（streaming では Dataset 内で rank / worker ごとに file 分割する）
+    if is_streaming_dataset(train_dataset):
+        train_sampler = None
+        test_sampler = None
+    else:
+        train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+        test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
+    train_loader = make_data_loader(train_dataset, args.batch_size, args, ddp=True, sampler=train_sampler)
+    test_loader = make_data_loader(test_dataset, args.batch_size, args, ddp=True, sampler=test_sampler)
+    streaming_train = is_streaming_dataset(train_dataset)
+    if streaming_train and rank == 0:
+        n_global_workers = world_size * data_loader_num_workers(args, ddp=True)
+        if len(train_dataset.files) < n_global_workers:
+            print(
+                "WARNING: --ilc-streaming has fewer training files than DDP workers "
+                f"({len(train_dataset.files)} files < {n_global_workers} rank-workers). "
+                "Use fewer --num-workers or more input shards for best balance."
+            )
     # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
     # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -448,9 +517,10 @@ def run_ddp_training(rank, world_size, args):
         cluster_space_coords_list=[]
         data_y_list=[]
         model.train()
-        N_train = len(train_loader)
         loss_components={}
         gradients=[]
+        batch_count = 0
+        last_loss = None
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: 
@@ -460,47 +530,53 @@ def run_ddp_training(rank, world_size, args):
         if not args.settings_Sep01: 
             if not args.ReduceLROnPlateau: scheduler.step()
         try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
+            pbar = tqdm.tqdm(train_loader, total=None if streaming_train else len(train_loader))
             pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
-                optimizer.zero_grad()
-                # if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+            join_context = model.join() if streaming_train else nullcontext()
+            with join_context:
+                for i, data in enumerate(pbar):
+                    # print(i, data.x.shape, data.y.shape)
+                    data = data.to(device)
+                    optimizer.zero_grad()
+                    # if i == 0 : first_para = check_data(data)
+                    with amp_autocast(args):
+                        if args.use_multihead_model:
+                            result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        else:
+                            result = model(data.x, data.batch)
+                        out, regression_heads = get_model_outputs(result, args)
+                        # learning_para = check_coords(out,data)
+                        if args.jit:
+                            raise
+                        else:
+                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
+                            update(components)
+                    if scaler is not None:
+                        scaler.scale(loss).backward()
+                        if not args.no_clipping:
+                            scaler.unscale_(optimizer)
+                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        scaler.step(optimizer)
+                        scaler.update()
                     else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    # learning_para = check_coords(out,data)
-                    if args.jit:
-                        raise
-                    else:
-                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
-                        update(components)
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
-                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
-                # if i == 2: raise Exception
+                        loss.backward()
+                        if not args.no_clipping:
+                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        optimizer.step()
+                    if not args.settings_Sep01: 
+                        if not args.ReduceLROnPlateau: scheduler.batch_step()
+                    pbar.set_postfix({'loss': float(loss)})
+                    # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
+                    # data_y_list.append(learning_para["data.y.long"].tolist())
+                    gradients.append([p.grad.norm().item() for p in model.parameters()])
+                    batch_count += 1
+                    last_loss = loss
+                    # if i == 2: raise Exception
+            if batch_count == 0:
+                raise RuntimeError("No training batches were produced. Reduce --num-workers or provide more input files for streaming DDP.")
             # 全 rank のバッチ数の合計で割る（各 rank が担当するバッチ数が微妙に違う場合に対応）
             layer_grads = np.mean(np.array(gradients), axis=0)
-            nb_train = torch.tensor([N_train], device=device, dtype=torch.long)
+            nb_train = torch.tensor([batch_count], device=device, dtype=torch.long)
             dist.all_reduce(nb_train, op=dist.ReduceOp.SUM)
             total_train_batches = nb_train.item()
             for key in loss_components:
@@ -526,7 +602,7 @@ def run_ddp_training(rank, world_size, args):
                         return_loss += loss_components["L_beta"]
                     if i_epoch > args.epochs_noLE:
                         return_loss += loss_components["L_E"]
-            train_loss = return_loss.item() if rank == 0 else loss.item()
+            train_loss = return_loss.item() if rank == 0 else last_loss.item()
             # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
             return train_loss,None,None,None,None
         except Exception:
@@ -534,9 +610,9 @@ def run_ddp_training(rank, world_size, args):
             raise
 
     def test(epoch):
-        N_test = len(test_loader)
         loss_components = {}
         test_acc=0.
+        batch_count = 0
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: 
@@ -545,19 +621,23 @@ def run_ddp_training(rank, world_size, args):
                     loss_components[key] += value.detach()
         with torch.no_grad():
             model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
+            eval_model = model.module if streaming_train else model
+            for data in tqdm.tqdm(test_loader, total=None if streaming_train else len(test_loader)):
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        result = eval_model(data.x, data.batch, epoch=epoch, return_dict=True)
                     else:
-                        result = model(data.x, data.batch)
+                        result = eval_model(data.x, data.batch)
                     out, regression_heads = get_model_outputs(result, args)
                     if args.jit:
                         raise
                     else:
                         update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
-        nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
+                batch_count += 1
+        if batch_count == 0:
+            raise RuntimeError("No validation batches were produced. Reduce --num-workers or provide more validation files for streaming DDP.")
+        nb_test = torch.tensor([batch_count], device=device, dtype=torch.long)
         dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
         total_test_batches = nb_test.item()
         for key in loss_components:
@@ -591,8 +671,12 @@ def run_ddp_training(rank, world_size, args):
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
-        train_sampler.set_epoch(i_epoch)
-        test_sampler.set_epoch(i_epoch)
+        if train_sampler is not None:
+            train_sampler.set_epoch(i_epoch)
+        if test_sampler is not None:
+            test_sampler.set_epoch(i_epoch)
+        configure_streaming_dataset(train_dataset, epoch=i_epoch, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=True)
+        configure_streaming_dataset(test_dataset, epoch=i_epoch, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
         train_loss,_,_,_,_=train(i_epoch)
         if rank == 0:
             train_loss_history.append(train_loss)
@@ -643,6 +727,10 @@ def main():
     parser.add_argument('-ii', '--inputdir-validate', type=str, help='Specify input directory for validating')
     parser.add_argument('--ilc-sharded', action='store_true', help='Load HDF5 per file without concatenating (lower RAM). Use with many .h5 under -i / -ii.')
     parser.add_argument('--ilc-file-cache', type=int, default=2, help='LRU number of HDF5 files to keep decoded per worker (--ilc-sharded only)')
+    parser.add_argument('--ilc-streaming', action='store_true', help='Stream HDF5 files with IterableDataset; shuffles files/events per epoch and avoids loading all files at once.')
+    parser.add_argument('--stream-shuffle-buffer', type=int, default=256, help='Number of streamed events mixed in an in-memory shuffle buffer (--ilc-streaming only).')
+    parser.add_argument('--stream-seed', type=int, default=1001, help='Base random seed for streaming file/event shuffle.')
+    parser.add_argument('--num-workers', type=int, default=None, help='Override DataLoader workers (default: 16 single-process, 8 DDP).')
     parser.add_argument('-i-tune', '--inputdir-tune', type=str, help='Specify input directory for training (option)')                   ## not using now
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
@@ -773,15 +861,25 @@ def main():
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
+    configure_streaming_dataset(train_dataset, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
+    configure_streaming_dataset(test_dataset, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+    train_loader = make_data_loader(train_dataset, batch_size, args, shuffle=shuffle)
+    test_loader = make_data_loader(test_dataset, batch_size, args, shuffle=False)
+    streaming_train = is_streaming_dataset(train_dataset)
+    if streaming_train and len(train_dataset.files) < data_loader_num_workers(args, ddp=False):
+        print(
+            "WARNING: --ilc-streaming has fewer training files than DataLoader workers "
+            f"({len(train_dataset.files)} files < {data_loader_num_workers(args, ddp=False)} workers). "
+            "Use fewer --num-workers or more input shards for best throughput."
+        )
     if (args.inputdir_tune and args.inputdir_validate_tune is not None):
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
         print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True,)
+        configure_streaming_dataset(train_dataset_tune, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
+        configure_streaming_dataset(test_dataset_tune, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+        train_loader_tune = make_data_loader(train_dataset_tune, batch_size, args, shuffle=shuffle)
+        test_loader_tune = make_data_loader(test_dataset_tune, batch_size, args, shuffle=False)
 
     model = build_model(
         args=args,
@@ -1069,9 +1167,9 @@ def main():
         cluster_space_coords_list=[]
         data_y_list=[]
         model.train()
-        N_train = len(train_loader)
         loss_components={}
         gradients=[]
+        batch_count = 0
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: loss_components[key] = 0.
@@ -1079,7 +1177,7 @@ def main():
         if not args.settings_Sep01: 
             if not args.ReduceLROnPlateau: scheduler.step()
         try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
+            pbar = tqdm.tqdm(train_loader, total=None if streaming_train else len(train_loader))
             pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
@@ -1117,12 +1215,15 @@ def main():
                 # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 # data_y_list.append(learning_para["data.y.long"].tolist())
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
+                batch_count += 1
                 # if i == 2: raise Exception
+            if batch_count == 0:
+                raise RuntimeError("No training batches were produced. Reduce --num-workers or check the streaming input files.")
             # Divide by number of entries
             layer_grads = np.mean(np.array(gradients), axis=0)
             print(layer_grads)
             for key in loss_components:
-                loss_components[key] /= N_train
+                loss_components[key] /= batch_count
             print(oc.formatted_loss_components_string_train(loss_components))
             return loss.item()
             # return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
@@ -1131,9 +1232,9 @@ def main():
             raise
 
     def test(epoch):
-        N_test = len(test_loader)
         loss_components = {}
         test_acc=0.
+        batch_count = 0
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: loss_components[key] = 0.
@@ -1141,7 +1242,7 @@ def main():
         with torch.no_grad():
 
             model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
+            for data in tqdm.tqdm(test_loader, total=None if streaming_train else len(test_loader)):
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
@@ -1163,9 +1264,12 @@ def main():
                                 regression_heads=regression_heads,
                             )
                         )
+                batch_count += 1
+        if batch_count == 0:
+            raise RuntimeError("No validation batches were produced. Reduce --num-workers or check the streaming validation files.")
         # Divide by number of entries
         for key in loss_components:
-            loss_components[key] /= N_test
+            loss_components[key] /= batch_count
         # Compute total loss and do printout
         print('test ' + oc.formatted_loss_components_string(loss_components))
         # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
@@ -1193,6 +1297,8 @@ def main():
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
+        configure_streaming_dataset(train_dataset, epoch=i_epoch, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
+        configure_streaming_dataset(test_dataset, epoch=i_epoch, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
         train_loss = train(i_epoch)
         # train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
         learning_rates.append(optimizer.param_groups[0]["lr"])
