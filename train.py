@@ -1114,8 +1114,8 @@ def main():
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 pbar.set_postfix({'loss': float(loss)})
-                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                data_y_list.append(learning_para["data.y.long"].tolist())
+                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
+                # data_y_list.append(learning_para["data.y.long"].tolist())
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
                 # if i == 2: raise Exception
             # Divide by number of entries
@@ -1124,64 +1124,11 @@ def main():
             for key in loss_components:
                 loss_components[key] /= N_train
             print(oc.formatted_loss_components_string_train(loss_components))
-            return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
+            return loss.item()
+            # return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
         except Exception:
             print('Exception encountered:', data, 'i:', i)
             raise
-
-    def train_tune(epoch):
-        print('Training epoch', epoch)
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader_tune, total=len(train_loader_tune))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, len(data.x), len(data.y))
-                data = data.to(device)
-                optimizer.zero_grad()
-                if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
-                    else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    learning_para = check_coords(out,data)
-                    loss, _components = loss_fn(
-                        out,
-                        data,
-                        i_epoch=epoch,
-                        use_charge_track_likeness=args.use_charged_cluster_loss,
-                        regression_heads=regression_heads,
-                    )
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
-                cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                data_y_list.append(learning_para["data.y.long"].tolist())
-                # if i == 2: raise Exception
-            return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
 
     def test(epoch):
         N_test = len(test_loader)
@@ -1226,48 +1173,6 @@ def main():
         print(f'Returning {test_loss}')
         return test_loss.item()
 
-    def test_tune(epoch):
-        N_test = len(test_loader_tune)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        with torch.no_grad():
-
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
-                    else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    if args.jit:
-                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                        raise
-                    else:
-                        update(
-                            loss_fn(
-                                out,
-                                data,
-                                i_epoch=epoch,
-                                return_components=True,
-                                use_charge_track_likeness=args.use_charged_cluster_loss,
-                                regression_heads=regression_heads,
-                            )
-                        )
-        # Divide by number of entries
-        for key in loss_components:
-            loss_components[key] /= N_test
-        # Compute total loss and do printout
-        print('test ' + oc.formatted_loss_components_string(loss_components))
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-        print(f'Returning {test_loss}')
-        return test_loss.item()
-
     ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
     def write_checkpoint(checkpoint_number=None, best=False):
         ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
@@ -1288,7 +1193,8 @@ def main():
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
-        train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
+        train_loss = train(i_epoch)
+        # train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
         learning_rates.append(optimizer.param_groups[0]["lr"])
         print("learning rate : ", learning_rates)
         train_loss_history.append(train_loss)
@@ -1306,21 +1212,6 @@ def main():
 
         #if i_epoch==0 or i_epoch==30 : check_plots(cluster_space_para,data_y)
         #if i_epoch==30 : check_plots(cluster_space_para,data_y)
-
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        for ii_epoch in range(n_epochs):
-            i_epoch = ii_epoch + n_epochs
-            train_loss,cluster_space_para,data_y,data,first_para=train_tune(i_epoch)
-            train_loss_history.append(train_loss)
-            print("train loss : ", train_loss)
-            write_checkpoint(i_epoch)
-
-            test_loss = test(i_epoch)
-            if args.ReduceLROnPlateau: scheduler.step(test_loss)
-            #test_loss/=len(test_loader)
-            test_loss_history.append(test_loss)
-            if test_loss < min_loss:
-                min_loss = test_loss
 
     # data_y = data.y.long().cpu().numpy()
     # plot_history(train_loss_history,test_loss_history)

@@ -12,11 +12,11 @@ def main():
     parser.add_argument('--nend', type=int, default=-1)    
     args = parser.parse_args()
 
-    ak_feats, ak_labels, _, _, _, _, _ = la.load_awkward2(args.input)
-    ak_feats, ak_labels = ILCDataset.timingCut(ak_feats, ak_labels, args.maximumTime,args.minimumPt,args.nstart,args.nend)
+    ak_feats, ak_labels, _, _, ak_pandoras, _, _ = la.load_awkward2(args.input)
+    ak_feats, ak_labels, ak_pandoras = ILCDataset.timingCut(ak_feats, ak_labels, args.maximumTime,args.minimumPt,args.nstart,args.nend, ak_pandoras=ak_pandoras)
 
     print(f'Saving to {args.output}')
-    la.save_awkward(args.output, ak_feats, ak_labels)
+    la.save_awkward(args.output, ak_feats, ak_labels, ak_pandora=ak_pandoras)
     print('done')
 
 if __name__ == '__main__':

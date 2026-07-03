@@ -103,10 +103,11 @@ class ILCDataset(Dataset):
         # TODO: implement update of ak with time cuts
 
     @staticmethod
-    def timingCut(ak_feats, ak_labels, cutoff_time = 14, cutoff_pt = 0.3, nstart = 0, nend=-1):
+    def timingCut(ak_feats, ak_labels, cutoff_time = 14, cutoff_pt = 0.3, nstart = 0, nend=-1, ak_pandoras=None):
         index_time = 4
         feats_list = []
         labels_list = []
+        pandoras_list = []
         index_track = 5
         index_px = 7
         index_py = 8
@@ -120,6 +121,8 @@ class ILCDataset(Dataset):
             seltiming = ak_feats[i][:,index_time]<cutoff_time
             feats1 = ak_feats[i][seltiming]
             labels1 = ak_labels[i][seltiming]
+            if ak_pandoras is not None:
+                pand1 = ak_pandoras[i][seltiming]
 
             selpt1 = feats1[:,index_track]==0
             selpt2 = np.linalg.norm(feats1[:,index_px:index_py+1],axis=1)>cutoff_pt
@@ -128,18 +131,29 @@ class ILCDataset(Dataset):
             
             feats2 = feats1[selpt]
             labels2 = labels1[selpt]
+            if ak_pandoras is not None:
+                pand2 = pand1[selpt]
+
             
             feats_list.append(feats2)
             labels_list.append(labels2)
+            if ak_pandoras is not None:
+                pandoras_list.append(pand2)
             
         print("Making ak_feats...")
         ak_feats = ak.Array(feats_list)
         print("Making ak_labels...")
         ak_labels = ak.Array(labels_list)
+        if ak_pandoras is not None:
+                print("Making ak_pandoras...")
+                ak_pandoras = ak.Array(pandoras_list)
 
         print("Hits after timing window", ak.num(ak_feats,axis=1)[nstart:nstart+10])
 
-        return ak_feats, ak_labels
+        if ak_pandoras is not None:
+            return ak_feats, ak_labels, ak_pandoras
+        else:
+            return ak_feats, ak_labels
     
     @staticmethod
     def eventCut(ak_feats, ak_labels, nstart = 0, nend=-1):
