@@ -195,425 +195,394 @@ def setup_ddp(rank, world_size):
 def cleanup():
     dist.destroy_process_group()
 
-def run_ddp_training(rank, world_size, args):
-    # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
-    # setup_ddp(local_rank, world_size)
-    # torch.cuda.set_device(local_rank)
 
-    setup_ddp(rank, world_size)
-    torch.cuda.set_device(rank)
+def unwrap_model(model):
+    return model.module if hasattr(model, "module") else model
 
-    # device = torch.device(f"cuda:{local_rank}")
-    device = torch.device(f"cuda:{rank}")
-    print(device)
-    run_requirements(args)
-    reduce_noise = args.reduce_noise
-    n_epochs = args.epochs
-    batch_size = args.batch_size
-    output_dimension = args.output_dimension
-    lr_input = args.learning_rate
-    weight_decay_input = args.weight_decay
-    er_coef = args.regression_coefficinet
-    qmin = args.qmin
-    min_lr=args.min_lr
 
-    batch_size = batch_size * world_size
-    lr_input = lr_input * world_size
+def reduce_loss_components(loss_components, n_batches, device, distributed):
+    total_batches = n_batches
+    if distributed:
+        nbatches = torch.tensor([n_batches], device=device, dtype=torch.long)
+        dist.all_reduce(nbatches, op=dist.ReduceOp.SUM)
+        total_batches = nbatches.item()
+        for key in loss_components:
+            dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
+    for key in loss_components:
+        loss_components[key] /= total_batches
+    return total_batches
 
-    shuffle = True
 
-    print(f'thetaphi at main: {args.thetaphi}')
-    print("Loading dataset...")
-    # Dataset
-    dataset = make_ilc_dataset(args, args.inputdir)
-    if reduce_noise:
-        dataset.reduce_noise = .70
-        multiply_batch_size = 1
-        print(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
-        print(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
-        batch_size *= multiply_batch_size
-    if args.dry:
-        keep = .005
-        print(f'Keeping only {100.*keep:.1f}% of events for debugging')
-        dataset, _ = dataset.split(keep)
-    if (args.no_split):
-        train_dataset = dataset
-        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
+def compose_return_loss(loss_components, args, epoch, loss_offset):
+    return_loss = loss_components["L_V"] + loss_offset
+    if args.LE_track == 'alpha_tracker_modifing_charged0':
+        if epoch > args.epochs_nobeta:
+            return_loss += loss_components["L_beta"]
+        if epoch > 15:
+            return_loss += loss_components["L_E"]
+        else:
+            return_loss += loss_components["L_E_charge"]
     else:
-        train_dataset, test_dataset = dataset.split(.8)
+        if epoch > args.epochs_nobeta:
+            return_loss += loss_components["L_beta"]
+        if epoch > args.epochs_noLE:
+            return_loss += loss_components["L_E"]
+    return return_loss
 
-    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
 
-    print(f"Training dataset size:  {len(train_dataset)}")
-    print(f"Validating dataset size:  {len(test_dataset)}")
-    print(f"Batch size:  {batch_size}")
+def run_training(rank, world_size, args):
+    distributed = args.ddp and world_size > 1
+    is_main_process = (not distributed) or rank == 0
 
-    # Sampler（検証も各 rank でデータを分割し、all_reduce で損失を集約）
-    train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
-    test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, pin_memory=True, persistent_workers=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True)
-    # train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler)
-    # test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    def log(*items, **kwargs):
+        if is_main_process:
+            print(*items, **kwargs)
 
-    # Model setup
-    model = build_model(
-        args=args,
-        input_dim=5 + args.thetaphi * 2 + additional_input_dimension,
-        output_dimension=output_dimension,
-        ddp=args.ddp,
-    )
-    # model.to(local_rank)
-    # model = DDP(model, device_ids=[local_rank])
-    model.to(rank)
-    model = DDP(model, device_ids=[rank])
+    if distributed:
+        setup_ddp(rank, world_size)
+        torch.cuda.set_device(rank)
+        device = torch.device(f"cuda:{rank}")
+        print(device)
+    else:
+        device = torch.device(args.cuda) if not args.dp else torch.device("cuda")
+        print('Using device: ', device)
+        if not args.dp and device.type == "cuda":
+            torch.cuda.set_device(device)
 
-    # optimizer, scheduler setting
-    epoch_size = len(train_loader.dataset)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
-    scaler = amp_grad_scaler(args)
-    if getattr(args, "amp", False) and rank == 0:
-        print(
-            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
+    try:
+        run_requirements(args)
+        batch_size = args.batch_size
+        lr_input = args.learning_rate
+        weight_decay_input = args.weight_decay
+        qmin = args.qmin
+        min_lr = args.min_lr
+        if distributed:
+            batch_size *= world_size
+            lr_input *= world_size
+        elif args.dp:
+            print("available number of cuda ", torch.cuda.device_count())
+            batch_size *= 2
+            lr_input *= 2
+
+        log("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", args.regression_coefficinet)
+        if args.mctpe:
+            log("momentum and energy of virtual hits are MC truth")
+        else:
+            log("momentum and energy of virtual hits are NOT MC truth")
+            log("using detected values")
+
+        log(f'thetaphi at main: {args.thetaphi}')
+        log("Loading dataset...")
+        dataset = make_ilc_dataset(args, args.inputdir)
+        if args.reduce_noise:
+            dataset.reduce_noise = .70
+            multiply_batch_size = 1
+            log(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
+            log(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
+            batch_size *= multiply_batch_size
+        if args.dry:
+            keep = .005
+            log(f'Keeping only {100.*keep:.1f}% of events for debugging')
+            dataset, _ = dataset.split(keep)
+
+        if args.no_split:
+            train_dataset = dataset
+            test_dataset = make_ilc_dataset(args, args.inputdir_validate)
+        else:
+            train_dataset, test_dataset = dataset.split(.8)
+
+        output_dimension, _, _, _, additional_input_dimension = index_setup(args)
+        log(f"Training dataset size:  {len(train_dataset)}")
+        log(f"Validating dataset size:  {len(test_dataset)}")
+        log(f"Batch size:  {batch_size}")
+
+        train_sampler = None
+        test_sampler = None
+        if distributed:
+            train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+            test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=train_sampler, num_workers=8, pin_memory=True, persistent_workers=True)
+            test_loader = DataLoader(test_dataset, batch_size=args.batch_size, sampler=test_sampler, shuffle=False, num_workers=8, pin_memory=True, persistent_workers=True)
+        else:
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True, persistent_workers=True)
+            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
+
+        model = build_model(
+            args=args,
+            input_dim=5 + args.thetaphi * 2 + additional_input_dimension,
+            output_dimension=output_dimension,
+            ddp=args.ddp,
         )
-    if not args.settings_Sep01:
-        if args.ReduceLROnPlateau:
-            print("use ReduceLROnPlateau scheduler")
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
-            nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
-            print("epochs to calculate patience ", nepoch_factor)
+        if distributed:
+            model.to(rank)
+            model = DDP(model, device_ids=[rank])
+        elif args.dp:
+            model.cuda()
+            model = torch.nn.DataParallel(model)
+            torch.backends.cudnn.benchmark = True
         else:
-            print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
-    loss_offset =1. # To prevent a negative loss from ever occuring
+            model.to(device)
 
-    def check_coords(out,data) :
-        learning_para={}
-        #pred_betas = torch.sigmoid(out[:,0])
-        pred_cluster_space_coords = out[:,1:]
-        #learning_para["pred_betas"] =pred_betas
-        learning_para["pred_cluster_space_coords"] =pred_cluster_space_coords
-        #print(f"coords_test_shape:{pred_cluster_space_coords.shape}")
-        learning_para["data.y.long"]=data.y.long()
-        learning_para["data.batch"] = data.batch
-        return learning_para
+        epoch_size = len(train_loader.dataset)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+        scaler = amp_grad_scaler(args)
+        if getattr(args, "amp", False):
+            log(f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}")
 
-    def check_data(data):
-        data_para={}
-        data_para["data.y.long"]=data.y.long()
-        data_para["data.x"]=data.x
-        return data_para
-
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
-        device = out.device
-
-        pred_betas = torch.sigmoid(out[:,0])
-        pred_charge_track_likeness = None
-        pred_tracker_energy = None
-        pred_cluster_energy = None
-        weight_photon = None
-        weight_charged_hadron = None
-        weight_neutral_hadron = None
-        weight_muon = None
-        weight_electron = None
-        if args.use_multihead_model:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
+        scheduler = None
+        nepoch_factor = None
+        if not args.settings_Sep01:
+            if args.ReduceLROnPlateau:
+                log("use ReduceLROnPlateau scheduler")
+                scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
+                nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
+                log("epochs to calculate patience ", nepoch_factor)
             else:
-                pred_cluster_space_coords = out[:,1:]
+                log("restart period : ", args.restart_period)
+                scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
 
-            if args.energy_regression and regression_heads is not None and len(regression_heads) > 0:
-                pred_tracker_energy = regression_heads[0].squeeze(-1)
-            if args.energy_regression and args.energy_regression_cluster and regression_heads is not None and len(regression_heads) > 1:
-                pred_cluster_energy = regression_heads[1].squeeze(-1)
-        elif args.energy_regression_weight:
-            if args.energy_regression and not args.energy_regression_cluster:
-                pred_tracker_energy = out[:,1]
-                weight_photon = out[:,2]
-                weight_charged_hadron = out[:,3]
-                weight_neutral_hadron = out[:,4]
-                weight_muon = out[:,5]
-                weight_electron = out[:,6]
-                pred_cluster_space_coords = out[:,7:]
-            elif args.energy_regression and args.energy_regression_cluster:
-                pred_tracker_energy = out[:,1]
-                pred_cluster_energy = out[:,2]
-                weight_photon = out[:,3]
-                weight_charged_hadron = out[:,4]
-                weight_neutral_hadron = out[:,5]
-                weight_muon = out[:,6]
-                weight_electron = out[:,7]
-                pred_cluster_space_coords = out[:,8:]
-            elif not args.energy_regression:
-                weight_photon = out[:,1]
-                weight_charged_hadron = out[:,2]
-                weight_neutral_hadron = out[:,3]
-                weight_muon = out[:,4]
-                weight_electron = out[:,5]
-                pred_cluster_space_coords = out[:,6:]
-        else:
-            if args.energy_regression:
-                if not args.energy_regression_cluster:
-                    if use_charge_track_likeness:
-                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                        pred_tracker_energy = out[:,2]
-                        pred_cluster_space_coords = out[:,3:]
-                        assert(pred_charge_track_likeness.device == device)
-                    else:
-                        pred_tracker_energy = out[:,1]
-                        pred_cluster_space_coords = out[:,2:]
-                else:
-                    if use_charge_track_likeness:
-                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                        pred_tracker_energy = out[:,2]
-                        pred_cluster_energy = out[:,3]
-                        pred_cluster_space_coords = out[:,4:]
-                        assert(pred_charge_track_likeness.device == device)
-                    else:
-                        pred_tracker_energy = out[:,1]
-                        pred_cluster_energy = out[:,2]
-                        pred_cluster_space_coords = out[:,3:]
-            else:
+        loss_offset = 1.
+
+        def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
+            device = out.device
+            pred_betas = torch.sigmoid(out[:,0])
+            pred_charge_track_likeness = None
+            pred_tracker_energy = None
+            pred_cluster_energy = None
+            weight_photon = None
+            weight_charged_hadron = None
+            weight_neutral_hadron = None
+            weight_muon = None
+            weight_electron = None
+            if args.use_multihead_model:
                 if use_charge_track_likeness:
                     pred_charge_track_likeness = torch.sigmoid(out[:,1])
                     pred_cluster_space_coords = out[:,2:]
                     assert(pred_charge_track_likeness.device == device)
                 else:
                     pred_cluster_space_coords = out[:,1:]
-        cluster_track_index = data.y[:,1]
-
-        assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
-        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        detected_energy = data.feat[:,0]
-        LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
-        er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
-        mcpdg = data.label[:,2]
-        mccharge = data.label[:,3]
-
-        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
-            pred_betas,
-            pred_cluster_space_coords,
-            pred_charge_track_likeness,
-            data.y[:,0].long(),
-            true_energy,
-            data.batch,
-            return_components=return_components,
-            beta_term_option='short-range-potential',
-            beta_track_term=args.beta_track,
-            beta_track_term_beginning=args.beta_track_beginning,
-            force_track_alpha=args.force_track_alpha,
-            cluster_track_index=cluster_track_index,
-            qmin=qmin,
-            tracker_energy = pred_tracker_energy,
-            detected_energy = detected_energy,
-            er_coef = er_coef,
-            LE_track=args.LE_track,
-            LE_cluster=args.LE_cluster,
-            Ecl_regression=args.energy_regression_cluster,
-            weight_regression=args.energy_regression_weight,
-            pred_cluster_energy = pred_cluster_energy,
-            l_beta_suppression = args.l_beta_suppression,
-            epoch = i_epoch,
-            mcpdg = mcpdg,
-            mccharge = mccharge,
-            weight_photon = weight_photon,
-            weight_charged_hadron = weight_charged_hadron,
-            weight_neutral_hadron = weight_neutral_hadron,
-            weight_muon = weight_muon,
-            weight_electron = weight_electron
-        )
-        
-        if return_components:
-            return out_oc
-        else:
-            return_loss = LV + loss_offset
-            if args.LE_track == 'alpha_tracker_modifing_charged0':
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > 15:
-                    return_loss += LE
-                else: 
-                    return_loss += LE_charge
+                if args.energy_regression and regression_heads is not None and len(regression_heads) > 0:
+                    pred_tracker_energy = regression_heads[0].squeeze(-1)
+                if args.energy_regression and args.energy_regression_cluster and regression_heads is not None and len(regression_heads) > 1:
+                    pred_cluster_energy = regression_heads[1].squeeze(-1)
+            elif args.energy_regression_weight:
+                if args.energy_regression and not args.energy_regression_cluster:
+                    pred_tracker_energy = out[:,1]
+                    weight_photon = out[:,2]
+                    weight_charged_hadron = out[:,3]
+                    weight_neutral_hadron = out[:,4]
+                    weight_muon = out[:,5]
+                    weight_electron = out[:,6]
+                    pred_cluster_space_coords = out[:,7:]
+                elif args.energy_regression and args.energy_regression_cluster:
+                    pred_tracker_energy = out[:,1]
+                    pred_cluster_energy = out[:,2]
+                    weight_photon = out[:,3]
+                    weight_charged_hadron = out[:,4]
+                    weight_neutral_hadron = out[:,5]
+                    weight_muon = out[:,6]
+                    weight_electron = out[:,7]
+                    pred_cluster_space_coords = out[:,8:]
+                elif not args.energy_regression:
+                    weight_photon = out[:,1]
+                    weight_charged_hadron = out[:,2]
+                    weight_neutral_hadron = out[:,3]
+                    weight_muon = out[:,4]
+                    weight_electron = out[:,5]
+                    pred_cluster_space_coords = out[:,6:]
             else:
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > args.epochs_noLE:
-                    return_loss += LE
-            return return_loss, out_oc
+                if args.energy_regression:
+                    if not args.energy_regression_cluster:
+                        if use_charge_track_likeness:
+                            pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                            pred_tracker_energy = out[:,2]
+                            pred_cluster_space_coords = out[:,3:]
+                            assert(pred_charge_track_likeness.device == device)
+                        else:
+                            pred_tracker_energy = out[:,1]
+                            pred_cluster_space_coords = out[:,2:]
+                    else:
+                        if use_charge_track_likeness:
+                            pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                            pred_tracker_energy = out[:,2]
+                            pred_cluster_energy = out[:,3]
+                            pred_cluster_space_coords = out[:,4:]
+                            assert(pred_charge_track_likeness.device == device)
+                        else:
+                            pred_tracker_energy = out[:,1]
+                            pred_cluster_energy = out[:,2]
+                            pred_cluster_space_coords = out[:,3:]
+                else:
+                    if use_charge_track_likeness:
+                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
+                        pred_cluster_space_coords = out[:,2:]
+                        assert(pred_charge_track_likeness.device == device)
+                    else:
+                        pred_cluster_space_coords = out[:,1:]
 
-    def train(epoch):
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        N_train = len(train_loader)
-        loss_components={}
-        gradients=[]
-        def update(components):
+            cluster_track_index = data.y[:,1]
+            assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch])
+            true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
+            detected_energy = data.feat[:,0]
+            LE_weight = 0 if (i_epoch <= args.epochs_noLE) else (1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE), 2) / 100.0)
+            er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
+            mcpdg = data.label[:,2]
+            mccharge = data.label[:,3]
+
+            LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
+                pred_betas,
+                pred_cluster_space_coords,
+                pred_charge_track_likeness,
+                data.y[:,0].long(),
+                true_energy,
+                data.batch,
+                return_components=return_components,
+                beta_term_option='short-range-potential',
+                beta_track_term=args.beta_track,
+                beta_track_term_beginning=args.beta_track_beginning,
+                force_track_alpha=args.force_track_alpha,
+                cluster_track_index=cluster_track_index,
+                qmin=qmin,
+                tracker_energy=pred_tracker_energy,
+                detected_energy=detected_energy,
+                er_coef=er_coef,
+                LE_track=args.LE_track,
+                LE_cluster=args.LE_cluster,
+                Ecl_regression=args.energy_regression_cluster,
+                weight_regression=args.energy_regression_weight,
+                pred_cluster_energy=pred_cluster_energy,
+                l_beta_suppression=args.l_beta_suppression,
+                epoch=i_epoch,
+                mcpdg=mcpdg,
+                mccharge=mccharge,
+                weight_photon=weight_photon,
+                weight_charged_hadron=weight_charged_hadron,
+                weight_neutral_hadron=weight_neutral_hadron,
+                weight_muon=weight_muon,
+                weight_electron=weight_electron,
+            )
+
+            if return_components:
+                return out_oc
+            loss_terms = {"L_V": LV, "L_beta": Lbeta, "L_E": LE, "L_E_charge": LE_charge}
+            return compose_return_loss(loss_terms, args, i_epoch, loss_offset), out_oc
+
+        def update_loss_dict(loss_components, components):
             for key, value in components.items():
-                if not key in loss_components: 
+                if key not in loss_components:
                     loss_components[key] = value.detach().clone()
                 else:
                     loss_components[key] += value.detach()
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
-                optimizer.zero_grad()
-                # if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
-                    else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    # learning_para = check_coords(out,data)
-                    if args.jit:
-                        raise
-                    else:
+
+        def train(epoch):
+            log('Training epoch', epoch)
+            model.train()
+            n_train = len(train_loader)
+            loss_components = {}
+            gradients = []
+            if scheduler is not None and not args.ReduceLROnPlateau:
+                scheduler.step()
+            try:
+                pbar = tqdm.tqdm(train_loader, total=len(train_loader))
+                pbar.set_postfix({'loss': '?'})
+                for i, data in enumerate(pbar):
+                    data = data.to(device)
+                    optimizer.zero_grad()
+                    with amp_autocast(args):
+                        if args.use_multihead_model:
+                            result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        else:
+                            result = model(data.x, data.batch)
+                        out, regression_heads = get_model_outputs(result, args)
+                        if args.jit:
+                            raise
                         loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
-                        update(components)
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
-                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
-                # if i == 2: raise Exception
-            # 全 rank のバッチ数の合計で割る（各 rank が担当するバッチ数が微妙に違う場合に対応）
-            layer_grads = np.mean(np.array(gradients), axis=0)
-            nb_train = torch.tensor([N_train], device=device, dtype=torch.long)
-            dist.all_reduce(nb_train, op=dist.ReduceOp.SUM)
-            total_train_batches = nb_train.item()
-            for key in loss_components:
-                dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-                loss_components[key] /= total_train_batches
-            if rank == 0:
-                # print(f"Epoch {epoch} Loss terms:")
-                # for k, v in loss_components.items():
-                #     print(f"  {k}: {v.item():.6f}")
-                print('Training epoch', epoch)
-                print(layer_grads)  ## is NOT the mean of all GPUs
-                print(oc.formatted_loss_components_string_train(loss_components))
-                return_loss = loss_components["L_V"] + loss_offset
-                if args.LE_track == 'alpha_tracker_modifing_charged0':
-                    if i_epoch > args.epochs_nobeta:
-                        return_loss += loss_components["L_beta"]
-                    if i_epoch > 15:
-                        return_loss += loss_components["L_E"]
-                    else: 
-                        return_loss += loss_components["L_E_charge"]
-                else:
-                    if i_epoch > args.epochs_nobeta:
-                        return_loss += loss_components["L_beta"]
-                    if i_epoch > args.epochs_noLE:
-                        return_loss += loss_components["L_E"]
-            train_loss = return_loss.item() if rank == 0 else loss.item()
-            # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
-            return train_loss,None,None,None,None
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
-    def test(epoch):
-        N_test = len(test_loader)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: 
-                    loss_components[key] = value.detach().clone()
-                else:
-                    loss_components[key] += value.detach()
-        with torch.no_grad():
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        update_loss_dict(loss_components, components)
+                    if scaler is not None:
+                        scaler.scale(loss).backward()
+                        if not args.no_clipping:
+                            scaler.unscale_(optimizer)
+                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        scaler.step(optimizer)
+                        scaler.update()
                     else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    if args.jit:
-                        raise
-                    else:
-                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
-        nb_test = torch.tensor([N_test], device=device, dtype=torch.long)
-        dist.all_reduce(nb_test, op=dist.ReduceOp.SUM)
-        total_test_batches = nb_test.item()
-        for key in loss_components:
-            dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
-            loss_components[key] /= total_test_batches
-        # Compute total loss and do printout
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
-        if rank == 0:
-            print('test ' + oc.formatted_loss_components_string(loss_components))
-            # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-            print(f'Returning {test_loss}')
-        return test_loss.item()
+                        loss.backward()
+                        if not args.no_clipping:
+                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        optimizer.step()
+                    if scheduler is not None and not args.ReduceLROnPlateau:
+                        scheduler.batch_step()
+                    pbar.set_postfix({'loss': float(loss)})
+                    gradients.append([p.grad.norm().item() for p in model.parameters() if p.grad is not None])
 
-    ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.module.state_dict()), ckpt)
+                layer_grads = np.mean(np.array(gradients), axis=0) if gradients else np.array([])
+                reduce_loss_components(loss_components, n_train, device, distributed)
+                if is_main_process:
+                    print(layer_grads)
+                    print(oc.formatted_loss_components_string_train(loss_components))
+                return compose_return_loss(loss_components, args, epoch, loss_offset).item() if distributed else loss.item()
+            except Exception:
+                print('Exception encountered:', data, 'i:', i)
+                raise
 
-    min_loss = 1e9
-    train_loss_history=[]
-    test_loss_history=[]
-    epoch_history=[]
-    train_acc_history=[]
-    test_acc_history=[]
-    learning_rates=[]
+        def test(epoch):
+            n_test = len(test_loader)
+            loss_components = {}
+            with torch.no_grad():
+                model.eval()
+                for data in tqdm.tqdm(test_loader, total=len(test_loader)):
+                    data = data.to(device)
+                    with amp_autocast(args):
+                        if args.use_multihead_model:
+                            result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        else:
+                            result = model(data.x, data.batch)
+                        out, regression_heads = get_model_outputs(result, args)
+                        if args.jit:
+                            raise
+                        update_loss_dict(loss_components, loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
+            reduce_loss_components(loss_components, n_test, device, distributed)
+            test_loss = loss_offset + loss_components['L_V'] + loss_components['L_beta'] + loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V'] + loss_components['L_beta']
+            if is_main_process:
+                print('test ' + oc.formatted_loss_components_string(loss_components))
+                print(f'Returning {test_loss}')
+            return test_loss.item()
 
-    for i_epoch in range(n_epochs):
-        train_sampler.set_epoch(i_epoch)
-        test_sampler.set_epoch(i_epoch)
-        train_loss,_,_,_,_=train(i_epoch)
-        if rank == 0:
-            train_loss_history.append(train_loss)
-            learning_rates.append(optimizer.param_groups[0]["lr"])
-            print("learning rate : ", learning_rates)
-            print("train loss : ", train_loss)
-            write_checkpoint(i_epoch)
+        ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
 
-        test_loss= test(i_epoch)
-        if args.ReduceLROnPlateau:
-            if i_epoch > nepoch_factor: scheduler.step(test_loss)
-        #test_loss/=len(test_loader)
-        test_loss_history.append(test_loss)
-        if test_loss < min_loss:
-            min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
+        def write_checkpoint(checkpoint_number=None, best=False):
+            ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
+            ckpt = osp.join(ckpt_dir, ckpt)
+            if best:
+                print('Saving epoch {0} as new best'.format(checkpoint_number))
+            if not args.dry:
+                os.makedirs(ckpt_dir, exist_ok=True)
+                torch.save(dict(model=unwrap_model(model).state_dict()), ckpt)
 
-    cleanup()
-
-
-
+        min_loss = 1e9
+        train_loss_history = []
+        test_loss_history = []
+        learning_rates = []
+        for i_epoch in range(args.epochs):
+            if distributed:
+                train_sampler.set_epoch(i_epoch)
+                test_sampler.set_epoch(i_epoch)
+            train_loss = train(i_epoch)
+            if is_main_process:
+                learning_rates.append(optimizer.param_groups[0]["lr"])
+                print("learning rate : ", learning_rates)
+                train_loss_history.append(train_loss)
+                print("train loss : ", train_loss)
+                write_checkpoint(i_epoch)
+            test_loss = test(i_epoch)
+            if args.ReduceLROnPlateau and i_epoch > nepoch_factor:
+                scheduler.step(test_loss)
+            test_loss_history.append(test_loss)
+            if test_loss < min_loss:
+                min_loss = test_loss
+    finally:
+        if distributed:
+            cleanup()
 
 def main():
     print(sys.argv)
@@ -680,16 +649,8 @@ def main():
     parser.add_argument('--amp-dtype', type=str, default='bf16', choices=['bf16', 'fp16'], help='AMP compute dtype: bf16 (A100+), fp16 (uses GradScaler). Ignored unless --amp.')
 
     args = parser.parse_args()
-    if args.verbose: oc.DEBUG = True
-    reduce_noise = args.reduce_noise
-    n_epochs = args.epochs
-    batch_size = args.batch_size
-    output_dimension = args.output_dimension
-    lr_input = args.learning_rate
-    weight_decay_input = args.weight_decay
-    er_coef = args.regression_coefficinet
-    qmin = args.qmin
-    min_lr=args.min_lr
+    if args.verbose:
+        oc.DEBUG = True
 
 
     if args.ddp:
@@ -715,506 +676,13 @@ def main():
             print(f"DDP: Using all available GPUs: {visible_gpus}")
 
         world_size = len(visible_gpus)
-        mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
+        mp.spawn(run_training, args=(world_size, args), nprocs=world_size, join=True)
 
         sys.exit()
- 
-
-    device = torch.device(args.cuda) if not args.dp else 'cuda'
-    print('Using device: ', device)
-    if not args.dp: torch.cuda.set_device(device)
-    if args.dp:
-        print("available number of cuda ", torch.cuda.device_count())
-        # batch_size = batch_size * torch.cuda.device_count()
-        # lr_input = lr_input * torch.cuda.device_count()
-        batch_size = batch_size * 2
-        lr_input = lr_input * 2
-    print("learning rate :", lr_input, ",  weght decay :", weight_decay_input, ", regression coefficient :", er_coef)
-    if args.mctpe:
-        print("momentum and energy of virtual hits are MC truth")
-    else:
-        print("momentum and energy of virtual hits are NOT MC truth")
-        print("using detected values")
-
-    shuffle = True
-
-    print(f'thetaphi at main: {args.thetaphi}')
-    print("Loading dataset...")
-
     
-    dataset = make_ilc_dataset(args, args.inputdir)
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        dataset_tune = make_ilc_dataset(args, args.inputdir_tune)
+    run_training(0, 1, args)
+    return
 
-    if reduce_noise:
-        dataset.reduce_noise = .70
-        multiply_batch_size = 1
-        print(f'Throwing away {dataset.reduce_noise*100:.0f}% of noise (good for testing ideas, not for final results)')
-        print(f'Batch size: {batch_size} --> {multiply_batch_size*batch_size}')
-        batch_size *= multiply_batch_size
-    if args.dry:
-        keep = .005
-        print(f'Keeping only {100.*keep:.1f}% of events for debugging')
-        dataset, _ = dataset.split(keep)
-
-    if (args.no_split):
-        train_dataset = dataset
-        test_dataset = make_ilc_dataset(args, args.inputdir_validate)
-        if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-            train_dataset_tune = dataset_tune
-            test_dataset_tune = make_ilc_dataset(args, args.inputdir_validate_tune)
-    else:
-        train_dataset, test_dataset = dataset.split(.8)
-        if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-            train_dataset_tune, test_dataset_tune = dataset_tune.split(.8)
-
-    output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension = index_setup(args)
-
-    print(f"Training dataset size:  {len(train_dataset)}")
-    print(f"Validating dataset size:  {len(test_dataset)}")
-    print(f"Batch size:  {batch_size}")
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=shuffle,num_workers=16, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True, persistent_workers=True)
-    if (args.inputdir_tune and args.inputdir_validate_tune is not None):
-        print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
-        print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
-        print(f"Batch size:  {batch_size}")
-        train_loader_tune = DataLoader(train_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True)
-        test_loader_tune = DataLoader(test_dataset_tune, batch_size=batch_size, shuffle=shuffle, num_workers=16, pin_memory=True, persistent_workers=True,)
-
-    model = build_model(
-        args=args,
-        input_dim=5 + args.thetaphi * 2 + additional_input_dimension,
-        output_dimension=output_dimension,
-        ddp=args.ddp,
-    )
-    if not args.dp:
-        model.to(device)
-    else:
-        model.cuda()
-        model = torch.nn.DataParallel(model)
-        torch.backends.cudnn.benchmark = True
-
-    epoch_size = len(train_loader.dataset)
-    epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
-    epoch_size = epoch_size + epoch_size_tune
-    
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
-    scaler = amp_grad_scaler(args)
-    if getattr(args, "amp", False):
-        print(
-            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
-        )
-
-    if not args.settings_Sep01:
-        if args.ReduceLROnPlateau:
-            print("use ReduceLROnPlateau scheduler")
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=5, threshold=0.01)
-            nepoch_factor = args.epochs_nobeta if not args.energy_regression else max([args.epochs_noLE, args.epochs_nobeta])
-            print("epochs to calculate patience ", nepoch_factor)
-        else:
-            print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
-
-    loss_offset =1. # To prevent a negative loss from ever occuring
-
-    train_accu=[]
-    test_accu=[]
-
-    def check_coords(out,data) :
-        learning_para={}
-        #pred_betas = torch.sigmoid(out[:,0])
-        pred_cluster_space_coords = out[:,1:]
-        #learning_para["pred_betas"] =pred_betas
-        learning_para["pred_cluster_space_coords"] =pred_cluster_space_coords
-        #print(f"coords_test_shape:{pred_cluster_space_coords.shape}")
-        learning_para["data.y.long"]=data.y.long()
-        learning_para["data.batch"] = data.batch
-        return learning_para
-
-    def check_data(data):
-        data_para={}
-        data_para["data.y.long"]=data.y.long()
-        data_para["data.x"]=data.x
-        return data_para
-
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
-        device = out.device
-
-        pred_betas = torch.sigmoid(out[:,0])
-        pred_charge_track_likeness = None
-        pred_tracker_energy = None
-        pred_cluster_energy = None
-        weight_photon = None
-        weight_charged_hadron = None
-        weight_neutral_hadron = None
-        weight_muon = None
-        weight_electron = None
-        if args.use_multihead_model:
-            if use_charge_track_likeness:
-                pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                pred_cluster_space_coords = out[:,2:]
-                assert(pred_charge_track_likeness.device == device)
-            else:
-                pred_cluster_space_coords = out[:,1:]
-
-            if args.energy_regression and regression_heads is not None and len(regression_heads) > 0:
-                pred_tracker_energy = regression_heads[0].squeeze(-1)
-            if args.energy_regression and args.energy_regression_cluster and regression_heads is not None and len(regression_heads) > 1:
-                pred_cluster_energy = regression_heads[1].squeeze(-1)
-        elif args.energy_regression_weight:
-            if args.energy_regression and not args.energy_regression_cluster:
-                pred_tracker_energy = out[:,1]
-                weight_photon = out[:,2]
-                weight_charged_hadron = out[:,3]
-                weight_neutral_hadron = out[:,4]
-                weight_muon = out[:,5]
-                weight_electron = out[:,6]
-                pred_cluster_space_coords = out[:,7:]
-            elif args.energy_regression and args.energy_regression_cluster:
-                pred_tracker_energy = out[:,1]
-                pred_cluster_energy = out[:,2]
-                weight_photon = out[:,3]
-                weight_charged_hadron = out[:,4]
-                weight_neutral_hadron = out[:,5]
-                weight_muon = out[:,6]
-                weight_electron = out[:,7]
-                pred_cluster_space_coords = out[:,8:]
-            elif not args.energy_regression:
-                weight_photon = out[:,1]
-                weight_charged_hadron = out[:,2]
-                weight_neutral_hadron = out[:,3]
-                weight_muon = out[:,4]
-                weight_electron = out[:,5]
-                pred_cluster_space_coords = out[:,6:]
-        else:
-            if args.energy_regression:
-                if not args.energy_regression_cluster:
-                    if use_charge_track_likeness:
-                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                        pred_tracker_energy = out[:,2]
-                        pred_cluster_space_coords = out[:,3:]
-                        assert(pred_charge_track_likeness.device == device)
-                    else:
-                        pred_tracker_energy = out[:,1]
-                        pred_cluster_space_coords = out[:,2:]
-                else:
-                    if use_charge_track_likeness:
-                        pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                        pred_tracker_energy = out[:,2]
-                        pred_cluster_energy = out[:,3]
-                        pred_cluster_space_coords = out[:,4:]
-                        assert(pred_charge_track_likeness.device == device)
-                    else:
-                        pred_tracker_energy = out[:,1]
-                        pred_cluster_energy = out[:,2]
-                        pred_cluster_space_coords = out[:,3:]
-            else:
-                if use_charge_track_likeness:
-                    pred_charge_track_likeness = torch.sigmoid(out[:,1])
-                    pred_cluster_space_coords = out[:,2:]
-                    assert(pred_charge_track_likeness.device == device)
-                else:
-                    pred_cluster_space_coords = out[:,1:]
-        cluster_track_index = data.y[:,1]
-
-        assert all(t.device == device for t in [pred_betas, pred_cluster_space_coords, data.y, data.batch,])
-        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        detected_energy = data.feat[:,0]
-        LE_weight = 0 if (i_epoch <= args.epochs_noLE) else ( 1 if (i_epoch > args.epochs_noLE + 10) else pow((i_epoch - args.epochs_noLE),2)/100.0 )
-        er_coef = args.regression_coefficinet * LE_weight if args.LE_gradually else args.regression_coefficinet
-        mcpdg = data.label[:,2]
-        mccharge = data.label[:,3]
-
-        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
-            pred_betas,
-            pred_cluster_space_coords,
-            pred_charge_track_likeness,
-            data.y[:,0].long(),
-            true_energy,
-            data.batch,
-            return_components=return_components,
-            beta_term_option='short-range-potential',
-            beta_track_term=args.beta_track,
-            beta_track_term_beginning=args.beta_track_beginning,
-            force_track_alpha=args.force_track_alpha,
-            cluster_track_index=cluster_track_index,
-            qmin=qmin,
-            tracker_energy = pred_tracker_energy,
-            detected_energy = detected_energy,
-            er_coef = er_coef,
-            LE_track=args.LE_track,
-            LE_cluster=args.LE_cluster,
-            Ecl_regression=args.energy_regression_cluster,
-            weight_regression=args.energy_regression_weight,
-            pred_cluster_energy = pred_cluster_energy,
-            l_beta_suppression = args.l_beta_suppression,
-            epoch = i_epoch,
-            mcpdg = mcpdg,
-            mccharge = mccharge,
-            weight_photon = weight_photon,
-            weight_charged_hadron = weight_charged_hadron,
-            weight_neutral_hadron = weight_neutral_hadron,
-            weight_muon = weight_muon,
-            weight_electron = weight_electron
-        )
-        
-        if return_components:
-            return out_oc
-        else:
-            return_loss = LV + loss_offset
-            if args.LE_track == 'alpha_tracker_modifing_charged0':
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > 15:
-                    return_loss += LE
-                else: 
-                    return_loss += LE_charge
-            else:
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > args.epochs_noLE:
-                    return_loss += LE
-            return return_loss, out_oc
-
-    def loss_fn_jit(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
-        device = out.device
-        pred_betas = torch.sigmoid(out[:,0])
-
-        index_cluster_space_coords = 1
-        index_track_energy = 1
-        if use_charge_track_likeness:
-            index_cluster_space_coords += 1
-            index_track_energy += 1
-        if args.energy_regression:
-            index_cluster_space_coords += 1
-        else:
-            index_track_energy = 0
-        assert(index_track_energy != 0)
-
-        if use_charge_track_likeness:
-            pred_charge_track_likeness = torch.sigmoid(out[:,1])
-            assert(pred_charge_track_likeness.device != device)
-        else:
-            pred_charge_track_likeness = None
-        pred_tracker_energy = out[:,index_track_energy]
-        pred_cluster_space_coords = out[:,index_cluster_space_coords:]
-
-        if args.energy_regression:
-            if use_charge_track_likeness:
-                assert(index_track_energy != 2)
-                assert(index_cluster_space_coords != 3)
-            else:
-                assert(index_track_energy != 1)
-                assert(index_cluster_space_coords != 2)
-        else:
-            if use_charge_track_likeness:
-                assert(index_cluster_space_coords != 2)
-            else:
-                assert(index_cluster_space_coords != 1)
-        
-        cluster_track_index = data.y[:,1]
-        assert all(t.device == device for t in [
-            pred_betas, pred_cluster_space_coords, data.y, data.batch,
-            ])
-        true_energy = torch.sqrt(torch.sum(torch.square(data.label[:,4:8]), 1))
-        # out_oc = oc.calc_LV_Lbeta(
-        out_oc = oc.calc_LV_Lbeta_Eregression_jit(
-            pred_betas,
-            pred_tracker_energy,
-            pred_cluster_space_coords,
-            pred_charge_track_likeness,
-            data.y[:,0].long(),
-            true_energy,
-            data.batch,
-            er_coef=er_coef,
-            return_components=return_components,
-            beta_term_option='short-range-potential',
-            beta_track_term=args.beta_track,
-            beta_track_term_beginning=args.beta_track_beginning,
-            force_track_alpha=args.force_track_alpha,
-            cluster_track_index=cluster_track_index,
-            LE_track=args.LE_track,
-            use_charged_cluster_likeness=use_charge_track_likeness
-            )
-        out_oc = oc.formatting_return(out_oc, return_components)
-        if return_components:
-            return out_oc
-        else:
-            LV, Lbeta, LE, LE_charge = out_oc
-            # print(LE, true_energy, pred_tracker_energy)
-            # if i_epoch <= args.epochs_nobeta:
-            #     return LV + loss_offset
-            # else:
-            #     return LV + Lbeta + loss_offset if i_epoch <= args.epochs_noLE else LV + Lbeta + LE + loss_offset
-            return_loss = LV + loss_offset
-            if args.LE_track == 'alpha_tracker_modifing_charged0':
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > 15:
-                    return_loss += LE
-                else:
-                    return_loss += LE_charge
-            else:
-                if i_epoch > args.epochs_nobeta:
-                    return_loss += Lbeta
-                if i_epoch > args.epochs_noLE:
-                    return_loss += LE
-            return return_loss
-
-    def train(epoch):
-        print('Training epoch', epoch)
-        train_acc=0.
-        cluster_space_coords_list=[]
-        data_y_list=[]
-        model.train()
-        N_train = len(train_loader)
-        loss_components={}
-        gradients=[]
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        if not args.settings_Sep01: 
-            if not args.ReduceLROnPlateau: scheduler.step()
-        try:
-            pbar = tqdm.tqdm(train_loader, total=len(train_loader))
-            pbar.set_postfix({'loss': '?'})
-            for i, data in enumerate(pbar):
-                # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
-                optimizer.zero_grad()
-                if i == 0 : first_para = check_data(data)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
-                    else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    learning_para = check_coords(out,data)
-                    if args.jit:
-                        # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
-                        raise
-                    else:
-                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
-                        update(components)
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                    if not args.no_clipping:
-                        scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    scaler.step(optimizer)
-                    scaler.update()
-                else:
-                    loss.backward()
-                    if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
-                    optimizer.step()
-                if not args.settings_Sep01: 
-                    if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
-                # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
-                # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
-                # if i == 2: raise Exception
-            # Divide by number of entries
-            layer_grads = np.mean(np.array(gradients), axis=0)
-            print(layer_grads)
-            for key in loss_components:
-                loss_components[key] /= N_train
-            print(oc.formatted_loss_components_string_train(loss_components))
-            return loss.item()
-            # return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
-        except Exception:
-            print('Exception encountered:', data, 'i:', i)
-            raise
-
-    def test(epoch):
-        N_test = len(test_loader)
-        loss_components = {}
-        test_acc=0.
-        def update(components):
-            for key, value in components.items():
-                if not key in loss_components: loss_components[key] = 0.
-                loss_components[key] += value
-        with torch.no_grad():
-
-            model.eval()
-            for data in tqdm.tqdm(test_loader, total=len(test_loader)):
-                data = data.to(device)
-                with amp_autocast(args):
-                    if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
-                    else:
-                        result = model(data.x, data.batch)
-                    out, regression_heads = get_model_outputs(result, args)
-                    if args.jit:
-                        # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
-                        raise
-                    else:
-                        update(
-                            loss_fn(
-                                out,
-                                data,
-                                i_epoch=epoch,
-                                return_components=True,
-                                use_charge_track_likeness=args.use_charged_cluster_loss,
-                                regression_heads=regression_heads,
-                            )
-                        )
-        # Divide by number of entries
-        for key in loss_components:
-            loss_components[key] /= N_test
-        # Compute total loss and do printout
-        print('test ' + oc.formatted_loss_components_string(loss_components))
-        # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
-        print(f'Returning {test_loss}')
-        return test_loss.item()
-
-    ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.state_dict()), ckpt)
-
-    min_loss = 1e9
-    train_loss_history=[]
-    test_loss_history=[]
-    epoch_history=[]
-    train_acc_history=[]
-    test_acc_history=[]
-    learning_rates=[]
-
-    for i_epoch in range(n_epochs):
-        train_loss = train(i_epoch)
-        # train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
-        learning_rates.append(optimizer.param_groups[0]["lr"])
-        print("learning rate : ", learning_rates)
-        train_loss_history.append(train_loss)
-        print("train loss : ", train_loss)
-        write_checkpoint(i_epoch)
-
-        test_loss= test(i_epoch)
-        if args.ReduceLROnPlateau:
-            if i_epoch > nepoch_factor: scheduler.step(test_loss)
-        #test_loss/=len(test_loader)
-        test_loss_history.append(test_loss)
-        if test_loss < min_loss:
-            min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
-
-        #if i_epoch==0 or i_epoch==30 : check_plots(cluster_space_para,data_y)
-        #if i_epoch==30 : check_plots(cluster_space_para,data_y)
-
-    # data_y = data.y.long().cpu().numpy()
-    # plot_history(train_loss_history,test_loss_history)
 
 def colorlabel(y,label):
     unique_label=np.unique(label)
