@@ -43,6 +43,7 @@ class ILCStreamingDataset(IterableDataset):
         seed=1001,
         shuffle=True,
         shuffle_buffer_size=256,
+        files_per_chunk=1,
         pad_to_equal_workers=True,
         _files=None,
         _event_counts=None,
@@ -66,6 +67,7 @@ class ILCStreamingDataset(IterableDataset):
         self.epoch = 0
         self.shuffle = bool(shuffle)
         self.shuffle_buffer_size = max(0, int(shuffle_buffer_size))
+        self.files_per_chunk = max(1, int(files_per_chunk))
         self.pad_to_equal_workers = bool(pad_to_equal_workers)
         self._para_tanh = para_tanh
         self._recreate = recreate
@@ -113,13 +115,14 @@ class ILCStreamingDataset(IterableDataset):
             seed=self.seed,
             shuffle=self.shuffle,
             shuffle_buffer_size=self.shuffle_buffer_size,
+            files_per_chunk=self.files_per_chunk,
             pad_to_equal_workers=self.pad_to_equal_workers,
         )
 
         print(
             "ILCStreamingDataset: "
             f"path={path}, files={len(self.files)}, events~={self.total_events}, "
-            f"shuffle_buffer={self.shuffle_buffer_size}"
+            f"shuffle_buffer={self.shuffle_buffer_size}, files_per_chunk={self.files_per_chunk}"
         )
 
     @staticmethod
@@ -152,6 +155,10 @@ class ILCStreamingDataset(IterableDataset):
     def set_shuffle_buffer_size(self, shuffle_buffer_size):
         self.shuffle_buffer_size = max(0, int(shuffle_buffer_size))
         self._stream_kw["shuffle_buffer_size"] = self.shuffle_buffer_size
+
+    def set_files_per_chunk(self, files_per_chunk):
+        self.files_per_chunk = max(1, int(files_per_chunk))
+        self._stream_kw["files_per_chunk"] = self.files_per_chunk
 
     def set_pad_to_equal_workers(self, pad_to_equal_workers):
         self.pad_to_equal_workers = bool(pad_to_equal_workers)
@@ -222,15 +229,52 @@ class ILCStreamingDataset(IterableDataset):
 
         return assignments, loads
 
+    def _chunked_file_indices(self, file_indices: Iterable[int]):
+        file_indices = list(file_indices)
+        for start in range(0, len(file_indices), self.files_per_chunk):
+            yield file_indices[start : start + self.files_per_chunk]
+
     def _iter_file_events(self, file_indices: Iterable[int], rng):
-        for file_idx in file_indices:
-            path = self.files[file_idx]
-            feat_ak, label_ak, _, _, pand_ak, _, event_ak = la.load_awkward2(path)
-            if self.timingCut:
-                n_ev = int(ak.num(feat_ak, axis=0))
-                feat_ak, label_ak = ILCDataset.timingCut(
-                    feat_ak, label_ak, cutoff_time=14, nstart=0, nend=n_ev
-                )
+        for chunk_file_indices in self._chunked_file_indices(file_indices):
+            feat_chunks = []
+            label_chunks = []
+            pand_chunks = [] if self.pandora else None
+            event_chunks = [] if self.event_energy else None
+            event_sources = []
+
+            for file_idx in chunk_file_indices:
+                path = self.files[file_idx]
+                feat_ak, label_ak, _, _, pand_ak, _, event_ak = la.load_awkward2(path)
+                if self.timingCut:
+                    n_ev = int(ak.num(feat_ak, axis=0))
+                    feat_ak, label_ak = ILCDataset.timingCut(
+                        feat_ak, label_ak, cutoff_time=14, nstart=0, nend=n_ev
+                    )
+                if self.pandora and pand_ak is None:
+                    raise ValueError(f"Pandora requested but missing in {path}")
+                if self.event_energy and event_ak is None:
+                    raise ValueError(f"event group missing in {path}")
+
+                n_events = int(ak.num(feat_ak, axis=0))
+                feat_chunks.append(feat_ak)
+                label_chunks.append(label_ak)
+                if self.pandora:
+                    pand_chunks.append(pand_ak)
+                if self.event_energy:
+                    event_chunks.append(event_ak)
+                event_sources.extend((path, local_i) for local_i in range(n_events))
+
+            if not feat_chunks:
+                continue
+
+            feat_ak = feat_chunks[0] if len(feat_chunks) == 1 else ak.concatenate(feat_chunks, axis=0)
+            label_ak = label_chunks[0] if len(label_chunks) == 1 else ak.concatenate(label_chunks, axis=0)
+            pand_ak = None
+            event_ak = None
+            if self.pandora:
+                pand_ak = pand_chunks[0] if len(pand_chunks) == 1 else ak.concatenate(pand_chunks, axis=0)
+            if self.event_energy:
+                event_ak = event_chunks[0] if len(event_chunks) == 1 else ak.concatenate(event_chunks, axis=0)
 
             n_events = int(ak.num(feat_ak, axis=0))
             nhits = ak.num(feat_ak, axis=1)
@@ -238,22 +282,19 @@ class ILCStreamingDataset(IterableDataset):
             if self.shuffle:
                 rng.shuffle(event_indices)
 
-            for local_i in event_indices.tolist():
-                if int(nhits[local_i]) <= 0:
+            for chunk_i in event_indices.tolist():
+                if int(nhits[chunk_i]) <= 0:
                     continue
-                feat = np.copy(ak.to_numpy(feat_ak[local_i]))
-                label = np.copy(ak.to_numpy(label_ak[local_i]))
+                feat = np.copy(ak.to_numpy(feat_ak[chunk_i]))
+                label = np.copy(ak.to_numpy(label_ak[chunk_i]))
                 pand = None
                 eventE = None
                 jetE = None
+                path, local_i = event_sources[chunk_i]
                 if self.pandora:
-                    if pand_ak is None:
-                        raise ValueError(f"Pandora requested but missing in {path}")
-                    pand = np.copy(ak.to_numpy(pand_ak[local_i]))
+                    pand = np.copy(ak.to_numpy(pand_ak[chunk_i]))
                 if self.event_energy:
-                    if event_ak is None:
-                        raise ValueError(f"event group missing in {path}")
-                    row = event_ak[local_i]
+                    row = event_ak[chunk_i]
                     eventE = np.copy(ak.to_numpy(row[2]))
                     jetE = np.copy(ak.to_numpy(row[:2]))
 

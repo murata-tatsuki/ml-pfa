@@ -1,4 +1,5 @@
 import os, os.path as osp
+import socket
 from contextlib import nullcontext
 from time import strftime
 import tqdm
@@ -35,6 +36,7 @@ def make_ilc_dataset(args, inputdir):
         print(
             "Using ILCStreamingDataset "
             f"(shuffle_buffer={getattr(args, 'stream_shuffle_buffer', 256)}, "
+            f"files_per_chunk={getattr(args, 'stream_files_per_chunk', 1)}, "
             f"seed={getattr(args, 'stream_seed', 1001)})"
         )
         return ILCStreamingDataset(
@@ -43,6 +45,7 @@ def make_ilc_dataset(args, inputdir):
             seed=getattr(args, "stream_seed", 1001),
             shuffle=True,
             shuffle_buffer_size=getattr(args, "stream_shuffle_buffer", 256),
+            files_per_chunk=getattr(args, "stream_files_per_chunk", 1),
             pad_to_equal_workers=True,
         )
     if getattr(args, "ilc_sharded", False):
@@ -62,7 +65,7 @@ def is_streaming_dataset(dataset):
     return isinstance(dataset, ILCStreamingDataset)
 
 
-def configure_streaming_dataset(dataset, epoch=None, shuffle=None, shuffle_buffer_size=None, pad_to_equal_workers=None):
+def configure_streaming_dataset(dataset, epoch=None, shuffle=None, shuffle_buffer_size=None, files_per_chunk=None, pad_to_equal_workers=None):
     if not is_streaming_dataset(dataset):
         return
     if epoch is not None:
@@ -71,6 +74,8 @@ def configure_streaming_dataset(dataset, epoch=None, shuffle=None, shuffle_buffe
         dataset.set_shuffle(shuffle)
     if shuffle_buffer_size is not None:
         dataset.set_shuffle_buffer_size(shuffle_buffer_size)
+    if files_per_chunk is not None:
+        dataset.set_files_per_chunk(files_per_chunk)
     if pad_to_equal_workers is not None:
         dataset.set_pad_to_equal_workers(pad_to_equal_workers)
 
@@ -88,8 +93,15 @@ def make_data_loader(dataset, batch_size, args, shuffle=False, ddp=False, sample
         num_workers=num_workers,
         pin_memory=True,
     )
-    if num_workers > 0 and not is_streaming_dataset(dataset):
-        common["persistent_workers"] = True
+    if num_workers > 0:
+        common["timeout"] = getattr(args, "dataloader_timeout", 0)
+        if is_streaming_dataset(dataset):
+            # h5py + many forked workers can occasionally stall one DDP rank.
+            # Keep prefetch shallow and use spawn to reduce worker-side hangs.
+            common["prefetch_factor"] = getattr(args, "prefetch_factor", 1)
+            common["multiprocessing_context"] = "spawn"
+        else:
+            common["persistent_workers"] = True
 
     if is_streaming_dataset(dataset):
         return DataLoader(dataset, shuffle=False, **common)
@@ -101,6 +113,10 @@ from model import get_model, get_model_branch
 
 #from ReadText import ReadText
 import sys
+
+_ORIGINAL_STDOUT = sys.stdout
+_ORIGINAL_STDERR = sys.stderr
+_PROGRESS_STREAM_CACHE = {}
 
 # for distributed data parallel
 import torch.distributed as dist
@@ -130,6 +146,80 @@ def amp_grad_scaler(args):
     if args.amp_dtype == "fp16":
         return GradScaler()
     return None
+
+
+def progress_output_enabled():
+    return bool(getattr(sys.stdout, "isatty", lambda: False)())
+
+
+def get_progress_stream(args=None, rank=None):
+    if args is not None and getattr(args, "ddp", False) and getattr(args, "ddp_log_dir", None):
+        progress_rank = getattr(args, "progress_rank", 0)
+        if rank != progress_rank:
+            return None
+        cache_key = (os.getpid(), rank, "tty")
+        if cache_key in _PROGRESS_STREAM_CACHE:
+            return _PROGRESS_STREAM_CACHE[cache_key]
+        for stream in (_ORIGINAL_STDERR, _ORIGINAL_STDOUT):
+            if getattr(stream, "isatty", lambda: False)():
+                _PROGRESS_STREAM_CACHE[cache_key] = stream
+                return stream
+        try:
+            stream = open("/dev/tty", "w", buffering=1, encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+        _PROGRESS_STREAM_CACHE[cache_key] = stream
+        return stream
+
+    for stream in (sys.stderr, sys.stdout):
+        if getattr(stream, "isatty", lambda: False)():
+            return stream
+    return None
+
+
+def should_show_progress(args=None, rank=None):
+    return get_progress_stream(args, rank) is not None
+
+
+def estimate_streaming_rank_samples(dataset, args, rank=0, world_size=1, ddp=False):
+    if not is_streaming_dataset(dataset):
+        return None
+    num_workers = max(1, data_loader_num_workers(args, ddp=ddp))
+    rng = np.random.default_rng(dataset.seed + dataset.epoch)
+    file_indices = dataset._shuffled_file_indices(rng)
+    assignments, loads = dataset._assign_files(file_indices, world_size * num_workers)
+    if dataset.pad_to_equal_workers and world_size > 1 and dataset.shuffle:
+        target_events = max(loads) if loads else 0
+        return num_workers * target_events
+
+    start = rank * num_workers
+    stop = start + num_workers
+    total = 0
+    for worker_idx in range(start, stop):
+        total += sum(dataset.event_counts[file_idx] for file_idx in assignments[worker_idx])
+    return total
+
+
+def progress_total(loader, dataset, args, rank=0, world_size=1, ddp=False):
+    if is_streaming_dataset(dataset):
+        samples = estimate_streaming_rank_samples(dataset, args, rank=rank, world_size=world_size, ddp=ddp)
+        if samples is None:
+            return None
+        return max(1, int(np.ceil(samples / loader.batch_size)))
+    return len(loader)
+
+
+def ddp_scheduler_epoch_size(dataset, loader, sampler, args, rank, world_size):
+    if is_streaming_dataset(dataset):
+        samples = estimate_streaming_rank_samples(dataset, args, rank=rank, world_size=world_size, ddp=True)
+        if samples is not None:
+            return int(samples)
+    if sampler is not None:
+        try:
+            return int(len(sampler))
+        except TypeError:
+            pass
+    return int(len(loader.dataset))
 
 def run_requirements(args):
     if (args.no_split and args.inputdir_validate is None):
@@ -241,14 +331,30 @@ def build_model(args, input_dim, output_dimension, ddp=False):
 
 
 def setup_ddp(rank, world_size):
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def cleanup():
     dist.destroy_process_group()
 
+
+def pick_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
+
+
+def configure_ddp_rank_logging(args, rank):
+    if not getattr(args, "ddp_log_dir", None):
+        return
+    os.makedirs(args.ddp_log_dir, exist_ok=True)
+    log_path = osp.join(args.ddp_log_dir, f"rank{rank}.log")
+    log_file = open(log_path, "a", buffering=1, encoding="utf-8")
+    sys.stdout = log_file
+    sys.stderr = log_file
+
 def run_ddp_training(rank, world_size, args):
+    configure_ddp_rank_logging(args, rank)
     # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
     # setup_ddp(local_rank, world_size)
     # torch.cuda.set_device(local_rank)
@@ -301,8 +407,20 @@ def run_ddp_training(rank, world_size, args):
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
 
-    configure_streaming_dataset(train_dataset, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=True)
-    configure_streaming_dataset(test_dataset, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+    configure_streaming_dataset(
+        train_dataset,
+        shuffle=True,
+        shuffle_buffer_size=args.stream_shuffle_buffer,
+        files_per_chunk=args.stream_files_per_chunk,
+        pad_to_equal_workers=True,
+    )
+    configure_streaming_dataset(
+        test_dataset,
+        shuffle=False,
+        shuffle_buffer_size=0,
+        files_per_chunk=args.stream_files_per_chunk,
+        pad_to_equal_workers=False,
+    )
 
     # Sampler（streaming では Dataset 内で rank / worker ごとに file 分割する）
     if is_streaming_dataset(train_dataset):
@@ -338,13 +456,19 @@ def run_ddp_training(rank, world_size, args):
     model = DDP(model, device_ids=[rank])
 
     # optimizer, scheduler setting
-    epoch_size = len(train_loader.dataset)
+    epoch_size = ddp_scheduler_epoch_size(
+        train_dataset,
+        train_loader,
+        train_sampler,
+        args,
+        rank=rank,
+        world_size=world_size,
+    )
+    scheduler_batch_size = args.batch_size
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
     scaler = amp_grad_scaler(args)
     if getattr(args, "amp", False) and rank == 0:
-        print(
-            f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
-        )
+        print(f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}")
     if not args.settings_Sep01:
         if args.ReduceLROnPlateau:
             print("use ReduceLROnPlateau scheduler")
@@ -353,7 +477,22 @@ def run_ddp_training(rank, world_size, args):
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
+            if rank == 0:
+                print(
+                    "DDP scheduler setup: "
+                    f"local_batch_size={scheduler_batch_size}, local_epoch_size={epoch_size}, "
+                    f"world_size={world_size}"
+                )
+            scheduler = CyclicLRWithRestarts(
+                optimizer,
+                scheduler_batch_size,
+                epoch_size,
+                restart_period=args.restart_period,
+                t_mult=1.1,
+                policy=args.lr_policy,
+                min_lr=min_lr,
+                nrestart_cosreduce=args.nrestart_cosreduce,
+            )
     loss_offset =1. # To prevent a negative loss from ever occuring
 
     def check_coords(out,data) :
@@ -530,8 +669,28 @@ def run_ddp_training(rank, world_size, args):
         if not args.settings_Sep01: 
             if not args.ReduceLROnPlateau: scheduler.step()
         try:
-            pbar = tqdm.tqdm(train_loader, total=None if streaming_train else len(train_loader))
-            pbar.set_postfix({'loss': '?'})
+            show_progress = should_show_progress(args, rank=rank)
+            pbar_stream = get_progress_stream(args, rank=rank)
+            pbar_total = progress_total(
+                train_loader,
+                train_dataset,
+                args,
+                rank=rank,
+                world_size=world_size,
+                ddp=True,
+            )
+            pbar = tqdm.tqdm(
+                train_loader,
+                total=pbar_total,
+                disable=not show_progress,
+                file=pbar_stream,
+                mininterval=args.progress_mininterval,
+                dynamic_ncols=True,
+                desc=f"rank{rank} train e{epoch}",
+                leave=False,
+            )
+            if show_progress:
+                pbar.set_postfix({'loss': '?'})
             join_context = model.join() if streaming_train else nullcontext()
             with join_context:
                 for i, data in enumerate(pbar):
@@ -565,12 +724,20 @@ def run_ddp_training(rank, world_size, args):
                         optimizer.step()
                     if not args.settings_Sep01: 
                         if not args.ReduceLROnPlateau: scheduler.batch_step()
-                    pbar.set_postfix({'loss': float(loss)})
+                    if show_progress:
+                        pbar.set_postfix({'loss': float(loss)})
                     # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                     # data_y_list.append(learning_para["data.y.long"].tolist())
                     gradients.append([p.grad.norm().item() for p in model.parameters()])
                     batch_count += 1
                     last_loss = loss
+                    if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
+                        total_label = pbar_total if pbar_total is not None else "?"
+                        print(
+                            f"[rank {rank}] epoch={epoch} train_batch={batch_count}/{total_label} "
+                            f"loss={float(loss):.6f}",
+                            flush=True,
+                        )
                     # if i == 2: raise Exception
             if batch_count == 0:
                 raise RuntimeError("No training batches were produced. Reduce --num-workers or provide more input files for streaming DDP.")
@@ -622,7 +789,26 @@ def run_ddp_training(rank, world_size, args):
         with torch.no_grad():
             model.eval()
             eval_model = model.module if streaming_train else model
-            for data in tqdm.tqdm(test_loader, total=None if streaming_train else len(test_loader)):
+            show_progress = should_show_progress(args, rank=rank)
+            pbar_stream = get_progress_stream(args, rank=rank)
+            pbar_total = progress_total(
+                test_loader,
+                test_dataset,
+                args,
+                rank=rank,
+                world_size=world_size,
+                ddp=True,
+            )
+            for data in tqdm.tqdm(
+                test_loader,
+                total=pbar_total,
+                disable=not show_progress,
+                file=pbar_stream,
+                mininterval=args.progress_mininterval,
+                dynamic_ncols=True,
+                desc=f"rank{rank} valid e{epoch}",
+                leave=False,
+            ):
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
@@ -635,6 +821,12 @@ def run_ddp_training(rank, world_size, args):
                     else:
                         update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
                 batch_count += 1
+                if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
+                    total_label = pbar_total if pbar_total is not None else "?"
+                    print(
+                        f"[rank {rank}] epoch={epoch} valid_batch={batch_count}/{total_label}",
+                        flush=True,
+                    )
         if batch_count == 0:
             raise RuntimeError("No validation batches were produced. Reduce --num-workers or provide more validation files for streaming DDP.")
         nb_test = torch.tensor([batch_count], device=device, dtype=torch.long)
@@ -675,8 +867,22 @@ def run_ddp_training(rank, world_size, args):
             train_sampler.set_epoch(i_epoch)
         if test_sampler is not None:
             test_sampler.set_epoch(i_epoch)
-        configure_streaming_dataset(train_dataset, epoch=i_epoch, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=True)
-        configure_streaming_dataset(test_dataset, epoch=i_epoch, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+        configure_streaming_dataset(
+            train_dataset,
+            epoch=i_epoch,
+            shuffle=True,
+            shuffle_buffer_size=args.stream_shuffle_buffer,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=True,
+        )
+        configure_streaming_dataset(
+            test_dataset,
+            epoch=i_epoch,
+            shuffle=False,
+            shuffle_buffer_size=0,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=False,
+        )
         train_loss,_,_,_,_=train(i_epoch)
         if rank == 0:
             train_loss_history.append(train_loss)
@@ -729,8 +935,12 @@ def main():
     parser.add_argument('--ilc-file-cache', type=int, default=2, help='LRU number of HDF5 files to keep decoded per worker (--ilc-sharded only)')
     parser.add_argument('--ilc-streaming', action='store_true', help='Stream HDF5 files with IterableDataset; shuffles files/events per epoch and avoids loading all files at once.')
     parser.add_argument('--stream-shuffle-buffer', type=int, default=256, help='Number of streamed events mixed in an in-memory shuffle buffer (--ilc-streaming only).')
+    parser.add_argument('--stream-files-per-chunk', type=int, default=1, help='Number of HDF5 files loaded together per streaming worker chunk (--ilc-streaming only).')
     parser.add_argument('--stream-seed', type=int, default=1001, help='Base random seed for streaming file/event shuffle.')
     parser.add_argument('--num-workers', type=int, default=None, help='Override DataLoader workers (default: 16 single-process, 8 DDP).')
+    parser.add_argument('--prefetch-factor', type=int, default=1, help='DataLoader prefetch factor when num_workers > 0. Lower is safer for streaming HDF5.')
+    parser.add_argument('--dataloader-timeout', type=int, default=0, help='Seconds to wait for a DataLoader worker batch before raising an error. 0 disables timeout.')
+    parser.add_argument('--rank-log-interval', type=int, default=500, help='Write one lightweight progress line to each rank log every N training batches. 0 disables it.')
     parser.add_argument('-i-tune', '--inputdir-tune', type=str, help='Specify input directory for training (option)')                   ## not using now
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
@@ -758,6 +968,11 @@ def main():
     parser.add_argument('--min-lr', type=float, default=1e-7, help='')
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
+    parser.add_argument('--ddp-log-dir', type=str, default=None, help='Directory for per-rank DDP logs (creates rank0.log, rank1.log, ...).')
+    parser.add_argument('--master-addr', type=str, default='127.0.0.1', help='DDP master address.')
+    parser.add_argument('--master-port', type=int, default=None, help='DDP master port. Default: auto-select a free local port.')
+    parser.add_argument('--progress-rank', type=int, default=0, help='Rank that writes tqdm progress to the terminal when --ddp-log-dir is enabled.')
+    parser.add_argument('--progress-mininterval', type=float, default=3.0, help='Minimum seconds between tqdm redraws to keep progress display lightweight.')
     parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use with --ddp (e.g., '0,1,2'). If not specified, all available GPUs are used.")
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
     parser.add_argument('--nrestart-cosreduce', type=int, default=3, help='number of restart without reducing the maximum learning rate')
@@ -801,6 +1016,13 @@ def main():
                 print("Error: No CUDA GPUs available")
                 sys.exit(1)
             print(f"DDP: Using all available GPUs: {visible_gpus}")
+        if args.ddp_log_dir:
+            os.makedirs(args.ddp_log_dir, exist_ok=True)
+            print(f"DDP: Writing per-rank logs under {args.ddp_log_dir}")
+        master_port = args.master_port if args.master_port is not None else pick_free_port()
+        os.environ["MASTER_ADDR"] = args.master_addr
+        os.environ["MASTER_PORT"] = str(master_port)
+        print(f"DDP: MASTER_ADDR={args.master_addr}, MASTER_PORT={master_port}")
 
         world_size = len(visible_gpus)
         mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
@@ -861,8 +1083,20 @@ def main():
     print(f"Training dataset size:  {len(train_dataset)}")
     print(f"Validating dataset size:  {len(test_dataset)}")
     print(f"Batch size:  {batch_size}")
-    configure_streaming_dataset(train_dataset, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
-    configure_streaming_dataset(test_dataset, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+    configure_streaming_dataset(
+        train_dataset,
+        shuffle=True,
+        shuffle_buffer_size=args.stream_shuffle_buffer,
+        files_per_chunk=args.stream_files_per_chunk,
+        pad_to_equal_workers=False,
+    )
+    configure_streaming_dataset(
+        test_dataset,
+        shuffle=False,
+        shuffle_buffer_size=0,
+        files_per_chunk=args.stream_files_per_chunk,
+        pad_to_equal_workers=False,
+    )
     train_loader = make_data_loader(train_dataset, batch_size, args, shuffle=shuffle)
     test_loader = make_data_loader(test_dataset, batch_size, args, shuffle=False)
     streaming_train = is_streaming_dataset(train_dataset)
@@ -876,8 +1110,20 @@ def main():
         print(f"Training dataset (fine tuning) size:  {len(train_dataset_tune)}")
         print(f"Validating dataset (fine tuning) size:  {len(test_dataset_tune)}")
         print(f"Batch size:  {batch_size}")
-        configure_streaming_dataset(train_dataset_tune, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
-        configure_streaming_dataset(test_dataset_tune, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+        configure_streaming_dataset(
+            train_dataset_tune,
+            shuffle=True,
+            shuffle_buffer_size=args.stream_shuffle_buffer,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=False,
+        )
+        configure_streaming_dataset(
+            test_dataset_tune,
+            shuffle=False,
+            shuffle_buffer_size=0,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=False,
+        )
         train_loader_tune = make_data_loader(train_dataset_tune, batch_size, args, shuffle=shuffle)
         test_loader_tune = make_data_loader(test_dataset_tune, batch_size, args, shuffle=False)
 
@@ -1177,8 +1423,21 @@ def main():
         if not args.settings_Sep01: 
             if not args.ReduceLROnPlateau: scheduler.step()
         try:
-            pbar = tqdm.tqdm(train_loader, total=None if streaming_train else len(train_loader))
-            pbar.set_postfix({'loss': '?'})
+            show_progress = should_show_progress(args)
+            pbar_stream = get_progress_stream(args)
+            pbar_total = progress_total(train_loader, train_dataset, args, ddp=False)
+            pbar = tqdm.tqdm(
+                train_loader,
+                total=pbar_total,
+                disable=not show_progress,
+                file=pbar_stream,
+                mininterval=args.progress_mininterval,
+                dynamic_ncols=True,
+                desc=f"train e{epoch}",
+                leave=False,
+            )
+            if show_progress:
+                pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
                 data = data.to(device)
@@ -1211,7 +1470,8 @@ def main():
                     optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
-                pbar.set_postfix({'loss': float(loss)})
+                if show_progress:
+                    pbar.set_postfix({'loss': float(loss)})
                 # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 # data_y_list.append(learning_para["data.y.long"].tolist())
                 gradients.append([p.grad.norm().item() for p in model.parameters()])
@@ -1242,7 +1502,19 @@ def main():
         with torch.no_grad():
 
             model.eval()
-            for data in tqdm.tqdm(test_loader, total=None if streaming_train else len(test_loader)):
+            show_progress = should_show_progress(args)
+            pbar_stream = get_progress_stream(args)
+            pbar_total = progress_total(test_loader, test_dataset, args, ddp=False)
+            for data in tqdm.tqdm(
+                test_loader,
+                total=pbar_total,
+                disable=not show_progress,
+                file=pbar_stream,
+                mininterval=args.progress_mininterval,
+                dynamic_ncols=True,
+                desc=f"valid e{epoch}",
+                leave=False,
+            ):
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
@@ -1297,8 +1569,22 @@ def main():
     learning_rates=[]
 
     for i_epoch in range(n_epochs):
-        configure_streaming_dataset(train_dataset, epoch=i_epoch, shuffle=True, shuffle_buffer_size=args.stream_shuffle_buffer, pad_to_equal_workers=False)
-        configure_streaming_dataset(test_dataset, epoch=i_epoch, shuffle=False, shuffle_buffer_size=0, pad_to_equal_workers=False)
+        configure_streaming_dataset(
+            train_dataset,
+            epoch=i_epoch,
+            shuffle=True,
+            shuffle_buffer_size=args.stream_shuffle_buffer,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=False,
+        )
+        configure_streaming_dataset(
+            test_dataset,
+            epoch=i_epoch,
+            shuffle=False,
+            shuffle_buffer_size=0,
+            files_per_chunk=args.stream_files_per_chunk,
+            pad_to_equal_workers=False,
+        )
         train_loss = train(i_epoch)
         # train_loss,cluster_space_para,data_y,data,first_para=train(i_epoch)
         learning_rates.append(optimizer.param_groups[0]["lr"])
@@ -1413,8 +1699,20 @@ def run_profile():
     model.train()
     with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof:
         with record_function("model_inference"):
-            pbar = tqdm.tqdm(loader, total=len(loader))
-            pbar.set_postfix({'loss': '?'})
+            show_progress = should_show_progress(args)
+            pbar_stream = get_progress_stream(args)
+            pbar = tqdm.tqdm(
+                loader,
+                total=len(loader),
+                disable=not show_progress,
+                file=pbar_stream,
+                mininterval=args.progress_mininterval,
+                dynamic_ncols=True,
+                desc="profile",
+                leave=False,
+            )
+            if show_progress:
+                pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 data = data.to(device)
                 optimizer.zero_grad()
@@ -1429,7 +1727,8 @@ def run_profile():
                 if not args.no_clipping:
                     utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
                 optimizer.step()
-                pbar.set_postfix({'loss': float(loss)})
+                if show_progress:
+                    pbar.set_postfix({'loss': float(loss)})
     print(prof.key_averages().table(sort_by="cpu_time", row_limit=10))
     # Other valid keys:
     # cpu_time, cuda_time, cpu_time_total, cuda_time_total, cpu_memory_usage,

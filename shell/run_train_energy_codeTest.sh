@@ -4,6 +4,8 @@ cd ..
 
 DATE=`date '+%Y_%m_%d_%H%M%S'`
 
+mkdir -p shell/tmp
+
 
 #python train.py -i mydata/ntau_one --epochs=1
 #python train.py --no-split -i mydata/ntau_one -ii mydata/ntau_one_validate --epochs=1 --batch-size=50
@@ -163,8 +165,9 @@ ckpt=checkpoint/energy_regression/ckpts_gravnet_new02_2026_03_18_163427_outputD5
 
 ## large samples
 sample=ntau_10to100GeV_10      # ntau_10GeV_10   uds91   mix
-python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --ilc-sharded --ilc-file-cache 3 > log/energy_regression/large_samples/tc_ntau_10to100GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
-
+# python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --ilc-sharded --ilc-file-cache 3 > log/energy_regression/large_samples/tc_ntau_10to100GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log
+python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 32 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 3,4 --ddp-log-dir shell/tmp/tc_ntau_10to100GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_ranks --progress-rank 0 --progress-mininterval 3 --rank-log-interval 500 --ilc-streaming --stream-files-per-chunk 4 --stream-shuffle-buffer 256 --num-workers 1
+# python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 0,1,3,4 --ilc-streaming --stream-files-per-chunk 4 --stream-shuffle-buffer 256 --num-workers 4
 
 ## 
 # python train.py -i /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 500 --beta-track --force-track-alpha --batch-size 20 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD} --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 2e-5 --lr-policy cosineReduce --clip-value 10 --ddp --model-ckpt ${ckpt} --epochs-nobeta -1 --epochs-noLE -1 --gpus 0,1,3,4 --ilc-sharded --ilc-file-cache 3 > log/energy_regression/large_samples/tc_ntau_10to100GeV_10_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}.log

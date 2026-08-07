@@ -1,0 +1,19 @@
+cuda:1
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M, files=20000, events~=2000000, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train, files=716, events~=94400, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  2000000
+Validating dataset size:  94400
+Batch size:  128
+Loading GravnetModel
+Hello
+restart period :  30
+[rank 1] epoch=0 train_batch=2000/15625 loss=1.084438
+[rank 1] epoch=0 train_batch=4000/15625 loss=1.057406
+[rank 1] epoch=0 train_batch=6000/15625 loss=1.050029
+[rank 1] epoch=0 train_batch=8000/15625 loss=1.062562
+[rank 1] epoch=0 train_batch=10000/15625 loss=1.079846
+[rank 1] epoch=0 train_batch=12000/15625 loss=1.088612

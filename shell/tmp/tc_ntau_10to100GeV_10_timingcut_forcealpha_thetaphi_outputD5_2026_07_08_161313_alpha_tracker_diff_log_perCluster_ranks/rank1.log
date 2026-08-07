@@ -1,0 +1,13 @@
+cuda:1
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=4, seed=1001)
+ILCStreamingDataset: path=/data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/train, files=3200, events~=799986, shuffle_buffer=256, files_per_chunk=4
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=4, seed=1001)
+ILCStreamingDataset: path=/data/suehara/gravnet_ilc/data/ntau_10to100GeV_10/validation, files=400, events~=100000, shuffle_buffer=256, files_per_chunk=4
+Training dataset size:  799986
+Validating dataset size:  100000
+Batch size:  60
+Loading GravnetModel
+Hello
+restart period :  30

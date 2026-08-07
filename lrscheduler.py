@@ -215,15 +215,16 @@ class CyclicLRWithRestarts(_LRScheduler):
         self.batch_step()
         
     def batch_step(self):
-        try:
+        if self.iteration >= len(self.batch_increments):
+            # Streaming / DDP can occasionally yield a few more batches than the
+            # precomputed estimate. Clamp to the end-of-epoch LR instead of
+            # aborting training for a small mismatch.
+            t_cur = self.t_epoch + 1.0
+        else:
             t_cur = self.t_epoch + self.batch_increments[self.iteration]
-            self._on_iteration()
-            self.iteration += 1
-            self.total_iterations += 1
-        except (IndexError):
-            raise StopIteration("Epoch size and batch size used in the "
-                                "training loop and while initializing "
-                                "scheduler should be the same.")
+        self._on_iteration()
+        self.iteration += 1
+        self.total_iterations += 1
         
         for param_group, (lr, weight_decay) in zip(self.optimizer.param_groups,
                                                    self.get_lr(t_cur)):
