@@ -1,0 +1,66 @@
+cuda:2
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/train, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/test, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  500
+Validating dataset size:  500
+Batch size:  128
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+Exception encountered: DataBatch(x=[71975, 11], y=[71975, 2], feat=[71975, 10], label=[71975, 9], batch=[71975], ptr=[33]) i: 0
+cuda:2
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/train, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/test, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  500
+Validating dataset size:  500
+Batch size:  128
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+Exception encountered: DataBatch(x=[71672, 11], y=[71672, 2], feat=[71672, 10], label=[71672, 9], batch=[71672], ptr=[33]) i: 1
+cuda:2
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/train, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/test, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  500
+Validating dataset size:  500
+Batch size:  128
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+Exception encountered: DataBatch(x=[71672, 11], y=[71672, 2], feat=[71672, 10], label=[71672, 9], batch=[71672], ptr=[33]) i: 1
+cuda:2
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/train, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/code_test/test, files=1, events~=500, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  500
+Validating dataset size:  500
+Batch size:  128
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x74320a59b790>
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1443, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 40, in wait
+    if not wait([self.sentinel], timeout):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt: 

@@ -4894,3 +4894,1728 @@ restart period :  30
 [rank 1] epoch=87 train_batch=4500/12500 loss=2.109584
 [rank 1] epoch=87 train_batch=5000/12500 loss=2.160618
 [rank 1] epoch=87 train_batch=5500/12500 loss=2.270470
+[rank 1] epoch=87 train_batch=6000/12500 loss=2.222019
+[rank 1] epoch=87 train_batch=6500/12500 loss=2.118604
+[rank 1] epoch=87 train_batch=7000/12500 loss=2.253077
+[rank 1] epoch=87 train_batch=7500/12500 loss=2.336576
+[rank 1] epoch=87 train_batch=8000/12500 loss=2.014996
+[rank 1] epoch=87 train_batch=8500/12500 loss=2.406189
+[rank 1] epoch=87 train_batch=9000/12500 loss=2.319625
+[rank 1] epoch=87 train_batch=9500/12500 loss=2.251133
+[rank 1] epoch=87 train_batch=10000/12500 loss=2.036529
+[rank 1] epoch=87 train_batch=10500/12500 loss=2.280727
+[rank 1] epoch=87 train_batch=11000/12500 loss=2.221965
+[rank 1] epoch=87 train_batch=11500/12500 loss=2.243263
+[rank 1] epoch=87 train_batch=12000/12500 loss=2.307082
+[rank 1] epoch=87 train_batch=12500/12500 loss=2.289239
+[rank 1] epoch=87 train_batch=13000/12500 loss=2.093862
+[rank 1] epoch=87 train_batch=13500/12500 loss=2.269009
+[rank 1] epoch=87 train_batch=14000/12500 loss=2.280462
+[rank 1] epoch=87 train_batch=14500/12500 loss=2.112892
+[rank 1] epoch=87 train_batch=15000/12500 loss=2.193739
+[rank 1] epoch=87 train_batch=15500/12500 loss=2.068368
+[rank 1] epoch=87 train_batch=16000/12500 loss=2.032804
+[rank 1] epoch=87 train_batch=16500/12500 loss=2.202445
+[rank 1] epoch=87 train_batch=17000/12500 loss=2.143579
+[rank 1] epoch=87 train_batch=17500/12500 loss=2.079231
+[rank 1] epoch=87 train_batch=18000/12500 loss=2.303965
+[rank 1] epoch=87 train_batch=18500/12500 loss=2.005550
+[rank 1] epoch=87 train_batch=19000/12500 loss=2.201159
+[rank 1] epoch=87 train_batch=19500/12500 loss=2.196817
+[rank 1] epoch=87 train_batch=20000/12500 loss=2.019021
+[rank 1] epoch=87 train_batch=20500/12500 loss=2.330701
+[rank 1] epoch=87 train_batch=21000/12500 loss=2.140963
+[rank 1] epoch=87 train_batch=21500/12500 loss=2.132632
+[rank 1] epoch=87 train_batch=22000/12500 loss=2.197431
+[rank 1] epoch=87 train_batch=22500/12500 loss=2.219509
+[rank 1] epoch=87 train_batch=23000/12500 loss=2.032047
+[rank 1] epoch=87 train_batch=23500/12500 loss=2.267132
+[rank 1] epoch=87 train_batch=24000/12500 loss=2.211627
+[rank 1] epoch=87 train_batch=24500/12500 loss=2.247650
+[rank 1] epoch=87 train_batch=25000/12500 loss=2.182059
+[rank 1] epoch=87 valid_batch=500/1563
+[rank 1] epoch=87 valid_batch=1000/1563
+[rank 1] epoch=87 valid_batch=1500/1563
+[rank 1] epoch=87 valid_batch=2000/1563
+[rank 1] epoch=87 valid_batch=2500/1563
+[rank 1] epoch=87 valid_batch=3000/1563
+[rank 1] epoch=88 train_batch=500/12500 loss=2.188605
+[rank 1] epoch=88 train_batch=1000/12500 loss=2.038067
+[rank 1] epoch=88 train_batch=1500/12500 loss=2.204942
+[rank 1] epoch=88 train_batch=2000/12500 loss=2.196400
+[rank 1] epoch=88 train_batch=2500/12500 loss=2.046534
+[rank 1] epoch=88 train_batch=3000/12500 loss=2.134393
+[rank 1] epoch=88 train_batch=3500/12500 loss=2.037991
+[rank 1] epoch=88 train_batch=4000/12500 loss=2.091566
+[rank 1] epoch=88 train_batch=4500/12500 loss=2.098029
+[rank 1] epoch=88 train_batch=5000/12500 loss=2.063097
+[rank 1] epoch=88 train_batch=5500/12500 loss=2.041770
+[rank 1] epoch=88 train_batch=6000/12500 loss=2.151998
+[rank 1] epoch=88 train_batch=6500/12500 loss=2.108836
+[rank 1] epoch=88 train_batch=7000/12500 loss=2.177941
+[rank 1] epoch=88 train_batch=7500/12500 loss=2.015963
+[rank 1] epoch=88 train_batch=8000/12500 loss=2.145567
+[rank 1] epoch=88 train_batch=8500/12500 loss=2.285575
+[rank 1] epoch=88 train_batch=9000/12500 loss=2.205212
+[rank 1] epoch=88 train_batch=9500/12500 loss=2.271873
+[rank 1] epoch=88 train_batch=10000/12500 loss=2.061792
+[rank 1] epoch=88 train_batch=10500/12500 loss=1.926654
+[rank 1] epoch=88 train_batch=11000/12500 loss=2.111539
+[rank 1] epoch=88 train_batch=11500/12500 loss=2.026396
+[rank 1] epoch=88 train_batch=12000/12500 loss=2.130622
+[rank 1] epoch=88 train_batch=12500/12500 loss=2.108840
+[rank 1] epoch=88 train_batch=13000/12500 loss=2.191179
+[rank 1] epoch=88 train_batch=13500/12500 loss=2.323020
+[rank 1] epoch=88 train_batch=14000/12500 loss=2.061870
+[rank 1] epoch=88 train_batch=14500/12500 loss=2.232591
+[rank 1] epoch=88 train_batch=15000/12500 loss=2.130231
+[rank 1] epoch=88 train_batch=15500/12500 loss=2.200052
+[rank 1] epoch=88 train_batch=16000/12500 loss=2.210769
+[rank 1] epoch=88 train_batch=16500/12500 loss=2.230913
+[rank 1] epoch=88 train_batch=17000/12500 loss=2.255024
+[rank 1] epoch=88 train_batch=17500/12500 loss=2.178830
+[rank 1] epoch=88 train_batch=18000/12500 loss=2.312815
+[rank 1] epoch=88 train_batch=18500/12500 loss=2.272225
+[rank 1] epoch=88 train_batch=19000/12500 loss=2.087201
+[rank 1] epoch=88 train_batch=19500/12500 loss=2.129551
+[rank 1] epoch=88 train_batch=20000/12500 loss=2.235183
+[rank 1] epoch=88 train_batch=20500/12500 loss=2.244920
+[rank 1] epoch=88 train_batch=21000/12500 loss=2.250922
+[rank 1] epoch=88 train_batch=21500/12500 loss=2.270091
+[rank 1] epoch=88 train_batch=22000/12500 loss=2.179682
+[rank 1] epoch=88 train_batch=22500/12500 loss=2.193286
+[rank 1] epoch=88 train_batch=23000/12500 loss=2.175723
+[rank 1] epoch=88 train_batch=23500/12500 loss=2.138715
+[rank 1] epoch=88 train_batch=24000/12500 loss=2.108532
+[rank 1] epoch=88 train_batch=24500/12500 loss=2.016258
+[rank 1] epoch=88 train_batch=25000/12500 loss=2.219237
+[rank 1] epoch=88 valid_batch=500/1563
+[rank 1] epoch=88 valid_batch=1000/1563
+[rank 1] epoch=88 valid_batch=1500/1563
+[rank 1] epoch=88 valid_batch=2000/1563
+[rank 1] epoch=88 valid_batch=2500/1563
+[rank 1] epoch=88 valid_batch=3000/1563
+[rank 1] epoch=89 train_batch=500/12500 loss=2.206807
+[rank 1] epoch=89 train_batch=1000/12500 loss=2.239949
+[rank 1] epoch=89 train_batch=1500/12500 loss=2.245007
+[rank 1] epoch=89 train_batch=2000/12500 loss=2.164588
+[rank 1] epoch=89 train_batch=2500/12500 loss=2.212415
+[rank 1] epoch=89 train_batch=3000/12500 loss=2.119542
+[rank 1] epoch=89 train_batch=3500/12500 loss=2.409317
+[rank 1] epoch=89 train_batch=4000/12500 loss=2.118695
+[rank 1] epoch=89 train_batch=4500/12500 loss=2.325149
+[rank 1] epoch=89 train_batch=5000/12500 loss=2.076375
+[rank 1] epoch=89 train_batch=5500/12500 loss=2.276791
+[rank 1] epoch=89 train_batch=6000/12500 loss=2.543878
+[rank 1] epoch=89 train_batch=6500/12500 loss=2.141440
+[rank 1] epoch=89 train_batch=7000/12500 loss=2.062480
+[rank 1] epoch=89 train_batch=7500/12500 loss=2.100513
+[rank 1] epoch=89 train_batch=8000/12500 loss=2.146830
+[rank 1] epoch=89 train_batch=8500/12500 loss=2.347669
+[rank 1] epoch=89 train_batch=9000/12500 loss=2.240415
+[rank 1] epoch=89 train_batch=9500/12500 loss=2.006598
+[rank 1] epoch=89 train_batch=10000/12500 loss=2.289567
+[rank 1] epoch=89 train_batch=10500/12500 loss=2.225068
+[rank 1] epoch=89 train_batch=11000/12500 loss=2.146472
+[rank 1] epoch=89 train_batch=11500/12500 loss=1.980409
+[rank 1] epoch=89 train_batch=12000/12500 loss=2.181785
+[rank 1] epoch=89 train_batch=12500/12500 loss=2.407482
+[rank 1] epoch=89 train_batch=13000/12500 loss=2.081961
+[rank 1] epoch=89 train_batch=13500/12500 loss=2.176929
+[rank 1] epoch=89 train_batch=14000/12500 loss=2.458723
+[rank 1] epoch=89 train_batch=14500/12500 loss=2.239713
+[rank 1] epoch=89 train_batch=15000/12500 loss=2.112961
+[rank 1] epoch=89 train_batch=15500/12500 loss=2.153136
+[rank 1] epoch=89 train_batch=16000/12500 loss=2.203538
+[rank 1] epoch=89 train_batch=16500/12500 loss=2.411078
+[rank 1] epoch=89 train_batch=17000/12500 loss=2.183011
+[rank 1] epoch=89 train_batch=17500/12500 loss=2.157782
+[rank 1] epoch=89 train_batch=18000/12500 loss=1.931349
+[rank 1] epoch=89 train_batch=18500/12500 loss=2.118216
+[rank 1] epoch=89 train_batch=19000/12500 loss=2.135794
+[rank 1] epoch=89 train_batch=19500/12500 loss=2.192543
+[rank 1] epoch=89 train_batch=20000/12500 loss=2.190568
+[rank 1] epoch=89 train_batch=20500/12500 loss=2.144743
+[rank 1] epoch=89 train_batch=21000/12500 loss=2.110403
+[rank 1] epoch=89 train_batch=21500/12500 loss=1.999913
+[rank 1] epoch=89 train_batch=22000/12500 loss=2.105767
+[rank 1] epoch=89 train_batch=22500/12500 loss=2.072461
+[rank 1] epoch=89 train_batch=23000/12500 loss=2.035679
+[rank 1] epoch=89 train_batch=23500/12500 loss=2.174126
+[rank 1] epoch=89 train_batch=24000/12500 loss=1.936796
+[rank 1] epoch=89 train_batch=24500/12500 loss=2.121549
+[rank 1] epoch=89 train_batch=25000/12500 loss=2.222567
+[rank 1] epoch=89 valid_batch=500/1563
+[rank 1] epoch=89 valid_batch=1000/1563
+[rank 1] epoch=89 valid_batch=1500/1563
+[rank 1] epoch=89 valid_batch=2000/1563
+[rank 1] epoch=89 valid_batch=2500/1563
+[rank 1] epoch=89 valid_batch=3000/1563
+[rank 1] epoch=90 train_batch=500/12500 loss=2.223629
+[rank 1] epoch=90 train_batch=1000/12500 loss=2.184302
+[rank 1] epoch=90 train_batch=1500/12500 loss=2.152579
+[rank 1] epoch=90 train_batch=2000/12500 loss=2.306197
+[rank 1] epoch=90 train_batch=2500/12500 loss=2.270871
+[rank 1] epoch=90 train_batch=3000/12500 loss=2.215875
+[rank 1] epoch=90 train_batch=3500/12500 loss=2.159423
+[rank 1] epoch=90 train_batch=4000/12500 loss=1.992973
+[rank 1] epoch=90 train_batch=4500/12500 loss=2.108281
+[rank 1] epoch=90 train_batch=5000/12500 loss=2.193478
+[rank 1] epoch=90 train_batch=5500/12500 loss=2.117401
+[rank 1] epoch=90 train_batch=6000/12500 loss=2.354454
+[rank 1] epoch=90 train_batch=6500/12500 loss=2.019390
+[rank 1] epoch=90 train_batch=7000/12500 loss=2.127819
+[rank 1] epoch=90 train_batch=7500/12500 loss=2.156418
+[rank 1] epoch=90 train_batch=8000/12500 loss=2.145503
+[rank 1] epoch=90 train_batch=8500/12500 loss=2.109406
+[rank 1] epoch=90 train_batch=9000/12500 loss=1.952336
+[rank 1] epoch=90 train_batch=9500/12500 loss=2.157305
+[rank 1] epoch=90 train_batch=10000/12500 loss=2.054915
+[rank 1] epoch=90 train_batch=10500/12500 loss=2.200174
+[rank 1] epoch=90 train_batch=11000/12500 loss=2.346422
+[rank 1] epoch=90 train_batch=11500/12500 loss=2.425413
+[rank 1] epoch=90 train_batch=12000/12500 loss=2.130317
+[rank 1] epoch=90 train_batch=12500/12500 loss=2.216169
+[rank 1] epoch=90 train_batch=13000/12500 loss=2.217963
+[rank 1] epoch=90 train_batch=13500/12500 loss=2.082536
+[rank 1] epoch=90 train_batch=14000/12500 loss=2.107061
+[rank 1] epoch=90 train_batch=14500/12500 loss=2.056815
+[rank 1] epoch=90 train_batch=15000/12500 loss=2.146078
+[rank 1] epoch=90 train_batch=15500/12500 loss=2.002156
+[rank 1] epoch=90 train_batch=16000/12500 loss=2.052375
+[rank 1] epoch=90 train_batch=16500/12500 loss=2.066888
+[rank 1] epoch=90 train_batch=17000/12500 loss=2.140472
+[rank 1] epoch=90 train_batch=17500/12500 loss=2.006770
+[rank 1] epoch=90 train_batch=18000/12500 loss=2.059981
+[rank 1] epoch=90 train_batch=18500/12500 loss=2.524701
+[rank 1] epoch=90 train_batch=19000/12500 loss=2.052458
+[rank 1] epoch=90 train_batch=19500/12500 loss=2.152738
+[rank 1] epoch=90 train_batch=20000/12500 loss=2.284665
+[rank 1] epoch=90 train_batch=20500/12500 loss=2.366152
+[rank 1] epoch=90 train_batch=21000/12500 loss=2.122993
+[rank 1] epoch=90 train_batch=21500/12500 loss=2.009367
+[rank 1] epoch=90 train_batch=22000/12500 loss=1.900920
+[rank 1] epoch=90 train_batch=22500/12500 loss=2.091690
+[rank 1] epoch=90 train_batch=23000/12500 loss=2.247008
+[rank 1] epoch=90 train_batch=23500/12500 loss=2.114424
+[rank 1] epoch=90 train_batch=24000/12500 loss=2.138955
+[rank 1] epoch=90 train_batch=24500/12500 loss=2.129918
+[rank 1] epoch=90 train_batch=25000/12500 loss=2.343288
+[rank 1] epoch=90 valid_batch=500/1563
+[rank 1] epoch=90 valid_batch=1000/1563
+[rank 1] epoch=90 valid_batch=1500/1563
+[rank 1] epoch=90 valid_batch=2000/1563
+[rank 1] epoch=90 valid_batch=2500/1563
+[rank 1] epoch=90 valid_batch=3000/1563
+[rank 1] epoch=91 train_batch=500/12500 loss=2.304652
+[rank 1] epoch=91 train_batch=1000/12500 loss=2.060727
+[rank 1] epoch=91 train_batch=1500/12500 loss=2.201908
+[rank 1] epoch=91 train_batch=2000/12500 loss=2.033873
+[rank 1] epoch=91 train_batch=2500/12500 loss=2.059689
+[rank 1] epoch=91 train_batch=3000/12500 loss=1.985954
+[rank 1] epoch=91 train_batch=3500/12500 loss=2.261827
+[rank 1] epoch=91 train_batch=4000/12500 loss=2.060874
+[rank 1] epoch=91 train_batch=4500/12500 loss=2.153070
+[rank 1] epoch=91 train_batch=5000/12500 loss=2.290746
+[rank 1] epoch=91 train_batch=5500/12500 loss=2.042850
+[rank 1] epoch=91 train_batch=6000/12500 loss=2.095281
+[rank 1] epoch=91 train_batch=6500/12500 loss=1.963790
+[rank 1] epoch=91 train_batch=7000/12500 loss=2.099160
+[rank 1] epoch=91 train_batch=7500/12500 loss=2.037818
+[rank 1] epoch=91 train_batch=8000/12500 loss=2.041734
+[rank 1] epoch=91 train_batch=8500/12500 loss=2.198096
+[rank 1] epoch=91 train_batch=9000/12500 loss=2.314836
+[rank 1] epoch=91 train_batch=9500/12500 loss=2.294909
+[rank 1] epoch=91 train_batch=10000/12500 loss=2.053215
+[rank 1] epoch=91 train_batch=10500/12500 loss=2.108240
+[rank 1] epoch=91 train_batch=11000/12500 loss=2.085778
+[rank 1] epoch=91 train_batch=11500/12500 loss=2.028322
+[rank 1] epoch=91 train_batch=12000/12500 loss=2.093095
+[rank 1] epoch=91 train_batch=12500/12500 loss=2.081041
+[rank 1] epoch=91 train_batch=13000/12500 loss=2.032498
+[rank 1] epoch=91 train_batch=13500/12500 loss=2.201849
+[rank 1] epoch=91 train_batch=14000/12500 loss=2.144958
+[rank 1] epoch=91 train_batch=14500/12500 loss=1.992300
+[rank 1] epoch=91 train_batch=15000/12500 loss=2.073359
+[rank 1] epoch=91 train_batch=15500/12500 loss=2.078016
+[rank 1] epoch=91 train_batch=16000/12500 loss=2.227748
+[rank 1] epoch=91 train_batch=16500/12500 loss=2.109037
+[rank 1] epoch=91 train_batch=17000/12500 loss=2.282612
+[rank 1] epoch=91 train_batch=17500/12500 loss=2.267247
+[rank 1] epoch=91 train_batch=18000/12500 loss=2.106390
+[rank 1] epoch=91 train_batch=18500/12500 loss=2.034999
+[rank 1] epoch=91 train_batch=19000/12500 loss=2.284078
+[rank 1] epoch=91 train_batch=19500/12500 loss=2.205081
+[rank 1] epoch=91 train_batch=20000/12500 loss=2.187450
+[rank 1] epoch=91 train_batch=20500/12500 loss=2.099485
+[rank 1] epoch=91 train_batch=21000/12500 loss=2.165802
+[rank 1] epoch=91 train_batch=21500/12500 loss=2.142076
+[rank 1] epoch=91 train_batch=22000/12500 loss=2.119091
+[rank 1] epoch=91 train_batch=22500/12500 loss=2.114043
+[rank 1] epoch=91 train_batch=23000/12500 loss=2.431293
+[rank 1] epoch=91 train_batch=23500/12500 loss=2.021235
+[rank 1] epoch=91 train_batch=24000/12500 loss=2.188231
+[rank 1] epoch=91 train_batch=24500/12500 loss=1.969655
+[rank 1] epoch=91 train_batch=25000/12500 loss=1.986002
+[rank 1] epoch=91 valid_batch=500/1563
+[rank 1] epoch=91 valid_batch=1000/1563
+[rank 1] epoch=91 valid_batch=1500/1563
+[rank 1] epoch=91 valid_batch=2000/1563
+[rank 1] epoch=91 valid_batch=2500/1563
+[rank 1] epoch=91 valid_batch=3000/1563
+[rank 1] epoch=92 train_batch=500/12500 loss=1.991492
+[rank 1] epoch=92 train_batch=1000/12500 loss=1.965889
+[rank 1] epoch=92 train_batch=1500/12500 loss=2.184901
+[rank 1] epoch=92 train_batch=2000/12500 loss=2.121196
+[rank 1] epoch=92 train_batch=2500/12500 loss=2.084633
+[rank 1] epoch=92 train_batch=3000/12500 loss=2.032159
+[rank 1] epoch=92 train_batch=3500/12500 loss=2.354752
+[rank 1] epoch=92 train_batch=4000/12500 loss=2.133654
+[rank 1] epoch=92 train_batch=4500/12500 loss=2.139916
+[rank 1] epoch=92 train_batch=5000/12500 loss=1.971534
+[rank 1] epoch=92 train_batch=5500/12500 loss=2.201244
+[rank 1] epoch=92 train_batch=6000/12500 loss=2.053985
+[rank 1] epoch=92 train_batch=6500/12500 loss=2.063465
+[rank 1] epoch=92 train_batch=7000/12500 loss=2.234116
+[rank 1] epoch=92 train_batch=7500/12500 loss=1.955768
+[rank 1] epoch=92 train_batch=8000/12500 loss=2.221393
+[rank 1] epoch=92 train_batch=8500/12500 loss=2.022673
+[rank 1] epoch=92 train_batch=9000/12500 loss=1.904549
+[rank 1] epoch=92 train_batch=9500/12500 loss=2.023401
+[rank 1] epoch=92 train_batch=10000/12500 loss=1.997947
+[rank 1] epoch=92 train_batch=10500/12500 loss=2.039842
+[rank 1] epoch=92 train_batch=11000/12500 loss=2.047515
+[rank 1] epoch=92 train_batch=11500/12500 loss=2.099865
+[rank 1] epoch=92 train_batch=12000/12500 loss=2.165744
+[rank 1] epoch=92 train_batch=12500/12500 loss=2.039751
+[rank 1] epoch=92 train_batch=13000/12500 loss=2.198524
+[rank 1] epoch=92 train_batch=13500/12500 loss=2.170563
+[rank 1] epoch=92 train_batch=14000/12500 loss=1.949648
+[rank 1] epoch=92 train_batch=14500/12500 loss=2.059099
+[rank 1] epoch=92 train_batch=15000/12500 loss=1.959045
+[rank 1] epoch=92 train_batch=15500/12500 loss=2.362089
+[rank 1] epoch=92 train_batch=16000/12500 loss=2.118937
+[rank 1] epoch=92 train_batch=16500/12500 loss=2.242770
+[rank 1] epoch=92 train_batch=17000/12500 loss=2.017000
+[rank 1] epoch=92 train_batch=17500/12500 loss=2.167893
+[rank 1] epoch=92 train_batch=18000/12500 loss=2.056269
+[rank 1] epoch=92 train_batch=18500/12500 loss=2.091942
+[rank 1] epoch=92 train_batch=19000/12500 loss=2.268822
+[rank 1] epoch=92 train_batch=19500/12500 loss=2.156889
+[rank 1] epoch=92 train_batch=20000/12500 loss=2.125051
+[rank 1] epoch=92 train_batch=20500/12500 loss=2.132943
+[rank 1] epoch=92 train_batch=21000/12500 loss=2.117360
+[rank 1] epoch=92 train_batch=21500/12500 loss=2.069119
+[rank 1] epoch=92 train_batch=22000/12500 loss=2.079113
+[rank 1] epoch=92 train_batch=22500/12500 loss=2.023032
+[rank 1] epoch=92 train_batch=23000/12500 loss=2.104036
+[rank 1] epoch=92 train_batch=23500/12500 loss=2.080100
+[rank 1] epoch=92 train_batch=24000/12500 loss=2.054507
+[rank 1] epoch=92 train_batch=24500/12500 loss=1.974961
+[rank 1] epoch=92 train_batch=25000/12500 loss=2.164070
+[rank 1] epoch=92 valid_batch=500/1563
+[rank 1] epoch=92 valid_batch=1000/1563
+[rank 1] epoch=92 valid_batch=1500/1563
+[rank 1] epoch=92 valid_batch=2000/1563
+[rank 1] epoch=92 valid_batch=2500/1563
+[rank 1] epoch=92 valid_batch=3000/1563
+[rank 1] epoch=93 train_batch=500/12500 loss=2.046840
+[rank 1] epoch=93 train_batch=1000/12500 loss=2.533147
+[rank 1] epoch=93 train_batch=1500/12500 loss=1.954299
+[rank 1] epoch=93 train_batch=2000/12500 loss=2.096590
+[rank 1] epoch=93 train_batch=2500/12500 loss=2.168605
+[rank 1] epoch=93 train_batch=3000/12500 loss=1.996089
+[rank 1] epoch=93 train_batch=3500/12500 loss=2.199137
+[rank 1] epoch=93 train_batch=4000/12500 loss=2.160579
+[rank 1] epoch=93 train_batch=4500/12500 loss=2.067746
+[rank 1] epoch=93 train_batch=5000/12500 loss=2.148495
+[rank 1] epoch=93 train_batch=5500/12500 loss=1.985595
+[rank 1] epoch=93 train_batch=6000/12500 loss=1.975742
+[rank 1] epoch=93 train_batch=6500/12500 loss=2.114260
+[rank 1] epoch=93 train_batch=7000/12500 loss=2.108823
+[rank 1] epoch=93 train_batch=7500/12500 loss=2.016978
+[rank 1] epoch=93 train_batch=8000/12500 loss=2.061823
+[rank 1] epoch=93 train_batch=8500/12500 loss=1.963382
+[rank 1] epoch=93 train_batch=9000/12500 loss=2.184973
+[rank 1] epoch=93 train_batch=9500/12500 loss=2.092704
+[rank 1] epoch=93 train_batch=10000/12500 loss=1.940875
+[rank 1] epoch=93 train_batch=10500/12500 loss=2.081072
+[rank 1] epoch=93 train_batch=11000/12500 loss=2.205767
+[rank 1] epoch=93 train_batch=11500/12500 loss=2.061591
+[rank 1] epoch=93 train_batch=12000/12500 loss=2.083454
+[rank 1] epoch=93 train_batch=12500/12500 loss=1.950237
+[rank 1] epoch=93 train_batch=13000/12500 loss=2.211488
+[rank 1] epoch=93 train_batch=13500/12500 loss=1.932220
+[rank 1] epoch=93 train_batch=14000/12500 loss=2.078650
+[rank 1] epoch=93 train_batch=14500/12500 loss=2.256901
+[rank 1] epoch=93 train_batch=15000/12500 loss=1.910491
+[rank 1] epoch=93 train_batch=15500/12500 loss=2.254490
+[rank 1] epoch=93 train_batch=16000/12500 loss=2.043858
+[rank 1] epoch=93 train_batch=16500/12500 loss=2.104223
+[rank 1] epoch=93 train_batch=17000/12500 loss=2.194443
+[rank 1] epoch=93 train_batch=17500/12500 loss=2.010786
+[rank 1] epoch=93 train_batch=18000/12500 loss=2.025357
+[rank 1] epoch=93 train_batch=18500/12500 loss=2.097521
+[rank 1] epoch=93 train_batch=19000/12500 loss=1.976554
+[rank 1] epoch=93 train_batch=19500/12500 loss=2.109047
+[rank 1] epoch=93 train_batch=20000/12500 loss=2.129249
+[rank 1] epoch=93 train_batch=20500/12500 loss=2.049616
+[rank 1] epoch=93 train_batch=21000/12500 loss=2.081395
+[rank 1] epoch=93 train_batch=21500/12500 loss=1.987898
+[rank 1] epoch=93 train_batch=22000/12500 loss=1.934840
+[rank 1] epoch=93 train_batch=22500/12500 loss=2.076194
+[rank 1] epoch=93 train_batch=23000/12500 loss=1.939015
+[rank 1] epoch=93 train_batch=23500/12500 loss=2.083190
+[rank 1] epoch=93 train_batch=24000/12500 loss=2.177933
+[rank 1] epoch=93 train_batch=24500/12500 loss=2.020377
+[rank 1] epoch=93 train_batch=25000/12500 loss=2.011324
+[rank 1] epoch=93 valid_batch=500/1563
+[rank 1] epoch=93 valid_batch=1000/1563
+[rank 1] epoch=93 valid_batch=1500/1563
+[rank 1] epoch=93 valid_batch=2000/1563
+[rank 1] epoch=93 valid_batch=2500/1563
+[rank 1] epoch=93 valid_batch=3000/1563
+[rank 1] epoch=94 train_batch=500/12500 loss=2.105911
+[rank 1] epoch=94 train_batch=1000/12500 loss=2.025671
+[rank 1] epoch=94 train_batch=1500/12500 loss=2.064190
+[rank 1] epoch=94 train_batch=2000/12500 loss=2.043963
+[rank 1] epoch=94 train_batch=2500/12500 loss=1.988308
+[rank 1] epoch=94 train_batch=3000/12500 loss=1.943318
+[rank 1] epoch=94 train_batch=3500/12500 loss=2.023127
+[rank 1] epoch=94 train_batch=4000/12500 loss=2.039196
+[rank 1] epoch=94 train_batch=4500/12500 loss=1.983281
+[rank 1] epoch=94 train_batch=5000/12500 loss=1.925800
+[rank 1] epoch=94 train_batch=5500/12500 loss=2.173548
+[rank 1] epoch=94 train_batch=6000/12500 loss=2.059565
+[rank 1] epoch=94 train_batch=6500/12500 loss=2.017946
+[rank 1] epoch=94 train_batch=7000/12500 loss=2.145078
+[rank 1] epoch=94 train_batch=7500/12500 loss=2.159237
+[rank 1] epoch=94 train_batch=8000/12500 loss=2.085344
+[rank 1] epoch=94 train_batch=8500/12500 loss=1.929569
+[rank 1] epoch=94 train_batch=9000/12500 loss=2.221659
+[rank 1] epoch=94 train_batch=9500/12500 loss=1.900936
+[rank 1] epoch=94 train_batch=10000/12500 loss=2.037027
+[rank 1] epoch=94 train_batch=10500/12500 loss=2.089326
+[rank 1] epoch=94 train_batch=11000/12500 loss=2.044441
+[rank 1] epoch=94 train_batch=11500/12500 loss=2.170904
+[rank 1] epoch=94 train_batch=12000/12500 loss=2.021826
+[rank 1] epoch=94 train_batch=12500/12500 loss=2.110728
+[rank 1] epoch=94 train_batch=13000/12500 loss=2.099336
+[rank 1] epoch=94 train_batch=13500/12500 loss=2.037488
+[rank 1] epoch=94 train_batch=14000/12500 loss=2.114856
+[rank 1] epoch=94 train_batch=14500/12500 loss=2.066817
+[rank 1] epoch=94 train_batch=15000/12500 loss=1.995555
+[rank 1] epoch=94 train_batch=15500/12500 loss=2.006627
+[rank 1] epoch=94 train_batch=16000/12500 loss=2.180328
+[rank 1] epoch=94 train_batch=16500/12500 loss=2.015622
+[rank 1] epoch=94 train_batch=17000/12500 loss=2.064758
+[rank 1] epoch=94 train_batch=17500/12500 loss=2.055428
+[rank 1] epoch=94 train_batch=18000/12500 loss=2.151712
+[rank 1] epoch=94 train_batch=18500/12500 loss=2.128058
+[rank 1] epoch=94 train_batch=19000/12500 loss=1.978563
+[rank 1] epoch=94 train_batch=19500/12500 loss=2.163631
+[rank 1] epoch=94 train_batch=20000/12500 loss=1.957681
+[rank 1] epoch=94 train_batch=20500/12500 loss=2.083515
+[rank 1] epoch=94 train_batch=21000/12500 loss=2.042671
+[rank 1] epoch=94 train_batch=21500/12500 loss=2.142228
+[rank 1] epoch=94 train_batch=22000/12500 loss=2.020506
+[rank 1] epoch=94 train_batch=22500/12500 loss=2.018796
+[rank 1] epoch=94 train_batch=23000/12500 loss=2.190598
+[rank 1] epoch=94 train_batch=23500/12500 loss=1.981397
+[rank 1] epoch=94 train_batch=24000/12500 loss=2.042023
+[rank 1] epoch=94 train_batch=24500/12500 loss=1.986053
+[rank 1] epoch=94 train_batch=25000/12500 loss=1.984335
+[rank 1] epoch=94 valid_batch=500/1563
+[rank 1] epoch=94 valid_batch=1000/1563
+[rank 1] epoch=94 valid_batch=1500/1563
+[rank 1] epoch=94 valid_batch=2000/1563
+[rank 1] epoch=94 valid_batch=2500/1563
+[rank 1] epoch=94 valid_batch=3000/1563
+[rank 1] epoch=95 train_batch=500/12500 loss=2.235514
+[rank 1] epoch=95 train_batch=1000/12500 loss=1.985415
+[rank 1] epoch=95 train_batch=1500/12500 loss=2.132976
+[rank 1] epoch=95 train_batch=2000/12500 loss=2.045041
+[rank 1] epoch=95 train_batch=2500/12500 loss=2.121321
+[rank 1] epoch=95 train_batch=3000/12500 loss=1.908660
+[rank 1] epoch=95 train_batch=3500/12500 loss=2.014405
+[rank 1] epoch=95 train_batch=4000/12500 loss=1.922457
+[rank 1] epoch=95 train_batch=4500/12500 loss=2.025437
+[rank 1] epoch=95 train_batch=5000/12500 loss=1.913746
+[rank 1] epoch=95 train_batch=5500/12500 loss=2.072961
+[rank 1] epoch=95 train_batch=6000/12500 loss=1.977667
+[rank 1] epoch=95 train_batch=6500/12500 loss=2.120041
+[rank 1] epoch=95 train_batch=7000/12500 loss=2.192003
+[rank 1] epoch=95 train_batch=7500/12500 loss=2.307798
+[rank 1] epoch=95 train_batch=8000/12500 loss=2.164580
+[rank 1] epoch=95 train_batch=8500/12500 loss=2.061208
+[rank 1] epoch=95 train_batch=9000/12500 loss=1.898858
+[rank 1] epoch=95 train_batch=9500/12500 loss=2.157545
+[rank 1] epoch=95 train_batch=10000/12500 loss=2.009061
+[rank 1] epoch=95 train_batch=10500/12500 loss=2.011415
+[rank 1] epoch=95 train_batch=11000/12500 loss=2.132708
+[rank 1] epoch=95 train_batch=11500/12500 loss=1.940283
+[rank 1] epoch=95 train_batch=12000/12500 loss=1.810575
+[rank 1] epoch=95 train_batch=12500/12500 loss=2.045173
+[rank 1] epoch=95 train_batch=13000/12500 loss=2.051513
+[rank 1] epoch=95 train_batch=13500/12500 loss=1.976506
+[rank 1] epoch=95 train_batch=14000/12500 loss=2.063161
+[rank 1] epoch=95 train_batch=14500/12500 loss=1.939198
+[rank 1] epoch=95 train_batch=15000/12500 loss=2.080405
+[rank 1] epoch=95 train_batch=15500/12500 loss=1.975965
+[rank 1] epoch=95 train_batch=16000/12500 loss=1.899898
+[rank 1] epoch=95 train_batch=16500/12500 loss=2.235027
+[rank 1] epoch=95 train_batch=17000/12500 loss=2.067148
+[rank 1] epoch=95 train_batch=17500/12500 loss=2.156769
+[rank 1] epoch=95 train_batch=18000/12500 loss=1.870473
+[rank 1] epoch=95 train_batch=18500/12500 loss=1.984335
+[rank 1] epoch=95 train_batch=19000/12500 loss=1.855479
+[rank 1] epoch=95 train_batch=19500/12500 loss=2.248148
+[rank 1] epoch=95 train_batch=20000/12500 loss=2.100177
+[rank 1] epoch=95 train_batch=20500/12500 loss=2.297653
+[rank 1] epoch=95 train_batch=21000/12500 loss=2.087435
+[rank 1] epoch=95 train_batch=21500/12500 loss=2.120738
+[rank 1] epoch=95 train_batch=22000/12500 loss=2.027635
+[rank 1] epoch=95 train_batch=22500/12500 loss=1.898916
+[rank 1] epoch=95 train_batch=23000/12500 loss=1.938740
+[rank 1] epoch=95 train_batch=23500/12500 loss=2.063350
+[rank 1] epoch=95 train_batch=24000/12500 loss=2.039262
+[rank 1] epoch=95 train_batch=24500/12500 loss=1.881832
+[rank 1] epoch=95 train_batch=25000/12500 loss=2.233200
+[rank 1] epoch=95 valid_batch=500/1563
+[rank 1] epoch=95 valid_batch=1000/1563
+[rank 1] epoch=95 valid_batch=1500/1563
+[rank 1] epoch=95 valid_batch=2000/1563
+[rank 1] epoch=95 valid_batch=2500/1563
+[rank 1] epoch=95 valid_batch=3000/1563
+[rank 1] epoch=96 train_batch=500/12500 loss=2.037612
+[rank 1] epoch=96 train_batch=1000/12500 loss=2.115864
+[rank 1] epoch=96 train_batch=1500/12500 loss=2.018546
+[rank 1] epoch=96 train_batch=2000/12500 loss=2.026141
+[rank 1] epoch=96 train_batch=2500/12500 loss=2.089545
+[rank 1] epoch=96 train_batch=3000/12500 loss=1.955269
+[rank 1] epoch=96 train_batch=3500/12500 loss=1.869207
+[rank 1] epoch=96 train_batch=4000/12500 loss=1.843237
+[rank 1] epoch=96 train_batch=4500/12500 loss=2.129048
+[rank 1] epoch=96 train_batch=5000/12500 loss=2.047051
+[rank 1] epoch=96 train_batch=5500/12500 loss=2.088585
+[rank 1] epoch=96 train_batch=6000/12500 loss=2.074838
+[rank 1] epoch=96 train_batch=6500/12500 loss=1.873299
+[rank 1] epoch=96 train_batch=7000/12500 loss=2.007286
+[rank 1] epoch=96 train_batch=7500/12500 loss=2.168778
+[rank 1] epoch=96 train_batch=8000/12500 loss=1.868270
+[rank 1] epoch=96 train_batch=8500/12500 loss=1.901546
+[rank 1] epoch=96 train_batch=9000/12500 loss=1.806324
+[rank 1] epoch=96 train_batch=9500/12500 loss=2.046706
+[rank 1] epoch=96 train_batch=10000/12500 loss=2.119700
+[rank 1] epoch=96 train_batch=10500/12500 loss=2.255148
+[rank 1] epoch=96 train_batch=11000/12500 loss=1.987519
+[rank 1] epoch=96 train_batch=11500/12500 loss=2.039156
+[rank 1] epoch=96 train_batch=12000/12500 loss=1.946875
+[rank 1] epoch=96 train_batch=12500/12500 loss=2.091085
+[rank 1] epoch=96 train_batch=13000/12500 loss=1.974427
+[rank 1] epoch=96 train_batch=13500/12500 loss=1.978502
+[rank 1] epoch=96 train_batch=14000/12500 loss=2.135536
+[rank 1] epoch=96 train_batch=14500/12500 loss=1.919423
+[rank 1] epoch=96 train_batch=15000/12500 loss=2.038154
+[rank 1] epoch=96 train_batch=15500/12500 loss=1.985496
+[rank 1] epoch=96 train_batch=16000/12500 loss=1.936254
+[rank 1] epoch=96 train_batch=16500/12500 loss=1.864216
+[rank 1] epoch=96 train_batch=17000/12500 loss=2.037605
+[rank 1] epoch=96 train_batch=17500/12500 loss=2.100046
+[rank 1] epoch=96 train_batch=18000/12500 loss=2.048957
+[rank 1] epoch=96 train_batch=18500/12500 loss=1.991436
+[rank 1] epoch=96 train_batch=19000/12500 loss=1.979369
+[rank 1] epoch=96 train_batch=19500/12500 loss=1.983786
+[rank 1] epoch=96 train_batch=20000/12500 loss=2.077722
+[rank 1] epoch=96 train_batch=20500/12500 loss=1.948454
+[rank 1] epoch=96 train_batch=21000/12500 loss=2.082683
+[rank 1] epoch=96 train_batch=21500/12500 loss=2.082341
+[rank 1] epoch=96 train_batch=22000/12500 loss=2.006315
+[rank 1] epoch=96 train_batch=22500/12500 loss=1.943952
+[rank 1] epoch=96 train_batch=23000/12500 loss=2.015137
+[rank 1] epoch=96 train_batch=23500/12500 loss=2.023010
+[rank 1] epoch=96 train_batch=24000/12500 loss=2.134515
+[rank 1] epoch=96 train_batch=24500/12500 loss=2.033091
+[rank 1] epoch=96 train_batch=25000/12500 loss=1.984979
+[rank 1] epoch=96 valid_batch=500/1563
+[rank 1] epoch=96 valid_batch=1000/1563
+[rank 1] epoch=96 valid_batch=1500/1563
+[rank 1] epoch=96 valid_batch=2000/1563
+[rank 1] epoch=96 valid_batch=2500/1563
+[rank 1] epoch=96 valid_batch=3000/1563
+[rank 1] epoch=97 train_batch=500/12500 loss=1.983675
+[rank 1] epoch=97 train_batch=1000/12500 loss=2.214543
+[rank 1] epoch=97 train_batch=1500/12500 loss=2.069867
+[rank 1] epoch=97 train_batch=2000/12500 loss=1.965099
+[rank 1] epoch=97 train_batch=2500/12500 loss=2.005585
+[rank 1] epoch=97 train_batch=3000/12500 loss=2.154574
+[rank 1] epoch=97 train_batch=3500/12500 loss=1.966553
+[rank 1] epoch=97 train_batch=4000/12500 loss=1.966818
+[rank 1] epoch=97 train_batch=4500/12500 loss=2.071842
+[rank 1] epoch=97 train_batch=5000/12500 loss=2.091197
+[rank 1] epoch=97 train_batch=5500/12500 loss=1.980412
+[rank 1] epoch=97 train_batch=6000/12500 loss=2.094312
+[rank 1] epoch=97 train_batch=6500/12500 loss=1.987633
+[rank 1] epoch=97 train_batch=7000/12500 loss=2.068908
+[rank 1] epoch=97 train_batch=7500/12500 loss=1.995956
+[rank 1] epoch=97 train_batch=8000/12500 loss=2.016913
+[rank 1] epoch=97 train_batch=8500/12500 loss=1.959603
+[rank 1] epoch=97 train_batch=9000/12500 loss=2.041812
+[rank 1] epoch=97 train_batch=9500/12500 loss=2.048725
+[rank 1] epoch=97 train_batch=10000/12500 loss=1.967583
+[rank 1] epoch=97 train_batch=10500/12500 loss=1.942996
+[rank 1] epoch=97 train_batch=11000/12500 loss=2.055930
+[rank 1] epoch=97 train_batch=11500/12500 loss=2.041795
+[rank 1] epoch=97 train_batch=12000/12500 loss=2.223896
+[rank 1] epoch=97 train_batch=12500/12500 loss=1.985176
+[rank 1] epoch=97 train_batch=13000/12500 loss=2.031346
+[rank 1] epoch=97 train_batch=13500/12500 loss=1.883998
+[rank 1] epoch=97 train_batch=14000/12500 loss=2.051844
+[rank 1] epoch=97 train_batch=14500/12500 loss=2.112256
+[rank 1] epoch=97 train_batch=15000/12500 loss=2.116802
+[rank 1] epoch=97 train_batch=15500/12500 loss=2.005264
+[rank 1] epoch=97 train_batch=16000/12500 loss=2.060855
+[rank 1] epoch=97 train_batch=16500/12500 loss=2.053186
+[rank 1] epoch=97 train_batch=17000/12500 loss=1.963851
+[rank 1] epoch=97 train_batch=17500/12500 loss=1.915004
+[rank 1] epoch=97 train_batch=18000/12500 loss=2.099701
+[rank 1] epoch=97 train_batch=18500/12500 loss=2.033850
+[rank 1] epoch=97 train_batch=19000/12500 loss=1.874435
+[rank 1] epoch=97 train_batch=19500/12500 loss=2.081465
+[rank 1] epoch=97 train_batch=20000/12500 loss=2.007811
+[rank 1] epoch=97 train_batch=20500/12500 loss=2.040619
+[rank 1] epoch=97 train_batch=21000/12500 loss=2.036619
+[rank 1] epoch=97 train_batch=21500/12500 loss=2.032864
+[rank 1] epoch=97 train_batch=22000/12500 loss=1.986410
+[rank 1] epoch=97 train_batch=22500/12500 loss=2.001595
+[rank 1] epoch=97 train_batch=23000/12500 loss=1.937407
+[rank 1] epoch=97 train_batch=23500/12500 loss=2.088074
+[rank 1] epoch=97 train_batch=24000/12500 loss=2.111608
+[rank 1] epoch=97 train_batch=24500/12500 loss=1.909710
+[rank 1] epoch=97 train_batch=25000/12500 loss=2.032785
+[rank 1] epoch=97 valid_batch=500/1563
+[rank 1] epoch=97 valid_batch=1000/1563
+[rank 1] epoch=97 valid_batch=1500/1563
+[rank 1] epoch=97 valid_batch=2000/1563
+[rank 1] epoch=97 valid_batch=2500/1563
+[rank 1] epoch=97 valid_batch=3000/1563
+[rank 1] epoch=98 train_batch=500/12500 loss=2.084783
+[rank 1] epoch=98 train_batch=1000/12500 loss=2.171776
+[rank 1] epoch=98 train_batch=1500/12500 loss=1.915503
+[rank 1] epoch=98 train_batch=2000/12500 loss=1.939071
+[rank 1] epoch=98 train_batch=2500/12500 loss=2.033539
+[rank 1] epoch=98 train_batch=3000/12500 loss=1.989715
+[rank 1] epoch=98 train_batch=3500/12500 loss=2.041549
+[rank 1] epoch=98 train_batch=4000/12500 loss=2.067025
+[rank 1] epoch=98 train_batch=4500/12500 loss=1.989173
+[rank 1] epoch=98 train_batch=5000/12500 loss=2.039662
+[rank 1] epoch=98 train_batch=5500/12500 loss=2.060207
+[rank 1] epoch=98 train_batch=6000/12500 loss=2.081406
+[rank 1] epoch=98 train_batch=6500/12500 loss=1.856041
+[rank 1] epoch=98 train_batch=7000/12500 loss=2.018292
+[rank 1] epoch=98 train_batch=7500/12500 loss=1.946920
+[rank 1] epoch=98 train_batch=8000/12500 loss=2.121412
+[rank 1] epoch=98 train_batch=8500/12500 loss=2.111052
+[rank 1] epoch=98 train_batch=9000/12500 loss=1.940691
+[rank 1] epoch=98 train_batch=9500/12500 loss=2.024924
+[rank 1] epoch=98 train_batch=10000/12500 loss=1.874683
+[rank 1] epoch=98 train_batch=10500/12500 loss=2.145492
+[rank 1] epoch=98 train_batch=11000/12500 loss=1.990503
+[rank 1] epoch=98 train_batch=11500/12500 loss=1.947355
+[rank 1] epoch=98 train_batch=12000/12500 loss=2.027018
+[rank 1] epoch=98 train_batch=12500/12500 loss=1.966511
+[rank 1] epoch=98 train_batch=13000/12500 loss=1.956472
+[rank 1] epoch=98 train_batch=13500/12500 loss=1.906552
+[rank 1] epoch=98 train_batch=14000/12500 loss=1.923930
+[rank 1] epoch=98 train_batch=14500/12500 loss=1.983993
+[rank 1] epoch=98 train_batch=15000/12500 loss=2.067168
+[rank 1] epoch=98 train_batch=15500/12500 loss=1.934111
+[rank 1] epoch=98 train_batch=16000/12500 loss=1.979362
+[rank 1] epoch=98 train_batch=16500/12500 loss=2.037872
+[rank 1] epoch=98 train_batch=17000/12500 loss=2.062185
+[rank 1] epoch=98 train_batch=17500/12500 loss=2.015030
+[rank 1] epoch=98 train_batch=18000/12500 loss=2.124931
+[rank 1] epoch=98 train_batch=18500/12500 loss=2.000618
+[rank 1] epoch=98 train_batch=19000/12500 loss=1.910352
+[rank 1] epoch=98 train_batch=19500/12500 loss=2.015695
+[rank 1] epoch=98 train_batch=20000/12500 loss=1.884648
+[rank 1] epoch=98 train_batch=20500/12500 loss=1.947698
+[rank 1] epoch=98 train_batch=21000/12500 loss=2.148335
+[rank 1] epoch=98 train_batch=21500/12500 loss=1.982632
+[rank 1] epoch=98 train_batch=22000/12500 loss=1.994416
+[rank 1] epoch=98 train_batch=22500/12500 loss=1.925194
+[rank 1] epoch=98 train_batch=23000/12500 loss=1.902266
+[rank 1] epoch=98 train_batch=23500/12500 loss=1.917589
+[rank 1] epoch=98 train_batch=24000/12500 loss=1.838331
+[rank 1] epoch=98 train_batch=24500/12500 loss=2.037920
+[rank 1] epoch=98 train_batch=25000/12500 loss=1.973439
+[rank 1] epoch=98 valid_batch=500/1563
+[rank 1] epoch=98 valid_batch=1000/1563
+[rank 1] epoch=98 valid_batch=1500/1563
+[rank 1] epoch=98 valid_batch=2000/1563
+[rank 1] epoch=98 valid_batch=2500/1563
+[rank 1] epoch=98 valid_batch=3000/1563
+[rank 1] epoch=99 train_batch=500/12500 loss=1.943466
+[rank 1] epoch=99 train_batch=1000/12500 loss=1.984764
+[rank 1] epoch=99 train_batch=1500/12500 loss=2.073771
+[rank 1] epoch=99 train_batch=2000/12500 loss=1.965019
+[rank 1] epoch=99 train_batch=2500/12500 loss=1.972102
+[rank 1] epoch=99 train_batch=3000/12500 loss=2.094558
+[rank 1] epoch=99 train_batch=3500/12500 loss=2.120641
+[rank 1] epoch=99 train_batch=4000/12500 loss=2.061886
+[rank 1] epoch=99 train_batch=4500/12500 loss=2.009348
+[rank 1] epoch=99 train_batch=5000/12500 loss=2.072464
+[rank 1] epoch=99 train_batch=5500/12500 loss=2.041087
+[rank 1] epoch=99 train_batch=6000/12500 loss=1.894435
+[rank 1] epoch=99 train_batch=6500/12500 loss=1.887181
+[rank 1] epoch=99 train_batch=7000/12500 loss=1.925340
+[rank 1] epoch=99 train_batch=7500/12500 loss=1.894187
+[rank 1] epoch=99 train_batch=8000/12500 loss=2.038618
+[rank 1] epoch=99 train_batch=8500/12500 loss=2.013702
+[rank 1] epoch=99 train_batch=9000/12500 loss=2.014228
+[rank 1] epoch=99 train_batch=9500/12500 loss=1.922594
+[rank 1] epoch=99 train_batch=10000/12500 loss=1.924412
+[rank 1] epoch=99 train_batch=10500/12500 loss=1.896000
+[rank 1] epoch=99 train_batch=11000/12500 loss=1.956070
+[rank 1] epoch=99 train_batch=11500/12500 loss=2.056740
+[rank 1] epoch=99 train_batch=12000/12500 loss=1.909464
+[rank 1] epoch=99 train_batch=12500/12500 loss=1.927241
+[rank 1] epoch=99 train_batch=13000/12500 loss=2.014742
+[rank 1] epoch=99 train_batch=13500/12500 loss=1.979849
+[rank 1] epoch=99 train_batch=14000/12500 loss=2.003829
+[rank 1] epoch=99 train_batch=14500/12500 loss=2.028084
+[rank 1] epoch=99 train_batch=15000/12500 loss=1.897785
+[rank 1] epoch=99 train_batch=15500/12500 loss=1.943069
+[rank 1] epoch=99 train_batch=16000/12500 loss=2.000256
+[rank 1] epoch=99 train_batch=16500/12500 loss=2.000089
+[rank 1] epoch=99 train_batch=17000/12500 loss=2.053335
+[rank 1] epoch=99 train_batch=17500/12500 loss=2.050900
+[rank 1] epoch=99 train_batch=18000/12500 loss=2.121609
+[rank 1] epoch=99 train_batch=18500/12500 loss=2.008345
+[rank 1] epoch=99 train_batch=19000/12500 loss=1.961226
+[rank 1] epoch=99 train_batch=19500/12500 loss=1.952649
+[rank 1] epoch=99 train_batch=20000/12500 loss=2.060616
+[rank 1] epoch=99 train_batch=20500/12500 loss=2.025079
+[rank 1] epoch=99 train_batch=21000/12500 loss=1.930779
+[rank 1] epoch=99 train_batch=21500/12500 loss=1.938391
+[rank 1] epoch=99 train_batch=22000/12500 loss=2.013012
+[rank 1] epoch=99 train_batch=22500/12500 loss=2.026542
+[rank 1] epoch=99 train_batch=23000/12500 loss=2.005275
+[rank 1] epoch=99 train_batch=23500/12500 loss=1.779217
+[rank 1] epoch=99 train_batch=24000/12500 loss=1.947571
+[rank 1] epoch=99 train_batch=24500/12500 loss=1.917717
+[rank 1] epoch=99 train_batch=25000/12500 loss=2.077412
+[rank 1] epoch=99 valid_batch=500/1563
+[rank 1] epoch=99 valid_batch=1000/1563
+[rank 1] epoch=99 valid_batch=1500/1563
+[rank 1] epoch=99 valid_batch=2000/1563
+[rank 1] epoch=99 valid_batch=2500/1563
+[rank 1] epoch=99 valid_batch=3000/1563
+[rank 1] epoch=100 train_batch=500/12500 loss=2.763622
+[rank 1] epoch=100 train_batch=1000/12500 loss=2.954494
+[rank 1] epoch=100 train_batch=1500/12500 loss=2.051738
+[rank 1] epoch=100 train_batch=2000/12500 loss=3.213506
+[rank 1] epoch=100 train_batch=2500/12500 loss=3.357714
+[rank 1] epoch=100 train_batch=3000/12500 loss=2.198719
+[rank 1] epoch=100 train_batch=3500/12500 loss=3.170015
+[rank 1] epoch=100 train_batch=4000/12500 loss=2.252728
+[rank 1] epoch=100 train_batch=4500/12500 loss=3.155934
+[rank 1] epoch=100 train_batch=5000/12500 loss=2.937093
+[rank 1] epoch=100 train_batch=5500/12500 loss=3.328391
+[rank 1] epoch=100 train_batch=6000/12500 loss=2.168000
+[rank 1] epoch=100 train_batch=6500/12500 loss=2.548095
+[rank 1] epoch=100 train_batch=7000/12500 loss=3.044943
+[rank 1] epoch=100 train_batch=7500/12500 loss=2.634296
+[rank 1] epoch=100 train_batch=8000/12500 loss=2.156858
+[rank 1] epoch=100 train_batch=8500/12500 loss=2.890930
+[rank 1] epoch=100 train_batch=9000/12500 loss=3.111794
+[rank 1] epoch=100 train_batch=9500/12500 loss=2.156176
+[rank 1] epoch=100 train_batch=10000/12500 loss=2.392568
+[rank 1] epoch=100 train_batch=10500/12500 loss=2.378889
+[rank 1] epoch=100 train_batch=11000/12500 loss=2.425896
+[rank 1] epoch=100 train_batch=11500/12500 loss=2.376227
+[rank 1] epoch=100 train_batch=12000/12500 loss=2.396325
+[rank 1] epoch=100 train_batch=12500/12500 loss=3.010912
+[rank 1] epoch=100 train_batch=13000/12500 loss=2.521940
+[rank 1] epoch=100 train_batch=13500/12500 loss=2.299162
+[rank 1] epoch=100 train_batch=14000/12500 loss=2.115137
+[rank 1] epoch=100 train_batch=14500/12500 loss=2.484132
+[rank 1] epoch=100 train_batch=15000/12500 loss=2.434844
+[rank 1] epoch=100 train_batch=15500/12500 loss=2.356146
+[rank 1] epoch=100 train_batch=16000/12500 loss=2.375288
+[rank 1] epoch=100 train_batch=16500/12500 loss=2.352770
+[rank 1] epoch=100 train_batch=17000/12500 loss=2.394533
+[rank 1] epoch=100 train_batch=17500/12500 loss=2.414049
+[rank 1] epoch=100 train_batch=18000/12500 loss=2.411898
+[rank 1] epoch=100 train_batch=18500/12500 loss=2.377047
+[rank 1] epoch=100 train_batch=19000/12500 loss=2.138910
+[rank 1] epoch=100 train_batch=19500/12500 loss=2.519578
+[rank 1] epoch=100 train_batch=20000/12500 loss=2.137707
+[rank 1] epoch=100 train_batch=20500/12500 loss=2.205676
+[rank 1] epoch=100 train_batch=21000/12500 loss=2.569740
+[rank 1] epoch=100 train_batch=21500/12500 loss=2.275756
+[rank 1] epoch=100 train_batch=22000/12500 loss=2.965210
+[rank 1] epoch=100 train_batch=22500/12500 loss=2.668001
+[rank 1] epoch=100 train_batch=23000/12500 loss=2.719173
+[rank 1] epoch=100 train_batch=23500/12500 loss=2.601024
+[rank 1] epoch=100 train_batch=24000/12500 loss=2.374953
+[rank 1] epoch=100 train_batch=24500/12500 loss=2.425748
+[rank 1] epoch=100 train_batch=25000/12500 loss=2.908332
+[rank 1] epoch=100 valid_batch=500/1563
+[rank 1] epoch=100 valid_batch=1000/1563
+[rank 1] epoch=100 valid_batch=1500/1563
+[rank 1] epoch=100 valid_batch=2000/1563
+[rank 1] epoch=100 valid_batch=2500/1563
+[rank 1] epoch=100 valid_batch=3000/1563
+[rank 1] epoch=101 train_batch=500/12500 loss=2.410835
+[rank 1] epoch=101 train_batch=1000/12500 loss=2.250923
+[rank 1] epoch=101 train_batch=1500/12500 loss=2.646999
+[rank 1] epoch=101 train_batch=2000/12500 loss=2.434275
+[rank 1] epoch=101 train_batch=2500/12500 loss=2.385630
+[rank 1] epoch=101 train_batch=3000/12500 loss=2.605946
+[rank 1] epoch=101 train_batch=3500/12500 loss=2.323170
+[rank 1] epoch=101 train_batch=4000/12500 loss=2.458887
+[rank 1] epoch=101 train_batch=4500/12500 loss=2.513668
+[rank 1] epoch=101 train_batch=5000/12500 loss=2.463923
+[rank 1] epoch=101 train_batch=5500/12500 loss=2.515207
+[rank 1] epoch=101 train_batch=6000/12500 loss=2.579253
+[rank 1] epoch=101 train_batch=6500/12500 loss=2.455069
+[rank 1] epoch=101 train_batch=7000/12500 loss=2.347598
+[rank 1] epoch=101 train_batch=7500/12500 loss=2.649329
+[rank 1] epoch=101 train_batch=8000/12500 loss=2.599693
+[rank 1] epoch=101 train_batch=8500/12500 loss=2.403944
+[rank 1] epoch=101 train_batch=9000/12500 loss=2.543705
+[rank 1] epoch=101 train_batch=9500/12500 loss=2.548692
+[rank 1] epoch=101 train_batch=10000/12500 loss=2.565698
+[rank 1] epoch=101 train_batch=10500/12500 loss=2.622776
+[rank 1] epoch=101 train_batch=11000/12500 loss=2.479670
+[rank 1] epoch=101 train_batch=11500/12500 loss=2.399480
+[rank 1] epoch=101 train_batch=12000/12500 loss=2.727540
+[rank 1] epoch=101 train_batch=12500/12500 loss=2.429453
+[rank 1] epoch=101 train_batch=13000/12500 loss=2.487010
+[rank 1] epoch=101 train_batch=13500/12500 loss=2.559012
+[rank 1] epoch=101 train_batch=14000/12500 loss=2.542183
+[rank 1] epoch=101 train_batch=14500/12500 loss=2.401307
+[rank 1] epoch=101 train_batch=15000/12500 loss=2.547012
+[rank 1] epoch=101 train_batch=15500/12500 loss=2.437602
+[rank 1] epoch=101 train_batch=16000/12500 loss=2.406148
+[rank 1] epoch=101 train_batch=16500/12500 loss=2.665624
+[rank 1] epoch=101 train_batch=17000/12500 loss=2.538332
+[rank 1] epoch=101 train_batch=17500/12500 loss=2.549210
+[rank 1] epoch=101 train_batch=18000/12500 loss=2.337730
+[rank 1] epoch=101 train_batch=18500/12500 loss=2.687001
+[rank 1] epoch=101 train_batch=19000/12500 loss=2.771821
+[rank 1] epoch=101 train_batch=19500/12500 loss=2.261852
+[rank 1] epoch=101 train_batch=20000/12500 loss=2.318529
+[rank 1] epoch=101 train_batch=20500/12500 loss=2.324414
+[rank 1] epoch=101 train_batch=21000/12500 loss=2.316424
+[rank 1] epoch=101 train_batch=21500/12500 loss=2.378446
+[rank 1] epoch=101 train_batch=22000/12500 loss=2.276680
+[rank 1] epoch=101 train_batch=22500/12500 loss=2.162261
+[rank 1] epoch=101 train_batch=23000/12500 loss=2.260353
+[rank 1] epoch=101 train_batch=23500/12500 loss=2.291778
+[rank 1] epoch=101 train_batch=24000/12500 loss=2.192190
+[rank 1] epoch=101 train_batch=24500/12500 loss=2.137922
+[rank 1] epoch=101 train_batch=25000/12500 loss=2.142057
+[rank 1] epoch=101 valid_batch=500/1563
+[rank 1] epoch=101 valid_batch=1000/1563
+[rank 1] epoch=101 valid_batch=1500/1563
+[rank 1] epoch=101 valid_batch=2000/1563
+[rank 1] epoch=101 valid_batch=2500/1563
+[rank 1] epoch=101 valid_batch=3000/1563
+[rank 1] epoch=102 train_batch=500/12500 loss=2.378864
+[rank 1] epoch=102 train_batch=1000/12500 loss=2.383523
+[rank 1] epoch=102 train_batch=1500/12500 loss=2.509171
+[rank 1] epoch=102 train_batch=2000/12500 loss=2.490167
+[rank 1] epoch=102 train_batch=2500/12500 loss=2.304855
+[rank 1] epoch=102 train_batch=3000/12500 loss=2.302815
+[rank 1] epoch=102 train_batch=3500/12500 loss=2.174376
+[rank 1] epoch=102 train_batch=4000/12500 loss=2.107794
+[rank 1] epoch=102 train_batch=4500/12500 loss=2.191734
+[rank 1] epoch=102 train_batch=5000/12500 loss=2.337823
+[rank 1] epoch=102 train_batch=5500/12500 loss=2.229911
+[rank 1] epoch=102 train_batch=6000/12500 loss=2.157679
+[rank 1] epoch=102 train_batch=6500/12500 loss=2.312387
+[rank 1] epoch=102 train_batch=7000/12500 loss=2.317119
+[rank 1] epoch=102 train_batch=7500/12500 loss=2.176272
+[rank 1] epoch=102 train_batch=8000/12500 loss=1.972353
+[rank 1] epoch=102 train_batch=8500/12500 loss=2.374639
+[rank 1] epoch=102 train_batch=9000/12500 loss=2.607390
+[rank 1] epoch=102 train_batch=9500/12500 loss=2.318413
+[rank 1] epoch=102 train_batch=10000/12500 loss=2.397484
+[rank 1] epoch=102 train_batch=10500/12500 loss=2.177441
+[rank 1] epoch=102 train_batch=11000/12500 loss=2.262533
+[rank 1] epoch=102 train_batch=11500/12500 loss=2.311622
+[rank 1] epoch=102 train_batch=12000/12500 loss=2.215174
+[rank 1] epoch=102 train_batch=12500/12500 loss=2.635100
+[rank 1] epoch=102 train_batch=13000/12500 loss=2.284754
+[rank 1] epoch=102 train_batch=13500/12500 loss=2.303488
+[rank 1] epoch=102 train_batch=14000/12500 loss=2.332793
+[rank 1] epoch=102 train_batch=14500/12500 loss=2.262036
+[rank 1] epoch=102 train_batch=15000/12500 loss=2.247259
+[rank 1] epoch=102 train_batch=15500/12500 loss=2.327458
+[rank 1] epoch=102 train_batch=16000/12500 loss=2.184304
+[rank 1] epoch=102 train_batch=16500/12500 loss=2.281672
+[rank 1] epoch=102 train_batch=17000/12500 loss=2.210355
+[rank 1] epoch=102 train_batch=17500/12500 loss=2.432199
+[rank 1] epoch=102 train_batch=18000/12500 loss=2.255285
+[rank 1] epoch=102 train_batch=18500/12500 loss=2.300120
+[rank 1] epoch=102 train_batch=19000/12500 loss=2.217096
+[rank 1] epoch=102 train_batch=19500/12500 loss=2.222981
+[rank 1] epoch=102 train_batch=20000/12500 loss=2.132888
+[rank 1] epoch=102 train_batch=20500/12500 loss=2.776407
+[rank 1] epoch=102 train_batch=21000/12500 loss=2.357834
+[rank 1] epoch=102 train_batch=21500/12500 loss=2.966229
+[rank 1] epoch=102 train_batch=22000/12500 loss=2.260045
+[rank 1] epoch=102 train_batch=22500/12500 loss=2.374090
+[rank 1] epoch=102 train_batch=23000/12500 loss=2.668829
+[rank 1] epoch=102 train_batch=23500/12500 loss=2.743877
+[rank 1] epoch=102 train_batch=24000/12500 loss=2.397430
+[rank 1] epoch=102 train_batch=24500/12500 loss=2.398974
+[rank 1] epoch=102 train_batch=25000/12500 loss=2.380866
+[rank 1] epoch=102 valid_batch=500/1563
+[rank 1] epoch=102 valid_batch=1000/1563
+[rank 1] epoch=102 valid_batch=1500/1563
+[rank 1] epoch=102 valid_batch=2000/1563
+[rank 1] epoch=102 valid_batch=2500/1563
+[rank 1] epoch=102 valid_batch=3000/1563
+[rank 1] epoch=103 train_batch=500/12500 loss=2.586230
+[rank 1] epoch=103 train_batch=1000/12500 loss=2.456233
+[rank 1] epoch=103 train_batch=1500/12500 loss=3.011329
+[rank 1] epoch=103 train_batch=2000/12500 loss=2.334359
+[rank 1] epoch=103 train_batch=2500/12500 loss=2.211500
+[rank 1] epoch=103 train_batch=3000/12500 loss=2.228439
+[rank 1] epoch=103 train_batch=3500/12500 loss=2.215266
+[rank 1] epoch=103 train_batch=4000/12500 loss=2.224022
+[rank 1] epoch=103 train_batch=4500/12500 loss=2.444390
+[rank 1] epoch=103 train_batch=5000/12500 loss=2.562145
+[rank 1] epoch=103 train_batch=5500/12500 loss=2.526005
+[rank 1] epoch=103 train_batch=6000/12500 loss=2.098876
+[rank 1] epoch=103 train_batch=6500/12500 loss=2.241779
+[rank 1] epoch=103 train_batch=7000/12500 loss=2.341687
+[rank 1] epoch=103 train_batch=7500/12500 loss=2.081498
+[rank 1] epoch=103 train_batch=8000/12500 loss=2.233994
+[rank 1] epoch=103 train_batch=8500/12500 loss=2.324295
+[rank 1] epoch=103 train_batch=9000/12500 loss=2.322229
+[rank 1] epoch=103 train_batch=9500/12500 loss=2.331211
+[rank 1] epoch=103 train_batch=10000/12500 loss=2.162477
+[rank 1] epoch=103 train_batch=10500/12500 loss=2.087926
+[rank 1] epoch=103 train_batch=11000/12500 loss=2.094904
+[rank 1] epoch=103 train_batch=11500/12500 loss=2.109555
+[rank 1] epoch=103 train_batch=12000/12500 loss=2.242388
+[rank 1] epoch=103 train_batch=12500/12500 loss=2.146728
+[rank 1] epoch=103 train_batch=13000/12500 loss=2.101544
+[rank 1] epoch=103 train_batch=13500/12500 loss=2.257758
+[rank 1] epoch=103 train_batch=14000/12500 loss=2.211200
+[rank 1] epoch=103 train_batch=14500/12500 loss=2.851179
+[rank 1] epoch=103 train_batch=15000/12500 loss=2.274996
+[rank 1] epoch=103 train_batch=15500/12500 loss=2.196227
+[rank 1] epoch=103 train_batch=16000/12500 loss=2.344878
+[rank 1] epoch=103 train_batch=16500/12500 loss=2.365228
+[rank 1] epoch=103 train_batch=17000/12500 loss=2.261530
+[rank 1] epoch=103 train_batch=17500/12500 loss=2.468701
+[rank 1] epoch=103 train_batch=18000/12500 loss=2.683870
+[rank 1] epoch=103 train_batch=18500/12500 loss=2.241739
+[rank 1] epoch=103 train_batch=19000/12500 loss=2.374032
+[rank 1] epoch=103 train_batch=19500/12500 loss=2.253850
+[rank 1] epoch=103 train_batch=20000/12500 loss=2.129251
+[rank 1] epoch=103 train_batch=20500/12500 loss=2.001906
+[rank 1] epoch=103 train_batch=21000/12500 loss=2.140617
+[rank 1] epoch=103 train_batch=21500/12500 loss=2.223599
+[rank 1] epoch=103 train_batch=22000/12500 loss=2.147860
+[rank 1] epoch=103 train_batch=22500/12500 loss=2.302844
+[rank 1] epoch=103 train_batch=23000/12500 loss=2.180538
+[rank 1] epoch=103 train_batch=23500/12500 loss=2.234060
+[rank 1] epoch=103 train_batch=24000/12500 loss=2.238026
+[rank 1] epoch=103 train_batch=24500/12500 loss=2.350252
+[rank 1] epoch=103 train_batch=25000/12500 loss=2.261558
+[rank 1] epoch=103 valid_batch=500/1563
+[rank 1] epoch=103 valid_batch=1000/1563
+[rank 1] epoch=103 valid_batch=1500/1563
+[rank 1] epoch=103 valid_batch=2000/1563
+[rank 1] epoch=103 valid_batch=2500/1563
+[rank 1] epoch=103 valid_batch=3000/1563
+[rank 1] epoch=104 train_batch=500/12500 loss=2.240202
+[rank 1] epoch=104 train_batch=1000/12500 loss=2.037640
+[rank 1] epoch=104 train_batch=1500/12500 loss=2.211792
+[rank 1] epoch=104 train_batch=2000/12500 loss=2.279162
+[rank 1] epoch=104 train_batch=2500/12500 loss=2.236524
+[rank 1] epoch=104 train_batch=3000/12500 loss=2.449594
+[rank 1] epoch=104 train_batch=3500/12500 loss=2.161796
+[rank 1] epoch=104 train_batch=4000/12500 loss=2.392816
+[rank 1] epoch=104 train_batch=4500/12500 loss=2.388221
+[rank 1] epoch=104 train_batch=5000/12500 loss=2.225792
+[rank 1] epoch=104 train_batch=5500/12500 loss=2.475918
+[rank 1] epoch=104 train_batch=6000/12500 loss=2.293720
+[rank 1] epoch=104 train_batch=6500/12500 loss=2.081461
+[rank 1] epoch=104 train_batch=7000/12500 loss=2.097828
+[rank 1] epoch=104 train_batch=7500/12500 loss=2.363322
+[rank 1] epoch=104 train_batch=8000/12500 loss=2.158744
+[rank 1] epoch=104 train_batch=8500/12500 loss=2.387270
+[rank 1] epoch=104 train_batch=9000/12500 loss=2.254432
+[rank 1] epoch=104 train_batch=9500/12500 loss=2.202512
+[rank 1] epoch=104 train_batch=10000/12500 loss=2.205451
+[rank 1] epoch=104 train_batch=10500/12500 loss=2.312233
+[rank 1] epoch=104 train_batch=11000/12500 loss=2.225269
+[rank 1] epoch=104 train_batch=11500/12500 loss=2.172600
+[rank 1] epoch=104 train_batch=12000/12500 loss=2.153385
+[rank 1] epoch=104 train_batch=12500/12500 loss=2.127950
+[rank 1] epoch=104 train_batch=13000/12500 loss=2.311816
+[rank 1] epoch=104 train_batch=13500/12500 loss=2.346811
+[rank 1] epoch=104 train_batch=14000/12500 loss=2.126747
+[rank 1] epoch=104 train_batch=14500/12500 loss=2.168214
+[rank 1] epoch=104 train_batch=15000/12500 loss=2.042305
+[rank 1] epoch=104 train_batch=15500/12500 loss=2.277169
+[rank 1] epoch=104 train_batch=16000/12500 loss=2.046327
+[rank 1] epoch=104 train_batch=16500/12500 loss=2.021282
+[rank 1] epoch=104 train_batch=17000/12500 loss=2.300554
+[rank 1] epoch=104 train_batch=17500/12500 loss=2.269225
+[rank 1] epoch=104 train_batch=18000/12500 loss=2.179443
+[rank 1] epoch=104 train_batch=18500/12500 loss=2.108039
+[rank 1] epoch=104 train_batch=19000/12500 loss=2.123826
+[rank 1] epoch=104 train_batch=19500/12500 loss=2.117715
+[rank 1] epoch=104 train_batch=20000/12500 loss=2.295382
+[rank 1] epoch=104 train_batch=20500/12500 loss=2.100315
+[rank 1] epoch=104 train_batch=21000/12500 loss=2.144174
+[rank 1] epoch=104 train_batch=21500/12500 loss=2.237668
+[rank 1] epoch=104 train_batch=22000/12500 loss=2.270123
+[rank 1] epoch=104 train_batch=22500/12500 loss=2.236351
+[rank 1] epoch=104 train_batch=23000/12500 loss=2.420483
+[rank 1] epoch=104 train_batch=23500/12500 loss=2.156915
+[rank 1] epoch=104 train_batch=24000/12500 loss=2.471921
+[rank 1] epoch=104 train_batch=24500/12500 loss=2.419374
+[rank 1] epoch=104 train_batch=25000/12500 loss=2.141460
+[rank 1] epoch=104 valid_batch=500/1563
+[rank 1] epoch=104 valid_batch=1000/1563
+[rank 1] epoch=104 valid_batch=1500/1563
+[rank 1] epoch=104 valid_batch=2000/1563
+[rank 1] epoch=104 valid_batch=2500/1563
+[rank 1] epoch=104 valid_batch=3000/1563
+[rank 1] epoch=105 train_batch=500/12500 loss=2.190033
+[rank 1] epoch=105 train_batch=1000/12500 loss=2.326434
+[rank 1] epoch=105 train_batch=1500/12500 loss=2.187754
+[rank 1] epoch=105 train_batch=2000/12500 loss=2.148973
+[rank 1] epoch=105 train_batch=2500/12500 loss=2.165820
+[rank 1] epoch=105 train_batch=3000/12500 loss=2.110533
+[rank 1] epoch=105 train_batch=3500/12500 loss=2.371321
+[rank 1] epoch=105 train_batch=4000/12500 loss=2.170356
+[rank 1] epoch=105 train_batch=4500/12500 loss=2.362943
+[rank 1] epoch=105 train_batch=5000/12500 loss=2.267400
+[rank 1] epoch=105 train_batch=5500/12500 loss=2.075902
+[rank 1] epoch=105 train_batch=6000/12500 loss=2.100576
+[rank 1] epoch=105 train_batch=6500/12500 loss=2.155035
+[rank 1] epoch=105 train_batch=7000/12500 loss=2.172114
+[rank 1] epoch=105 train_batch=7500/12500 loss=2.149634
+[rank 1] epoch=105 train_batch=8000/12500 loss=2.081789
+[rank 1] epoch=105 train_batch=8500/12500 loss=2.114836
+[rank 1] epoch=105 train_batch=9000/12500 loss=2.178121
+[rank 1] epoch=105 train_batch=9500/12500 loss=2.389111
+[rank 1] epoch=105 train_batch=10000/12500 loss=2.061105
+[rank 1] epoch=105 train_batch=10500/12500 loss=2.260384
+[rank 1] epoch=105 train_batch=11000/12500 loss=2.416471
+[rank 1] epoch=105 train_batch=11500/12500 loss=2.099145
+[rank 1] epoch=105 train_batch=12000/12500 loss=2.188785
+[rank 1] epoch=105 train_batch=12500/12500 loss=2.114587
+[rank 1] epoch=105 train_batch=13000/12500 loss=2.024779
+[rank 1] epoch=105 train_batch=13500/12500 loss=2.210454
+[rank 1] epoch=105 train_batch=14000/12500 loss=2.205017
+[rank 1] epoch=105 train_batch=14500/12500 loss=2.485142
+[rank 1] epoch=105 train_batch=15000/12500 loss=2.263968
+[rank 1] epoch=105 train_batch=15500/12500 loss=2.343958
+[rank 1] epoch=105 train_batch=16000/12500 loss=2.749229
+[rank 1] epoch=105 train_batch=16500/12500 loss=2.332212
+[rank 1] epoch=105 train_batch=17000/12500 loss=2.071923
+[rank 1] epoch=105 train_batch=17500/12500 loss=2.155958
+[rank 1] epoch=105 train_batch=18000/12500 loss=1.911589
+[rank 1] epoch=105 train_batch=18500/12500 loss=2.116871
+[rank 1] epoch=105 train_batch=19000/12500 loss=2.170553
+[rank 1] epoch=105 train_batch=19500/12500 loss=2.254012
+[rank 1] epoch=105 train_batch=20000/12500 loss=2.211397
+[rank 1] epoch=105 train_batch=20500/12500 loss=2.183833
+[rank 1] epoch=105 train_batch=21000/12500 loss=2.215784
+[rank 1] epoch=105 train_batch=21500/12500 loss=2.247488
+[rank 1] epoch=105 train_batch=22000/12500 loss=2.323588
+[rank 1] epoch=105 train_batch=22500/12500 loss=1.992431
+[rank 1] epoch=105 train_batch=23000/12500 loss=2.240390
+[rank 1] epoch=105 train_batch=23500/12500 loss=2.177793
+[rank 1] epoch=105 train_batch=24000/12500 loss=2.275039
+[rank 1] epoch=105 train_batch=24500/12500 loss=2.245612
+[rank 1] epoch=105 train_batch=25000/12500 loss=2.261389
+[rank 1] epoch=105 valid_batch=500/1563
+[rank 1] epoch=105 valid_batch=1000/1563
+[rank 1] epoch=105 valid_batch=1500/1563
+[rank 1] epoch=105 valid_batch=2000/1563
+[rank 1] epoch=105 valid_batch=2500/1563
+[rank 1] epoch=105 valid_batch=3000/1563
+[rank 1] epoch=106 train_batch=500/12500 loss=2.423160
+[rank 1] epoch=106 train_batch=1000/12500 loss=2.406654
+[rank 1] epoch=106 train_batch=1500/12500 loss=2.296798
+[rank 1] epoch=106 train_batch=2000/12500 loss=2.047458
+[rank 1] epoch=106 train_batch=2500/12500 loss=2.303005
+[rank 1] epoch=106 train_batch=3000/12500 loss=2.006530
+[rank 1] epoch=106 train_batch=3500/12500 loss=2.445258
+[rank 1] epoch=106 train_batch=4000/12500 loss=2.151803
+[rank 1] epoch=106 train_batch=4500/12500 loss=2.223116
+[rank 1] epoch=106 train_batch=5000/12500 loss=2.255750
+[rank 1] epoch=106 train_batch=5500/12500 loss=2.123850
+[rank 1] epoch=106 train_batch=6000/12500 loss=2.323667
+[rank 1] epoch=106 train_batch=6500/12500 loss=1.997939
+[rank 1] epoch=106 train_batch=7000/12500 loss=2.055127
+[rank 1] epoch=106 train_batch=7500/12500 loss=2.221676
+[rank 1] epoch=106 train_batch=8000/12500 loss=2.220326
+[rank 1] epoch=106 train_batch=8500/12500 loss=2.247720
+[rank 1] epoch=106 train_batch=9000/12500 loss=2.313210
+[rank 1] epoch=106 train_batch=9500/12500 loss=2.078477
+[rank 1] epoch=106 train_batch=10000/12500 loss=2.227793
+[rank 1] epoch=106 train_batch=10500/12500 loss=2.170569
+[rank 1] epoch=106 train_batch=11000/12500 loss=2.175143
+[rank 1] epoch=106 train_batch=11500/12500 loss=2.073636
+[rank 1] epoch=106 train_batch=12000/12500 loss=2.151991
+[rank 1] epoch=106 train_batch=12500/12500 loss=2.132834
+[rank 1] epoch=106 train_batch=13000/12500 loss=2.162589
+[rank 1] epoch=106 train_batch=13500/12500 loss=2.220020
+[rank 1] epoch=106 train_batch=14000/12500 loss=2.108891
+[rank 1] epoch=106 train_batch=14500/12500 loss=2.115921
+[rank 1] epoch=106 train_batch=15000/12500 loss=2.237040
+[rank 1] epoch=106 train_batch=15500/12500 loss=2.098635
+[rank 1] epoch=106 train_batch=16000/12500 loss=2.106397
+[rank 1] epoch=106 train_batch=16500/12500 loss=2.181808
+[rank 1] epoch=106 train_batch=17000/12500 loss=2.110060
+[rank 1] epoch=106 train_batch=17500/12500 loss=2.103526
+[rank 1] epoch=106 train_batch=18000/12500 loss=2.274343
+[rank 1] epoch=106 train_batch=18500/12500 loss=2.540753
+[rank 1] epoch=106 train_batch=19000/12500 loss=2.315024
+[rank 1] epoch=106 train_batch=19500/12500 loss=2.199056
+[rank 1] epoch=106 train_batch=20000/12500 loss=2.137684
+[rank 1] epoch=106 train_batch=20500/12500 loss=2.130188
+[rank 1] epoch=106 train_batch=21000/12500 loss=2.138944
+[rank 1] epoch=106 train_batch=21500/12500 loss=2.207963
+[rank 1] epoch=106 train_batch=22000/12500 loss=2.146677
+[rank 1] epoch=106 train_batch=22500/12500 loss=2.312662
+[rank 1] epoch=106 train_batch=23000/12500 loss=2.114317
+[rank 1] epoch=106 train_batch=23500/12500 loss=2.296861
+[rank 1] epoch=106 train_batch=24000/12500 loss=2.270119
+[rank 1] epoch=106 train_batch=24500/12500 loss=2.219475
+[rank 1] epoch=106 train_batch=25000/12500 loss=2.060078
+[rank 1] epoch=106 valid_batch=500/1563
+[rank 1] epoch=106 valid_batch=1000/1563
+[rank 1] epoch=106 valid_batch=1500/1563
+[rank 1] epoch=106 valid_batch=2000/1563
+[rank 1] epoch=106 valid_batch=2500/1563
+[rank 1] epoch=106 valid_batch=3000/1563
+[rank 1] epoch=107 train_batch=500/12500 loss=2.215923
+[rank 1] epoch=107 train_batch=1000/12500 loss=2.178181
+[rank 1] epoch=107 train_batch=1500/12500 loss=2.074041
+[rank 1] epoch=107 train_batch=2000/12500 loss=2.209577
+[rank 1] epoch=107 train_batch=2500/12500 loss=2.053841
+[rank 1] epoch=107 train_batch=3000/12500 loss=2.355595
+[rank 1] epoch=107 train_batch=3500/12500 loss=2.111698
+[rank 1] epoch=107 train_batch=4000/12500 loss=2.099897
+[rank 1] epoch=107 train_batch=4500/12500 loss=2.106964
+[rank 1] epoch=107 train_batch=5000/12500 loss=2.088144
+[rank 1] epoch=107 train_batch=5500/12500 loss=2.319502
+[rank 1] epoch=107 train_batch=6000/12500 loss=2.794971
+[rank 1] epoch=107 train_batch=6500/12500 loss=2.052445
+[rank 1] epoch=107 train_batch=7000/12500 loss=2.146224
+[rank 1] epoch=107 train_batch=7500/12500 loss=2.293567
+[rank 1] epoch=107 train_batch=8000/12500 loss=2.106080
+[rank 1] epoch=107 train_batch=8500/12500 loss=2.169241
+[rank 1] epoch=107 train_batch=9000/12500 loss=2.182000
+[rank 1] epoch=107 train_batch=9500/12500 loss=2.211251
+[rank 1] epoch=107 train_batch=10000/12500 loss=2.018851
+[rank 1] epoch=107 train_batch=10500/12500 loss=2.088670
+[rank 1] epoch=107 train_batch=11000/12500 loss=2.213450
+[rank 1] epoch=107 train_batch=11500/12500 loss=2.206931
+[rank 1] epoch=107 train_batch=12000/12500 loss=2.047487
+[rank 1] epoch=107 train_batch=12500/12500 loss=2.287541
+[rank 1] epoch=107 train_batch=13000/12500 loss=2.238351
+[rank 1] epoch=107 train_batch=13500/12500 loss=2.740769
+[rank 1] epoch=107 train_batch=14000/12500 loss=2.705110
+[rank 1] epoch=107 train_batch=14500/12500 loss=2.167367
+[rank 1] epoch=107 train_batch=15000/12500 loss=2.196470
+[rank 1] epoch=107 train_batch=15500/12500 loss=2.176826
+[rank 1] epoch=107 train_batch=16000/12500 loss=2.155269
+[rank 1] epoch=107 train_batch=16500/12500 loss=2.219388
+[rank 1] epoch=107 train_batch=17000/12500 loss=2.204219
+[rank 1] epoch=107 train_batch=17500/12500 loss=2.207690
+[rank 1] epoch=107 train_batch=18000/12500 loss=2.003997
+[rank 1] epoch=107 train_batch=18500/12500 loss=2.014240
+[rank 1] epoch=107 train_batch=19000/12500 loss=2.531403
+[rank 1] epoch=107 train_batch=19500/12500 loss=2.110597
+[rank 1] epoch=107 train_batch=20000/12500 loss=2.148654
+[rank 1] epoch=107 train_batch=20500/12500 loss=2.100901
+[rank 1] epoch=107 train_batch=21000/12500 loss=2.208833
+[rank 1] epoch=107 train_batch=21500/12500 loss=2.050296
+[rank 1] epoch=107 train_batch=22000/12500 loss=1.983077
+[rank 1] epoch=107 train_batch=22500/12500 loss=2.230923
+[rank 1] epoch=107 train_batch=23000/12500 loss=2.199944
+[rank 1] epoch=107 train_batch=23500/12500 loss=2.447440
+[rank 1] epoch=107 train_batch=24000/12500 loss=2.268906
+[rank 1] epoch=107 train_batch=24500/12500 loss=2.129815
+[rank 1] epoch=107 train_batch=25000/12500 loss=2.318906
+[rank 1] epoch=107 valid_batch=500/1563
+[rank 1] epoch=107 valid_batch=1000/1563
+[rank 1] epoch=107 valid_batch=1500/1563
+[rank 1] epoch=107 valid_batch=2000/1563
+[rank 1] epoch=107 valid_batch=2500/1563
+[rank 1] epoch=107 valid_batch=3000/1563
+[rank 1] epoch=108 train_batch=500/12500 loss=2.064911
+[rank 1] epoch=108 train_batch=1000/12500 loss=2.208313
+[rank 1] epoch=108 train_batch=1500/12500 loss=2.085692
+[rank 1] epoch=108 train_batch=2000/12500 loss=2.096397
+[rank 1] epoch=108 train_batch=2500/12500 loss=2.351863
+[rank 1] epoch=108 train_batch=3000/12500 loss=2.549641
+[rank 1] epoch=108 train_batch=3500/12500 loss=2.522702
+[rank 1] epoch=108 train_batch=4000/12500 loss=2.156000
+[rank 1] epoch=108 train_batch=4500/12500 loss=2.295700
+[rank 1] epoch=108 train_batch=5000/12500 loss=2.004131
+[rank 1] epoch=108 train_batch=5500/12500 loss=2.453013
+[rank 1] epoch=108 train_batch=6000/12500 loss=2.207430
+[rank 1] epoch=108 train_batch=6500/12500 loss=2.105397
+[rank 1] epoch=108 train_batch=7000/12500 loss=1.995028
+[rank 1] epoch=108 train_batch=7500/12500 loss=2.058290
+[rank 1] epoch=108 train_batch=8000/12500 loss=2.221272
+[rank 1] epoch=108 train_batch=8500/12500 loss=2.053282
+[rank 1] epoch=108 train_batch=9000/12500 loss=2.194208
+[rank 1] epoch=108 train_batch=9500/12500 loss=2.211600
+[rank 1] epoch=108 train_batch=10000/12500 loss=2.068366
+[rank 1] epoch=108 train_batch=10500/12500 loss=2.118486
+[rank 1] epoch=108 train_batch=11000/12500 loss=2.316763
+[rank 1] epoch=108 train_batch=11500/12500 loss=2.206662
+[rank 1] epoch=108 train_batch=12000/12500 loss=2.073066
+[rank 1] epoch=108 train_batch=12500/12500 loss=2.008225
+[rank 1] epoch=108 train_batch=13000/12500 loss=2.962649
+[rank 1] epoch=108 train_batch=13500/12500 loss=2.134030
+[rank 1] epoch=108 train_batch=14000/12500 loss=1.957182
+[rank 1] epoch=108 train_batch=14500/12500 loss=2.040054
+[rank 1] epoch=108 train_batch=15000/12500 loss=2.361266
+[rank 1] epoch=108 train_batch=15500/12500 loss=2.158354
+[rank 1] epoch=108 train_batch=16000/12500 loss=2.208423
+[rank 1] epoch=108 train_batch=16500/12500 loss=2.232193
+[rank 1] epoch=108 train_batch=17000/12500 loss=2.189629
+[rank 1] epoch=108 train_batch=17500/12500 loss=2.295174
+[rank 1] epoch=108 train_batch=18000/12500 loss=2.333479
+[rank 1] epoch=108 train_batch=18500/12500 loss=2.198407
+[rank 1] epoch=108 train_batch=19000/12500 loss=2.251668
+[rank 1] epoch=108 train_batch=19500/12500 loss=2.108395
+[rank 1] epoch=108 train_batch=20000/12500 loss=2.020535
+[rank 1] epoch=108 train_batch=20500/12500 loss=2.030094
+[rank 1] epoch=108 train_batch=21000/12500 loss=2.061983
+[rank 1] epoch=108 train_batch=21500/12500 loss=2.463263
+[rank 1] epoch=108 train_batch=22000/12500 loss=2.512518
+[rank 1] epoch=108 train_batch=22500/12500 loss=2.307042
+[rank 1] epoch=108 train_batch=23000/12500 loss=2.045469
+[rank 1] epoch=108 train_batch=23500/12500 loss=2.421656
+[rank 1] epoch=108 train_batch=24000/12500 loss=2.130122
+[rank 1] epoch=108 train_batch=24500/12500 loss=2.117754
+[rank 1] epoch=108 train_batch=25000/12500 loss=2.247989
+[rank 1] epoch=108 valid_batch=500/1563
+[rank 1] epoch=108 valid_batch=1000/1563
+[rank 1] epoch=108 valid_batch=1500/1563
+[rank 1] epoch=108 valid_batch=2000/1563
+[rank 1] epoch=108 valid_batch=2500/1563
+[rank 1] epoch=108 valid_batch=3000/1563
+[rank 1] epoch=109 train_batch=500/12500 loss=2.026477
+[rank 1] epoch=109 train_batch=1000/12500 loss=2.305530
+[rank 1] epoch=109 train_batch=1500/12500 loss=2.106310
+[rank 1] epoch=109 train_batch=2000/12500 loss=2.092137
+[rank 1] epoch=109 train_batch=2500/12500 loss=2.467778
+[rank 1] epoch=109 train_batch=3000/12500 loss=2.121609
+[rank 1] epoch=109 train_batch=3500/12500 loss=2.214139
+[rank 1] epoch=109 train_batch=4000/12500 loss=2.152497
+[rank 1] epoch=109 train_batch=4500/12500 loss=2.091024
+[rank 1] epoch=109 train_batch=5000/12500 loss=2.195781
+[rank 1] epoch=109 train_batch=5500/12500 loss=2.298994
+[rank 1] epoch=109 train_batch=6000/12500 loss=2.163250
+[rank 1] epoch=109 train_batch=6500/12500 loss=2.298332
+[rank 1] epoch=109 train_batch=7000/12500 loss=2.368313
+[rank 1] epoch=109 train_batch=7500/12500 loss=2.265192
+[rank 1] epoch=109 train_batch=8000/12500 loss=2.759163
+[rank 1] epoch=109 train_batch=8500/12500 loss=2.291306
+[rank 1] epoch=109 train_batch=9000/12500 loss=2.095287
+[rank 1] epoch=109 train_batch=9500/12500 loss=2.176807
+[rank 1] epoch=109 train_batch=10000/12500 loss=2.244423
+[rank 1] epoch=109 train_batch=10500/12500 loss=2.108535
+[rank 1] epoch=109 train_batch=11000/12500 loss=2.223247
+[rank 1] epoch=109 train_batch=11500/12500 loss=1.979983
+[rank 1] epoch=109 train_batch=12000/12500 loss=2.265906
+[rank 1] epoch=109 train_batch=12500/12500 loss=2.133325
+[rank 1] epoch=109 train_batch=13000/12500 loss=2.086300
+[rank 1] epoch=109 train_batch=13500/12500 loss=2.187985
+[rank 1] epoch=109 train_batch=14000/12500 loss=2.183374
+[rank 1] epoch=109 train_batch=14500/12500 loss=2.096197
+[rank 1] epoch=109 train_batch=15000/12500 loss=2.501959
+[rank 1] epoch=109 train_batch=15500/12500 loss=2.059820
+[rank 1] epoch=109 train_batch=16000/12500 loss=2.586508
+[rank 1] epoch=109 train_batch=16500/12500 loss=2.108574
+[rank 1] epoch=109 train_batch=17000/12500 loss=2.286742
+[rank 1] epoch=109 train_batch=17500/12500 loss=2.610854
+[rank 1] epoch=109 train_batch=18000/12500 loss=2.651983
+[rank 1] epoch=109 train_batch=18500/12500 loss=2.510400
+[rank 1] epoch=109 train_batch=19000/12500 loss=2.584393
+[rank 1] epoch=109 train_batch=19500/12500 loss=2.350273
+[rank 1] epoch=109 train_batch=20000/12500 loss=2.273191
+[rank 1] epoch=109 train_batch=20500/12500 loss=2.121812
+[rank 1] epoch=109 train_batch=21000/12500 loss=2.164468
+[rank 1] epoch=109 train_batch=21500/12500 loss=2.188730
+[rank 1] epoch=109 train_batch=22000/12500 loss=2.208602
+[rank 1] epoch=109 train_batch=22500/12500 loss=2.685989
+[rank 1] epoch=109 train_batch=23000/12500 loss=2.021013
+[rank 1] epoch=109 train_batch=23500/12500 loss=1.981883
+[rank 1] epoch=109 train_batch=24000/12500 loss=2.007956
+[rank 1] epoch=109 train_batch=24500/12500 loss=2.105488
+[rank 1] epoch=109 train_batch=25000/12500 loss=2.117923
+[rank 1] epoch=109 valid_batch=500/1563
+[rank 1] epoch=109 valid_batch=1000/1563
+[rank 1] epoch=109 valid_batch=1500/1563
+[rank 1] epoch=109 valid_batch=2000/1563
+[rank 1] epoch=109 valid_batch=2500/1563
+[rank 1] epoch=109 valid_batch=3000/1563
+[rank 1] epoch=110 train_batch=500/12500 loss=2.082823
+[rank 1] epoch=110 train_batch=1000/12500 loss=2.047537
+[rank 1] epoch=110 train_batch=1500/12500 loss=2.239516
+[rank 1] epoch=110 train_batch=2000/12500 loss=2.087877
+[rank 1] epoch=110 train_batch=2500/12500 loss=2.304105
+[rank 1] epoch=110 train_batch=3000/12500 loss=2.429775
+[rank 1] epoch=110 train_batch=3500/12500 loss=2.199834
+[rank 1] epoch=110 train_batch=4000/12500 loss=2.038275
+[rank 1] epoch=110 train_batch=4500/12500 loss=2.097970
+[rank 1] epoch=110 train_batch=5000/12500 loss=2.147954
+[rank 1] epoch=110 train_batch=5500/12500 loss=2.567315
+[rank 1] epoch=110 train_batch=6000/12500 loss=2.314306
+[rank 1] epoch=110 train_batch=6500/12500 loss=2.274046
+[rank 1] epoch=110 train_batch=7000/12500 loss=2.184548
+[rank 1] epoch=110 train_batch=7500/12500 loss=1.977371
+[rank 1] epoch=110 train_batch=8000/12500 loss=2.159074
+[rank 1] epoch=110 train_batch=8500/12500 loss=2.180343
+[rank 1] epoch=110 train_batch=9000/12500 loss=2.069825
+[rank 1] epoch=110 train_batch=9500/12500 loss=2.182971
+[rank 1] epoch=110 train_batch=10000/12500 loss=2.221177
+[rank 1] epoch=110 train_batch=10500/12500 loss=2.079435
+[rank 1] epoch=110 train_batch=11000/12500 loss=1.985726
+[rank 1] epoch=110 train_batch=11500/12500 loss=2.118730
+[rank 1] epoch=110 train_batch=12000/12500 loss=2.448277
+[rank 1] epoch=110 train_batch=12500/12500 loss=2.335600
+[rank 1] epoch=110 train_batch=13000/12500 loss=2.046991
+[rank 1] epoch=110 train_batch=13500/12500 loss=1.999471
+[rank 1] epoch=110 train_batch=14000/12500 loss=2.145953
+[rank 1] epoch=110 train_batch=14500/12500 loss=2.070339
+[rank 1] epoch=110 train_batch=15000/12500 loss=2.149644
+[rank 1] epoch=110 train_batch=15500/12500 loss=1.894803
+[rank 1] epoch=110 train_batch=16000/12500 loss=2.204398
+[rank 1] epoch=110 train_batch=16500/12500 loss=2.231368
+[rank 1] epoch=110 train_batch=17000/12500 loss=2.361774
+[rank 1] epoch=110 train_batch=17500/12500 loss=2.236896
+[rank 1] epoch=110 train_batch=18000/12500 loss=2.186107
+[rank 1] epoch=110 train_batch=18500/12500 loss=2.198563
+[rank 1] epoch=110 train_batch=19000/12500 loss=2.034361
+[rank 1] epoch=110 train_batch=19500/12500 loss=2.106211
+[rank 1] epoch=110 train_batch=20000/12500 loss=2.180561
+[rank 1] epoch=110 train_batch=20500/12500 loss=2.003908
+[rank 1] epoch=110 train_batch=21000/12500 loss=2.200497
+[rank 1] epoch=110 train_batch=21500/12500 loss=2.040093
+[rank 1] epoch=110 train_batch=22000/12500 loss=2.075273
+[rank 1] epoch=110 train_batch=22500/12500 loss=2.151053
+[rank 1] epoch=110 train_batch=23000/12500 loss=2.081126
+[rank 1] epoch=110 train_batch=23500/12500 loss=1.912360
+[rank 1] epoch=110 train_batch=24000/12500 loss=2.150483
+[rank 1] epoch=110 train_batch=24500/12500 loss=1.890203
+[rank 1] epoch=110 train_batch=25000/12500 loss=1.997265
+[rank 1] epoch=110 valid_batch=500/1563
+[rank 1] epoch=110 valid_batch=1000/1563
+[rank 1] epoch=110 valid_batch=1500/1563
+[rank 1] epoch=110 valid_batch=2000/1563
+[rank 1] epoch=110 valid_batch=2500/1563
+[rank 1] epoch=110 valid_batch=3000/1563
+[rank 1] epoch=111 train_batch=500/12500 loss=2.206810
+[rank 1] epoch=111 train_batch=1000/12500 loss=2.124029
+[rank 1] epoch=111 train_batch=1500/12500 loss=2.002128
+[rank 1] epoch=111 train_batch=2000/12500 loss=2.498575
+[rank 1] epoch=111 train_batch=2500/12500 loss=2.203150
+[rank 1] epoch=111 train_batch=3000/12500 loss=2.384897
+[rank 1] epoch=111 train_batch=3500/12500 loss=2.080598
+[rank 1] epoch=111 train_batch=4000/12500 loss=2.052691
+[rank 1] epoch=111 train_batch=4500/12500 loss=2.105052
+[rank 1] epoch=111 train_batch=5000/12500 loss=2.230031
+[rank 1] epoch=111 train_batch=5500/12500 loss=2.178135
+[rank 1] epoch=111 train_batch=6000/12500 loss=2.039312
+[rank 1] epoch=111 train_batch=6500/12500 loss=2.391060
+[rank 1] epoch=111 train_batch=7000/12500 loss=2.084323
+[rank 1] epoch=111 train_batch=7500/12500 loss=2.046281
+[rank 1] epoch=111 train_batch=8000/12500 loss=1.981005
+[rank 1] epoch=111 train_batch=8500/12500 loss=2.109036
+[rank 1] epoch=111 train_batch=9000/12500 loss=1.962593
+[rank 1] epoch=111 train_batch=9500/12500 loss=1.922927
+[rank 1] epoch=111 train_batch=10000/12500 loss=2.101971
+[rank 1] epoch=111 train_batch=10500/12500 loss=2.072936
+[rank 1] epoch=111 train_batch=11000/12500 loss=2.153921
+[rank 1] epoch=111 train_batch=11500/12500 loss=2.578173
+[rank 1] epoch=111 train_batch=12000/12500 loss=2.816098
+[rank 1] epoch=111 train_batch=12500/12500 loss=2.346597
+[rank 1] epoch=111 train_batch=13000/12500 loss=2.039415
+[rank 1] epoch=111 train_batch=13500/12500 loss=2.241776
+[rank 1] epoch=111 train_batch=14000/12500 loss=2.083047
+[rank 1] epoch=111 train_batch=14500/12500 loss=1.947551
+[rank 1] epoch=111 train_batch=15000/12500 loss=2.063699
+[rank 1] epoch=111 train_batch=15500/12500 loss=2.141600
+[rank 1] epoch=111 train_batch=16000/12500 loss=1.970530
+[rank 1] epoch=111 train_batch=16500/12500 loss=2.107114
+[rank 1] epoch=111 train_batch=17000/12500 loss=1.992582
+[rank 1] epoch=111 train_batch=17500/12500 loss=1.960756
+[rank 1] epoch=111 train_batch=18000/12500 loss=2.141688
+[rank 1] epoch=111 train_batch=18500/12500 loss=2.076888
+[rank 1] epoch=111 train_batch=19000/12500 loss=2.354740
+[rank 1] epoch=111 train_batch=19500/12500 loss=2.317933
+[rank 1] epoch=111 train_batch=20000/12500 loss=2.082398
+[rank 1] epoch=111 train_batch=20500/12500 loss=2.016625
+[rank 1] epoch=111 train_batch=21000/12500 loss=2.203821
+[rank 1] epoch=111 train_batch=21500/12500 loss=2.031065
+[rank 1] epoch=111 train_batch=22000/12500 loss=2.579929
+[rank 1] epoch=111 train_batch=22500/12500 loss=2.044827
+[rank 1] epoch=111 train_batch=23000/12500 loss=2.049860
+[rank 1] epoch=111 train_batch=23500/12500 loss=2.030572
+[rank 1] epoch=111 train_batch=24000/12500 loss=2.099719
+[rank 1] epoch=111 train_batch=24500/12500 loss=2.062799
+[rank 1] epoch=111 train_batch=25000/12500 loss=2.144402
+[rank 1] epoch=111 valid_batch=500/1563
+[rank 1] epoch=111 valid_batch=1000/1563
+[rank 1] epoch=111 valid_batch=1500/1563
+[rank 1] epoch=111 valid_batch=2000/1563
+[rank 1] epoch=111 valid_batch=2500/1563
+[rank 1] epoch=111 valid_batch=3000/1563
+[rank 1] epoch=112 train_batch=500/12500 loss=2.138834
+[rank 1] epoch=112 train_batch=1000/12500 loss=2.306756
+[rank 1] epoch=112 train_batch=1500/12500 loss=2.017068
+[rank 1] epoch=112 train_batch=2000/12500 loss=2.344241
+[rank 1] epoch=112 train_batch=2500/12500 loss=2.174078
+[rank 1] epoch=112 train_batch=3000/12500 loss=2.192159
+[rank 1] epoch=112 train_batch=3500/12500 loss=1.990981
+[rank 1] epoch=112 train_batch=4000/12500 loss=2.064031
+[rank 1] epoch=112 train_batch=4500/12500 loss=2.134475
+[rank 1] epoch=112 train_batch=5000/12500 loss=2.063633
+[rank 1] epoch=112 train_batch=5500/12500 loss=2.190644
+[rank 1] epoch=112 train_batch=6000/12500 loss=1.995746
+[rank 1] epoch=112 train_batch=6500/12500 loss=2.167349
+[rank 1] epoch=112 train_batch=7000/12500 loss=2.016556
+[rank 1] epoch=112 train_batch=7500/12500 loss=1.903136
+[rank 1] epoch=112 train_batch=8000/12500 loss=2.126935
+[rank 1] epoch=112 train_batch=8500/12500 loss=2.162834
+[rank 1] epoch=112 train_batch=9000/12500 loss=1.832575
+[rank 1] epoch=112 train_batch=9500/12500 loss=2.572957
+[rank 1] epoch=112 train_batch=10000/12500 loss=2.238320
+[rank 1] epoch=112 train_batch=10500/12500 loss=2.046271
+[rank 1] epoch=112 train_batch=11000/12500 loss=2.574098
+[rank 1] epoch=112 train_batch=11500/12500 loss=2.495384
+[rank 1] epoch=112 train_batch=12000/12500 loss=2.418339
+[rank 1] epoch=112 train_batch=12500/12500 loss=2.444792
+[rank 1] epoch=112 train_batch=13000/12500 loss=2.145394
+[rank 1] epoch=112 train_batch=13500/12500 loss=2.069064
+[rank 1] epoch=112 train_batch=14000/12500 loss=2.379733
+[rank 1] epoch=112 train_batch=14500/12500 loss=1.988234
+[rank 1] epoch=112 train_batch=15000/12500 loss=2.191719
+[rank 1] epoch=112 train_batch=15500/12500 loss=1.932351
+[rank 1] epoch=112 train_batch=16000/12500 loss=2.106936
+[rank 1] epoch=112 train_batch=16500/12500 loss=2.030878
+[rank 1] epoch=112 train_batch=17000/12500 loss=2.062839
+[rank 1] epoch=112 train_batch=17500/12500 loss=2.164425
+[rank 1] epoch=112 train_batch=18000/12500 loss=2.082323
+[rank 1] epoch=112 train_batch=18500/12500 loss=2.200840
+[rank 1] epoch=112 train_batch=19000/12500 loss=2.122961
+[rank 1] epoch=112 train_batch=19500/12500 loss=2.102551
+[rank 1] epoch=112 train_batch=20000/12500 loss=2.335690
+[rank 1] epoch=112 train_batch=20500/12500 loss=2.029323
+[rank 1] epoch=112 train_batch=21000/12500 loss=2.098369
+[rank 1] epoch=112 train_batch=21500/12500 loss=1.888123
+[rank 1] epoch=112 train_batch=22000/12500 loss=2.004214
+[rank 1] epoch=112 train_batch=22500/12500 loss=2.177238
+[rank 1] epoch=112 train_batch=23000/12500 loss=2.116283
+[rank 1] epoch=112 train_batch=23500/12500 loss=2.028116
+[rank 1] epoch=112 train_batch=24000/12500 loss=2.218259
+[rank 1] epoch=112 train_batch=24500/12500 loss=2.308261
+[rank 1] epoch=112 train_batch=25000/12500 loss=2.140483
+[rank 1] epoch=112 valid_batch=500/1563
+[rank 1] epoch=112 valid_batch=1000/1563
+[rank 1] epoch=112 valid_batch=1500/1563
+[rank 1] epoch=112 valid_batch=2000/1563
+[rank 1] epoch=112 valid_batch=2500/1563
+[rank 1] epoch=112 valid_batch=3000/1563
+[rank 1] epoch=113 train_batch=500/12500 loss=2.105086
+[rank 1] epoch=113 train_batch=1000/12500 loss=2.158378
+[rank 1] epoch=113 train_batch=1500/12500 loss=1.986101
+[rank 1] epoch=113 train_batch=2000/12500 loss=2.403108
+[rank 1] epoch=113 train_batch=2500/12500 loss=2.096112
+[rank 1] epoch=113 train_batch=3000/12500 loss=2.017120
+[rank 1] epoch=113 train_batch=3500/12500 loss=2.498426
+[rank 1] epoch=113 train_batch=4000/12500 loss=2.100950
+[rank 1] epoch=113 train_batch=4500/12500 loss=2.245939
+[rank 1] epoch=113 train_batch=5000/12500 loss=2.307963
+[rank 1] epoch=113 train_batch=5500/12500 loss=2.149650
+[rank 1] epoch=113 train_batch=6000/12500 loss=1.982850
+[rank 1] epoch=113 train_batch=6500/12500 loss=2.034574
+[rank 1] epoch=113 train_batch=7000/12500 loss=2.033865
+[rank 1] epoch=113 train_batch=7500/12500 loss=2.099768
+[rank 1] epoch=113 train_batch=8000/12500 loss=2.158227
+[rank 1] epoch=113 train_batch=8500/12500 loss=2.044543
+[rank 1] epoch=113 train_batch=9000/12500 loss=1.909510
+[rank 1] epoch=113 train_batch=9500/12500 loss=2.268561
+[rank 1] epoch=113 train_batch=10000/12500 loss=2.513878
+[rank 1] epoch=113 train_batch=10500/12500 loss=2.265093
+[rank 1] epoch=113 train_batch=11000/12500 loss=1.983413
+[rank 1] epoch=113 train_batch=11500/12500 loss=1.995906
+[rank 1] epoch=113 train_batch=12000/12500 loss=2.176574
+[rank 1] epoch=113 train_batch=12500/12500 loss=2.408749
+[rank 1] epoch=113 train_batch=13000/12500 loss=2.056287
+[rank 1] epoch=113 train_batch=13500/12500 loss=2.050139
+[rank 1] epoch=113 train_batch=14000/12500 loss=2.130615
+[rank 1] epoch=113 train_batch=14500/12500 loss=2.129202
+[rank 1] epoch=113 train_batch=15000/12500 loss=2.109601
+[rank 1] epoch=113 train_batch=15500/12500 loss=2.030420
+[rank 1] epoch=113 train_batch=16000/12500 loss=2.126053
+[rank 1] epoch=113 train_batch=16500/12500 loss=2.339655
+[rank 1] epoch=113 train_batch=17000/12500 loss=2.186400
+[rank 1] epoch=113 train_batch=17500/12500 loss=2.203300
+[rank 1] epoch=113 train_batch=18000/12500 loss=2.078672
+[rank 1] epoch=113 train_batch=18500/12500 loss=2.239238
+[rank 1] epoch=113 train_batch=19000/12500 loss=2.219825
+[rank 1] epoch=113 train_batch=19500/12500 loss=2.049987
+[rank 1] epoch=113 train_batch=20000/12500 loss=2.089063
+[rank 1] epoch=113 train_batch=20500/12500 loss=2.077613
+[rank 1] epoch=113 train_batch=21000/12500 loss=1.951997
+[rank 1] epoch=113 train_batch=21500/12500 loss=2.310222
+[rank 1] epoch=113 train_batch=22000/12500 loss=2.074444
+[rank 1] epoch=113 train_batch=22500/12500 loss=2.169009
+[rank 1] epoch=113 train_batch=23000/12500 loss=2.291022
+[rank 1] epoch=113 train_batch=23500/12500 loss=2.255895
+[rank 1] epoch=113 train_batch=24000/12500 loss=2.454664
+[rank 1] epoch=113 train_batch=24500/12500 loss=2.234400
+[rank 1] epoch=113 train_batch=25000/12500 loss=2.244065
+[rank 1] epoch=113 valid_batch=500/1563
+[rank 1] epoch=113 valid_batch=1000/1563
+[rank 1] epoch=113 valid_batch=1500/1563
+[rank 1] epoch=113 valid_batch=2000/1563
+[rank 1] epoch=113 valid_batch=2500/1563
+[rank 1] epoch=113 valid_batch=3000/1563
+[rank 1] epoch=114 train_batch=500/12500 loss=2.195126
+[rank 1] epoch=114 train_batch=1000/12500 loss=2.236830
+[rank 1] epoch=114 train_batch=1500/12500 loss=2.465875
+[rank 1] epoch=114 train_batch=2000/12500 loss=2.077562
+[rank 1] epoch=114 train_batch=2500/12500 loss=2.077472
+[rank 1] epoch=114 train_batch=3000/12500 loss=2.164504
+[rank 1] epoch=114 train_batch=3500/12500 loss=2.264748
+[rank 1] epoch=114 train_batch=4000/12500 loss=2.065777
+[rank 1] epoch=114 train_batch=4500/12500 loss=2.227631
+[rank 1] epoch=114 train_batch=5000/12500 loss=2.043054
+[rank 1] epoch=114 train_batch=5500/12500 loss=1.974604
+[rank 1] epoch=114 train_batch=6000/12500 loss=2.005312
+[rank 1] epoch=114 train_batch=6500/12500 loss=2.554988
+[rank 1] epoch=114 train_batch=7000/12500 loss=2.035224
+[rank 1] epoch=114 train_batch=7500/12500 loss=2.074622
+[rank 1] epoch=114 train_batch=8000/12500 loss=2.141200
+[rank 1] epoch=114 train_batch=8500/12500 loss=2.091545
+[rank 1] epoch=114 train_batch=9000/12500 loss=2.077432
+[rank 1] epoch=114 train_batch=9500/12500 loss=2.276582
+[rank 1] epoch=114 train_batch=10000/12500 loss=2.076341
+[rank 1] epoch=114 train_batch=10500/12500 loss=1.893831
+[rank 1] epoch=114 train_batch=11000/12500 loss=2.256512
+[rank 1] epoch=114 train_batch=11500/12500 loss=1.989842
+[rank 1] epoch=114 train_batch=12000/12500 loss=2.364726
+[rank 1] epoch=114 train_batch=12500/12500 loss=2.049192
+[rank 1] epoch=114 train_batch=13000/12500 loss=1.995032
+[rank 1] epoch=114 train_batch=13500/12500 loss=2.102371
+[rank 1] epoch=114 train_batch=14000/12500 loss=2.055021
+[rank 1] epoch=114 train_batch=14500/12500 loss=2.281118
+[rank 1] epoch=114 train_batch=15000/12500 loss=2.168118
+[rank 1] epoch=114 train_batch=15500/12500 loss=1.937079
+[rank 1] epoch=114 train_batch=16000/12500 loss=2.285859
+[rank 1] epoch=114 train_batch=16500/12500 loss=2.168471
+[rank 1] epoch=114 train_batch=17000/12500 loss=1.992782
+[rank 1] epoch=114 train_batch=17500/12500 loss=2.128889
+[rank 1] epoch=114 train_batch=18000/12500 loss=2.167545
+[rank 1] epoch=114 train_batch=18500/12500 loss=2.262905
+[rank 1] epoch=114 train_batch=19000/12500 loss=1.929195
+[rank 1] epoch=114 train_batch=19500/12500 loss=2.138305
+[rank 1] epoch=114 train_batch=20000/12500 loss=2.604202
+[rank 1] epoch=114 train_batch=20500/12500 loss=2.051365
+[rank 1] epoch=114 train_batch=21000/12500 loss=2.115331
+[rank 1] epoch=114 train_batch=21500/12500 loss=2.075968
+[rank 1] epoch=114 train_batch=22000/12500 loss=2.339561
+[rank 1] epoch=114 train_batch=22500/12500 loss=2.082995
+[rank 1] epoch=114 train_batch=23000/12500 loss=2.489034
+[rank 1] epoch=114 train_batch=23500/12500 loss=2.106845
+[rank 1] epoch=114 train_batch=24000/12500 loss=2.274892
+[rank 1] epoch=114 train_batch=24500/12500 loss=1.996838
+[rank 1] epoch=114 train_batch=25000/12500 loss=2.138048
+[rank 1] epoch=114 valid_batch=500/1563
+[rank 1] epoch=114 valid_batch=1000/1563
+[rank 1] epoch=114 valid_batch=1500/1563
+[rank 1] epoch=114 valid_batch=2000/1563
+[rank 1] epoch=114 valid_batch=2500/1563
+[rank 1] epoch=114 valid_batch=3000/1563
+[rank 1] epoch=115 train_batch=500/12500 loss=1.930690
+[rank 1] epoch=115 train_batch=1000/12500 loss=2.207582
+[rank 1] epoch=115 train_batch=1500/12500 loss=2.414523
+[rank 1] epoch=115 train_batch=2000/12500 loss=2.416782
+[rank 1] epoch=115 train_batch=2500/12500 loss=2.338461
+[rank 1] epoch=115 train_batch=3000/12500 loss=2.131188
+[rank 1] epoch=115 train_batch=3500/12500 loss=2.173956
+[rank 1] epoch=115 train_batch=4000/12500 loss=2.193099
+[rank 1] epoch=115 train_batch=4500/12500 loss=1.975031
+[rank 1] epoch=115 train_batch=5000/12500 loss=2.061351
+[rank 1] epoch=115 train_batch=5500/12500 loss=2.057957
+[rank 1] epoch=115 train_batch=6000/12500 loss=2.068499
+[rank 1] epoch=115 train_batch=6500/12500 loss=2.212478
+[rank 1] epoch=115 train_batch=7000/12500 loss=2.301454
+[rank 1] epoch=115 train_batch=7500/12500 loss=2.392290
+[rank 1] epoch=115 train_batch=8000/12500 loss=2.082178
+[rank 1] epoch=115 train_batch=8500/12500 loss=1.967029
+[rank 1] epoch=115 train_batch=9000/12500 loss=2.187557
+[rank 1] epoch=115 train_batch=9500/12500 loss=2.099077
+[rank 1] epoch=115 train_batch=10000/12500 loss=2.261924
+[rank 1] epoch=115 train_batch=10500/12500 loss=1.986293
+[rank 1] epoch=115 train_batch=11000/12500 loss=1.926334
+[rank 1] epoch=115 train_batch=11500/12500 loss=2.166160
+[rank 1] epoch=115 train_batch=12000/12500 loss=2.372084
+[rank 1] epoch=115 train_batch=12500/12500 loss=1.923554
+[rank 1] epoch=115 train_batch=13000/12500 loss=2.055856
+[rank 1] epoch=115 train_batch=13500/12500 loss=2.120328
+[rank 1] epoch=115 train_batch=14000/12500 loss=2.215802
+[rank 1] epoch=115 train_batch=14500/12500 loss=2.007861
+[rank 1] epoch=115 train_batch=15000/12500 loss=2.310589
+[rank 1] epoch=115 train_batch=15500/12500 loss=2.056634
+[rank 1] epoch=115 train_batch=16000/12500 loss=2.023948
+[rank 1] epoch=115 train_batch=16500/12500 loss=2.083566
+[rank 1] epoch=115 train_batch=17000/12500 loss=2.154844
+[rank 1] epoch=115 train_batch=17500/12500 loss=2.046771
+[rank 1] epoch=115 train_batch=18000/12500 loss=2.133544
+[rank 1] epoch=115 train_batch=18500/12500 loss=2.177280
+[rank 1] epoch=115 train_batch=19000/12500 loss=2.054914
+[rank 1] epoch=115 train_batch=19500/12500 loss=2.224158
+[rank 1] epoch=115 train_batch=20000/12500 loss=1.864737
+[rank 1] epoch=115 train_batch=20500/12500 loss=2.116433
+[rank 1] epoch=115 train_batch=21000/12500 loss=2.104431
+[rank 1] epoch=115 train_batch=21500/12500 loss=2.043929
+[rank 1] epoch=115 train_batch=22000/12500 loss=1.951735
+[rank 1] epoch=115 train_batch=22500/12500 loss=2.078431
+[rank 1] epoch=115 train_batch=23000/12500 loss=2.220559
+[rank 1] epoch=115 train_batch=23500/12500 loss=1.871731
+[rank 1] epoch=115 train_batch=24000/12500 loss=2.059170
+[rank 1] epoch=115 train_batch=24500/12500 loss=2.304458
+[rank 1] epoch=115 train_batch=25000/12500 loss=2.031592
+[rank 1] epoch=115 valid_batch=500/1563
+[rank 1] epoch=115 valid_batch=1000/1563
+[rank 1] epoch=115 valid_batch=1500/1563
+[rank 1] epoch=115 valid_batch=2000/1563
+[rank 1] epoch=115 valid_batch=2500/1563
+[rank 1] epoch=115 valid_batch=3000/1563
+[rank 1] epoch=116 train_batch=500/12500 loss=2.256999
+[rank 1] epoch=116 train_batch=1000/12500 loss=2.311087
+[rank 1] epoch=116 train_batch=1500/12500 loss=2.015835
+[rank 1] epoch=116 train_batch=2000/12500 loss=2.118579
+[rank 1] epoch=116 train_batch=2500/12500 loss=2.091250
+[rank 1] epoch=116 train_batch=3000/12500 loss=2.221806
+[rank 1] epoch=116 train_batch=3500/12500 loss=2.073508
+[rank 1] epoch=116 train_batch=4000/12500 loss=2.119624
+[rank 1] epoch=116 train_batch=4500/12500 loss=2.172882
+[rank 1] epoch=116 train_batch=5000/12500 loss=2.556144
+[rank 1] epoch=116 train_batch=5500/12500 loss=2.237776
+[rank 1] epoch=116 train_batch=6000/12500 loss=2.153042
+[rank 1] epoch=116 train_batch=6500/12500 loss=2.136147
+[rank 1] epoch=116 train_batch=7000/12500 loss=2.097852
+[rank 1] epoch=116 train_batch=7500/12500 loss=2.208426
+[rank 1] epoch=116 train_batch=8000/12500 loss=2.245833
+[rank 1] epoch=116 train_batch=8500/12500 loss=2.142209
+[rank 1] epoch=116 train_batch=9000/12500 loss=2.175941
+[rank 1] epoch=116 train_batch=9500/12500 loss=2.039239
+[rank 1] epoch=116 train_batch=10000/12500 loss=2.479904
+[rank 1] epoch=116 train_batch=10500/12500 loss=2.133577
+[rank 1] epoch=116 train_batch=11000/12500 loss=2.115284
+[rank 1] epoch=116 train_batch=11500/12500 loss=2.087954
+[rank 1] epoch=116 train_batch=12000/12500 loss=2.035279
+[rank 1] epoch=116 train_batch=12500/12500 loss=1.999858
+[rank 1] epoch=116 train_batch=13000/12500 loss=2.098217
+[rank 1] epoch=116 train_batch=13500/12500 loss=2.143314
+[rank 1] epoch=116 train_batch=14000/12500 loss=2.198969
+[rank 1] epoch=116 train_batch=14500/12500 loss=2.104575
+[rank 1] epoch=116 train_batch=15000/12500 loss=2.277433
+[rank 1] epoch=116 train_batch=15500/12500 loss=2.095372
+[rank 1] epoch=116 train_batch=16000/12500 loss=2.133751
+[rank 1] epoch=116 train_batch=16500/12500 loss=2.135523
+[rank 1] epoch=116 train_batch=17000/12500 loss=2.106298
+[rank 1] epoch=116 train_batch=17500/12500 loss=2.144509
+[rank 1] epoch=116 train_batch=18000/12500 loss=2.422230
+[rank 1] epoch=116 train_batch=18500/12500 loss=2.265137
+[rank 1] epoch=116 train_batch=19000/12500 loss=2.129700
+[rank 1] epoch=116 train_batch=19500/12500 loss=2.336214
+[rank 1] epoch=116 train_batch=20000/12500 loss=2.402386
+[rank 1] epoch=116 train_batch=20500/12500 loss=2.156092
+[rank 1] epoch=116 train_batch=21000/12500 loss=2.277354
+[rank 1] epoch=116 train_batch=21500/12500 loss=2.224963
+[rank 1] epoch=116 train_batch=22000/12500 loss=2.018811
+[rank 1] epoch=116 train_batch=22500/12500 loss=1.918027
+[rank 1] epoch=116 train_batch=23000/12500 loss=2.459023
+[rank 1] epoch=116 train_batch=23500/12500 loss=2.514624
+[rank 1] epoch=116 train_batch=24000/12500 loss=2.131552
+[rank 1] epoch=116 train_batch=24500/12500 loss=2.304913
+[rank 1] epoch=116 train_batch=25000/12500 loss=2.310678
+[rank 1] epoch=116 valid_batch=500/1563
+[rank 1] epoch=116 valid_batch=1000/1563
+[rank 1] epoch=116 valid_batch=1500/1563
+[rank 1] epoch=116 valid_batch=2000/1563
+[rank 1] epoch=116 valid_batch=2500/1563
+[rank 1] epoch=116 valid_batch=3000/1563
+[rank 1] epoch=117 train_batch=500/12500 loss=2.009398
+[rank 1] epoch=117 train_batch=1000/12500 loss=2.134156
+[rank 1] epoch=117 train_batch=1500/12500 loss=2.130669
+[rank 1] epoch=117 train_batch=2000/12500 loss=2.446241
+[rank 1] epoch=117 train_batch=2500/12500 loss=2.213473
+[rank 1] epoch=117 train_batch=3000/12500 loss=2.259836
+[rank 1] epoch=117 train_batch=3500/12500 loss=2.156851
+[rank 1] epoch=117 train_batch=4000/12500 loss=1.941868
+[rank 1] epoch=117 train_batch=4500/12500 loss=2.309912
+[rank 1] epoch=117 train_batch=5000/12500 loss=2.272954
+[rank 1] epoch=117 train_batch=5500/12500 loss=2.314796
+[rank 1] epoch=117 train_batch=6000/12500 loss=2.371288
+[rank 1] epoch=117 train_batch=6500/12500 loss=2.229759
+[rank 1] epoch=117 train_batch=7000/12500 loss=2.060886
+[rank 1] epoch=117 train_batch=7500/12500 loss=1.998689
+[rank 1] epoch=117 train_batch=8000/12500 loss=2.241249
+[rank 1] epoch=117 train_batch=8500/12500 loss=2.051610
+[rank 1] epoch=117 train_batch=9000/12500 loss=2.399861
+[rank 1] epoch=117 train_batch=9500/12500 loss=2.180823
+[rank 1] epoch=117 train_batch=10000/12500 loss=1.987880
+[rank 1] epoch=117 train_batch=10500/12500 loss=2.244792
+[rank 1] epoch=117 train_batch=11000/12500 loss=2.230211
+[rank 1] epoch=117 train_batch=11500/12500 loss=2.302298
+[rank 1] epoch=117 train_batch=12000/12500 loss=2.331961
+[rank 1] epoch=117 train_batch=12500/12500 loss=1.815280
+[rank 1] epoch=117 train_batch=13000/12500 loss=2.436280
+[rank 1] epoch=117 train_batch=13500/12500 loss=2.287853
+[rank 1] epoch=117 train_batch=14000/12500 loss=2.248291
+[rank 1] epoch=117 train_batch=14500/12500 loss=2.311076
+[rank 1] epoch=117 train_batch=15000/12500 loss=2.205352
+[rank 1] epoch=117 train_batch=15500/12500 loss=2.007220
+[rank 1] epoch=117 train_batch=16000/12500 loss=2.558808
+[rank 1] epoch=117 train_batch=16500/12500 loss=2.448716
+[rank 1] epoch=117 train_batch=17000/12500 loss=2.065697
+[rank 1] epoch=117 train_batch=17500/12500 loss=2.038843
+[rank 1] epoch=117 train_batch=18000/12500 loss=2.218390
+[rank 1] epoch=117 train_batch=18500/12500 loss=2.246801
+[rank 1] epoch=117 train_batch=19000/12500 loss=2.118129
+[rank 1] epoch=117 train_batch=19500/12500 loss=2.004686
+[rank 1] epoch=117 train_batch=20000/12500 loss=2.446731
+[rank 1] epoch=117 train_batch=20500/12500 loss=2.469200
+[rank 1] epoch=117 train_batch=21000/12500 loss=2.525341
+[rank 1] epoch=117 train_batch=21500/12500 loss=2.610047
+[rank 1] epoch=117 train_batch=22000/12500 loss=2.408619
+[rank 1] epoch=117 train_batch=22500/12500 loss=2.425990
+[rank 1] epoch=117 train_batch=23000/12500 loss=2.420778
+[rank 1] epoch=117 train_batch=23500/12500 loss=2.328099
+[rank 1] epoch=117 train_batch=24000/12500 loss=2.146767
+[rank 1] epoch=117 train_batch=24500/12500 loss=2.401629
+[rank 1] epoch=117 train_batch=25000/12500 loss=2.490428
+[rank 1] epoch=117 valid_batch=500/1563
+[rank 1] epoch=117 valid_batch=1000/1563
+[rank 1] epoch=117 valid_batch=1500/1563
+[rank 1] epoch=117 valid_batch=2000/1563
+[rank 1] epoch=117 valid_batch=2500/1563
+[rank 1] epoch=117 valid_batch=3000/1563

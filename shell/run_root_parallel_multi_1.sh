@@ -86,12 +86,24 @@
 #   --energy-regression-cluster
 
 
-ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel.sh
-ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/500GeV/*.h5 | nl -v0 | xargs -n2 -P4 bash run_root_parallel.sh
-ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel_truth.sh
-ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/500GeV/*.h5 | nl -v0 | xargs -n2 -P4 bash run_root_parallel_truth.sh
+# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel.sh
+# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/500GeV/*.h5 | nl -v0 | xargs -n2 -P4 bash run_root_parallel.sh
+# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel_truth.sh
+# ls /data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_brems/500GeV/*.h5 | nl -v0 | xargs -n2 -P4 bash run_root_parallel_truth.sh
+
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/91GeV/*.h5 | nl -v0 | xargs -n2 -P12 bash run_root_parallel_1.sh
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/40GeV/*.h5 | nl -v0 | xargs -n2 -P12 bash run_root_parallel_0.sh
+
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/200GeV/*.h5 | nl -v0 | xargs -n2 -P8 bash run_root_parallel_1.sh
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/200GeV/*.h5 | nl -v0 | xargs -n2 -P8 bash run_root_parallel_1.sh
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/200GeV/*.h5 | nl -v0 | xargs -n2 -P8 bash run_root_parallel_1.sh
+
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel_1.sh
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel_1.sh
+# ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/350GeV/*.h5 | nl -v0 | xargs -n2 -P6 bash run_root_parallel_1.sh
 
 
+ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/500GeV/ss_0*.h5 | nl -v0 | xargs -n2 -P6 env RUN_GPU=0 bash run_root_parallel_truth.sh
 
 
   # python save_root_reco.py ${test_path} ${checkpoint}/ckpt_${epoch}_1.pth.tar ${output_path}/${outdir} 0 5000000 False ${input_dim} ${outD} --energy-regression --momentum --momentum-amp --device cuda:0 --tbeta 0.9 --td 0.5 --energy-regression-cluster

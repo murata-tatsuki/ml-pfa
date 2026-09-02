@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 from distutils.util import strtobool
@@ -298,7 +299,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     if energy_branch:
         model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
-        model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
+        model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe,event_energy=event_energy)
     yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora, event_energy=event_energy)
@@ -337,6 +338,9 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
             print("")
             print(f"save_root()...  {outfile}")
             print("")
+            outdir = os.path.dirname(outfile)
+            if outdir:
+                os.makedirs(outdir, exist_ok=True)
             file = TFile(outfile,"recreate")
             
 
@@ -874,6 +878,7 @@ def main():
     parser.add_argument('--tbeta', type=float, default=0.9)
     parser.add_argument('--td', type=float, default=0.5)
     parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
+    parser.add_argument('--model-variant', type=str, default='auto', choices=['auto', 'legacy', 'multihead'], help='Select model loader: auto-detect, force legacy GravnetModel, or force multihead loader')
     parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
     parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
 

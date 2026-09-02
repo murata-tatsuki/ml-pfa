@@ -9,7 +9,7 @@ from gravnet_conv import GravNetConv
 # from torch_cmspepr.objectcondensation import scatter_count
 from objectcondensation import scatter_count
 
-from typing import Tuple, Union, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 def global_exchange(x: Tensor, batch: Tensor) -> Tensor:
     """
@@ -281,6 +281,7 @@ class GravNetModelMultiHead(nn.Module):
         k: Union[List[int], int] = 40,
         n_heads: int = 1,
         regression_output_dims: Union[int, List[int]] = 1,
+        head_names: Optional[List[str]] = None,
         interaction_start_epoch: int = 0,
         interaction_mode: str = "concat",
     ):
@@ -311,7 +312,15 @@ class GravNetModelMultiHead(nn.Module):
             GravNetBlock(64 if i == 0 else 96, k=k[i]) for i in range(self.n_gravnet_blocks)
         ])
 
-        self.head_output_dims = self._build_head_output_dims(output_dim, n_heads, regression_output_dims)
+        self.head_specs = self._build_head_specs(
+            clustering_output_dim=output_dim,
+            n_heads=n_heads,
+            regression_output_dims=regression_output_dims,
+            head_names=head_names,
+        )
+        self.head_output_dims = [spec["out_dim"] for spec in self.head_specs]
+        self.head_names = [spec["name"] for spec in self.head_specs]
+        self.regression_head_names = [spec["name"] for spec in self.head_specs[1:]]
 
         # One full post-concat head per task.
         self.head_postgn_dense = nn.ModuleList([
@@ -321,26 +330,32 @@ class GravNetModelMultiHead(nn.Module):
             self._make_output_block(self.head_output_dims[i]) for i in range(self.n_heads)
         ])
 
-        # Interaction layers: from clustering head feature -> regression head feature.
-        self.interaction_layers = nn.ModuleList()
-        for _ in range(max(0, self.n_heads - 1)):
-            if self.interaction_mode == "concat":
-                self.interaction_layers.append(nn.Sequential(
-                    nn.Linear(2 * self.dense_nord, self.dense_nord),
-                    nn.ReLU(),
-                    nn.BatchNorm1d(self.dense_nord),
-                ))
-            elif self.interaction_mode in ["add", "gate"]:
-                self.interaction_layers.append(nn.Linear(self.dense_nord, self.dense_nord))
+        # Interaction blocks from clustering head -> each auxiliary head.
+        # Keep them per-head so we can enable different interaction policies later.
+        self.interaction_blocks = nn.ModuleList([
+            self._make_interaction_block() for _ in range(max(0, self.n_heads - 1))
+        ])
 
     @staticmethod
-    def _build_head_output_dims(
+    def _default_head_names(n_heads: int) -> List[str]:
+        if n_heads == 1:
+            return ["clustering"]
+        if n_heads == 3:
+            return ["clustering", "charged_energy", "neutral_energy"]
+        return ["clustering"] + [f"regression_{i}" for i in range(n_heads - 1)]
+
+    @classmethod
+    def _build_head_specs(
+        cls,
         clustering_output_dim: int,
         n_heads: int,
         regression_output_dims: Union[int, List[int]],
-    ) -> List[int]:
-        if n_heads == 1:
-            return [clustering_output_dim]
+        head_names: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        if head_names is None:
+            head_names = cls._default_head_names(n_heads)
+        elif len(head_names) != n_heads:
+            raise ValueError("len(head_names) must match n_heads")
 
         if isinstance(regression_output_dims, int):
             regression_dims = [regression_output_dims] * (n_heads - 1)
@@ -349,7 +364,18 @@ class GravNetModelMultiHead(nn.Module):
             if len(regression_dims) != (n_heads - 1):
                 raise ValueError("len(regression_output_dims) must be n_heads - 1")
 
-        return [clustering_output_dim] + regression_dims
+        specs = [{
+            "name": head_names[0],
+            "kind": "clustering",
+            "out_dim": clustering_output_dim,
+        }]
+        for i, out_dim in enumerate(regression_dims, start=1):
+            specs.append({
+                "name": head_names[i],
+                "kind": "regression",
+                "out_dim": out_dim,
+            })
+        return specs
 
     def _make_postgn_dense(self) -> nn.Sequential:
         postgn_dense_modules = nn.ModuleList()
@@ -371,6 +397,24 @@ class GravNetModelMultiHead(nn.Module):
             nn.Linear(64, out_dim),
         )
 
+    def _make_interaction_block(self) -> nn.ModuleDict:
+        block = nn.ModuleDict()
+        if self.interaction_mode == "concat":
+            block["fusion"] = nn.Sequential(
+                nn.Linear(2 * self.dense_nord, self.dense_nord),
+                nn.ReLU(),
+                nn.BatchNorm1d(self.dense_nord),
+            )
+        elif self.interaction_mode == "add":
+            block["projection"] = nn.Linear(self.dense_nord, self.dense_nord)
+        elif self.interaction_mode == "gate":
+            block["gate"] = nn.Sequential(
+                nn.Linear(self.dense_nord, self.dense_nord),
+                nn.ReLU(),
+                nn.Linear(self.dense_nord, self.dense_nord),
+            )
+        return block
+
     def _is_interaction_active(self, epoch: Union[int, None]) -> bool:
         if self.n_heads <= 1:
             return False
@@ -379,6 +423,26 @@ class GravNetModelMultiHead(nn.Module):
         if epoch is None:
             return False
         return epoch >= self.interaction_start_epoch
+
+    def _apply_interaction(
+        self,
+        head_index: int,
+        head_feature: Tensor,
+        clustering_feature: Tensor,
+        interaction_active: bool,
+    ) -> Tensor:
+        if head_index == 0 or not interaction_active:
+            return head_feature
+
+        block = self.interaction_blocks[head_index - 1]
+        if self.interaction_mode == "concat":
+            return block["fusion"](torch.cat([head_feature, clustering_feature], dim=-1))
+        if self.interaction_mode == "add":
+            return head_feature + block["projection"](clustering_feature)
+        if self.interaction_mode == "gate":
+            gate = torch.sigmoid(block["gate"](clustering_feature))
+            return head_feature * gate
+        return head_feature
 
     def forward(
         self,
@@ -408,31 +472,8 @@ class GravNetModelMultiHead(nn.Module):
         interaction_active = self._is_interaction_active(epoch)
 
         outputs = []
-        # for i, feat in enumerate(head_features):
-        #     if i > 0 and interaction_active:
-        #         layer = self.interaction_layers[i - 1]
-        #         if self.interaction_mode == "concat":
-        #             feat = layer(torch.cat([feat, clustering_feature], dim=-1))
-        #         elif self.interaction_mode == "add":
-        #             feat = feat + layer(clustering_feature)
-        #         elif self.interaction_mode == "gate":
-        #             gate = torch.sigmoid(layer(clustering_feature))
-        #             feat = feat * gate
-        # 
-        #     out = self.head_output[i](feat)
-        #     outputs.append(out)
         for i, feat in enumerate(head_features):
-            if i > 0 and interaction_active:
-                # head_0 (clustering) からの入力を計算
-                context = self.interaction_layers[i - 1](clustering_feature)
-
-                if self.interaction_mode == "gate":
-                    # 0~1のゲートを生成して要素ごとにスケーリング
-                    gate = torch.sigmoid(context)
-                    feat = feat * gate 
-                elif self.interaction_mode == "concat":
-                    # 既存実装通り
-                    feat = self.interaction_layers[i - 1](torch.cat([feat, clustering_feature], dim=-1))
+            feat = self._apply_interaction(i, feat, clustering_feature, interaction_active)
             out = self.head_output[i](feat)
             outputs.append(out)
 
@@ -441,10 +482,17 @@ class GravNetModelMultiHead(nn.Module):
                 return outputs[0]
             return tuple(outputs)
 
+        heads_by_name = {
+            spec["name"]: out for spec, out in zip(self.head_specs, outputs)
+        }
+
         return {
             "clustering": outputs[0],
             "regressions": outputs[1:],
             "all_heads": outputs,
+            "head_names": self.head_names,
+            "regression_head_names": self.regression_head_names,
+            "heads_by_name": heads_by_name,
             "interaction_active": interaction_active,
         }
 

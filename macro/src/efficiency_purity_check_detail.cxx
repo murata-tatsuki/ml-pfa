@@ -37,7 +37,11 @@ using namespace std;
 
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/test_merged.root");
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_brems/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/tbeta090td050.root");
-const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/200GeV/tbeta090td050.root");
+// const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/200GeV/tbeta090td050.root");
+
+
+
+const string fileName = Form("../../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/91GeV/multi-head/tbeta090td050/uu_001.root");
 
 // const string fileName = Form("../test/test_1130.root");
 
@@ -58,7 +62,7 @@ const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_par
 const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 void efficiency_purity_check_detail(){ 
-    int rawfilenum = 1;
+    int rawfilenum = 60;
 
     // if(hyper_parameter && fine_tuning){ // condition check
     //     cout << "something wrong with setting boolian " << endl;
@@ -74,11 +78,12 @@ void efficiency_purity_check_detail(){
     int total_entry_max=0;
     string picDirectory = ".";
     
-    filein[0] = new TFile(Form("%s",fileName.c_str()));
+    // filein[0] = new TFile(Form("%s",fileName.c_str()));
     cout << fileName << endl;
     cout << picDirectory << endl;
 
     for(int i=0; i<rawfilenum; i++){
+        filein[i] = new TFile(Form("../../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/91GeV/multi-head/tbeta090td050/uu_%03d.root",i+1));
         tree[i] = (TTree*) filein[i]->Get("t");
         entry_max[i] = tree[i]->GetEntries();
         tree_pred[i] = (TTree*) filein[i]->Get("prediction");

@@ -45,6 +45,8 @@ class ILCStreamingDataset(IterableDataset):
         shuffle_buffer_size=256,
         files_per_chunk=1,
         pad_to_equal_workers=True,
+        ddp_rank=None,
+        ddp_world_size=None,
         _files=None,
         _event_counts=None,
     ):
@@ -69,6 +71,8 @@ class ILCStreamingDataset(IterableDataset):
         self.shuffle_buffer_size = max(0, int(shuffle_buffer_size))
         self.files_per_chunk = max(1, int(files_per_chunk))
         self.pad_to_equal_workers = bool(pad_to_equal_workers)
+        self.ddp_rank = None if ddp_rank is None else int(ddp_rank)
+        self.ddp_world_size = None if ddp_world_size is None else int(ddp_world_size)
         self._para_tanh = para_tanh
         self._recreate = recreate
 
@@ -117,6 +121,8 @@ class ILCStreamingDataset(IterableDataset):
             shuffle_buffer_size=self.shuffle_buffer_size,
             files_per_chunk=self.files_per_chunk,
             pad_to_equal_workers=self.pad_to_equal_workers,
+            ddp_rank=self.ddp_rank,
+            ddp_world_size=self.ddp_world_size,
         )
 
         print(
@@ -164,6 +170,12 @@ class ILCStreamingDataset(IterableDataset):
         self.pad_to_equal_workers = bool(pad_to_equal_workers)
         self._stream_kw["pad_to_equal_workers"] = self.pad_to_equal_workers
 
+    def set_distributed_context(self, rank=None, world_size=None):
+        self.ddp_rank = None if rank is None else int(rank)
+        self.ddp_world_size = None if world_size is None else int(world_size)
+        self._stream_kw["ddp_rank"] = self.ddp_rank
+        self._stream_kw["ddp_world_size"] = self.ddp_world_size
+
     def shaper_tanh(self, x, a=1.0, b=1.0, c=0.0, d=0.0):
         return a * np.tanh(b * (x - c)) + d
 
@@ -193,7 +205,10 @@ class ILCStreamingDataset(IterableDataset):
         return left, right
 
     def _distributed_worker_info(self):
-        if dist.is_available() and dist.is_initialized():
+        if self.ddp_rank is not None and self.ddp_world_size is not None:
+            rank = self.ddp_rank
+            world_size = self.ddp_world_size
+        elif dist.is_available() and dist.is_initialized():
             rank = dist.get_rank()
             world_size = dist.get_world_size()
         else:

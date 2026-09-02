@@ -64,13 +64,20 @@ GPU=$((idx % ${NGPU}))
 GPU=1
 # GPU=$((idx % 2))
 # energy=200
-train_particle=fixed_uds_brems
+outD=5
+train_particle=nnqq_2M
+# checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2025_06_30_151610_outputD5
+checkpoint=${checkpoint_path}/energy_regression/ckpts_gravnet_new02_2026_08_17_174838_outputD5_multihead
+epoch=27
 
 base=$(basename "$file" .h5)
 inputEnergy=$(basename $(dirname "$file"))
 
-outdir=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/tbeta090td050/${base}.root
+outdirectory=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/multi-head/tbeta090td050
+outdir=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/multi-head/tbeta090td050/${base}.root
 # outdir=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/truth_clustering/${base}.root
+
+mkdir -p ${output_path}/${outdirectory}
 
 CUDA_VISIBLE_DEVICES=$GPU python save_root_reco.py \
   "$file" \
@@ -84,7 +91,7 @@ CUDA_VISIBLE_DEVICES=$GPU python save_root_reco.py \
   --tbeta 0.9 \
   --td 0.5 \
   --energy-regression-cluster \
-  --event-total-energy
+  --model-variant multihead
 
 
 

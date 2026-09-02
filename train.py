@@ -80,6 +80,12 @@ def configure_streaming_dataset(dataset, epoch=None, shuffle=None, shuffle_buffe
         dataset.set_pad_to_equal_workers(pad_to_equal_workers)
 
 
+def configure_streaming_dataset_distributed(dataset, rank=None, world_size=None):
+    if not is_streaming_dataset(dataset):
+        return
+    dataset.set_distributed_context(rank=rank, world_size=world_size)
+
+
 def data_loader_num_workers(args, ddp=False):
     if getattr(args, "num_workers", None) is not None:
         return args.num_workers
@@ -421,6 +427,8 @@ def run_ddp_training(rank, world_size, args):
         files_per_chunk=args.stream_files_per_chunk,
         pad_to_equal_workers=False,
     )
+    configure_streaming_dataset_distributed(train_dataset, rank=rank, world_size=world_size)
+    configure_streaming_dataset_distributed(test_dataset, rank=rank, world_size=world_size)
 
     # Sampler（streaming では Dataset 内で rank / worker ごとに file 分割する）
     if is_streaming_dataset(train_dataset):
@@ -453,7 +461,12 @@ def run_ddp_training(rank, world_size, args):
     # model.to(local_rank)
     # model = DDP(model, device_ids=[local_rank])
     model.to(rank)
-    model = DDP(model, device_ids=[rank])
+    ddp_kwargs = dict(device_ids=[rank])
+    if args.use_multihead_model:
+        # Early epochs can skip regression-head losses, so some head parameters
+        # legitimately receive no gradient until L_E is enabled.
+        ddp_kwargs["find_unused_parameters"] = True
+    model = DDP(model, **ddp_kwargs)
 
     # optimizer, scheduler setting
     epoch_size = ddp_scheduler_epoch_size(
@@ -494,6 +507,22 @@ def run_ddp_training(rank, world_size, args):
                 nrestart_cosreduce=args.nrestart_cosreduce,
             )
     loss_offset =1. # To prevent a negative loss from ever occuring
+
+    def compose_validation_loss(loss_components, epoch):
+        test_loss = loss_components["L_V"] + loss_offset
+        if args.LE_track == 'alpha_tracker_modifing_charged0':
+            if epoch > args.epochs_nobeta:
+                test_loss += loss_components["L_beta"]
+            if epoch > 15:
+                test_loss += loss_components["L_E"]
+            else:
+                test_loss += loss_components["L_E_charge"]
+        else:
+            if epoch > args.epochs_nobeta:
+                test_loss += loss_components["L_beta"]
+            if epoch > args.epochs_noLE:
+                test_loss += loss_components["L_E"]
+        return test_loss
 
     def check_coords(out,data) :
         learning_para={}
@@ -728,7 +757,10 @@ def run_ddp_training(rank, world_size, args):
                         pbar.set_postfix({'loss': float(loss)})
                     # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                     # data_y_list.append(learning_para["data.y.long"].tolist())
-                    gradients.append([p.grad.norm().item() for p in model.parameters()])
+                    gradients.append([
+                        p.grad.norm().item() if p.grad is not None else 0.0
+                        for p in model.parameters()
+                    ])
                     batch_count += 1
                     last_loss = loss
                     if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
@@ -835,11 +867,10 @@ def run_ddp_training(rank, world_size, args):
         for key in loss_components:
             dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
             loss_components[key] /= total_test_batches
-        # Compute total loss and do printout
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
+        # Compute total loss with the same epoch gating as the training loss.
+        test_loss = compose_validation_loss(loss_components, epoch)
         if rank == 0:
             print('test ' + oc.formatted_loss_components_string(loss_components))
-            # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
             print(f'Returning {test_loss}')
         return test_loss.item()
 
@@ -1097,6 +1128,8 @@ def main():
         files_per_chunk=args.stream_files_per_chunk,
         pad_to_equal_workers=False,
     )
+    configure_streaming_dataset_distributed(train_dataset, rank=0, world_size=1)
+    configure_streaming_dataset_distributed(test_dataset, rank=0, world_size=1)
     train_loader = make_data_loader(train_dataset, batch_size, args, shuffle=shuffle)
     test_loader = make_data_loader(test_dataset, batch_size, args, shuffle=False)
     streaming_train = is_streaming_dataset(train_dataset)
@@ -1124,6 +1157,8 @@ def main():
             files_per_chunk=args.stream_files_per_chunk,
             pad_to_equal_workers=False,
         )
+        configure_streaming_dataset_distributed(train_dataset_tune, rank=0, world_size=1)
+        configure_streaming_dataset_distributed(test_dataset_tune, rank=0, world_size=1)
         train_loader_tune = make_data_loader(train_dataset_tune, batch_size, args, shuffle=shuffle)
         test_loader_tune = make_data_loader(test_dataset_tune, batch_size, args, shuffle=False)
 
@@ -1162,6 +1197,22 @@ def main():
             scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
 
     loss_offset =1. # To prevent a negative loss from ever occuring
+
+    def compose_validation_loss(loss_components, epoch):
+        test_loss = loss_components["L_V"] + loss_offset
+        if args.LE_track == 'alpha_tracker_modifing_charged0':
+            if epoch > args.epochs_nobeta:
+                test_loss += loss_components["L_beta"]
+            if epoch > 15:
+                test_loss += loss_components["L_E"]
+            else:
+                test_loss += loss_components["L_E_charge"]
+        else:
+            if epoch > args.epochs_nobeta:
+                test_loss += loss_components["L_beta"]
+            if epoch > args.epochs_noLE:
+                test_loss += loss_components["L_E"]
+        return test_loss
 
     train_accu=[]
     test_accu=[]
@@ -1474,7 +1525,10 @@ def main():
                     pbar.set_postfix({'loss': float(loss)})
                 # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([p.grad.norm().item() for p in model.parameters()])
+                gradients.append([
+                    p.grad.norm().item() if p.grad is not None else 0.0
+                    for p in model.parameters()
+                ])
                 batch_count += 1
                 # if i == 2: raise Exception
             if batch_count == 0:
@@ -1544,8 +1598,7 @@ def main():
             loss_components[key] /= batch_count
         # Compute total loss and do printout
         print('test ' + oc.formatted_loss_components_string(loss_components))
-        # test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']
-        test_loss = loss_offset + loss_components['L_V']+loss_components['L_beta']+loss_components['L_E'] if 'L_E' in loss_components else loss_offset + loss_components['L_V']+loss_components['L_beta']
+        test_loss = compose_validation_loss(loss_components, epoch)
         print(f'Returning {test_loss}')
         return test_loss.item()
 
