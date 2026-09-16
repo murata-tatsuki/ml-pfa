@@ -20,8 +20,10 @@ using namespace std;
 int epoch_noLE = -1;    // # of epoch energy regression term is activated   defalt:15
 // int epoch_noLE = 15;
 
-// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174900_alpha_tracker_diff_log_perCluster_ranks/rank0.log";
-const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174838_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174900_alpha_tracker_diff_log_perCluster_ranks/rank0.log";
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174838_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_05_092726_alpha_diff_log_perCluster_multihead_ranks/rank0.log";
+
 
 vector<double> l_v;
 vector<double> l_v_att_charged;

@@ -309,9 +309,9 @@ class ILCStreamingDataset(IterableDataset):
                 if self.pandora:
                     pand = np.copy(ak.to_numpy(pand_ak[chunk_i]))
                 if self.event_energy:
-                    row = event_ak[chunk_i]
-                    eventE = np.copy(ak.to_numpy(row[2]))
-                    jetE = np.copy(ak.to_numpy(row[:2]))
+                    eventE, jetE = ILCDataset.decode_event_kinematics(
+                        event_ak[chunk_i]
+                    )
 
                 yield ILCDataset.featurize_from_numpy(
                     feat, label, pand, eventE, jetE, f"{path}:{local_i}", self

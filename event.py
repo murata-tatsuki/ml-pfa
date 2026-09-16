@@ -14,7 +14,25 @@ class Event:
         self.batch = data.batch.numpy()
         self.feat = data.feat
         self.label = data.label
+        # Exact integer identifiers are stored separately from the mixed
+        # float32 label tensor. Fall back to the legacy representation for
+        # Data objects produced before the dedicated ID fields were added.
+        self.hitid = (
+            data.hitid.detach().cpu().numpy().astype(np.int64, copy=False)
+            if hasattr(data, 'hitid')
+            else data.label[:, 0].detach().cpu().numpy().astype(np.int64)
+        )
+        self.mcid = (
+            data.mcid.detach().cpu().numpy().astype(np.int64, copy=False)
+            if hasattr(data, 'mcid')
+            else data.label[:, 1].detach().cpu().numpy().astype(np.int64)
+        )
         self.pand = data.pand if pandora else None
+        self.pandora_cluster_id = (
+            data.pandora_cluster_id.detach().cpu().numpy().astype(np.int64, copy=False)
+            if pandora and hasattr(data, 'pandora_cluster_id')
+            else None
+        )
         self.event = data.event if event_energy else None
         self.jet = data.jet if event_energy else None
 

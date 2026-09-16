@@ -10,8 +10,8 @@ ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/91GeV/*.h5 | nl -v0 | x
 ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/91GeV/*.h5 | nl -v0 | xargs -n2 -P20 env RUN_GPU=0 bash run_root_parallel_truth.sh
 
 ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/200GeV/*.h5 | nl -v0 | xargs -n2 -P20 env RUN_GPU=2 bash run_root_parallel_truth.sh
-ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/200GeV/*.h5 | nl -v0 | xargs -n2 -P20 env RUN_GPU=2 bash run_root_parallel_truth.sh
-ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/200GeV/*.h5 | nl -v0 | xargs -n2 -P20 env RUN_GPU=2 bash run_root_parallel_truth.sh
+ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/200GeV/*.h5 | nl -v0 | xargs -n2 -P10 env RUN_GPU=2 bash run_root_parallel_truth.sh
+ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/ss/200GeV/*.h5 | nl -v0 | xargs -n2 -P10 env RUN_GPU=2 bash run_root_parallel_truth.sh
 
 ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/uu/500GeV/*.h5 | nl -v0 | xargs -n2 -P6 env RUN_GPU=3 bash run_root_parallel_truth.sh
 ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds/dd/500GeV/*.h5 | nl -v0 | xargs -n2 -P6 env RUN_GPU=3 bash run_root_parallel_truth.sh

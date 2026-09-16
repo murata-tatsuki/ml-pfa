@@ -108,7 +108,9 @@ CUDA_VISIBLE_DEVICES=$GPU python save_root_reco.py \
   --device cuda:0 \
   --tbeta 0.9 \
   --td 0.5 \
+  --truth-clustering \
   --energy-regression-cluster \
+  --event-total-energy \
   --model-variant multihead
 
 

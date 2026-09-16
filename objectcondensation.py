@@ -64,6 +64,9 @@ def calc_L_E(
     if LE_track == 'alpha_tracker_diff_log_perCluster':
         mse = torch.log( torch.abs(tracker_energy[index_alpha_track] - mcp_energy[index_alpha_track])+1.0 )
         L_E_cond = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+    if LE_track == 'alpha_diff_log_perCluster':
+        mse = torch.log( torch.abs(tracker_energy[index_alpha] - mcp_energy[index_alpha])+1.0 )
+        L_E_cond = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
     if LE_track == 'alpha_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]

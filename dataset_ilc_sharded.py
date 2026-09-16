@@ -139,9 +139,7 @@ class ILCDatasetSharded(Dataset):
             event_ak = bundle[6]
             if event_ak is None:
                 raise ValueError(f"event group missing in {path}")
-            row = event_ak[local_i]
-            eventE = np.copy(ak.to_numpy(row[2]))
-            jetE = np.copy(ak.to_numpy(row[:2]))
+            eventE, jetE = ILCDataset.decode_event_kinematics(event_ak[local_i])
 
         return ILCDataset.featurize_from_numpy(
             feat, label, pand, eventE, jetE, idx, self

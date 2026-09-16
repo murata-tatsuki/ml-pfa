@@ -12,15 +12,17 @@
 //   double eff = edep_match / edep;
 
 #include "root_common_includes.h"
+#include "TLatex.h"
 
 #include <cmath>
 #include <unordered_map>
 
 using namespace std;
 
-const int qq_energy = 91;
+const int qq_energy = 500;
 const double c_event_clean_threshold = 0.1;
-const bool use_truth_clustering = false;
+const bool use_truth_clustering = true;
+const bool use_pandora = true;
 
 
 const double reco_truth_energy_min =
@@ -58,7 +60,7 @@ const int num_file =
     qq_energy == 500 ? 1498 : 1;
 const int nfile =
     qq_energy == 40  ? 100 :
-    qq_energy == 91  ? 24 :
+    qq_energy == 91  ? 100 :
     qq_energy == 200 ? 250 :
     qq_energy == 350 ? 250 :
     qq_energy == 500 ? 500 : 1;
@@ -80,7 +82,7 @@ const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/tbeta090td050.root", qq_energy);
 // const string fileName = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/truth_clustering/test_dd_001.root", qq_energy);
 
-const bool saving_canvas = false;
+const bool saving_canvas = true;
 // const string train_particle_type = "ntau_10GeV_10";         // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const string train_particle_type =  qq_energy == 40  ? "ntau_10GeV_10" :
                                     qq_energy == 91  ? "uds91" : 
@@ -90,7 +92,6 @@ const string train_particle_type =  qq_energy == 40  ? "ntau_10GeV_10" :
 const string test_particle_type = train_particle_type;      // ntau_10GeV_10    uds91   ntau_10to100GeV_10
 const bool kaon_neutron = true;
 const bool jet_regression = true;
-const bool pandora = false;
 const bool ECluster = true;
 double beta_threshold = 0;
 
@@ -131,20 +132,12 @@ inline double truthEnergyBinHalfWidth(int ie) {
     return 0.5 * (kTruthEnergyBinEdges[ie + 1] - kTruthEnergyBinEdges[ie]);
 }
 
-/** jet tree の leading jet の |cos#theta| ビン数（0–1 を等分割） */
-static const int kNAbsCosThetaBins = 10;
+/** q の真の方向で event を分類する |cos#theta| bin。0.9 以上は 0.025 刻み。 */
+static const int kNAbsCosThetaBins = 13;
 static const double kAbsCosThetaEdges[kNAbsCosThetaBins + 1] = {
-    0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0
+    0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    0.925, 0.950, 0.975, 1.0
 };
-
-/**
- * 一度に 1 つの MC truth エネルギービンだけを見る（truthEnergyBinFromMcen の返す index）。
- * 例: 21 なら kTruthEnergyBinEdges[21]–[22] の区間（既定では約 40–50 GeV）。
- * 図のエネルギーを変えるときはここだけ変更する。
- */
-const int kRms90VsAbsCosThetaTruthEnergyBin = 21;
-static_assert(kRms90VsAbsCosThetaTruthEnergyBin >= 0 && kRms90VsAbsCosThetaTruthEnergyBin < kNTruthEnergyBins,
-              "kRms90VsAbsCosThetaTruthEnergyBin must be a valid truth energy bin index");
 
 inline int absCosThetaBinIndex(double absCosTheta) {
     if (absCosTheta < 0.0 || absCosTheta > 1.0 + 1e-12)
@@ -306,6 +299,149 @@ double calculateRMS90(TH1F* h1) {
     return calculateRMS90(h1, &dummy);
 }
 
+TH1F* makeEventEnergyRatioHistogram(const string& clustering_directory, const string& histogram_name, Long64_t& valid_events, int& missing_files, int& invalid_files) {
+    TH1F* histogram = new TH1F(histogram_name.c_str(),";E_{reco}/E_{true};Event Fraction",100, 0.5, 1.5);
+    histogram->SetDirectory(nullptr);
+    histogram->Sumw2();
+
+    valid_events = 0;
+    missing_files = 0;
+    invalid_files = 0;
+    for(int qq=0; qq<3; qq++){
+        for(int i=1; i<=nfile; i++){
+            if(exist_file(qq_energy, qqNames[qq], i)) continue;
+            const string input_path = Form(
+                "../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/"
+                "tbeta_td_scan/qmin02_lr5e-4/%dGeV/multi-head/%s/%s_%03d.root",
+                qq_energy,
+                clustering_directory.c_str(),
+                qqNames[qq].c_str(),
+                i
+            );
+            if(gSystem->AccessPathName(input_path.c_str())){
+                missing_files++;
+                continue;
+            }
+
+            TFile input_file(input_path.c_str(), "READ");
+            TTree* event_tree = static_cast<TTree*>(input_file.Get("event"));
+            if(
+                input_file.IsZombie() ||
+                !event_tree ||
+                !event_tree->GetBranch("MC_dijet_energy") ||
+                !event_tree->GetBranch("total_predicted_energy_pred")
+            ) {
+                invalid_files++;
+                continue;
+            }
+
+            double true_energy = 0.0;
+            double reco_energy = 0.0;
+            event_tree->SetBranchAddress("MC_dijet_energy", &true_energy);
+            event_tree->SetBranchAddress("total_predicted_energy_pred", &reco_energy);
+            for(Long64_t entry=0; entry<event_tree->GetEntries(); entry++){
+                event_tree->GetEntry(entry);
+                if(true_energy<=0.0 || reco_energy<0.0 || !std::isfinite(true_energy) || !std::isfinite(reco_energy)) continue;
+                histogram->Fill(reco_energy / true_energy);
+                valid_events++;
+            }
+        }
+    }
+
+    // Normalize by all valid events, including entries outside the displayed
+    // x range, so that each bin content is an event fraction.
+    if(valid_events>0) histogram->Scale(1.0 / static_cast<double>(valid_events));
+    return histogram;
+}
+
+TH1F* makePandoraEventEnergyRatioHistogram(const string& histogram_name, Long64_t& valid_events, int& missing_files, int& invalid_files) {
+    TH1F* histogram = new TH1F(
+        histogram_name.c_str(),
+        ";E_{reco}/E_{true};Event Fraction",
+        100, 0.5, 1.5
+    );
+    histogram->SetDirectory(nullptr);
+    histogram->Sumw2();
+
+    valid_events = 0;
+    missing_files = 0;
+    invalid_files = 0;
+    for(int qq=0; qq<3; qq++){
+        for(int i=1; i<=nfile; i++){
+            if(exist_file(qq_energy, qqNames[qq], i)) continue;
+            const string input_path = Form(
+                "../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/"
+                "tbeta_td_scan/qmin02_lr5e-4/%dGeV/pandora/%s_%03d.root",
+                qq_energy,
+                qqNames[qq].c_str(),
+                i
+            );
+            if(gSystem->AccessPathName(input_path.c_str())){
+                missing_files++;
+                continue;
+            }
+
+            TFile input_file(input_path.c_str(), "READ");
+            TTree* event_tree = static_cast<TTree*>(input_file.Get("event"));
+            TTree* reco_tree = static_cast<TTree*>(input_file.Get("reco"));
+            if(
+                input_file.IsZombie() ||
+                !event_tree ||
+                !reco_tree ||
+                !event_tree->GetBranch("event") ||
+                !event_tree->GetBranch("MC_dijet_energy") ||
+                !reco_tree->GetBranch("event") ||
+                !reco_tree->GetBranch("pred_edep")
+            ) {
+                invalid_files++;
+                continue;
+            }
+
+            int reco_event = 0;
+            double pfo_energy = 0.0;
+            map<int, double> reco_energy_by_event;
+            reco_tree->SetBranchAddress("event", &reco_event);
+            reco_tree->SetBranchAddress("pred_edep", &pfo_energy);
+            for(Long64_t entry=0; entry<reco_tree->GetEntries(); entry++){
+                reco_tree->GetEntry(entry);
+                if(!std::isfinite(pfo_energy)) continue;
+                reco_energy_by_event[reco_event] += pfo_energy;
+            }
+
+            int truth_event = 0;
+            double true_energy = 0.0;
+            event_tree->SetBranchAddress("event", &truth_event);
+            event_tree->SetBranchAddress("MC_dijet_energy", &true_energy);
+            for(Long64_t entry=0; entry<event_tree->GetEntries(); entry++){
+                event_tree->GetEntry(entry);
+                if(true_energy<=0.0 || !std::isfinite(true_energy)) continue;
+                const double reco_energy = reco_energy_by_event[truth_event];
+                if(reco_energy<0.0 || !std::isfinite(reco_energy)) continue;
+                histogram->Fill(reco_energy / true_energy);
+                valid_events++;
+            }
+        }
+    }
+
+    // Pandora's event-level predicted-energy branches are currently zero, so
+    // E_reco is reconstructed above by summing reco/pred_edep for every PFO.
+    if(valid_events>0) histogram->Scale(1.0 / static_cast<double>(valid_events));
+    return histogram;
+}
+
+double fitEventEnergyRatioCore(TH1F* histogram, const string& fit_name, double& fit_mean) {
+    fit_mean = 0.0;
+    if(!histogram || histogram->GetEntries()<30) return 0.0;
+
+    TF1 gaussian(fit_name.c_str(), "gaus", 0.9, 1.1);
+    gaussian.SetParameters(histogram->GetMaximum(), 1.0, 0.05);
+    gaussian.SetParLimits(1, 0.9, 1.1);
+    gaussian.SetParLimits(2, 0.001, 0.3);
+    histogram->Fit(&gaussian, "QNR0");
+    fit_mean = gaussian.GetParameter(1);
+    return gaussian.GetParameter(2);
+}
+
 void efficiency_purity_check_reco_effpur_contiribution(){ 
     int rawfilenum = num_file;
     int irawfilenum = 0;
@@ -323,18 +459,18 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     TTree *tree_jet[rawfilenum];
     int entry_max[rawfilenum];
     int total_entry_max=0;
-    string path_to_file = use_truth_clustering ? "truth_clustering" : "reco";
-    string picDirectory = Form("figures/raw_fixed_uds/%dGeV/%s",qq_energy, path_to_file.c_str());
-    
+    string path_to_file = use_pandora ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco");
+    string picDirectory = Form("figures/nnqq2M_fixed_uds/%dGeV/%s",qq_energy, path_to_file.c_str());
+
     if(rawfilenum == 1) fileNames_raw[0] = Form("%s",fileName.c_str());
     else {
-        for(int qq=2; qq<3; qq++){
+        for(int qq=0; qq<3; qq++){
             for(int i=1; i<=nfile; i++){
                 if(exist_file(qq_energy, qqNames[qq], i)) continue;
-                path_to_file = use_truth_clustering ? "truth_clustering" : "tbeta090td050";
+                const string input_clustering_directory = use_pandora ? "../pandora" : (use_truth_clustering ? "truth_clustering" : "tbeta090td050");
                 // fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/%s/%s_%03d.root", qq_energy, path_to_file.c_str(), qqNames[qq].c_str(), i);
                 // fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/perh5file/%s_%03d.root", qq_energy, qqNames[qq].c_str(), i);
-                fileNames[qq][i] = Form("../output/energy_regression_1to1/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/91GeV/multi-head/tbeta090td050/%s/%s_%03d.root", qq_energy, path_to_file.c_str(), qqNames[qq].c_str(), i);
+                fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/multi-head/%s/%s_%03d.root", qq_energy, input_clustering_directory.c_str(), qqNames[qq].c_str(), i);
                 fileNames_raw[irawfilenum] = Form("%s",fileNames[qq][i].c_str());
                 irawfilenum++;
             }
@@ -352,12 +488,15 @@ void efficiency_purity_check_reco_effpur_contiribution(){
 
     int jet_event, n_jets;
     double jet_p4[2][4];
+    int builder_event;
+    double builder_mc_event_energy;
 
     int reco_event, reco_cluster, reco_nhits, reco_mcid, reco_mcpdg, reco_mccharge, reco_mcstatus, reco_ntrack_hits, reco_cond_is_track, reco_matched_truth_pdgid, reco_npdg_comp;
     int reco_pdg_comp_ids[64];
     double reco_mcmass, reco_mcpx, reco_mcpy, reco_mcpz, reco_mcen, reco_edep_reco, reco_edep_mc, reco_edep_match, reco_pred_edep, reco_pred_edep_cluster, reco_cond_beta, reco_matched_truth_edep_frac;
 
-    const int n_beta_thresholds = 10;  // 0, 0.1, 0.2, ..., 0.9
+    // Pandora has no condensation-beta score, so only the no-cut curve is meaningful.
+    const int n_beta_thresholds = use_pandora ? 1 : 10;  // otherwise: 0, 0.1, ..., 0.9
     struct EventRecoEnergySummary {
         double pred_energy_reco_track = 0.0;
         double pred_energy_cond_track = 0.0;
@@ -396,7 +535,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     // vector<int> particledgValues = {11,-11, 211,-211, 22, 2112, 130};
     // vector<int> particledgValues_itr = {0,0, 1,1, 2, 3, 3};
 
-    double Eres_range = pandora ? 0.05 : 1.5;
+    double Eres_range = use_pandora ? 0.05 : 1.5;
     // double Eres_range = 1.5;
     int Eres_nbin = 1200;
     double E_res_binWidth = Eres_range*2/Eres_nbin;
@@ -588,23 +727,21 @@ void efficiency_purity_check_reco_effpur_contiribution(){
         event_energy_diff_per_energy_cond_track[ie] = new TH1F(Form("event_energy_diff_per_energy_cond_track_%d",ie), diff_title.c_str(), Eres_nbin,-Eres_range,Eres_range);
     }
 
-    TH1F *energy_res_vs_abs_costheta[nParticle][kNAbsCosThetaBins];
-    for(int ip=0; ip<nParticle; ip++){
-        for(int ib=0; ib<kNAbsCosThetaBins; ib++){
-            const string title = Form(
-                "%s truth %.0f-%.0f GeV, |cos#theta|#in[%.2f,%.2f);(pred-truth)/truth",
-                particleNames[ip].c_str(),
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin],
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin + 1],
-                kAbsCosThetaEdges[ib],
-                kAbsCosThetaEdges[ib + 1]);
-            energy_res_vs_abs_costheta[ip][ib] = new TH1F(
-                Form("energy_res_vs_abscosth_%d_%d", ip, ib),
-                title.c_str(),
-                Eres_nbin,
-                -Eres_range,
-                Eres_range);
-        }
+    // One entry is Ereco(event) / Etrue(event). Etrue(event) is the visible
+    // energy supplied by the H5 event builder (event/MC_dijet_energy). No
+    // reconstructed cluster is assigned to an individual jet.
+    TH1F *event_energy_ratio_vs_abs_costheta[kNAbsCosThetaBins];
+    for(int ib=0; ib<kNAbsCosThetaBins; ib++){
+        const string title = Form(
+            "event energy ratio, |cos#theta_{q}|#in[%.3f,%.3f);E_{reco}^{event}/E_{true,builder}^{event};events",
+            kAbsCosThetaEdges[ib],
+            kAbsCosThetaEdges[ib + 1]);
+        event_energy_ratio_vs_abs_costheta[ib] = new TH1F(
+            Form("event_energy_ratio_vs_abscostheta_%d", ib),
+            title.c_str(),
+            1000,
+            0.5,
+            1.5);
     }
 
 
@@ -618,9 +755,10 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     int n_track_notcond_neutral = 0;
     int n_notrack_charged = 0;
     int n_notrack_neutral = 0;
+    Long64_t n_event_energy_theta_entries = 0;
     for(int irawfile=0; irawfile<rawfilenum; irawfile++){
         if(rawfilenum>1) cout << irawfile << "/" << rawfilenum << "  ";// << endl;
-        map<int, double> event_truth_energy_sum_ttree;
+        map<int, double> event_builder_mc_energy;
 
         cout << fileNames_raw[irawfile] << endl;
         filein[irawfile] = new TFile(Form("%s",fileNames_raw[irawfile].c_str()));
@@ -649,8 +787,30 @@ void efficiency_purity_check_reco_effpur_contiribution(){
         tree[irawfile]->SetBranchAddress("cond_beta", &cond_beta);
         tree[irawfile]->SetBranchAddress("cond_track", &cond_track);
 
+        const bool has_builder_mc_energy =
+            tree_event[irawfile] &&
+            tree_event[irawfile]->GetBranch("event") &&
+            tree_event[irawfile]->GetBranch("MC_dijet_energy");
+        if(has_builder_mc_energy){
+            tree_event[irawfile]->SetBranchAddress("event", &builder_event);
+            tree_event[irawfile]->SetBranchAddress("MC_dijet_energy", &builder_mc_event_energy);
+            for(Long64_t ientry=0; ientry<tree_event[irawfile]->GetEntries(); ientry++){
+                tree_event[irawfile]->GetEntry(ientry);
+                if(builder_mc_event_energy > 0.0 && std::isfinite(builder_mc_event_energy))
+                    event_builder_mc_energy[builder_event] = builder_mc_event_energy;
+            }
+        }else{
+            cout << "   warning: event/MC_dijet_energy is missing; event-level truth plots skip this file" << endl;
+        }
+
         unordered_map<int, double> jet_cos_theta_by_event;
-        if(jet_regression && tree_jet[irawfile]){
+        const bool has_truth_jet_direction =
+            jet_regression &&
+            tree_jet[irawfile] &&
+            tree_jet[irawfile]->GetBranch("event") &&
+            tree_jet[irawfile]->GetBranch("n_jets") &&
+            tree_jet[irawfile]->GetBranch("jet_p4");
+        if(has_truth_jet_direction){
             tree_jet[irawfile]->SetBranchAddress("event", &jet_event);
             tree_jet[irawfile]->SetBranchAddress("n_jets", &n_jets);
             tree_jet[irawfile]->SetBranchAddress("jet_p4", &jet_p4);
@@ -666,23 +826,15 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 const double costheta = pz / amp;
                 jet_cos_theta_by_event[jet_event] = costheta;
             }
+        } else if(jet_regression){
+            cout << "   warning: jet tree with event/n_jets/jet_p4 is missing; skipping theta resolution for this file" << endl;
         }
 
-        for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
-            if(rawfilenum==1 && entry_max[irawfile]>10000 && ientry%100000==0) cout << "calcualting truth total energy : event " << ientry << "/" << entry_max[irawfile] << endl;
-            tree[irawfile]->GetEntry(ientry);
-            if(mcen>0){
-                event_truth_energy_sum_ttree[event] += mcen;
-            }
-        }
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             if(rawfilenum==1 && entry_max[irawfile]>10000 && ientry%100000==0) cout << "t event " << ientry << "/" << entry_max[irawfile] << endl;
             tree[irawfile]->GetEntry(ientry);
             
-            auto truth_it_reco = event_truth_energy_sum_ttree.find(event);
-            if(truth_it_reco == event_truth_energy_sum_ttree.end()) continue;
-            const double truth_energy_reco = truth_it_reco->second;
-            // if(truth_energy_reco<reco_truth_energy_min || truth_energy_reco>reco_truth_energy_max) continue;
+            if(event_builder_mc_energy.find(event) == event_builder_mc_energy.end()) continue;
 
 
             if(edep<=0 || edep_reco<=0 || edep_match<0) continue;
@@ -705,16 +857,17 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 efficiency_energy[itr][energy_itr]->Fill(eff);
                 efficiency_energy_normalize[itr][energy_itr]->Fill(eff);
             }
+            double _pred_edep_cluster = use_pandora ? pred_edep : pred_edep_cluster;
 
             energy[itr]->Fill(pred_edep);
             MCtruth_energy[itr]->Fill(mcen);
             energy_diff[itr]->Fill(pred_edep - mcen);
             energy2d[itr]->Fill(mcen,pred_edep);
-            clusterenergy2d[itr]->Fill(mcen,pred_edep_cluster);
+            clusterenergy2d[itr]->Fill(mcen,_pred_edep_cluster);
             energy_resolution[itr]->Fill( (pred_edep - mcen) / mcen );
 
             const int ipc = truthPhysicsCategoryFromMc(mcpdg, mccharge);
-            const double ipc_energy = ipc == 0 ? pred_edep : pred_edep_cluster;
+            const double ipc_energy = ipc == 0 ? pred_edep : _pred_edep_cluster;
             energy2d_truth_phys[ipc]->Fill(mcen, ipc_energy);
 
             // cout << itr_energy << ", " << mcen << endl;
@@ -722,26 +875,15 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 energy_diff_per_energy[itr][energy_itr]->Fill(pred_edep - mcen);
                 energy_resolution_per_energy[itr][energy_itr]->Fill( (pred_edep - mcen) / mcen );
             }
-            if(jet_regression && energy_itr == kRms90VsAbsCosThetaTruthEnergyBin && pred_edep > 0.1){
-                const auto jct = jet_cos_theta_by_event.find(event);
-                if(jct != jet_cos_theta_by_event.end()){
-                    const double abs_ct = fabs(jct->second);
-                    if(abs_ct <= 1.0 + 1e-6){
-                        const int ib_ct = absCosThetaBinIndex(abs_ct);
-                        if(ib_ct >= 0)
-                            energy_res_vs_abs_costheta[itr][ib_ct]->Fill((pred_edep - mcen) / mcen);
-                    }
-                }
-            }
-            if(energy_itr >= 0 && pred_edep_cluster>0.1){
-                energy_resolution_per_energy_cluster[itr][energy_itr]->Fill( (pred_edep_cluster - mcen) / mcen );
+            if(energy_itr >= 0 && _pred_edep_cluster>0.1){
+                energy_resolution_per_energy_cluster[itr][energy_itr]->Fill( (_pred_edep_cluster - mcen) / mcen );
             }
             if(energy_itr >= 0){
                 energy_resolution_per_energy_truth_phys[ipc][energy_itr]->Fill((ipc_energy - mcen) / mcen);
             }
 
-            if(edep>1) eff_vs_Ediff[itr]->Fill(eff,pred_edep_cluster-mcen);
-            if(edep>1) pur_vs_Ediff[itr]->Fill(pur,pred_edep_cluster-mcen);
+            if(edep>1) eff_vs_Ediff[itr]->Fill(eff,_pred_edep_cluster-mcen);
+            if(edep>1) pur_vs_Ediff[itr]->Fill(pur,_pred_edep_cluster-mcen);
             if(edep>1) condbeta_vs_eff[itr]->Fill(cond_beta,eff);
             if(edep>1) condbeta_vs_pur[itr]->Fill(cond_beta,pur);
             condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
@@ -809,14 +951,14 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 if(rawfilenum==1 && tree_reco[irawfile]->GetEntries()>1000 && ientry%100000==0) cout << "reco event  " << ientry << "/" << tree_reco[irawfile]->GetEntries() << endl;
                 tree_reco[irawfile]->GetEntry(ientry);
                 if(reco_cond_beta<beta_threshold) continue;
-                auto truth_it_reco = event_truth_energy_sum_ttree.find(reco_event);
-                if(truth_it_reco == event_truth_energy_sum_ttree.end()) continue;
-                const double truth_energy_reco = truth_it_reco->second;
-                // if(truth_energy_reco<reco_truth_energy_min || truth_energy_reco>reco_truth_energy_max) continue;
+                if(event_builder_mc_energy.find(reco_event) == event_builder_mc_energy.end()) continue;
 
                 auto &sum = event_energy_summary[reco_event];
-                const double pred_reco = (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
-                const double pred_cond = (reco_cond_is_track!=0 ? reco_pred_edep : reco_pred_edep_cluster);
+                // Pandora stores the reconstructed PFO energy in pred_edep for
+                // both charged and neutral PFOs. pred_edep_cluster and the
+                // condensation track flags are not populated in Pandora files.
+                const double pred_reco = use_pandora ? reco_pred_edep : (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
+                const double pred_cond = use_pandora ? reco_pred_edep : (reco_cond_is_track!=0 ? reco_pred_edep : reco_pred_edep_cluster);
                 sum.pred_energy_reco_track += pred_reco;
                 sum.pred_energy_cond_track += pred_cond;
                 for(int ib=0; ib<n_beta_thresholds; ib++){
@@ -861,7 +1003,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                     track_charge_category = 6;
                 }
                 track_pdg_charge_vs_condbeta->Fill(track_charge_category - 0.5, reco_cond_beta);
-                const double pred_energy_for_category = (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
+                const double pred_energy_for_category = use_pandora ? reco_pred_edep : (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster);
                 event_track_category_energy_summary[reco_event].pred_energy_sum[track_charge_category-1] += pred_energy_for_category;
 
                 auto true_itr = find(particledgValues.begin(), particledgValues.end(), reco_matched_truth_pdgid);
@@ -886,6 +1028,22 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 const EventRecoEnergySummary &sum = entry.second;
                 event_energy_sum_reco_track_distribution->Fill(sum.pred_energy_reco_track);
                 event_energy_sum_cond_track_distribution->Fill(sum.pred_energy_cond_track);
+                const auto direction_it = jet_cos_theta_by_event.find(entry.first);
+                const auto builder_energy_it = event_builder_mc_energy.find(entry.first);
+                if(
+                    direction_it != jet_cos_theta_by_event.end() &&
+                    builder_energy_it != event_builder_mc_energy.end() &&
+                    builder_energy_it->second > 0.0 &&
+                    std::isfinite(builder_energy_it->second) &&
+                    std::isfinite(sum.pred_energy_reco_track)
+                ){
+                    const int ib_ct = absCosThetaBinIndex(fabs(direction_it->second));
+                    if(ib_ct >= 0){
+                        event_energy_ratio_vs_abs_costheta[ib_ct]->Fill(
+                            sum.pred_energy_reco_track / builder_energy_it->second);
+                        n_event_energy_theta_entries++;
+                    }
+                }
                 for(int ib=0; ib<n_beta_thresholds; ib++){
                     event_energy_sum_reco_track_distribution_beta[ib]->Fill(sum.pred_energy_reco_track_beta[ib]);
                     event_energy_sum_cond_track_distribution_beta[ib]->Fill(sum.pred_energy_cond_track_beta[ib]);
@@ -898,8 +1056,8 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                     c_event_distribution->Fill(c_event);
                 }
 
-                auto truth_it = event_truth_energy_sum_ttree.find(entry.first);
-                if(truth_it == event_truth_energy_sum_ttree.end()) continue;
+                auto truth_it = event_builder_mc_energy.find(entry.first);
+                if(truth_it == event_builder_mc_energy.end()) continue;
                 const double truth_energy = truth_it->second;
                 if(c_event>=0){
                     c_event_vs_truth_energy->Fill(truth_energy, c_event);
@@ -923,10 +1081,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 event_energy2d_cond_track->Fill(truth_energy, sum.pred_energy_cond_track);
             }
             for(const auto &entry : event_track_category_energy_summary){
-                auto truth_it = event_truth_energy_sum_ttree.find(entry.first);
-                if(truth_it == event_truth_energy_sum_ttree.end()) continue;
-                const double truth_energy_reco = truth_it->second;
-                // if(truth_energy_reco<reco_truth_energy_min || truth_energy_reco>reco_truth_energy_max) continue;
+                if(event_builder_mc_energy.find(entry.first) == event_builder_mc_energy.end()) continue;
                 const EventTrackCategoryEnergySummary &cat_sum = entry.second;
                 for(int ic=0; ic<6; ic++){
                     event_pred_energy_sum_by_track_category[ic]->Fill(cat_sum.pred_energy_sum[ic]);
@@ -1686,7 +1841,8 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     }
 
 
-#if 0
+// #if 0
+    /*
     // jet_energy2d の Fill が無い現行 ROOT では未使用。復活させる場合は TH2F の生成と Fill を戻す。
     TCanvas *canvas_jet_energy_ = new TCanvas("canvas_jet_energy","canvas_jet_energy",1400,500);
     canvas_jet_energy->Divide(3,1);
@@ -1767,60 +1923,103 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     jet_energy_resolution_rms->Draw("AP");
     jet_energy_resolution_sigma->Draw("P");
     legend_jet_res->Draw("same");
-#endif
+    */
+// #endif
 
-    TCanvas *cv_rms90_abscostheta = nullptr;
-    TGraphErrors *gr_rms90_norm_abscostheta[nParticle] = {};
+    TCanvas *canvas_jet_energy_resolution_vs_abs_costheta = nullptr;
+    TGraphErrors *graph_jet_energy_resolution_vs_abs_costheta = nullptr;
     if(jet_regression){
-        cv_rms90_abscostheta = new TCanvas("cv_rms90_abscostheta", "cv_rms90_abscostheta", 2400, 400);
-        cv_rms90_abscostheta->Divide(nParticle, 1);
-        const double Eref_gev = truthEnergyBinCenter(kRms90VsAbsCosThetaTruthEnergyBin);
-        const double inv_sqrt_E = (Eref_gev > 0.0) ? (1.0 / sqrt(Eref_gev)) : 1.0;
-        for(int ip=0; ip<nParticle; ip++){
-            gr_rms90_norm_abscostheta[ip] = new TGraphErrors();
-            gr_rms90_norm_abscostheta[ip]->SetName(Form("gr_rms90_norm_abscostheta_%d", ip));
-            int npt = 0;
-            for(int ib=0; ib<kNAbsCosThetaBins; ib++){
-                TH1F *h = energy_res_vs_abs_costheta[ip][ib];
-                if(h->GetEntries() < 30) continue;
-                const double rms90 = calculateRMS90(h);
-                const double nent = h->GetEffectiveEntries();
-                const double y = rms90 * inv_sqrt_E;
-                const double yerr = (nent > 1.0) ? (y / sqrt(nent)) : 0.0;
-                const double xcenter = 0.5 * (kAbsCosThetaEdges[ib] + kAbsCosThetaEdges[ib + 1]);
-                const double xhw = 0.5 * (kAbsCosThetaEdges[ib + 1] - kAbsCosThetaEdges[ib]);
-                gr_rms90_norm_abscostheta[ip]->SetPoint(npt, xcenter, y);
-                gr_rms90_norm_abscostheta[ip]->SetPointError(npt, xhw, yerr);
-                npt++;
+        canvas_jet_energy_resolution_vs_abs_costheta = new TCanvas(
+            "canvas_jet_energy_resolution_vs_abs_costheta",
+            "jet energy resolution vs truth jet direction",
+            1000,
+            750);
+        canvas_jet_energy_resolution_vs_abs_costheta->SetLeftMargin(0.14);
+        canvas_jet_energy_resolution_vs_abs_costheta->SetRightMargin(0.04);
+        canvas_jet_energy_resolution_vs_abs_costheta->SetTopMargin(0.07);
+        canvas_jet_energy_resolution_vs_abs_costheta->SetBottomMargin(0.13);
+        canvas_jet_energy_resolution_vs_abs_costheta->SetGridx();
+        canvas_jet_energy_resolution_vs_abs_costheta->SetGridy();
+
+        graph_jet_energy_resolution_vs_abs_costheta = new TGraphErrors();
+        graph_jet_energy_resolution_vs_abs_costheta->SetName("graph_jet_energy_resolution_vs_abs_costheta");
+        graph_jet_energy_resolution_vs_abs_costheta->SetTitle(
+            ";|cos(#theta_{q})|;#sqrt{2} RMS_{90}(E_{reco}^{event}/E_{true,builder}^{event}) [%]");
+        graph_jet_energy_resolution_vs_abs_costheta->SetMarkerStyle(kFullCircle);
+        graph_jet_energy_resolution_vs_abs_costheta->SetMarkerSize(1.2);
+        graph_jet_energy_resolution_vs_abs_costheta->SetMarkerColor(kAzure + 2);
+        graph_jet_energy_resolution_vs_abs_costheta->SetLineColor(kAzure + 2);
+        graph_jet_energy_resolution_vs_abs_costheta->SetLineWidth(3);
+
+        int npt = 0;
+        double ymax = 0.0;
+        cout << "jet energy resolution vs |cos(theta_q)|: "
+             << "sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)" << endl;
+        for(int ib=0; ib<kNAbsCosThetaBins; ib++){
+            TH1F *h = event_energy_ratio_vs_abs_costheta[ib];
+            if(h->GetEntries() < 30){
+                cout << "  [" << kAbsCosThetaEdges[ib] << ", "
+                     << kAbsCosThetaEdges[ib + 1] << "): entries="
+                     << h->GetEntries() << " (not plotted)" << endl;
+                continue;
             }
-            cv_rms90_abscostheta->cd(ip + 1);
-            gr_rms90_norm_abscostheta[ip]->SetTitle(Form("%s (truth %.0f-%.0f GeV)",
-                particleNames[ip].c_str(),
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin],
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin + 1]));
-            gr_rms90_norm_abscostheta[ip]->GetXaxis()->SetTitle("|cos#theta|");
-            gr_rms90_norm_abscostheta[ip]->GetYaxis()->SetTitle("RMS_{90} / #sqrt{E / GeV}");
-            gr_rms90_norm_abscostheta[ip]->SetMarkerStyle(kFullCircle);
-            gr_rms90_norm_abscostheta[ip]->SetMarkerColor(kBlack);
-            gr_rms90_norm_abscostheta[ip]->SetLineColor(kBlack);
-            if(npt > 0){
-                gr_rms90_norm_abscostheta[ip]->Draw("APE");
-                gr_rms90_norm_abscostheta[ip]->GetXaxis()->SetRangeUser(0.0, 1.0);
-                gr_rms90_norm_abscostheta[ip]->GetYaxis()->SetRangeUser(0.0, 1.0);
-            }else{
-                auto *hframe = new TH2F(
-                    Form("hframe_rms90_ct_%d", ip),
-                    Form("%s;|cos#theta|;RMS_{90} / #sqrt{E / GeV}", particleNames[ip].c_str()),
-                    10,
-                    0.0,
-                    1.0,
-                    10,
-                    0.0,
-                    1.0);
-                hframe->SetStats(0);
-                hframe->Draw();
-            }
+            double mean90 = 0.0;
+            const double rms90 = calculateRMS90(h, &mean90);
+            const double resolution_percent = sqrt(2.0) * rms90 * 100.0;
+            const double n90 = 0.9 * h->GetEffectiveEntries();
+            const double resolution_error = n90 > 1.0
+                ? resolution_percent / sqrt(2.0 * (n90 - 1.0))
+                : 0.0;
+            const double xcenter = 0.5 * (kAbsCosThetaEdges[ib] + kAbsCosThetaEdges[ib + 1]);
+            const double xhalfwidth = 0.5 * (kAbsCosThetaEdges[ib + 1] - kAbsCosThetaEdges[ib]);
+            graph_jet_energy_resolution_vs_abs_costheta->SetPoint(npt, xcenter, resolution_percent);
+            graph_jet_energy_resolution_vs_abs_costheta->SetPointError(npt, xhalfwidth, resolution_error);
+            ymax = max(ymax, resolution_percent + resolution_error);
+            npt++;
+            cout << "  [" << kAbsCosThetaEdges[ib] << ", "
+                 << kAbsCosThetaEdges[ib + 1] << "): entries=" << h->GetEntries()
+                 << ", Mean90=" << mean90
+                 << ", RMS90=" << rms90
+                 << ", resolution=" << resolution_percent << "%" << endl;
         }
+
+        if(npt > 0){
+            graph_jet_energy_resolution_vs_abs_costheta->SetMinimum(0.0);
+            graph_jet_energy_resolution_vs_abs_costheta->SetMaximum(max(10.0, 1.25 * ymax));
+            graph_jet_energy_resolution_vs_abs_costheta->Draw("APE");
+            graph_jet_energy_resolution_vs_abs_costheta->GetXaxis()->SetLimits(0.0, 1.0);
+            graph_jet_energy_resolution_vs_abs_costheta->GetXaxis()->SetTitleSize(0.055);
+            graph_jet_energy_resolution_vs_abs_costheta->GetXaxis()->SetLabelSize(0.045);
+            graph_jet_energy_resolution_vs_abs_costheta->GetYaxis()->SetTitleSize(0.050);
+            graph_jet_energy_resolution_vs_abs_costheta->GetYaxis()->SetLabelSize(0.045);
+            graph_jet_energy_resolution_vs_abs_costheta->GetYaxis()->SetTitleOffset(1.25);
+        }else{
+            TH2F *empty_theta_frame = new TH2F(
+                "empty_theta_resolution_frame",
+                ";|cos(#theta_{q})|;#sqrt{2} RMS_{90}(E_{reco}^{event}/E_{true,builder}^{event}) [%]",
+                10, 0.0, 1.0,
+                10, 0.0, 10.0);
+            empty_theta_frame->SetStats(0);
+            empty_theta_frame->Draw();
+        }
+
+        TLegend *theta_resolution_legend = new TLegend(0.16, 0.78, 0.47, 0.88);
+        theta_resolution_legend->SetBorderSize(0);
+        theta_resolution_legend->SetFillStyle(0);
+        theta_resolution_legend->SetTextSize(0.043);
+        theta_resolution_legend->AddEntry(
+            graph_jet_energy_resolution_vs_abs_costheta,
+            Form("%.1f GeV jets", 0.5 * qq_energy),
+            "lp");
+        theta_resolution_legend->Draw();
+
+        TLatex theta_resolution_label;
+        theta_resolution_label.SetNDC();
+        theta_resolution_label.SetTextFont(42);
+        theta_resolution_label.SetTextSize(0.050);
+        theta_resolution_label.DrawLatex(0.62, 0.84, "Z/#gamma^{*} #rightarrow uds");
+        canvas_jet_energy_resolution_vs_abs_costheta->RedrawAxis();
+        cout << "  theta-classified events: " << n_event_energy_theta_entries << endl;
     }
 
     TCanvas *canvas_event_energy_resolution = new TCanvas("canvas_event_energy_resolution","canvas_event_energy_resolution",1400,500);
@@ -2096,6 +2295,151 @@ void efficiency_purity_check_reco_effpur_contiribution(){
          << ", sigma_clean=" << sigma_clean_cond
          << ", sigma_conf=" << sigma_conf_cond << endl;
 
+    Long64_t reco_ratio_events = 0;
+    Long64_t truth_ratio_events = 0;
+    Long64_t pandora_ratio_events = 0;
+    int reco_ratio_missing_files = 0;
+    int truth_ratio_missing_files = 0;
+    int pandora_ratio_missing_files = 0;
+    int reco_ratio_invalid_files = 0;
+    int truth_ratio_invalid_files = 0;
+    int pandora_ratio_invalid_files = 0;
+    TH1F* event_energy_ratio_reco = makeEventEnergyRatioHistogram(
+        "tbeta090td050",
+        "event_energy_ratio_reco",
+        reco_ratio_events,
+        reco_ratio_missing_files,
+        reco_ratio_invalid_files
+    );
+    TH1F* event_energy_ratio_truth = makeEventEnergyRatioHistogram(
+        "truth_clustering",
+        "event_energy_ratio_truth",
+        truth_ratio_events,
+        truth_ratio_missing_files,
+        truth_ratio_invalid_files
+    );
+    TH1F* event_energy_ratio_pandora = makePandoraEventEnergyRatioHistogram(
+        "event_energy_ratio_pandora",
+        pandora_ratio_events,
+        pandora_ratio_missing_files,
+        pandora_ratio_invalid_files
+    );
+
+    double reco_ratio_fit_mean = 0.0;
+    double truth_ratio_fit_mean = 0.0;
+    double pandora_ratio_fit_mean = 0.0;
+    const double reco_ratio_fit_sigma = fitEventEnergyRatioCore(
+        event_energy_ratio_reco,
+        "gaus_event_energy_ratio_reco",
+        reco_ratio_fit_mean
+    );
+    const double truth_ratio_fit_sigma = fitEventEnergyRatioCore(
+        event_energy_ratio_truth,
+        "gaus_event_energy_ratio_truth",
+        truth_ratio_fit_mean
+    );
+    const double pandora_ratio_fit_sigma = fitEventEnergyRatioCore(
+        event_energy_ratio_pandora,
+        "gaus_event_energy_ratio_pandora",
+        pandora_ratio_fit_mean
+    );
+    const double reco_ratio_resolution = reco_ratio_fit_mean>0.0
+        ? reco_ratio_fit_sigma / reco_ratio_fit_mean
+        : 0.0;
+    const double truth_ratio_resolution = truth_ratio_fit_mean>0.0
+        ? truth_ratio_fit_sigma / truth_ratio_fit_mean
+        : 0.0;
+    const double pandora_ratio_resolution = pandora_ratio_fit_mean>0.0
+        ? pandora_ratio_fit_sigma / pandora_ratio_fit_mean
+        : 0.0;
+
+    TCanvas* canvas_event_energy_ratio_reco_truth = new TCanvas("canvas_event_energy_ratio_reco_truth","Reco, truth-assisted, and Pandora event energy ratio",1200,750);
+    canvas_event_energy_ratio_reco_truth->SetLeftMargin(0.12);
+    canvas_event_energy_ratio_reco_truth->SetRightMargin(0.04);
+    canvas_event_energy_ratio_reco_truth->SetTopMargin(0.06);
+    canvas_event_energy_ratio_reco_truth->SetBottomMargin(0.13);
+    canvas_event_energy_ratio_reco_truth->SetGridx();
+    canvas_event_energy_ratio_reco_truth->SetGridy();
+
+    event_energy_ratio_reco->SetStats(0);
+    event_energy_ratio_reco->SetLineColor(kOrange+7);
+    event_energy_ratio_reco->SetLineWidth(3);
+    event_energy_ratio_truth->SetStats(0);
+    event_energy_ratio_truth->SetLineColor(kAzure+3);
+    event_energy_ratio_truth->SetLineWidth(3);
+    event_energy_ratio_pandora->SetStats(0);
+    event_energy_ratio_pandora->SetLineColor(kGreen+2);
+    event_energy_ratio_pandora->SetLineWidth(3);
+    event_energy_ratio_reco->SetMinimum(0.0);
+    event_energy_ratio_reco->SetMaximum(
+        1.25 * std::max(
+            event_energy_ratio_reco->GetMaximum(),
+            std::max(event_energy_ratio_truth->GetMaximum(), event_energy_ratio_pandora->GetMaximum())
+        )
+    );
+    event_energy_ratio_reco->GetXaxis()->SetTitleSize(0.055);
+    event_energy_ratio_reco->GetXaxis()->SetLabelSize(0.045);
+    event_energy_ratio_reco->GetXaxis()->SetTitleOffset(1.05);
+    event_energy_ratio_reco->GetYaxis()->SetTitleSize(0.055);
+    event_energy_ratio_reco->GetYaxis()->SetLabelSize(0.045);
+    event_energy_ratio_reco->GetYaxis()->SetTitleOffset(1.0);
+    event_energy_ratio_reco->Draw("HIST");
+    event_energy_ratio_truth->Draw("HIST SAME");
+    event_energy_ratio_pandora->Draw("HIST SAME");
+
+    TLegend* legend_event_energy_ratio = new TLegend(0.13, 0.50, 0.45, 0.84);
+    legend_event_energy_ratio->SetBorderSize(0);
+    legend_event_energy_ratio->SetFillStyle(0);
+    legend_event_energy_ratio->SetTextSize(0.037);
+    legend_event_energy_ratio->AddEntry(
+        event_energy_ratio_reco,
+        Form("#splitline{Reco clustering}{#sigma/#mu = %.1f%%}", 100.0 * reco_ratio_resolution),
+        "l"
+    );
+    legend_event_energy_ratio->AddEntry(
+        event_energy_ratio_truth,
+        Form("#splitline{Truth-assisted clustering}{#sigma/#mu = %.1f%%}", 100.0 * truth_ratio_resolution),
+        "l"
+    );
+    legend_event_energy_ratio->AddEntry(
+        event_energy_ratio_pandora,
+        Form("#splitline{Pandora}{#sigma/#mu = %.1f%%}", 100.0 * pandora_ratio_resolution),
+        "l"
+    );
+    legend_event_energy_ratio->Draw();
+
+    TLatex event_energy_ratio_label;
+    event_energy_ratio_label.SetNDC();
+    event_energy_ratio_label.SetTextFont(42);
+    event_energy_ratio_label.SetTextSize(0.043);
+    if(qq_energy==91){
+        event_energy_ratio_label.DrawLatex(0.13, 0.90, "Z #rightarrow q#bar{q} (q = u, d, s),   #sqrt{s} = 91 GeV");
+    }
+    else {
+        event_energy_ratio_label.DrawLatex(
+            0.13,
+            0.90,
+            Form("e^{+}e^{-} #rightarrow q#bar{q} (q = u, d, s),   #sqrt{s} = %d GeV", qq_energy)
+        );
+    }
+    canvas_event_energy_ratio_reco_truth->RedrawAxis();
+
+    cout << "reco/truth-assisted/Pandora event energy ratio (Gaussian core fit: 0.9-1.1)" << endl;
+    cout << "  reco  : events=" << reco_ratio_events
+         << ", mean=" << reco_ratio_fit_mean
+         << ", sigma/mean=" << reco_ratio_resolution
+         << ", missing files=" << reco_ratio_missing_files
+         << ", invalid files=" << reco_ratio_invalid_files << endl;
+    cout << "  truth : events=" << truth_ratio_events
+         << ", mean=" << truth_ratio_fit_mean
+         << ", sigma/mean=" << truth_ratio_resolution
+         << ", missing files=" << truth_ratio_missing_files
+         << ", invalid files=" << truth_ratio_invalid_files << endl;
+    cout << "  Pandora: events=" << pandora_ratio_events
+         << ", mean=" << pandora_ratio_fit_mean
+         << ", sigma/mean=" << pandora_ratio_resolution
+         << ", missing files=" << pandora_ratio_missing_files
+         << ", invalid files=" << pandora_ratio_invalid_files << endl;
 
     
     if(saving_canvas){  // saving canvases
@@ -2113,14 +2457,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
         // canvas_beta_mcen->SaveAs(Form("%s/beta_vs_energy_mcen.png",picDirectory.c_str()));
         canvas_truth_phys_energy_regression->SaveAs(Form("%s/pfa_category_energy_regression.png", picDirectory.c_str()));
         canvas_energy_regression_result->SaveAs(Form("%s/energy_regression.png",picDirectory.c_str()));
-        if(cv_rms90_abscostheta){
-            cv_rms90_abscostheta->SaveAs(Form(
-                "%s/rms90_vs_abs_costheta_truthBin%d_%.0f-%.0fGeV.png",
-                picDirectory.c_str(),
-                kRms90VsAbsCosThetaTruthEnergyBin,
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin],
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin + 1]));
-        }
+        if(canvas_jet_energy_resolution_vs_abs_costheta) canvas_jet_energy_resolution_vs_abs_costheta->SaveAs(Form("%s/jet_energy_resolution_vs_abs_costheta.png",picDirectory.c_str()));
         canvas_event_energy_resolution->SaveAs(Form("%s/dijet_energy_resolution.png",picDirectory.c_str()));
         canvas_event_energy_sum_by_beta->SaveAs(Form("%s/dijet_energy_resolution_beta.png",picDirectory.c_str()));
         canvas_event_energy_2d->SaveAs(Form("%s/dijet_scatter.png",picDirectory.c_str()));
@@ -2129,6 +2466,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
         // canvas_c_event->SaveAs(Form("%s/c_event_distribution.png",picDirectory.c_str()));
         canvas_event_pred_energy_by_track_category->SaveAs(Form("%s/category_energy.png",picDirectory.c_str()));
         // canvas_confusion_eval->SaveAs(Form("%s/confusion_term_evaluation.png",picDirectory.c_str()));
+        canvas_event_energy_ratio_reco_truth->SaveAs(Form("%s/dijet_energy_ratio_reco_truth_pandora.png",picDirectory.c_str()));
     }
     if(0){
         compare->Write(Form("efficiency_purity"));
@@ -2151,6 +2489,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
         canvas_c_event->Write(Form("c_event_distribution"));
         canvas_event_pred_energy_by_track_category->Write(Form("event_pred_energy_sum_by_track_category"));
         canvas_confusion_eval->Write(Form("confusion_term_evaluation"));
+        canvas_event_energy_ratio_reco_truth->Write(Form("event_energy_ratio_reco_truth"));
     }
     
 

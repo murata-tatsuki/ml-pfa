@@ -199,6 +199,38 @@ class ILCDataset(Dataset):
         return ak_feats, ak_labels
 
     @staticmethod
+    def decode_event_kinematics(row):
+        """Return visible energies and q/qbar four-momenta from an event row.
+
+        The current builder stores a flat array with the layout
+        ``q(E,px,py,pz), qbar(E,px,py,pz), Evis_with_nu, Evis_without_nu``.
+        Flattening also supports the former nested representation with the
+        same logical ordering.
+        """
+        flat = np.asarray(
+            ak.to_numpy(ak.flatten(row, axis=None)), dtype=np.float64
+        ).reshape(-1)
+        if flat.size <= 2:
+            # Legacy fixed-uds files stored only the two visible-energy
+            # definitions and therefore cannot contribute to a theta plot.
+            visible_energy = flat.copy()
+            if visible_energy.size == 1:
+                visible_energy = np.repeat(visible_energy, 2)
+            return visible_energy, np.zeros((2, 4), dtype=np.float64)
+        if flat.size < 9:
+            raise ValueError(
+                "event builder payload must contain either 1-2 legacy visible-energy "
+                f"values or at least 9 kinematic values, got {flat.size}"
+            )
+
+        parton_p4 = flat[:8].reshape(2, 4)
+        visible_energy = flat[8:10]
+        # Backward compatibility for old samples containing one Evis value.
+        if visible_energy.size == 1:
+            visible_energy = np.repeat(visible_energy, 2)
+        return visible_energy.copy(), parton_p4.copy()
+
+    @staticmethod
     def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds):
         """
         Build a PyG Data object from numpy hit arrays. Shared by ILCDataset.get and ILCDatasetSharded.
@@ -267,30 +299,51 @@ class ILCDataset(Dataset):
                 x=torch.from_numpy(x[order]).type(torch.float),
                 y=torch.from_numpy(y[order]).type(torch.int),
             )
-        if ds.pandora:
-            pand_inst = torch.from_numpy(pand[order]).type(torch.float).cpu()
-            return Data(
-                x=torch.from_numpy(x[order]).type(torch.float),
-                y=torch.from_numpy(y[order]).type(torch.int),
-                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
-                pand=pand_inst[:, 2:5],
-            )
-        if ds.event_energy:
-            return Data(
-                x=torch.from_numpy(x[order]).type(torch.float),
-                y=torch.from_numpy(y[order]).type(torch.int),
-                feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
-                label=torch.from_numpy(label[order]).type(torch.float).cpu(),
-                jet=torch.from_numpy(jetE).type(torch.float).cpu(),
-                event=torch.from_numpy(eventE).type(torch.float).cpu(),
-            )
-        return Data(
+
+        # label is a mixed numeric array, so its integer identifiers would be
+        # rounded when the full array is converted to float32 below. Keep the
+        # identifiers in dedicated integer tensors for lossless downstream
+        # bookkeeping (for example when writing ROOT trees).
+        label_ordered = label[order]
+        hitid = torch.from_numpy(
+            checked_int64_ids(label_ordered[:, 0], "hit ID")
+        ).long().cpu()
+        mcid = torch.from_numpy(
+            checked_int64_ids(label_ordered[:, 1], "MC ID")
+        ).long().cpu()
+        data_kwargs = dict(
             x=torch.from_numpy(x[order]).type(torch.float),
             y=torch.from_numpy(y[order]).type(torch.int),
             feat=torch.from_numpy(feat[order]).type(torch.float).cpu(),
-            label=torch.from_numpy(label[order]).type(torch.float).cpu(),
+            label=torch.from_numpy(label_ordered).type(torch.float).cpu(),
+            hitid=hitid,
+            mcid=mcid,
         )
+        if ds.pandora:
+            pand_ordered = np.asarray(pand[order])
+            pandora_cluster_id = checked_int64_ids(
+                pand_ordered[:, 2], "Pandora cluster ID"
+            )
+
+            # Pandora cluster IDs are global collection IDs and can exceed
+            # 2**24, above which float32 cannot represent every integer. The
+            # clustering code only needs equality within one event, so remap
+            # them to compact event-local IDs before putting them in the mixed
+            # float tensor. Preserve the existing convention expected by the
+            # yielders: -1 is noise and non-noise IDs start at 0 (the yielder
+            # subsequently adds one).
+            pand_values = np.asarray(pand_ordered[:, 2:5], dtype=np.float32).copy()
+            pand_values[:, 0] = (
+                incremental_cluster_index_np(pandora_cluster_id, noise_index=-1) - 1
+            ).astype(np.float32)
+            data_kwargs["pand"] = torch.from_numpy(pand_values).cpu()
+            data_kwargs["pandora_cluster_id"] = torch.from_numpy(
+                pandora_cluster_id
+            ).long().cpu()
+        if ds.event_energy:
+            data_kwargs["jet"] = torch.from_numpy(jetE).type(torch.float).cpu()
+            data_kwargs["event"] = torch.from_numpy(eventE).type(torch.float).cpu()
+        return Data(**data_kwargs)
 
     def get(self, i):
         feat_t = ak.to_numpy(self.ak_feats[i])
@@ -301,8 +354,9 @@ class ILCDataset(Dataset):
         if self.pandora:
             pandora_t = ak.to_numpy(self.ak_pandoras[i])
         if self.event_energy:
-            event_energy_t = ak.to_numpy(self.ak_eventEnergy[i][2])
-            jet_energy_t = ak.to_numpy(self.ak_eventEnergy[i][:2])
+            event_energy_t, jet_energy_t = self.decode_event_kinematics(
+                self.ak_eventEnergy[i]
+            )
 
         feat = copy.deepcopy(feat_t)
         label = copy.deepcopy(label_t)
@@ -600,6 +654,20 @@ def incremental_cluster_index_np(input: np.array, noise_index=None):
             cluster_index_map += 1
     return np.take(cluster_index_map, locations)
 
+
+def checked_int64_ids(values: np.ndarray, name: str) -> np.ndarray:
+    """Convert integer-valued input IDs to int64 without silent truncation."""
+    values = np.asarray(values)
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"{name} contains a non-finite value")
+    rounded = np.rint(values)
+    if not np.array_equal(values, rounded):
+        raise ValueError(f"{name} contains a non-integer value")
+    int64_info = np.iinfo(np.int64)
+    if np.any(rounded < int64_info.min) or np.any(rounded > int64_info.max):
+        raise OverflowError(f"{name} is outside the int64 range")
+    return rounded.astype(np.int64)
+
 def mask_fraction_of_noise(y: np.array, reduce_fraction: float, noise_index: int=-1) -> np.array:
     """Create a mask that throws out a fraction of noise (but keeps all signal)."""
     is_noise = y == noise_index
@@ -609,5 +677,3 @@ def mask_fraction_of_noise(y: np.array, reduce_fraction: float, noise_index: int
     mask = np.ones(y.shape[0], dtype=bool)
     mask[is_noise] = noise_mask
     return mask
-
-
