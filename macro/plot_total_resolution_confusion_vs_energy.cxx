@@ -16,38 +16,8 @@ void plot_total_resolution_confusion_vs_energy() {
     const double jetEnergy[nEnergy] = {40, 91, 200, 350, 500};
 
     // Values are sigma of (pred-truth)/truth.
-    // TODO: replace 350/500 placeholders with your measured values.
-    // const double totalResolutionReco[nEnergy] = {
-    //     0.103818,   // 40 GeV
-    //     0.0651722,  // 91 GeV
-    //     0.0706092,  // 200 GeV
-    //     -1.0,       // 350 GeV placeholder
-    //     -1.0        // 500 GeV placeholder
-    // };
-    // const double confusionReco[nEnergy] = {
-    //     0.0156345,  // 40 GeV
-    //     0.0191849,  // 91 GeV
-    //     0.0295946,  // 200 GeV
-    //     -1.0,       // 350 GeV placeholder
-    //     -1.0        // 500 GeV placeholder
-    // };
 
-    // const double totalResolutionCond[nEnergy] = {
-    //     0.103618,   // 40 GeV
-    //     0.0648943,  // 91 GeV
-    //     0.0706323,  // 200 GeV
-    //     -1.0,       // 350 GeV placeholder
-    //     -1.0        // 500 GeV placeholder
-    // };
-    // const double confusionCond[nEnergy] = {
-    //     0.0157128,  // 40 GeV
-    //     0.0184911,  // 91 GeV
-    //     0.0297154,  // 200 GeV
-    //     -1.0,       // 350 GeV placeholder
-    //     -1.0        // 500 GeV placeholder
-    // };
-
-    // // mono-head
+    // // mono-head nnqq
     // const double totalResolutionReco[nEnergy] = {
     //     2.754/40*sqrt(2),   // 40 GeV
     //     3.778/91*sqrt(2),  // 91 GeV
@@ -78,7 +48,7 @@ void plot_total_resolution_confusion_vs_energy() {
     //     34.873/500*sqrt(2)     // 500 GeV
     // };
 
-    // multi-head
+    // nnqq 2M multi-head track
     const double totalResolutionReco[nEnergy] = {
         2.61317/40*sqrt(2),   // 40 GeV
         3.20276/91*sqrt(2),  // 91 GeV
@@ -108,6 +78,73 @@ void plot_total_resolution_confusion_vs_energy() {
         18.7537/350*sqrt(2),       // 350 GeV
         44.1347/500*sqrt(2)     // 500 GeV
     };
+
+    /*
+    // nnqq 2M multi-head-alpha
+    const double totalResolutionReco[nEnergy] = {
+        2.60921/40*sqrt(2),   // 40 GeV
+        3.33072/91*sqrt(2),  // 91 GeV
+        6.34621/200*sqrt(2),  // 200 GeV
+        18.8725/350*sqrt(2),  // 350 GeV
+        37.8825/500*sqrt(2)   // 500 GeV
+    };
+    const double totalResolutionPerfectReco[nEnergy] = {
+        2.06124/40*sqrt(2),     // 40 GeV
+        2.81488/91*sqrt(2),     // 91 GeV
+        5.64418/200*sqrt(2),    // 200 GeV
+        17.9835/350*sqrt(2),       // 350 GeV
+        38.3638/500*sqrt(2)     // 500 GeV
+    };
+
+    const double totalResolutionCond[nEnergy] = {
+        2.60792/40*sqrt(2),   // 40 GeV
+        3.32920/91*sqrt(2),   // 91 GeV
+        6.34776/200*sqrt(2),  // 200 GeV
+        18.8746/350*sqrt(2),   // 350 GeV
+        37.8878/500*sqrt(2)   // 500 GeV
+    };
+    const double totalResolutionPerfectCond[nEnergy] = {
+        2.05699/40*sqrt(2),     // 40 GeV
+        2.80867/91*sqrt(2),     // 91 GeV
+        5.63542/200*sqrt(2),    // 200 GeV
+        17.9854/350*sqrt(2),       // 350 GeV
+        38.4720/500*sqrt(2)     // 500 GeV
+    };
+    */
+
+    /*
+    // nnqq 2M mono-head track
+    const double totalResolutionReco[nEnergy] = {
+        4.39437/40*sqrt(2),   // 40 GeV
+        7.42121/91*sqrt(2),  // 91 GeV
+        11.9602/200*sqrt(2),  // 200 GeV
+        44.1819/350*sqrt(2),  // 350 GeV
+        70.2977/500*sqrt(2)   // 500 GeV
+    };
+    const double totalResolutionPerfectReco[nEnergy] = {
+        4.39422/40*sqrt(2),     // 40 GeV
+        7.47764/91*sqrt(2),     // 91 GeV
+        11.9504/200*sqrt(2),    // 200 GeV
+        44.3238/350*sqrt(2),       // 350 GeV
+        70.3617/500*sqrt(2)     // 500 GeV
+    };
+
+    const double totalResolutionCond[nEnergy] = {
+        4.39432/40*sqrt(2),   // 40 GeV
+        7.42131/91*sqrt(2),   // 91 GeV
+        11.9607/200*sqrt(2),  // 200 GeV
+        44.1898/350*sqrt(2),   // 350 GeV
+        70.303/500*sqrt(2)   // 500 GeV
+    };
+    const double totalResolutionPerfectCond[nEnergy] = {
+        4.39417/40*sqrt(2),     // 40 GeV
+        7.47762/91*sqrt(2),     // 91 GeV
+        11.9510/200*sqrt(2),    // 200 GeV
+        44.3314/350*sqrt(2),       // 350 GeV
+        70.2841/500*sqrt(2)     // 500 GeV
+    };
+    */
+
 
     // PandoraPFA has only one reconstructed result (no perfect-clustering result).
     // Replace -1.0 with measured RMS90/Ejet values; negative values are not drawn.
@@ -218,7 +255,7 @@ void plot_total_resolution_confusion_vs_energy() {
     //     {0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0}};
 
-    // multi-head
+    // multi-head nnqq 2M
     const double physRms[kNTruthPhysCat][nEnergy] = {
         {0.49067, 0.831419, 1.70732, 3.7842, 7.30537}, // charged   TODO
         {0.588848, 1.03921, 3.2476, 7.37563, 11.7731}, // photon    TODO
@@ -237,6 +274,45 @@ void plot_total_resolution_confusion_vs_energy() {
         {0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0}};
 
+    /*// multi-head-alpha nnqq 2M
+    const double physRms[kNTruthPhysCat][nEnergy] = {
+        {0.514704, 0.879288, 1.85765, 4.16506, 8.37568}, // charged   TODO
+        {0.606172, 1.13038, 3.40947, 7.28137, 11.7077}, // photon    TODO
+        {0.999574, 1.7696, 3.53684, 6.62971, 9.48969}  // neutral_hadron TODO
+    };
+    const double physRms90[kNTruthPhysCat][nEnergy] = {
+        {0.178516, 0.212667, 0.255373, 0.527869, 1.35156},
+        {0.46093, 0.745156, 2.3427, 5.85885, 9.84396},
+        {0.759971, 1.36083, 2.75425, 4.54328, 5.73153}};
+    const double physSigma[kNTruthPhysCat][nEnergy] = {
+        {0.0831808, 0.0457639, 0.0952789, 0.366668, 0.771051},
+        {0.549334, 0.840452, 2.31393, 15.1642, 25.2794},
+        {1.65963, 2.28525, 4.54464, 14.1314, 21.4386}};
+    const double physSigmaErr[kNTruthPhysCat][nEnergy] = {
+        {0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0}};
+    */
+
+    /*// mono-head nnqq 2M
+    const double physRms[kNTruthPhysCat][nEnergy] = {
+        {1.70518, 3.07464, 6.4711, 8.88649, 10.3475}, // charged   TODO
+        {1.40655, 3.06351, 6.41035, 10.9079, 15.0855}, // photon    TODO
+        {1.08196, 2.30275, 4.94225, 8.62768, 12.0267}  // neutral_hadron TODO
+    };
+    const double physRms90[kNTruthPhysCat][nEnergy] = {
+        {0.432463, 0.415821, 0.569413, 3.67087, 5.62898},
+        {0.778195, 1.95298, 4.53404, 7.52037, 7.70273},
+        {0.443242, 0.963721, 3.20101, 5.78448, 8.00419}};
+    const double physSigma[kNTruthPhysCat][nEnergy] = {
+        {3.27317, 8.83466, 13.8139, 26.3256, 32.0797},
+        {2.61316, 5.03829, 10.2298, 16.6418, 20.7807},
+        {1.74959, 4.48634, 9.62229, 15.6483, 18.5087}};
+    const double physSigmaErr[kNTruthPhysCat][nEnergy] = {
+        {0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0}};
+    */
 
     auto buildGraphErrorsFromArrays = [&](const double* y, const double* ey) {
         TGraphErrors* g = new TGraphErrors();

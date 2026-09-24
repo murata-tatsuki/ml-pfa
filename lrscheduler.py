@@ -74,6 +74,8 @@ class CyclicLRWithRestarts(_LRScheduler):
         eta_on_restart_cb: callback executed on every restart, adjusts max or min lr
         eta_on_iteration_cb: callback executed on every iteration, adjusts max or min lr
         triangular_step: adjusts ratio of increasing/decreasing phases for triangular policy
+        warmup_epochs: linearly increase min_lr to the configured base lr over
+            this many epochs before starting the cyclic schedule
     Example:
         >>> scheduler = CyclicLRWithRestarts(optimizer, 32, 1024, restart_period=5, t_mult=1.2)
         >>> for epoch in range(100):
@@ -91,7 +93,8 @@ class CyclicLRWithRestarts(_LRScheduler):
                  t_mult=2, last_epoch=-1, verbose=False,
                  policy="cosine", policy_fn=None, min_lr=1e-7,
                  eta_on_restart_cb=None, eta_on_iteration_cb=None,
-                 gamma=1.0, triangular_step=0.5, nrestart_cosreduce=3):
+                 gamma=1.0, triangular_step=0.5, nrestart_cosreduce=3,
+                 warmup_epochs=0):
         
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
@@ -143,6 +146,9 @@ class CyclicLRWithRestarts(_LRScheduler):
         self.last_epoch = last_epoch
         self.batch_size = batch_size
         self.epoch_size = epoch_size
+        self.warmup_epochs = int(warmup_epochs)
+        if self.warmup_epochs < 0:
+            raise ValueError("warmup_epochs must be zero or greater")
         
         self.iteration = 0
         self.total_iterations = 0
@@ -210,11 +216,36 @@ class CyclicLRWithRestarts(_LRScheduler):
         
     def step(self):
         self.last_epoch += 1
-        self.t_epoch += 1
+        # Do not advance cyclic time during warm-up.  The first epoch after
+        # warm-up therefore starts at t_epoch=0, and restart_period counts only
+        # epochs belonging to the cyclic schedule.
+        if self.last_epoch >= self.warmup_epochs:
+            self.t_epoch += 1
         self._set_batch_increment()
         self.batch_step()
         
     def batch_step(self):
+        if 0 <= self.last_epoch < self.warmup_epochs:
+            if self.iteration >= len(self.batch_increments):
+                batch_fraction = 1.0
+            else:
+                batch_fraction = self.batch_increments[self.iteration]
+            progress = min(
+                1.0,
+                (self.last_epoch + batch_fraction) / self.warmup_epochs,
+            )
+            lrs = [
+                min_lr + (base_lr - min_lr) * progress
+                for base_lr, min_lr in zip(self.base_lrs, self.min_lrs)
+            ]
+            self.iteration += 1
+            self.total_iterations += 1
+            for param_group, lr, weight_decay in zip(
+                    self.optimizer.param_groups, lrs, self.base_weight_decays):
+                param_group['lr'] = lr
+                param_group['weight_decay'] = weight_decay
+            return
+
         if self.iteration >= len(self.batch_increments):
             # Streaming / DDP can occasionally yield a few more batches than the
             # precomputed estimate. Clamp to the end-of-epoch LR instead of

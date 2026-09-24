@@ -1,0 +1,214 @@
+cuda:0
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/train, files=401, events~=400120, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/validation, files=49, events~=48895, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  400120
+Validating dataset size:  48895
+Batch size:  512
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+DDP scheduler setup: local_batch_size=128, local_epoch_size=101752, world_size=4
+Training epoch 0
+[1.51984139e-03 1.05401291e-04 2.74086504e-02 1.53819922e-04
+ 4.74369901e-03 1.10402192e-09 1.23826632e-02 2.63267085e-04
+ 3.19608577e-02 1.08867246e-09 1.24739593e-03 3.18030036e-04
+ 1.86812219e-02 5.38231595e-04 9.41968222e-04 3.31403097e-04
+ 1.71269080e-02 5.47399391e-04 2.45355676e-02 2.59244746e-04
+ 7.42490337e-04 2.17455470e-04 2.21426608e-03 2.55771816e-10
+ 3.98270705e-03 2.23157666e-04 1.26639656e-02 5.41953853e-10
+ 6.48253690e-04 1.91789277e-04 1.06355050e-02 3.30348278e-04
+ 5.80314649e-04 2.21607815e-04 1.09200298e-02 3.67113777e-04
+ 1.76861924e-02 2.28273789e-04 5.77743159e-04 1.73154781e-04
+ 1.56540936e-03 1.04189908e-10 2.73056675e-03 1.01274032e-04
+ 9.47481584e-03 2.37862060e-10 4.62103533e-04 1.30484583e-04
+ 7.52182454e-03 2.18630351e-04 3.95367572e-04 1.47924583e-04
+ 7.62639298e-03 2.45424938e-04 1.24221974e-02 1.58666396e-04
+ 4.15524095e-04 1.65898667e-04 7.80680253e-04 4.13159255e-11
+ 1.73721631e-03 5.53682420e-05 5.66816433e-03 1.12048096e-10
+ 2.73195285e-04 8.07917061e-05 4.40991811e-03 1.35608024e-04
+ 2.50774327e-04 9.84578645e-05 4.84303041e-03 1.61438877e-04
+ 8.24198557e-03 1.03210076e-04 2.90475470e-04 1.60149846e-04
+ 1.94091687e-02 5.50056156e-04 7.16345936e-04 3.48780701e-04
+ 1.27846018e-02 5.92100983e-04 6.00038061e-04 2.88843656e-04
+ 1.04077525e-02 4.80343985e-04 5.40898316e-04 2.67012369e-04
+ 9.10812269e-03 4.35306940e-04 6.06750232e-04 4.30888933e-04
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 8.80434635e-03 7.06200999e-04 9.45764932e-03 1.49704246e-03
+ 1.10792360e-02 3.14793988e-03 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00]
+train  L_V                   = +0.0130 (nan%)
+ train    L_V_attractive      = +0.0027 (nan%)
+ train      L_V_attractive_charged      = +0.0009 (nan%)
+ train      L_V_attractive_neutral      = +0.0018 (nan%)
+ train    L_V_repulsive       = +0.0103 (nan%)
+ train      L_V_repulsive_charged       = +0.0023 (nan%)
+ train      L_V_repulsive_neutral       = +0.0080 (nan%)
+ train    L_charged_cluster   = +0.0000 (nan%)
+ train  L_beta              = +1.4911 (nan%)
+ train    L_beta_noise        = +0.0000 (nan%)
+ train    L_beta_sig          = +0.5172 (nan%)
+ train    L_beta_suppress     = +0.0000 (nan%)
+ train    L_beta_track        = +0.9739 (nan%)
+ train      L_beta_norms_term   = -0.0752 (nan%)
+ train      L_beta_logbeta_term = +0.5924 (nan%)
+ train  L_E   = +nan (nan%)
+ train    L_E_charge = +0.0000 (nan%)
+ train    L_E_cond = +nan (nan%)
+ train    L_E_cluster = +nan (nan%)
+ train    L_E_w_photon   = +0.0000 (nan%)
+ train    L_E_w_charged_hadron   = +0.0000 (nan%)
+ train    L_E_w_neutral_hadron   = +0.0000 (nan%)
+ train    L_E_w_muon     = +0.0000 (nan%)
+ train    L_E_w_electron = +0.0000 (nan%)
+learning rate :  [0.00039890465297888624]
+train loss :  1.0129507780075073
+test   L_V                   = +0.0074 (nan%)
+    L_V_attractive      = +0.0028 (nan%)
+      L_V_attractive_charged      = +0.0008 (nan%)
+      L_V_attractive_neutral      = +0.0020 (nan%)
+    L_V_repulsive       = +0.0046 (nan%)
+      L_V_repulsive_charged       = +0.0012 (nan%)
+      L_V_repulsive_neutral       = +0.0034 (nan%)
+    L_charged_cluster   = +0.0000 (nan%)
+  L_beta              = +1.7398 (nan%)
+    L_beta_noise        = +0.0000 (nan%)
+    L_beta_sig          = +0.7467 (nan%)
+    L_beta_suppress     = +0.0000 (nan%)
+    L_beta_track        = +0.9930 (nan%)
+      L_beta_norms_term   = -0.0229 (nan%)
+      L_beta_logbeta_term = +0.7696 (nan%)
+  L_E   = +nan (nan%)
+    L_E_charge = +0.0000 (nan%)
+    L_E_cond = +nan (nan%)
+    L_E_cluster = +nan (nan%)
+    L_E_w_photon   = +0.0000 (nan%)
+    L_E_w_charged_hadron   = +0.0000 (nan%)
+    L_E_w_neutral_hadron   = +0.0000 (nan%)
+    L_E_w_muon     = +0.0000 (nan%)
+    L_E_w_electron = +0.0000 (nan%)
+Epoch 0
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=40292 Mean=0.169445 Std=0.853995 RMS90=0.433656
+  50-150 GeV: n=23832 Mean=0.177011 Std=0.323338 RMS90=0.211249
+  >150 GeV: n=68 Mean=0.103575 Std=0.294676 RMS90=0.129075
+Pretraining energy response by particle species:
+  Neutron: n=13032 Mean=0.214858 Std=0.390936 RMS90=0.258901
+  K0: n=11955 Mean=0.272069 Std=0.452434 RMS90=0.281639
+  Photon: n=19748 Mean=0.034346 Std=4.148050 RMS90=1.525912
+  Pion: n=21287 Mean=0.072870 Std=0.624920 RMS90=0.155557
+  Electron: n=6154 Mean=0.117901 Std=1.968403 RMS90=0.807264
+  Muon: n=2222 Mean=-0.014927 Std=0.669694 RMS90=0.008378
+Returning 1.0073928833007812
+Training epoch 1
+[1.85795387e-02 2.15192116e-03 1.98599401e-01 2.04992714e-03
+ 7.57248257e-02 1.49147718e-08 5.96977871e-02 3.00942644e-03
+ 1.47844506e-01 9.55649435e-09 5.98026885e-03 1.85449357e-03
+ 6.55092738e-02 2.78359079e-03 4.21675763e-03 2.52628634e-03
+ 6.12788896e-02 3.45186655e-03 9.56656967e-02 3.00086838e-03
+ 4.98828869e-03 1.14850881e-03 2.94922128e-02 3.87267961e-09
+ 2.09024492e-02 1.19709379e-03 5.17139052e-02 1.92893423e-09
+ 3.00090036e-03 1.01261661e-03 4.06672039e-02 1.60974088e-03
+ 2.65014878e-03 1.49054906e-03 4.18238971e-02 2.07220464e-03
+ 8.62296732e-02 1.97244123e-03 4.01439133e-03 7.17695714e-04
+ 1.60818917e-02 8.10916413e-10 1.27313171e-02 4.66017282e-04
+ 3.36907191e-02 5.66108685e-10 1.97505746e-03 5.57307561e-04
+ 2.46264710e-02 8.64650343e-04 1.55605709e-03 8.63131163e-04
+ 2.60656156e-02 1.19606780e-03 5.30061408e-02 9.58592699e-04
+ 2.49755918e-03 5.86316420e-04 8.02645112e-03 2.30912500e-10
+ 5.31245745e-03 1.74302215e-04 1.34986781e-02 1.90463474e-10
+ 7.91743833e-04 2.32505203e-04 1.04131984e-02 3.53497900e-04
+ 6.75636631e-04 4.04987276e-04 1.09107539e-02 5.38865000e-04
+ 2.12001391e-02 5.41281500e-04 1.22959625e-03 5.54048104e-04
+ 7.56560241e-02 1.73543098e-03 4.52667019e-03 1.89734846e-03
+ 7.40000575e-02 3.11950937e-03 5.82692224e-03 3.01670330e-03
+ 1.05052453e-01 5.06907713e-03 1.18771179e-02 9.64023995e-03
+ 2.47238363e-01 1.68544094e-02 5.29428015e-02 1.39128970e-02
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 1.26197152e+00 2.74266008e-02 3.48659722e+00 1.53068784e-01
+ 5.16704029e+00 1.20336302e-02 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00 0.00000000e+00 0.00000000e+00
+ 0.00000000e+00 0.00000000e+00]
+train  L_V                   = +0.0647 (nan%)
+ train    L_V_attractive      = +0.0033 (nan%)
+ train      L_V_attractive_charged      = +0.0024 (nan%)
+ train      L_V_attractive_neutral      = +0.0008 (nan%)
+ train    L_V_repulsive       = +0.0614 (nan%)
+ train      L_V_repulsive_charged       = +0.0157 (nan%)
+ train      L_V_repulsive_neutral       = +0.0457 (nan%)
+ train    L_charged_cluster   = +0.0000 (nan%)
+ train  L_beta              = -0.2300 (nan%)
+ train    L_beta_noise        = +0.0000 (nan%)
+ train    L_beta_sig          = -0.9029 (nan%)
+ train    L_beta_suppress     = +0.0000 (nan%)
+ train    L_beta_track        = +0.6729 (nan%)
+ train      L_beta_norms_term   = -0.9242 (nan%)
+ train      L_beta_logbeta_term = +0.0212 (nan%)
+ train  L_E   = +nan (nan%)
+ train    L_E_charge = +0.0000 (nan%)
+ train    L_E_cond = +nan (nan%)
+ train    L_E_cluster = +nan (nan%)
+ train    L_E_w_photon   = +0.0000 (nan%)
+ train    L_E_w_charged_hadron   = +0.0000 (nan%)
+ train    L_E_w_neutral_hadron   = +0.0000 (nan%)
+ train    L_E_w_muon     = +0.0000 (nan%)
+ train    L_E_w_electron = +0.0000 (nan%)
+learning rate :  [0.00039890465297888624, 0.00039563061276672447]
+train loss :  0.8347217440605164
+test   L_V                   = +0.0654 (nan%)
+    L_V_attractive      = +0.0023 (nan%)
+      L_V_attractive_charged      = +0.0016 (nan%)
+      L_V_attractive_neutral      = +0.0007 (nan%)
+    L_V_repulsive       = +0.0631 (nan%)
+      L_V_repulsive_charged       = +0.0162 (nan%)
+      L_V_repulsive_neutral       = +0.0469 (nan%)
+    L_charged_cluster   = +0.0000 (nan%)
+  L_beta              = -0.2731 (nan%)
+    L_beta_noise        = +0.0000 (nan%)
+    L_beta_sig          = -0.9229 (nan%)
+    L_beta_suppress     = +0.0000 (nan%)
+    L_beta_track        = +0.6498 (nan%)
+      L_beta_norms_term   = -0.9414 (nan%)
+      L_beta_logbeta_term = +0.0185 (nan%)
+  L_E   = +nan (nan%)
+    L_E_charge = +0.0000 (nan%)
+    L_E_cond = +nan (nan%)
+    L_E_cluster = +nan (nan%)
+    L_E_w_photon   = +0.0000 (nan%)
+    L_E_w_charged_hadron   = +0.0000 (nan%)
+    L_E_w_neutral_hadron   = +0.0000 (nan%)
+    L_E_w_muon     = +0.0000 (nan%)
+    L_E_w_electron = +0.0000 (nan%)
+Epoch 1
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=40292 Mean=0.081886 Std=0.974271 RMS90=0.476094
+  50-150 GeV: n=23832 Mean=0.068827 Std=0.378103 RMS90=0.216614
+  >150 GeV: n=68 Mean=0.065155 Std=0.313488 RMS90=0.187592
+Pretraining energy response by particle species:
+  Neutron: n=13032 Mean=0.074454 Std=0.503569 RMS90=0.319195
+  K0: n=11955 Mean=0.089495 Std=0.613885 RMS90=0.378921
+  Photon: n=19748 Mean=0.455453 Std=4.698405 RMS90=1.484441
+  Pion: n=21287 Mean=0.012539 Std=0.605598 RMS90=0.110401
+  Electron: n=6154 Mean=0.133321 Std=2.488512 RMS90=0.832430
+  Muon: n=2222 Mean=0.004945 Std=0.556296 RMS90=0.008206
+Returning 0.7922883033752441
+Exception encountered: DataBatch(x=[77744, 11], y=[77744, 2], feat=[77744, 13], label=[77744, 9], hitid=[77744], mcid=[77744], batch=[77744], ptr=[129]) i: 1

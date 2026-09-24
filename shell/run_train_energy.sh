@@ -201,4 +201,27 @@ ncuda=1
 
 # multi head alpha
 alphbeta=alpha_diff_log_perCluster
-python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 32 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD}_multihead --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 0,1,2,3 --ddp-log-dir shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_multihead_ranks --progress-rank 0 --progress-mininterval 20 --rank-log-interval 2000 --ilc-streaming --stream-files-per-chunk 32 --stream-shuffle-buffer 256 --num-workers 2 --epochs-nobeta 1 --epochs-noLE 3 --use-multihead-model --multihead-regression-heads 2 --multihead-interaction-mode none
+# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 32 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD}_multihead --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 0,1,2,3 --ddp-log-dir shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_multihead_ranks --progress-rank 0 --progress-mininterval 20 --rank-log-interval 2000 --ilc-streaming --stream-files-per-chunk 32 --stream-shuffle-buffer 256 --num-workers 2 --epochs-nobeta 1 --epochs-noLE 3 --use-multihead-model --multihead-regression-heads 2 --multihead-interaction-mode none
+
+
+
+### single particle pre-training
+# alphbeta=alpha_tracker_diff_log_perCluster
+# sumdis=sum_log_perCluster
+alphbeta=log_scaled_relative           # log_ratio_mse  log_scaled_relative
+sumdis=log_scaled_relative             # log_ratio_mse  log_scaled_relative
+# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/train -ii /data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/validation --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 128 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD}_multihead --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 0,1,2,3 --ddp-log-dir shell/tmp/singleParticleEvents_outputD${outputD}_${DATE}_${alphbeta}_multihead_ranks --progress-rank 0 --progress-mininterval 20 --rank-log-interval 2000 --ilc-streaming --stream-files-per-chunk 32 --stream-shuffle-buffer 256 --num-workers 2 --epochs-nobeta 0 --epochs-noLE 1 --use-multihead-model --multihead-regression-heads 2 --multihead-interaction-mode none --pretraining
+
+# nnqq main training
+alphbeta=alpha_tracker_diff_log_perCluster
+sumdis=sum_log_perCluster
+# python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 32 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD}_multihead --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1.25e-5 --lr-policy cosineReduce --clip-value 1 --ddp --gpus 4,5,6,7 --ddp-log-dir shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_multihead_ranks --progress-rank 0 --progress-mininterval 20 --rank-log-interval 2000 --ilc-streaming --stream-files-per-chunk 32 --stream-shuffle-buffer 256 --num-workers 2 --epochs-nobeta -1 --epochs-noLE -1 --use-multihead-model --multihead-regression-heads 2 --multihead-interaction-mode none --model-ckpt checkpoint/energy_regression/ckpts_gravnet_new02_2026_09_17_123323_outputD5_multihead/ckpt_228_1.pth.tar --nrestart-cosreduce 0 --clip-mode norm --lr-warmup --lr-warmup-epochs 5 --restart-period 50
+
+
+
+
+### cluster 集約
+## truthのclusterを用いる
+alphbeta=alpha_tracker_diff_log_perCluster
+sumdis=sum_log_perCluster
+python train.py -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train --no-split --thetaphi --epochs 500 --beta-track --force-track-alpha --batch-size 32 --output-dimension ${outputD} --ckptdir checkpoint/energy_regression/ckpts_gravnet_new02_${DATE}_outputD${outputD}_multihead_pooling_truth --energy-regression --energy-regression-cluster --LE-track ${alphbeta} --LE-cluster ${sumdis} --momentum --momentum-amp --qmin 0.2 --learning-rate 1e-4 --lr-policy cosineReduce --clip-value 10 --ddp --gpus 0,1,2,3 --ddp-log-dir shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD${outputD}_${DATE}_${alphbeta}_multihead_pooling_truth_ranks --progress-rank 0 --progress-mininterval 20 --rank-log-interval 2000 --ilc-streaming --stream-files-per-chunk 32 --stream-shuffle-buffer 256 --num-workers 2 --epochs-nobeta 1 --epochs-noLE 3 --use-multihead-model --multihead-regression-heads 2 --multihead-interaction-mode none --cluster-energy-pooling --cluster-energy-source truth

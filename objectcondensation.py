@@ -17,6 +17,43 @@ DEBUG = False
 def debug(*args, **kwargs):
     if DEBUG: print(*args, **kwargs)
 
+
+SCALE_INVARIANT_ENERGY_LOSSES = ('log_ratio_mse', 'log_scaled_relative')
+
+
+def scale_invariant_energy_loss(predicted_energy: torch.Tensor,
+                                truth_energy: torch.Tensor,
+                                loss_name: str,
+                                epsilon: float = 1e-3) -> torch.Tensor:
+    """Return an unreduced, scale-invariant energy regression loss."""
+    if epsilon <= 0:
+        raise ValueError("epsilon must be greater than zero")
+    if loss_name == 'log_ratio_mse':
+        return torch.square(
+            torch.log(predicted_energy + epsilon)
+            - torch.log(truth_energy + epsilon)
+        )
+    if loss_name == 'log_scaled_relative':
+        return torch.log(
+            torch.abs(predicted_energy - truth_energy)
+            / (truth_energy + epsilon)
+            + 1.0
+        )
+    raise ValueError(
+        f'Unknown scale-invariant energy loss "{loss_name}"; '
+        f'choose from {SCALE_INVARIANT_ENERGY_LOSSES}'
+    )
+
+
+def per_cluster_average(loss_per_object: torch.Tensor,
+                        batch_object: torch.Tensor,
+                        n_objects_per_event: torch.Tensor) -> torch.Tensor:
+    """Average object losses within each event, then sum over the batch."""
+    if loss_per_object.numel() == 0:
+        return loss_per_object.sum()
+    per_event = scatter_add(loss_per_object, batch_object)
+    return (per_event / n_objects_per_event[:per_event.numel()]).sum()
+
 def calc_L_E(
     tracker_energy: torch.Tensor,
     mcp_energy: torch.Tensor, # mc truth energy
@@ -30,6 +67,8 @@ def calc_L_E(
     pred_cluster_energy = None,
     batch_object=torch.tensor(1),
     n_objects_per_event=torch.tensor(1),
+    epsilon: float = 1e-3,
+    is_sig=None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
 
     device = beta.device
@@ -67,6 +106,17 @@ def calc_L_E(
     if LE_track == 'alpha_diff_log_perCluster':
         mse = torch.log( torch.abs(tracker_energy[index_alpha] - mcp_energy[index_alpha])+1.0 )
         L_E_cond = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+    if LE_track in SCALE_INVARIANT_ENERGY_LOSSES:
+        if is_sig is None:
+            raise ValueError('is_sig is required for scale-invariant energy losses')
+        pred_energy_object = tracker_energy[is_sig][index_alpha]
+        true_energy_object = mcp_energy[is_sig][index_alpha]
+        object_loss = scale_invariant_energy_loss(
+            pred_energy_object, true_energy_object, LE_track, epsilon
+        )
+        L_E_cond = per_cluster_average(
+            object_loss, batch_object, n_objects_per_event
+        )
     if LE_track == 'alpha_modifing':
         mse = torch.square(tracker_energy - mcp_energy)
         mse = mse[torch.where(mcp_energy>0)]
@@ -106,11 +156,17 @@ def calc_L_E(
     if Ecl_regression:
         assert(pred_cluster_energy is not None)
         assert(pred_cluster_energy.size()==detected_energy.size())
-        # print(is_trk.size(), detected_energy.size())
-        cluster_energy_truth = cluster_energy_distribution(cluster_id=object_index[~is_trk], detected_energy=detected_energy[~is_trk], truth_energy=mcp_energy[~is_trk])
+        # Summed-cluster losses construct their object-level target in
+        # calc_caloCluster_loss.  Keep the legacy target path unchanged for
+        # all existing loss modes.
+        cluster_energy_truth = None
+        if LE_cluster not in SCALE_INVARIANT_ENERGY_LOSSES:
+            cluster_energy_truth = cluster_energy_distribution(cluster_id=object_index[~is_trk], detected_energy=detected_energy[~is_trk], truth_energy=mcp_energy[~is_trk])
         target = torch.zeros(pred_cluster_energy[is_trk].size()[0]).to(device)
 
-        LE_cluster_coef = 1 if (LE_cluster == 'sum_log' or LE_cluster == 'sum_log_perCluster') else 5
+        LE_cluster_coef = 1 if LE_cluster in (
+            'sum_log', 'sum_log_perCluster', *SCALE_INVARIANT_ENERGY_LOSSES
+        ) else 5
 
         if LE_cluster == 'distribution':
             ##
@@ -128,6 +184,16 @@ def calc_L_E(
             L_E_cluster = calc_caloCluster_loss(cluster_id=object_index[~is_trk], predicted_energy=pred_cluster_energy[~is_trk], truth_energy=mcp_energy[~is_trk], batch_object=batch_object, n_objects_per_event=n_objects_per_event,loss_=LE_cluster) * LE_cluster_coef
         if LE_cluster == 'sum_log_perCluster':
             L_E_cluster = calc_caloCluster_loss(cluster_id=object_index, predicted_energy=pred_cluster_energy, truth_energy=mcp_energy, batch_object=batch_object, n_objects_per_event=n_objects_per_event,loss_=LE_cluster) * LE_cluster_coef
+        if LE_cluster in SCALE_INVARIANT_ENERGY_LOSSES:
+            L_E_cluster = calc_caloCluster_loss(
+                cluster_id=object_index[~is_trk[is_sig]],
+                predicted_energy=pred_cluster_energy[is_sig][~is_trk[is_sig]],
+                truth_energy=mcp_energy[is_sig][~is_trk[is_sig]],
+                batch_object=batch_object,
+                n_objects_per_event=n_objects_per_event,
+                loss_=LE_cluster,
+                epsilon=epsilon,
+            ) * LE_cluster_coef
         ##
     # L_E += L_E_cluster
 
@@ -344,6 +410,7 @@ def calc_LV_Lbeta(
     weight_neutral_hadron = None,
     weight_muon = None,
     weight_electron = None,
+    epsilon: float = 1e-3,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -778,7 +845,7 @@ def calc_LV_Lbeta(
             mcp_energy=mcp_energy,
             detected_energy=detected_energy,
             beta=beta,
-            index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index,
+            index_alpha=index_alpha, index_alpha_track=index_alpha_track, is_trk=is_trk, object_index=object_index, is_sig=is_sig,
             er_coef=er_coef,
             LE_track=LE_track,
             LE_cluster=LE_cluster,
@@ -786,6 +853,7 @@ def calc_LV_Lbeta(
             pred_cluster_energy=pred_cluster_energy,
             batch_object=batch_object,
             n_objects_per_event=n_objects_per_event,
+            epsilon=epsilon,
             )
     L_E = L_E + (L_E_w_photon + L_E_w_charged_hadron + L_E_w_neutral_hadron + L_E_w_muon + L_E_w_electron) * 5
 
@@ -1145,7 +1213,7 @@ def cluster_energy_distribution(cluster_id: torch.Tensor, detected_energy: torch
 
     return torch.square(detected_energy/energy_sum * truth_energy).sum()
 
-def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tensor, truth_energy: torch.Tensor, batch_object: torch.Tensor, n_objects_per_event: torch.Tensor, loss_="sum", ) -> torch.Tensor:
+def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tensor, truth_energy: torch.Tensor, batch_object: torch.Tensor, n_objects_per_event: torch.Tensor, loss_="sum", epsilon: float = 1e-3) -> torch.Tensor:
     """
     calculate 
     distribute MC truth energy to each hits
@@ -1174,6 +1242,33 @@ def calc_caloCluster_loss(cluster_id: torch.Tensor, predicted_energy: torch.Tens
     elif loss_=="sum_log_perCluster":
         mse = torch.log( torch.abs(pred_energy_sum - truth_cluster_energy)+1.0 )
         loss = (scatter_add(mse, batch_object) / n_objects_per_event).sum()
+    elif loss_ in SCALE_INVARIANT_ENERGY_LOSSES:
+        # cluster_id can contain gaps after track hits are removed.  Keep the
+        # object tensors aligned with batch_object and reduce only objects that
+        # have a calorimeter-energy target.
+        n_objects = batch_object.numel()
+        pred_energy_sum = scatter_add(
+            predicted_energy, cluster_id, dim_size=n_objects
+        )
+        truth_cluster_energy, _ = scatter_max(
+            truth_energy, cluster_id, dim_size=n_objects
+        )
+        object_present = scatter_add(
+            torch.ones_like(cluster_id, dtype=torch.long),
+            cluster_id,
+            dim_size=n_objects,
+        ).bool()
+        object_loss = scale_invariant_energy_loss(
+            pred_energy_sum[object_present],
+            truth_cluster_energy[object_present],
+            loss_,
+            epsilon,
+        )
+        loss = per_cluster_average(
+            object_loss,
+            batch_object[object_present],
+            n_objects_per_event,
+        )
     else:
         loss = torch.tensor(0).to(device)
 

@@ -1,0 +1,12 @@
+cuda:2
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/train, files=401, events~=400120, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/validation, files=49, events~=48895, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  400120
+Validating dataset size:  48895
+Batch size:  512
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30

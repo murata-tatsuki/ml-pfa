@@ -66,8 +66,16 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
         self.energy_regression = energy_regression
         self.energy_regression_cluster = energy_regression_cluster
 
-    def forward(self, x, batch, epoch=None, return_dict=False):
-        result = self.model(x, batch, epoch=epoch, return_dict=True)
+    def forward(self, x, batch, epoch=None, return_dict=False,
+                truth_cluster_index=None, detected_energy=None):
+        kwargs = {}
+        if getattr(self.model, 'cluster_energy_pooling', False):
+            kwargs.update(truth_cluster_index=truth_cluster_index, detected_energy=detected_energy)
+            # Pooled checkpoints retain the interaction schedule in metadata.
+            if epoch is None:
+                epoch = getattr(self.model, 'cluster_energy_inference_epoch',
+                                self.model.interaction_start_epoch)
+        result = self.model(x, batch, epoch=epoch, return_dict=True, **kwargs)
         if return_dict:
             return result
 
@@ -106,6 +114,9 @@ def get_model(
     energy_regression_cluster = False,
     energy_regression_weight = False,
     model_variant = "auto",
+    cluster_energy_source = None,
+    cluster_energy_tbeta = None,
+    cluster_energy_td = None,
 ):
     # from torch_cmspepr.gravnet_model import GravnetModel
     from gravnet_model import GravnetModel
@@ -161,13 +172,32 @@ def get_model(
                 f"heads={n_heads}, clustering_out={clustering_output_dim}, "
                 f"regression_out={regression_output_dims}, interaction={interaction_mode}"
             )
+            pooled_checkpoint = any(k.startswith('cluster_energy_head.') for k in state_dict)
+            pooling_kwargs = {}
+            if pooled_checkpoint:
+                from cluster_energy import validate_settings
+                config = checkpoint.get('cluster_energy_config', {})
+                source = cluster_energy_source or 'predicted'
+                tbeta = config.get('tbeta', 0.7) if cluster_energy_tbeta is None else cluster_energy_tbeta
+                td = config.get('td', 0.5) if cluster_energy_td is None else cluster_energy_td
+                validate_settings(source, tbeta, td)
+                if not inferred_energy_regression_cluster:
+                    raise ValueError('Cluster-energy checkpoint requires --energy-regression-cluster')
+                pooling_kwargs = dict(cluster_energy_pooling=True, cluster_energy_source=source,
+                    cluster_energy_tbeta=tbeta, cluster_energy_td=td,
+                    cluster_energy_coordinate_start=config.get('coordinate_start', 2 if use_charge_track_likeness else 1),
+                    interaction_start_epoch=config.get('interaction_start_epoch', 0))
             model = GravNetModelMultiHead(
                 input_dim=input_dim,
                 output_dim=clustering_output_dim,
                 n_heads=n_heads,
                 regression_output_dims=regression_output_dims,
                 interaction_mode=interaction_mode,
+                **pooling_kwargs,
             )
+            if pooled_checkpoint:
+                model.cluster_energy_inference_epoch = config.get(
+                    'inference_epoch', model.interaction_start_epoch)
             model.load_state_dict(state_dict)
             model = LegacyCompatibleMultiHeadAdapter(
                 model,

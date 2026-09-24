@@ -9,6 +9,7 @@ from torch_geometric.loader import DataLoader
 import argparse
 import matplotlib.pylab as plt
 import numpy as np
+from torch_scatter import scatter_add, scatter_max
 
 #from sklearn.metrics import accuracy_score
 #import torch_cmspepr.objectcondensation as oc
@@ -20,6 +21,8 @@ from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseF
 from dataset import ILCDataset
 from dataset_ilc_sharded import ILCDatasetSharded
 from dataset_ilc_streaming import ILCStreamingDataset
+from cluster_energy import (add_training_arguments, validate_training_arguments,
+                            training_forward, checkpoint_payload, replace_calo_loss)
 
 
 def make_ilc_dataset(args, inputdir):
@@ -154,6 +157,17 @@ def amp_grad_scaler(args):
     return None
 
 
+def clip_gradients(model, args):
+    """Apply the configured gradient clipping strategy."""
+    if args.clip_mode == 'norm':
+        return utils.clip_grad_norm_(
+            model.parameters(), max_norm=args.clip_value
+        )
+    return utils.clip_grad_value_(
+        model.parameters(), clip_value=args.clip_value
+    )
+
+
 def progress_output_enabled():
     return bool(getattr(sys.stdout, "isatty", lambda: False)())
 
@@ -228,6 +242,9 @@ def ddp_scheduler_epoch_size(dataset, loader, sampler, args, rank, world_size):
     return int(len(loader.dataset))
 
 def run_requirements(args):
+    validate_training_arguments(args)
+    if args.epsilon <= 0:
+        raise ValueError("--epsilon must be greater than zero")
     if (args.no_split and args.inputdir_validate is None):
         print("If --no-split is specified, it is required to set --inputdir-validate")
         raise
@@ -281,7 +298,16 @@ def load_checkpoint_state(model, ckpt_path):
     for key, value in state_dict.items():
         name = key.replace("module.", "") if key.startswith("module.") else key
         cleaned_state_dict[name] = value
-    model.load_state_dict(cleaned_state_dict, strict=False)
+    pooled_checkpoint = any(k.startswith('cluster_energy_head.') for k in cleaned_state_dict)
+    if pooled_checkpoint and not getattr(model, 'cluster_energy_pooling', False):
+        raise ValueError('Checkpoint contains a cluster energy head; enable --cluster-energy-pooling')
+    loaded = model.load_state_dict(cleaned_state_dict, strict=False)
+    if getattr(model, 'cluster_energy_pooling', False):
+        unexpected_missing = [k for k in loaded.missing_keys if not k.startswith('cluster_energy_head.')]
+        if unexpected_missing or loaded.unexpected_keys:
+            raise ValueError(f'Incompatible pooling checkpoint: missing={unexpected_missing}, unexpected={loaded.unexpected_keys}')
+        if loaded.missing_keys:
+            print('Initialized new cluster-energy MLP; loaded existing multihead parameters')
     return model
 
 
@@ -293,6 +319,199 @@ def get_model_outputs(result, args):
         regression_heads = result.get("regressions", [])
         return out, regression_heads
     return result, None
+
+
+def get_energy_heads(out, regression_heads, args):
+    """Return the per-hit tracker/CP and calorimeter energy predictions."""
+    if not args.energy_regression:
+        return None, None
+    if args.use_multihead_model:
+        tracker = regression_heads[0].squeeze(-1) if regression_heads else None
+        cluster = (
+            regression_heads[1].squeeze(-1)
+            if args.energy_regression_cluster and len(regression_heads) > 1
+            else None
+        )
+        return tracker, cluster
+
+    offset = 1
+    if args.energy_regression_weight:
+        tracker = out[:, offset]
+        cluster = out[:, offset + 1] if args.energy_regression_cluster else None
+        return tracker, cluster
+    if args.use_charged_cluster_loss:
+        offset += 1
+    tracker = out[:, offset]
+    cluster = out[:, offset + 1] if args.energy_regression_cluster else None
+    return tracker, cluster
+
+
+def collect_pretraining_responses(out, regression_heads, data, args):
+    """Build one predicted/true response entry per truth particle."""
+    tracker_energy, cluster_energy = get_energy_heads(
+        out, regression_heads, args
+    )
+    if tracker_energy is None:
+        return None
+
+    is_signal = data.y[:, 0].long() != 0
+    if not torch.any(is_signal):
+        return None
+    object_index, _ = oc.batch_cluster_indices(
+        data.y[is_signal, 0].long() - 1, data.batch[is_signal]
+    )
+    n_objects = int(object_index.max().item()) + 1
+    beta_signal = torch.sigmoid(out[:, 0])[is_signal]
+    _, index_alpha = scatter_max(beta_signal, object_index, dim_size=n_objects)
+
+    true_energy_hit = torch.sqrt(torch.sum(torch.square(data.label[:, 4:8]), 1))
+    pred_energy = tracker_energy[is_signal][index_alpha]
+    true_energy = true_energy_hit[is_signal][index_alpha]
+    pdg = data.label[is_signal, 2][index_alpha]
+
+    track_hit = data.y[is_signal, 1] == 1
+    charged_object = scatter_max(
+        track_hit.long(), object_index, dim_size=n_objects
+    )[0].bool()
+    if cluster_energy is not None:
+        calo_hit = ~track_hit
+        cluster_sum = scatter_add(
+            cluster_energy[is_signal][calo_hit],
+            object_index[calo_hit],
+            dim_size=n_objects,
+        )
+        pred_energy = torch.where(charged_object, pred_energy, cluster_sum)
+
+    valid = (true_energy > 0) & torch.isfinite(true_energy) & torch.isfinite(pred_energy)
+    return {
+        'ratio': (pred_energy[valid] / true_energy[valid]).detach().float().cpu().numpy(),
+        'energy': true_energy[valid].detach().float().cpu().numpy(),
+        'pdg': pdg[valid].detach().long().cpu().numpy(),
+    }
+
+
+def merge_pretraining_responses(batches):
+    batches = [batch for batch in batches if batch is not None and batch['ratio'].size]
+    if not batches:
+        return {'ratio': np.array([]), 'energy': np.array([]), 'pdg': np.array([])}
+    return {
+        key: np.concatenate([batch[key] for batch in batches])
+        for key in ('ratio', 'energy', 'pdg')
+    }
+
+
+def rms90(values):
+    """RMS of the narrowest sorted interval containing 90% of values."""
+    values = np.asarray(values, dtype=np.float64)
+    values = np.sort(values[np.isfinite(values)])
+    if values.size == 0:
+        return float('nan')
+    window_size = max(1, int(np.ceil(0.9 * values.size)))
+    if window_size == values.size:
+        window = values
+    else:
+        widths = values[window_size - 1:] - values[:values.size - window_size + 1]
+        start = int(np.argmin(widths))
+        window = values[start:start + window_size]
+    return float(np.sqrt(np.mean(np.square(window - np.mean(window)))))
+
+
+def response_summary(values):
+    values = np.asarray(values, dtype=np.float64)
+    values = values[np.isfinite(values)]
+    if values.size == 0:
+        return 'n=0 Mean=nan Std=nan RMS90=nan'
+    return (
+        f'n={values.size} Mean={np.mean(values):.6f} '
+        f'Std={np.std(values):.6f} RMS90={rms90(values):.6f}'
+    )
+
+
+def format_pretraining_metrics(metrics, epoch=None):
+    """Format compact single-particle response summaries for validation."""
+    ratio, energy, pdg = metrics['ratio'], metrics['energy'], np.abs(metrics['pdg'])
+    lines = []
+    if epoch is not None:
+        lines.append(f'Epoch {epoch}')
+    lines.append('Pretraining energy response (E_pred / E_true) by true-energy bin:')
+    energy_bins = (
+        ('1-50 GeV', (energy >= 1) & (energy < 50)),
+        ('50-150 GeV', (energy >= 50) & (energy <= 150)),
+        ('>150 GeV', energy > 150),
+    )
+    for name, mask in energy_bins:
+        lines.append(f'  {name}: {response_summary(ratio[mask])}')
+
+    lines.append('Pretraining energy response by particle species:')
+    species = (
+        ('Neutron', (2112,)),
+        ('K0', (130, 310, 311)),
+        ('Photon', (22,)),
+        ('Pion', (111, 211)),
+        ('Electron', (11,)),
+        ('Muon', (13,)),
+    )
+    for name, pdg_ids in species:
+        lines.append(f'  {name}: {response_summary(ratio[np.isin(pdg, pdg_ids)])}')
+    return lines
+
+
+def log_pretraining_metrics(metrics, epoch=None, output_path=None):
+    """Print pretraining metrics and optionally append them to a separate file."""
+    lines = format_pretraining_metrics(metrics, epoch=epoch)
+    for line in lines:
+        print(line)
+    if output_path is not None:
+        output_dir = osp.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        with open(output_path, 'a', encoding='utf-8') as output_file:
+            output_file.write('\n'.join(lines) + '\n\n')
+
+
+def add_log_suffix(log_path, suffix='_pretraining_metrics'):
+    """Create a sibling log name without overwriting the original log."""
+    root, extension = osp.splitext(log_path)
+    if not extension:
+        extension = '.log'
+    return f'{root}{suffix}{extension}'
+
+
+def redirected_stdout_path():
+    """Return stdout's file target when it is directly redirected to a file."""
+    try:
+        target = os.readlink(f'/proc/{os.getpid()}/fd/1')
+    except OSError:
+        return None
+    if (
+        target.startswith('/')
+        and not target.endswith(' (deleted)')
+        and osp.isfile(target)
+    ):
+        return target
+    return None
+
+
+def pretraining_metrics_log_path(args):
+    """Resolve a metrics log next to the main log for DDP and non-DDP runs."""
+    timestamp = strftime('%Y_%m_%d_%H%M%S')
+    explicit_log_path = getattr(args, 'log_path', None)
+    if explicit_log_path:
+        if osp.isdir(explicit_log_path) or explicit_log_path.endswith(os.sep):
+            return osp.join(
+                explicit_log_path,
+                f'pretraining_metrics_{timestamp}.log',
+            )
+        return add_log_suffix(explicit_log_path)
+
+    if getattr(args, 'ddp', False) and getattr(args, 'ddp_log_dir', None):
+        return add_log_suffix(osp.join(args.ddp_log_dir, 'rank0.log'))
+
+    stdout_path = redirected_stdout_path()
+    if stdout_path:
+        return add_log_suffix(stdout_path)
+
+    return osp.join('log', f'pretraining_metrics_{timestamp}.log')
 
 
 def build_model(args, input_dim, output_dimension, ddp=False):
@@ -308,6 +527,11 @@ def build_model(args, input_dim, output_dimension, ddp=False):
             regression_output_dims=regression_dims if n_reg_heads > 0 else 1,
             interaction_start_epoch=args.multihead_interaction_start_epoch,
             interaction_mode=args.multihead_interaction_mode,
+            cluster_energy_pooling=getattr(args, 'cluster_energy_pooling', False),
+            cluster_energy_source=getattr(args, 'cluster_energy_source', 'truth'),
+            cluster_energy_tbeta=getattr(args, 'cluster_energy_tbeta', 0.7),
+            cluster_energy_td=getattr(args, 'cluster_energy_td', 0.5),
+            cluster_energy_coordinate_start=2 if args.use_charged_cluster_loss else 1,
         )
         if args.model_ckpt != "":
             print(f"Loading multi-head model from checkpoint {args.model_ckpt}")
@@ -491,6 +715,11 @@ def run_ddp_training(rank, world_size, args):
         else:
             print("restart period : ", args.restart_period)
             if rank == 0:
+                if args.lr_warmup:
+                    print(
+                        f"LR warm-up: {args.lr_warmup_epochs} epochs "
+                        "(cyclic/restart schedule starts afterward)"
+                    )
                 print(
                     "DDP scheduler setup: "
                     f"local_batch_size={scheduler_batch_size}, local_epoch_size={epoch_size}, "
@@ -505,6 +734,7 @@ def run_ddp_training(rank, world_size, args):
                 policy=args.lr_policy,
                 min_lr=min_lr,
                 nrestart_cosreduce=args.nrestart_cosreduce,
+                warmup_epochs=args.lr_warmup_epochs if args.lr_warmup else 0,
             )
     loss_offset =1. # To prevent a negative loss from ever occuring
 
@@ -541,7 +771,7 @@ def run_ddp_training(rank, world_size, args):
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None):
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -648,7 +878,7 @@ def run_ddp_training(rank, world_size, args):
             er_coef = er_coef,
             LE_track=args.LE_track,
             LE_cluster=args.LE_cluster,
-            Ecl_regression=args.energy_regression_cluster,
+            Ecl_regression=args.energy_regression_cluster and not args.cluster_energy_pooling,
             weight_regression=args.energy_regression_weight,
             pred_cluster_energy = pred_cluster_energy,
             l_beta_suppression = args.l_beta_suppression,
@@ -659,8 +889,10 @@ def run_ddp_training(rank, world_size, args):
             weight_charged_hadron = weight_charged_hadron,
             weight_neutral_hadron = weight_neutral_hadron,
             weight_muon = weight_muon,
-            weight_electron = weight_electron
+            weight_electron = weight_electron,
+            epsilon = args.epsilon,
         )
+        LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         
         if return_components:
             return out_oc
@@ -729,7 +961,7 @@ def run_ddp_training(rank, world_size, args):
                     # if i == 0 : first_para = check_data(data)
                     with amp_autocast(args):
                         if args.use_multihead_model:
-                            result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                            result = training_forward(model, data, args, epoch=epoch)
                         else:
                             result = model(data.x, data.batch)
                         out, regression_heads = get_model_outputs(result, args)
@@ -737,19 +969,19 @@ def run_ddp_training(rank, world_size, args):
                         if args.jit:
                             raise
                         else:
-                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
+                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
                             update(components)
                     if scaler is not None:
                         scaler.scale(loss).backward()
                         if not args.no_clipping:
                             scaler.unscale_(optimizer)
-                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                            clip_gradients(model, args)
                         scaler.step(optimizer)
                         scaler.update()
                     else:
                         loss.backward()
                         if not args.no_clipping:
-                            utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                            clip_gradients(model, args)
                         optimizer.step()
                     if not args.settings_Sep01: 
                         if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -812,6 +1044,7 @@ def run_ddp_training(rank, world_size, args):
         loss_components = {}
         test_acc=0.
         batch_count = 0
+        pretraining_batches = []
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: 
@@ -844,14 +1077,20 @@ def run_ddp_training(rank, world_size, args):
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
-                        result = eval_model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        result = training_forward(eval_model, data, args, epoch=epoch)
                     else:
                         result = eval_model(data.x, data.batch)
                     out, regression_heads = get_model_outputs(result, args)
+                    if args.pretraining:
+                        pretraining_batches.append(
+                            collect_pretraining_responses(
+                                out, regression_heads, data, args
+                            )
+                        )
                     if args.jit:
                         raise
                     else:
-                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads))
+                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None))
                 batch_count += 1
                 if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
                     total_label = pbar_total if pbar_total is not None else "?"
@@ -867,10 +1106,23 @@ def run_ddp_training(rank, world_size, args):
         for key in loss_components:
             dist.all_reduce(loss_components[key], op=dist.ReduceOp.SUM)
             loss_components[key] /= total_test_batches
+        pretraining_metrics = None
+        if args.pretraining:
+            local_metrics = merge_pretraining_responses(pretraining_batches)
+            gathered_metrics = [None] * world_size
+            dist.all_gather_object(gathered_metrics, local_metrics)
+            if rank == 0:
+                pretraining_metrics = merge_pretraining_responses(gathered_metrics)
         # Compute total loss with the same epoch gating as the training loss.
         test_loss = compose_validation_loss(loss_components, epoch)
         if rank == 0:
             print('test ' + oc.formatted_loss_components_string(loss_components))
+            if args.pretraining:
+                log_pretraining_metrics(
+                    pretraining_metrics,
+                    epoch=epoch,
+                    output_path=args.pretraining_metrics_log_path,
+                )
             print(f'Returning {test_loss}')
         return test_loss.item()
 
@@ -883,7 +1135,7 @@ def run_ddp_training(rank, world_size, args):
             os.makedirs(ckpt_dir, exist_ok=True)
             # m = torch.jit.script(model)
             #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.module.state_dict()), ckpt)
+            torch.save(checkpoint_payload(model, epoch=checkpoint_number), ckpt)
 
     min_loss = 1e9
     train_loss_history=[]
@@ -941,6 +1193,7 @@ def main():
 
     #print("Parsing arguments")
     parser = argparse.ArgumentParser()
+    add_training_arguments(parser)
     parser.add_argument('-d', '--dry', action='store_true', help='Turn off checkpoint saving and run limited number of events')
     parser.add_argument('-v', '--verbose', action='store_true', help='Print more output')
     parser.add_argument('--settings-Sep01', action='store_true', help='Use 21Sep01 settings')
@@ -976,12 +1229,16 @@ def main():
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
     parser.add_argument('--weight-decay', type=float, default=1e-4)                                                                     ## not using now
+    parser.add_argument('--lr-warmup', action='store_true', help='Linearly warm up the learning rate before starting the cyclic/restart scheduler')
+    parser.add_argument('--lr-warmup-epochs', type=int, default=5, help='Number of warm-up epochs used to reach --learning-rate (ignored unless --lr-warmup is set)')
     parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
     parser.add_argument('--energy-regression-weight', action='store_true', help='Turn on energy regression term on loss function and output (weighted edep)')
     parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (cluster energy for neutral particles)')
     parser.add_argument('--regression-coefficinet', type=float, default=1)                       ### energy regression scaling factor
-    parser.add_argument('--LE-track', type=str, default='alpha', help='Specify L_E_track loss term')
-    parser.add_argument('--LE-cluster', type=str, default='distribution', help='Specify L_E_cluster loss term')
+    parser.add_argument('--LE-track', type=str, default='alpha', help='Specify L_E_track loss term (including log_ratio_mse or log_scaled_relative)')
+    parser.add_argument('--LE-cluster', type=str, default='distribution', help='Specify L_E_cluster loss term (including log_ratio_mse or log_scaled_relative)')
+    parser.add_argument('--pretraining', action='store_true', help='Enable single-particle pretraining mode')
+    parser.add_argument('--epsilon', type=float, default=1e-3, help='Small constant to prevent division by zero or log(0)')
     parser.add_argument('--LE-gradually', action='store_true', help='energy loss term is gradually increases for 10 epochs (LE = LE * (x/10)^2 )')
     parser.add_argument('--momentum', action='store_true', help='Add momentum to GNN input')
     parser.add_argument('--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
@@ -1000,6 +1257,7 @@ def main():
     parser.add_argument('--dp', action='store_true', help='Use dataparallel')
     parser.add_argument('--ddp', action='store_true', help='Use distributed dataparallel')
     parser.add_argument('--ddp-log-dir', type=str, default=None, help='Directory for per-rank DDP logs (creates rank0.log, rank1.log, ...).')
+    parser.add_argument('--log-path', type=str, default=None, help='Existing training log file or directory used to place the separate pretraining metrics log. Useful when stdout is piped through tee.')
     parser.add_argument('--master-addr', type=str, default='127.0.0.1', help='DDP master address.')
     parser.add_argument('--master-port', type=int, default=None, help='DDP master port. Default: auto-select a free local port.')
     parser.add_argument('--progress-rank', type=int, default=0, help='Rank that writes tqdm progress to the terminal when --ddp-log-dir is enabled.')
@@ -1007,13 +1265,24 @@ def main():
     parser.add_argument('--gpus', type=str, default=None, help="Comma-separated list of GPU ids to use with --ddp (e.g., '0,1,2'). If not specified, all available GPUs are used.")
     parser.add_argument('--lr-policy', type=str, default='cosine', help='Specify lraning rate policy at lrscheduler.py')
     parser.add_argument('--nrestart-cosreduce', type=int, default=3, help='number of restart without reducing the maximum learning rate')
-    parser.add_argument('--clip-value', type=int, default=100, help='threshold of gradient clipping')
+    parser.add_argument('--clip-value', type=float, default=100.0, help='Threshold used by the selected gradient clipping mode')
+    parser.add_argument('--clip-mode', type=str, default='value', choices=['value', 'norm'], help='Gradient clipping mode: value clamps each gradient element; norm limits the total gradient norm')
     parser.add_argument('--no-clipping', action='store_true', help='do not clip the gradients')           
     parser.add_argument('--l-beta-suppression', action='store_true', help='add to decrease beta of non-condensation point')           
     parser.add_argument('--amp', action='store_true', help='Enable CUDA mixed precision (torch.cuda.amp.autocast). Off: same as before.')
     parser.add_argument('--amp-dtype', type=str, default='bf16', choices=['bf16', 'fp16'], help='AMP compute dtype: bf16 (A100+), fp16 (uses GradScaler). Ignored unless --amp.')
 
     args = parser.parse_args()
+    validate_training_arguments(args)
+    if args.epsilon <= 0:
+        parser.error('--epsilon must be greater than zero')
+    if args.lr_warmup and args.lr_warmup_epochs <= 0:
+        parser.error('--lr-warmup-epochs must be greater than zero when --lr-warmup is set')
+    if args.lr_warmup and args.ReduceLROnPlateau:
+        parser.error('--lr-warmup cannot be combined with --ReduceLROnPlateau')
+    args.pretraining_metrics_log_path = (
+        pretraining_metrics_log_path(args) if args.pretraining else None
+    )
     if args.verbose: oc.DEBUG = True
     reduce_noise = args.reduce_noise
     n_epochs = args.epochs
@@ -1024,7 +1293,6 @@ def main():
     er_coef = args.regression_coefficinet
     qmin = args.qmin
     min_lr=args.min_lr
-
 
     if args.ddp:
         # GPU選択: --gpus で指定されたGPUのみを使用。未指定の場合は全GPUを使用
@@ -1063,7 +1331,8 @@ def main():
 
     device = torch.device(args.cuda) if not args.dp else 'cuda'
     print('Using device: ', device)
-    if not args.dp: torch.cuda.set_device(device)
+    if not args.dp and device.type == 'cuda':
+        torch.cuda.set_device(device)
     if args.dp:
         print("available number of cuda ", torch.cuda.device_count())
         # batch_size = batch_size * torch.cuda.device_count()
@@ -1194,7 +1463,22 @@ def main():
             print("epochs to calculate patience ", nepoch_factor)
         else:
             print("restart period : ", args.restart_period)
-            scheduler = CyclicLRWithRestarts(optimizer, batch_size, epoch_size, restart_period=args.restart_period, t_mult=1.1, policy=args.lr_policy, min_lr=min_lr, nrestart_cosreduce=args.nrestart_cosreduce)
+            if args.lr_warmup:
+                print(
+                    f"LR warm-up: {args.lr_warmup_epochs} epochs "
+                    "(cyclic/restart schedule starts afterward)"
+                )
+            scheduler = CyclicLRWithRestarts(
+                optimizer,
+                batch_size,
+                epoch_size,
+                restart_period=args.restart_period,
+                t_mult=1.1,
+                policy=args.lr_policy,
+                min_lr=min_lr,
+                nrestart_cosreduce=args.nrestart_cosreduce,
+                warmup_epochs=args.lr_warmup_epochs if args.lr_warmup else 0,
+            )
 
     loss_offset =1. # To prevent a negative loss from ever occuring
 
@@ -1234,7 +1518,7 @@ def main():
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None):
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -1341,7 +1625,7 @@ def main():
             er_coef = er_coef,
             LE_track=args.LE_track,
             LE_cluster=args.LE_cluster,
-            Ecl_regression=args.energy_regression_cluster,
+            Ecl_regression=args.energy_regression_cluster and not args.cluster_energy_pooling,
             weight_regression=args.energy_regression_weight,
             pred_cluster_energy = pred_cluster_energy,
             l_beta_suppression = args.l_beta_suppression,
@@ -1352,8 +1636,10 @@ def main():
             weight_charged_hadron = weight_charged_hadron,
             weight_neutral_hadron = weight_neutral_hadron,
             weight_muon = weight_muon,
-            weight_electron = weight_electron
+            weight_electron = weight_electron,
+            epsilon = args.epsilon,
         )
+        LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         
         if return_components:
             return out_oc
@@ -1496,7 +1782,7 @@ def main():
                 if i == 0 : first_para = check_data(data)
                 with amp_autocast(args):
                     if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        result = training_forward(model, data, args, epoch=epoch)
                     else:
                         result = model(data.x, data.batch)
                     out, regression_heads = get_model_outputs(result, args)
@@ -1505,19 +1791,19 @@ def main():
                         # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                         raise
                     else:
-                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads)
+                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
                         update(components)
                 if scaler is not None:
                     scaler.scale(loss).backward()
                     if not args.no_clipping:
                         scaler.unscale_(optimizer)
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        clip_gradients(model, args)
                     scaler.step(optimizer)
                     scaler.update()
                 else:
                     loss.backward()
                     if not args.no_clipping:
-                        utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                        clip_gradients(model, args)
                     optimizer.step()
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
@@ -1549,6 +1835,7 @@ def main():
         loss_components = {}
         test_acc=0.
         batch_count = 0
+        pretraining_batches = []
         def update(components):
             for key, value in components.items():
                 if not key in loss_components: loss_components[key] = 0.
@@ -1572,10 +1859,16 @@ def main():
                 data = data.to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
-                        result = model(data.x, data.batch, epoch=epoch, return_dict=True)
+                        result = training_forward(model, data, args, epoch=epoch)
                     else:
                         result = model(data.x, data.batch)
                     out, regression_heads = get_model_outputs(result, args)
+                    if args.pretraining:
+                        pretraining_batches.append(
+                            collect_pretraining_responses(
+                                out, regression_heads, data, args
+                            )
+                        )
                     if args.jit:
                         # update(loss_fn_jit(result, data, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss))
                         raise
@@ -1588,6 +1881,7 @@ def main():
                                 return_components=True,
                                 use_charge_track_likeness=args.use_charged_cluster_loss,
                                 regression_heads=regression_heads,
+                                cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None,
                             )
                         )
                 batch_count += 1
@@ -1597,8 +1891,14 @@ def main():
         for key in loss_components:
             loss_components[key] /= batch_count
         # Compute total loss and do printout
-        print('test ' + oc.formatted_loss_components_string(loss_components))
         test_loss = compose_validation_loss(loss_components, epoch)
+        print('test ' + oc.formatted_loss_components_string(loss_components))
+        if args.pretraining:
+            log_pretraining_metrics(
+                merge_pretraining_responses(pretraining_batches),
+                epoch=epoch,
+                output_path=args.pretraining_metrics_log_path,
+            )
         print(f'Returning {test_loss}')
         return test_loss.item()
 
@@ -1611,7 +1911,7 @@ def main():
             os.makedirs(ckpt_dir, exist_ok=True)
             # m = torch.jit.script(model)
             #torch.jit.save(m,ckpt)
-            torch.save(dict(model=model.state_dict()), ckpt)
+            torch.save(checkpoint_payload(model, epoch=checkpoint_number), ckpt)
 
     min_loss = 1e9
     train_loss_history=[]
@@ -1778,7 +2078,7 @@ def run_profile():
                 print(f'loss={float(loss)}')
                 loss.backward()
                 if not args.no_clipping:
-                    utils.clip_grad_value_(model.parameters(), clip_value=args.clip_value)
+                    clip_gradients(model, args)
                 optimizer.step()
                 if show_progress:
                     pbar.set_postfix({'loss': float(loss)})

@@ -1,0 +1,261 @@
+40 GeV reco
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11431, Mean90=1.06296, RMS90=0.0960691, resolution=13.5862%
+  [0.1, 0.2): entries=11610, Mean90=1.064, RMS90=0.0971202, resolution=13.7349%
+  [0.2, 0.3): entries=12122, Mean90=1.07265, RMS90=0.0971551, resolution=13.7398%
+  [0.3, 0.4): entries=12622, Mean90=1.07033, RMS90=0.0969358, resolution=13.7088%
+  [0.4, 0.5): entries=13572, Mean90=1.0702, RMS90=0.0955426, resolution=13.5118%
+  [0.5, 0.6): entries=14787, Mean90=1.072, RMS90=0.0954774, resolution=13.5025%
+  [0.6, 0.7): entries=15960, Mean90=1.07324, RMS90=0.0960642, resolution=13.5855%
+  [0.7, 0.8): entries=17446, Mean90=1.07229, RMS90=0.0971035, resolution=13.7325%
+  [0.8, 0.9): entries=19332, Mean90=1.06901, RMS90=0.0983401, resolution=13.9074%
+  [0.9, 0.925): entries=5150, Mean90=1.06199, RMS90=0.0984245, resolution=13.9193%
+  [0.925, 0.95): entries=5213, Mean90=1.0546, RMS90=0.0973013, resolution=13.7605%
+  [0.95, 0.975): entries=5324, Mean90=1.03984, RMS90=0.102272, resolution=14.4634%
+  [0.975, 1): entries=5431, Mean90=0.966154, RMS90=0.120204, resolution=16.9994%
+  theta-classified events: 150000
+
+40 GeV truth
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11431, Mean90=1.06294, RMS90=0.0960607, resolution=13.585%
+  [0.1, 0.2): entries=11610, Mean90=1.06459, RMS90=0.0971129, resolution=13.7338%
+  [0.2, 0.3): entries=12122, Mean90=1.0727, RMS90=0.0971752, resolution=13.7427%
+  [0.3, 0.4): entries=12622, Mean90=1.07009, RMS90=0.0971784, resolution=13.7431%
+  [0.4, 0.5): entries=13572, Mean90=1.07019, RMS90=0.0955498, resolution=13.5128%
+  [0.5, 0.6): entries=14787, Mean90=1.07279, RMS90=0.0955854, resolution=13.5178%
+  [0.6, 0.7): entries=15960, Mean90=1.07352, RMS90=0.0960721, resolution=13.5866%
+  [0.7, 0.8): entries=17446, Mean90=1.07167, RMS90=0.0970584, resolution=13.7261%
+  [0.8, 0.9): entries=19332, Mean90=1.06769, RMS90=0.0982096, resolution=13.8889%
+  [0.9, 0.925): entries=5150, Mean90=1.06196, RMS90=0.0984258, resolution=13.9195%
+  [0.925, 0.95): entries=5213, Mean90=1.05484, RMS90=0.0974374, resolution=13.7797%
+  [0.95, 0.975): entries=5324, Mean90=1.03987, RMS90=0.102249, resolution=14.4602%
+  [0.975, 1): entries=5431, Mean90=0.962542, RMS90=0.120625, resolution=17.0589%
+  theta-classified events: 150000
+
+40 GeV pandora
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11431, Mean90=0.922893, RMS90=0.0455346, resolution=6.43956%
+  [0.1, 0.2): entries=11610, Mean90=0.923812, RMS90=0.0455096, resolution=6.43602%
+  [0.2, 0.3): entries=12122, Mean90=0.928061, RMS90=0.0459019, resolution=6.49152%
+  [0.3, 0.4): entries=12622, Mean90=0.929657, RMS90=0.0456649, resolution=6.458%
+  [0.4, 0.5): entries=13572, Mean90=0.929732, RMS90=0.045738, resolution=6.46833%
+  [0.5, 0.6): entries=14787, Mean90=0.933458, RMS90=0.0450991, resolution=6.37797%
+  [0.6, 0.7): entries=15960, Mean90=0.933538, RMS90=0.0459326, resolution=6.49586%
+  [0.7, 0.8): entries=17446, Mean90=0.934952, RMS90=0.0470299, resolution=6.65104%
+  [0.8, 0.9): entries=19332, Mean90=0.934868, RMS90=0.0477511, resolution=6.75303%
+  [0.9, 0.925): entries=5150, Mean90=0.932527, RMS90=0.0491861, resolution=6.95596%
+  [0.925, 0.95): entries=5213, Mean90=0.929004, RMS90=0.0500002, resolution=7.0711%
+  [0.95, 0.975): entries=5324, Mean90=0.920727, RMS90=0.0543229, resolution=7.68242%
+  [0.975, 1): entries=5431, Mean90=0.868749, RMS90=0.0771702, resolution=10.9135%
+  theta-classified events: 150000
+
+
+
+91 GeV reco
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11061, Mean90=1.06188, RMS90=0.0794531, resolution=11.2364%
+  [0.1, 0.2): entries=11415, Mean90=1.06818, RMS90=0.0791273, resolution=11.1903%
+  [0.2, 0.3): entries=11937, Mean90=1.06664, RMS90=0.0788169, resolution=11.1464%
+  [0.3, 0.4): entries=12648, Mean90=1.07109, RMS90=0.079465, resolution=11.2381%
+  [0.4, 0.5): entries=13581, Mean90=1.069, RMS90=0.0781334, resolution=11.0497%
+  [0.5, 0.6): entries=14520, Mean90=1.07442, RMS90=0.0787421, resolution=11.1358%
+  [0.6, 0.7): entries=16124, Mean90=1.07172, RMS90=0.0776684, resolution=10.984%
+  [0.7, 0.8): entries=17467, Mean90=1.07265, RMS90=0.0786295, resolution=11.1199%
+  [0.8, 0.9): entries=19497, Mean90=1.07103, RMS90=0.0778166, resolution=11.0049%
+  [0.9, 0.925): entries=5184, Mean90=1.07016, RMS90=0.0785932, resolution=11.1148%
+  [0.925, 0.95): entries=5394, Mean90=1.06682, RMS90=0.0813542, resolution=11.5052%
+  [0.95, 0.975): entries=5551, Mean90=1.04725, RMS90=0.083351, resolution=11.7876%
+  [0.975, 1): entries=5621, Mean90=0.95965, RMS90=0.118679, resolution=16.7837%
+  theta-classified events: 150000
+
+91 GeV truth
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11061, Mean90=1.06137, RMS90=0.0794459, resolution=11.2353%
+  [0.1, 0.2): entries=11415, Mean90=1.06818, RMS90=0.0791403, resolution=11.1921%
+  [0.2, 0.3): entries=11937, Mean90=1.06659, RMS90=0.0789187, resolution=11.1608%
+  [0.3, 0.4): entries=12648, Mean90=1.0715, RMS90=0.0795277, resolution=11.2469%
+  [0.4, 0.5): entries=13581, Mean90=1.0689, RMS90=0.078041, resolution=11.0367%
+  [0.5, 0.6): entries=14520, Mean90=1.07489, RMS90=0.078802, resolution=11.1443%
+  [0.6, 0.7): entries=16124, Mean90=1.07106, RMS90=0.0777103, resolution=10.9899%
+  [0.7, 0.8): entries=17467, Mean90=1.07267, RMS90=0.0786381, resolution=11.1211%
+  [0.8, 0.9): entries=19497, Mean90=1.07105, RMS90=0.0778112, resolution=11.0042%
+  [0.9, 0.925): entries=5184, Mean90=1.07125, RMS90=0.0788177, resolution=11.1465%
+  [0.925, 0.95): entries=5394, Mean90=1.06657, RMS90=0.0813806, resolution=11.509%
+  [0.95, 0.975): entries=5551, Mean90=1.04633, RMS90=0.083292, resolution=11.7793%
+  [0.975, 1): entries=5621, Mean90=0.959927, RMS90=0.118848, resolution=16.8076%
+  theta-classified events: 150000
+
+91 GeV pandora
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11061, Mean90=0.959581, RMS90=0.0291406, resolution=4.1211%
+  [0.1, 0.2): entries=11415, Mean90=0.962132, RMS90=0.0286486, resolution=4.05153%
+  [0.2, 0.3): entries=11937, Mean90=0.964221, RMS90=0.0283293, resolution=4.00636%
+  [0.3, 0.4): entries=12648, Mean90=0.96475, RMS90=0.0284026, resolution=4.01674%
+  [0.4, 0.5): entries=13581, Mean90=0.966449, RMS90=0.0280882, resolution=3.97227%
+  [0.5, 0.6): entries=14520, Mean90=0.967256, RMS90=0.028178, resolution=3.98498%
+  [0.6, 0.7): entries=16124, Mean90=0.970068, RMS90=0.0281704, resolution=3.98389%
+  [0.7, 0.8): entries=17467, Mean90=0.96988, RMS90=0.0301678, resolution=4.26638%
+  [0.8, 0.9): entries=19497, Mean90=0.971106, RMS90=0.0309218, resolution=4.373%
+  [0.9, 0.925): entries=5184, Mean90=0.971192, RMS90=0.0327988, resolution=4.63845%
+  [0.925, 0.95): entries=5394, Mean90=0.970145, RMS90=0.0342311, resolution=4.84101%
+  [0.95, 0.975): entries=5551, Mean90=0.959944, RMS90=0.0374432, resolution=5.29527%
+  [0.975, 1): entries=5621, Mean90=0.907259, RMS90=0.0690428, resolution=9.76413%
+  theta-classified events: 150000
+
+
+200 GeV reco
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11105, Mean90=1.01564, RMS90=0.0538677, resolution=7.61804%
+  [0.1, 0.2): entries=11513, Mean90=1.02247, RMS90=0.0524545, resolution=7.41818%
+  [0.2, 0.3): entries=11956, Mean90=1.02556, RMS90=0.0539052, resolution=7.62334%
+  [0.3, 0.4): entries=12685, Mean90=1.02839, RMS90=0.0552555, resolution=7.81431%
+  [0.4, 0.5): entries=13718, Mean90=1.0325, RMS90=0.0555976, resolution=7.86269%
+  [0.5, 0.6): entries=14774, Mean90=1.03229, RMS90=0.0572859, resolution=8.10145%
+  [0.6, 0.7): entries=15884, Mean90=1.03045, RMS90=0.0591494, resolution=8.36499%
+  [0.7, 0.8): entries=17233, Mean90=1.03194, RMS90=0.0585837, resolution=8.28499%
+  [0.8, 0.9): entries=19369, Mean90=1.03369, RMS90=0.0584469, resolution=8.26564%
+  [0.9, 0.925): entries=5179, Mean90=1.02503, RMS90=0.0573071, resolution=8.10445%
+  [0.925, 0.95): entries=5301, Mean90=1.02226, RMS90=0.0586161, resolution=8.28957%
+  [0.95, 0.975): entries=5324, Mean90=1.0095, RMS90=0.0611831, resolution=8.65259%
+  [0.975, 1): entries=5559, Mean90=0.915825, RMS90=0.106128, resolution=15.0088%
+  theta-classified events: 149600
+
+200 GeV truth
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11105, Mean90=1.0157, RMS90=0.0538948, resolution=7.62188%
+  [0.1, 0.2): entries=11513, Mean90=1.0226, RMS90=0.0525086, resolution=7.42584%
+  [0.2, 0.3): entries=11956, Mean90=1.02675, RMS90=0.0539316, resolution=7.62708%
+  [0.3, 0.4): entries=12685, Mean90=1.0282, RMS90=0.0553186, resolution=7.82324%
+  [0.4, 0.5): entries=13718, Mean90=1.03251, RMS90=0.0556248, resolution=7.86654%
+  [0.5, 0.6): entries=14774, Mean90=1.03326, RMS90=0.0571818, resolution=8.08673%
+  [0.6, 0.7): entries=15884, Mean90=1.03094, RMS90=0.0590745, resolution=8.3544%
+  [0.7, 0.8): entries=17233, Mean90=1.03193, RMS90=0.0584718, resolution=8.26916%
+  [0.8, 0.9): entries=19369, Mean90=1.03399, RMS90=0.0582914, resolution=8.24365%
+  [0.9, 0.925): entries=5179, Mean90=1.02569, RMS90=0.0571188, resolution=8.07781%
+  [0.925, 0.95): entries=5301, Mean90=1.02146, RMS90=0.0589219, resolution=8.33282%
+  [0.95, 0.975): entries=5324, Mean90=1.00942, RMS90=0.0614333, resolution=8.68798%
+  [0.975, 1): entries=5559, Mean90=0.915126, RMS90=0.106587, resolution=15.0736%
+  theta-classified events: 149600
+
+200 GeV pandora
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11105, Mean90=0.974978, RMS90=0.0226381, resolution=3.20151%
+  [0.1, 0.2): entries=11513, Mean90=0.979022, RMS90=0.0209527, resolution=2.96315%
+  [0.2, 0.3): entries=11956, Mean90=0.980249, RMS90=0.0208036, resolution=2.94207%
+  [0.3, 0.4): entries=12685, Mean90=0.979422, RMS90=0.0207814, resolution=2.93893%
+  [0.4, 0.5): entries=13718, Mean90=0.981532, RMS90=0.0206136, resolution=2.9152%
+  [0.5, 0.6): entries=14774, Mean90=0.98293, RMS90=0.020265, resolution=2.86591%
+  [0.6, 0.7): entries=15884, Mean90=0.983516, RMS90=0.0212426, resolution=3.00415%
+  [0.7, 0.8): entries=17233, Mean90=0.985407, RMS90=0.0225437, resolution=3.18816%
+  [0.8, 0.9): entries=19369, Mean90=0.988771, RMS90=0.0222638, resolution=3.14858%
+  [0.9, 0.925): entries=5179, Mean90=0.98625, RMS90=0.0233761, resolution=3.30588%
+  [0.925, 0.95): entries=5301, Mean90=0.985656, RMS90=0.025568, resolution=3.61586%
+  [0.95, 0.975): entries=5324, Mean90=0.979657, RMS90=0.0285981, resolution=4.04438%
+  [0.975, 1): entries=5559, Mean90=0.924554, RMS90=0.0674554, resolution=9.53964%
+  theta-classified events: 149600
+
+
+
+350 GeV reco
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11263, Mean90=0.903912, RMS90=0.0880884, resolution=12.4576%
+  [0.1, 0.2): entries=11380, Mean90=0.898619, RMS90=0.100031, resolution=14.1466%
+  [0.2, 0.3): entries=11986, Mean90=0.889603, RMS90=0.111345, resolution=15.7466%
+  [0.3, 0.4): entries=12606, Mean90=0.888171, RMS90=0.123002, resolution=17.3951%
+  [0.4, 0.5): entries=13555, Mean90=0.875951, RMS90=0.133496, resolution=18.8792%
+  [0.5, 0.6): entries=14771, Mean90=0.880504, RMS90=0.133416, resolution=18.8679%
+  [0.6, 0.7): entries=15870, Mean90=0.881114, RMS90=0.128391, resolution=18.1572%
+  [0.7, 0.8): entries=17766, Mean90=0.886177, RMS90=0.122132, resolution=17.272%
+  [0.8, 0.9): entries=19284, Mean90=0.871204, RMS90=0.130382, resolution=18.4388%
+  [0.9, 0.925): entries=5100, Mean90=0.870615, RMS90=0.127914, resolution=18.0898%
+  [0.925, 0.95): entries=5396, Mean90=0.862099, RMS90=0.127514, resolution=18.0332%
+  [0.95, 0.975): entries=5423, Mean90=0.853249, RMS90=0.126694, resolution=17.9172%
+  [0.975, 1): entries=5400, Mean90=0.785642, RMS90=0.126697, resolution=17.9177%
+  theta-classified events: 149800
+
+350 GeV truth
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11263, Mean90=0.903713, RMS90=0.0880425, resolution=12.4511%
+  [0.1, 0.2): entries=11380, Mean90=0.894717, RMS90=0.101378, resolution=14.337%
+  [0.2, 0.3): entries=11986, Mean90=0.889372, RMS90=0.111436, resolution=15.7594%
+  [0.3, 0.4): entries=12606, Mean90=0.887619, RMS90=0.123216, resolution=17.4254%
+  [0.4, 0.5): entries=13555, Mean90=0.876671, RMS90=0.133139, resolution=18.8287%
+  [0.5, 0.6): entries=14771, Mean90=0.878903, RMS90=0.133889, resolution=18.9348%
+  [0.6, 0.7): entries=15870, Mean90=0.88039, RMS90=0.128594, resolution=18.1859%
+  [0.7, 0.8): entries=17766, Mean90=0.886125, RMS90=0.122149, resolution=17.2745%
+  [0.8, 0.9): entries=19284, Mean90=0.878045, RMS90=0.128328, resolution=18.1483%
+  [0.9, 0.925): entries=5100, Mean90=0.868774, RMS90=0.128423, resolution=18.1617%
+  [0.925, 0.95): entries=5396, Mean90=0.860887, RMS90=0.127875, resolution=18.0843%
+  [0.95, 0.975): entries=5423, Mean90=0.855669, RMS90=0.126101, resolution=17.8334%
+  [0.975, 1): entries=5400, Mean90=0.784826, RMS90=0.126659, resolution=17.9122%
+  theta-classified events: 149800
+
+350 GeV pandora
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11263, Mean90=0.974878, RMS90=0.0223869, resolution=3.16598%
+  [0.1, 0.2): entries=11380, Mean90=0.981934, RMS90=0.019886, resolution=2.8123%
+  [0.2, 0.3): entries=11986, Mean90=0.982835, RMS90=0.0196081, resolution=2.77301%
+  [0.3, 0.4): entries=12606, Mean90=0.983792, RMS90=0.019436, resolution=2.74867%
+  [0.4, 0.5): entries=13555, Mean90=0.98524, RMS90=0.0187135, resolution=2.6465%
+  [0.5, 0.6): entries=14771, Mean90=0.984731, RMS90=0.0186175, resolution=2.63291%
+  [0.6, 0.7): entries=15870, Mean90=0.984609, RMS90=0.0196856, resolution=2.78396%
+  [0.7, 0.8): entries=17766, Mean90=0.986359, RMS90=0.0209398, resolution=2.96133%
+  [0.8, 0.9): entries=19284, Mean90=0.993601, RMS90=0.019611, resolution=2.77342%
+  [0.9, 0.925): entries=5100, Mean90=0.989999, RMS90=0.0216153, resolution=3.05687%
+  [0.925, 0.95): entries=5396, Mean90=0.98888, RMS90=0.0226671, resolution=3.20561%
+  [0.95, 0.975): entries=5423, Mean90=0.983626, RMS90=0.025849, resolution=3.65559%
+  [0.975, 1): entries=5400, Mean90=0.937616, RMS90=0.0591524, resolution=8.36541%
+  theta-classified events: 149800
+
+
+
+500 GeV reco
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11246, Mean90=0.784775, RMS90=0.109142, resolution=15.435%
+  [0.1, 0.2): entries=11531, Mean90=0.752358, RMS90=0.119826, resolution=16.9459%
+  [0.2, 0.3): entries=11907, Mean90=0.736098, RMS90=0.13229, resolution=18.7086%
+  [0.3, 0.4): entries=12637, Mean90=0.71068, RMS90=0.140555, resolution=19.8775%
+  [0.4, 0.5): entries=13290, Mean90=0.713426, RMS90=0.140979, resolution=19.9374%
+  [0.5, 0.6): entries=14702, Mean90=0.722087, RMS90=0.134528, resolution=19.0252%
+  [0.6, 0.7): entries=16075, Mean90=0.732166, RMS90=0.128875, resolution=18.2257%
+  [0.7, 0.8): entries=17668, Mean90=0.737785, RMS90=0.123732, resolution=17.4984%
+  [0.8, 0.9): entries=19270, Mean90=0.71841, RMS90=0.131342, resolution=18.5746%
+  [0.9, 0.925): entries=5073, Mean90=0.707382, RMS90=0.131062, resolution=18.5349%
+  [0.925, 0.95): entries=5227, Mean90=0.703212, RMS90=0.129029, resolution=18.2475%
+  [0.95, 0.975): entries=5497, Mean90=0.687394, RMS90=0.125717, resolution=17.7791%
+  [0.975, 1): entries=5677, Mean90=0.662353, RMS90=0.108409, resolution=15.3314%
+  theta-classified events: 149800
+
+500 GeV truth
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11246, Mean90=0.784168, RMS90=0.109086, resolution=15.4272%
+  [0.1, 0.2): entries=11531, Mean90=0.757128, RMS90=0.120134, resolution=16.9895%
+  [0.2, 0.3): entries=11907, Mean90=0.736114, RMS90=0.132301, resolution=18.7102%
+  [0.3, 0.4): entries=12637, Mean90=0.710501, RMS90=0.140586, resolution=19.8818%
+  [0.4, 0.5): entries=13290, Mean90=0.713649, RMS90=0.140949, resolution=19.9332%
+  [0.5, 0.6): entries=14702, Mean90=0.722082, RMS90=0.13461, resolution=19.0367%
+  [0.6, 0.7): entries=16075, Mean90=0.732937, RMS90=0.128989, resolution=18.2418%
+  [0.7, 0.8): entries=17668, Mean90=0.73913, RMS90=0.124152, resolution=17.5577%
+  [0.8, 0.9): entries=19270, Mean90=0.717924, RMS90=0.131014, resolution=18.5282%
+  [0.9, 0.925): entries=5073, Mean90=0.702695, RMS90=0.129751, resolution=18.3496%
+  [0.925, 0.95): entries=5227, Mean90=0.705171, RMS90=0.129637, resolution=18.3335%
+  [0.95, 0.975): entries=5497, Mean90=0.690706, RMS90=0.126541, resolution=17.8956%
+  [0.975, 1): entries=5677, Mean90=0.661971, RMS90=0.108227, resolution=15.3056%
+  theta-classified events: 149800
+
+500 GeV pandora
+jet energy resolution vs |cos(theta_q)|: sqrt(2) * RMS90(Ereco_event / Etrue_builder_event)
+  [0, 0.1): entries=11246, Mean90=0.974511, RMS90=0.0231806, resolution=3.27823%
+  [0.1, 0.2): entries=11531, Mean90=0.981044, RMS90=0.0198493, resolution=2.80712%
+  [0.2, 0.3): entries=11907, Mean90=0.982326, RMS90=0.0196708, resolution=2.78187%
+  [0.3, 0.4): entries=12637, Mean90=0.984223, RMS90=0.0190768, resolution=2.69787%
+  [0.4, 0.5): entries=13290, Mean90=0.985179, RMS90=0.0187009, resolution=2.64471%
+  [0.5, 0.6): entries=14702, Mean90=0.985416, RMS90=0.018771, resolution=2.65462%
+  [0.6, 0.7): entries=16075, Mean90=0.98315, RMS90=0.0201778, resolution=2.85357%
+  [0.7, 0.8): entries=17668, Mean90=0.985751, RMS90=0.0210255, resolution=2.97345%
+  [0.8, 0.9): entries=19270, Mean90=0.994605, RMS90=0.0191481, resolution=2.70795%
+  [0.9, 0.925): entries=5073, Mean90=0.991407, RMS90=0.0212651, resolution=3.00734%
+  [0.925, 0.95): entries=5227, Mean90=0.99001, RMS90=0.0225091, resolution=3.18327%
+  [0.95, 0.975): entries=5497, Mean90=0.9843, RMS90=0.0256341, resolution=3.62521%
+  [0.975, 1): entries=5677, Mean90=0.937806, RMS90=0.0590642, resolution=8.35294%
+  theta-classified events: 149800

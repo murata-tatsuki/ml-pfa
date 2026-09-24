@@ -5,6 +5,7 @@ from distutils.util import strtobool
 #import evaluation_noNoise as ev
 import awkward as ak
 from model import get_model, get_model_branch
+from cluster_energy import add_inference_arguments, inference_loader_kwargs, configure_inference
 from dataset import ILCDataset
 from test_yielder_edit import TestYielder
 from ROOT import TFile, TTree
@@ -299,7 +300,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
     if energy_branch:
         model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
     else:
-        model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant).to(device)
+        model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant, **inference_loader_kwargs(args)).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe,event_energy=event_energy)
     yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora, event_energy=event_energy)
@@ -330,6 +331,7 @@ def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input
 
     for tbeta in tbeta_list:
         for td in td_list:
+            configure_inference(model, tbeta=tbeta, td=td)
             tbeta_now = round(tbeta * 100)
             td_now = round(td * 100)
             # outfile = outfileDir + '/tbeta' + format(tbeta_now, '02') + '0td' + format(td_now, '02') + '0.root'
@@ -882,6 +884,7 @@ def main():
     parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
     parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
 
+    add_inference_arguments(parser)
     args = parser.parse_args()
     
     save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args=args)

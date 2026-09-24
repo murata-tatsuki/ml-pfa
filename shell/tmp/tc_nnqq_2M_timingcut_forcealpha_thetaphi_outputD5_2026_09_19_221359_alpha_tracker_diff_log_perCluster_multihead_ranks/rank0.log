@@ -1,0 +1,15 @@
+cuda:0
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M, files=20000, events~=2000000, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_new/train, files=716, events~=94400, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  2000000
+Validating dataset size:  94400
+Batch size:  128
+Loading multi-head model from checkpoint checkpoint/energy_regression/ckpts_gravnet_new02_2026_09_17_123323_outputD5_multihead/ckpt_228_1.pth.tar
+restart period :  50
+LR warm-up: 5 epochs (cyclic/restart schedule starts afterward)
+DDP scheduler setup: local_batch_size=32, local_epoch_size=500000, world_size=4
+Exception encountered: DataBatch(x=[99954, 11], y=[99954, 2], feat=[99954, 13], label=[99954, 9], hitid=[99954], mcid=[99954], batch=[99954], ptr=[33]) i: 0

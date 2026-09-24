@@ -60,6 +60,7 @@ exec env CUDA_VISIBLE_DEVICES="$gpu" python "${repo_dir}/save_root_reco_w_Cedric
   --device cuda:0 \
   --tbeta 0.9 \
   --td 0.5 \
+  --truth-clustering \
   --energy-regression-cluster \
   --event-total-energy \
   --root-chunk-events "${ROOT_CHUNK_EVENTS:-10}" \

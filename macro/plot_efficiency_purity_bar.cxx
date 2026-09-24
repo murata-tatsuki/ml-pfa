@@ -5,6 +5,8 @@
 
 using namespace std;
 
+const string save_dir = "_multi-head-alpha";
+
 void plot_efficiency_purity_bar() {
     const int nParticle = 5;
     const int nEnergy = 5;
@@ -12,23 +14,26 @@ void plot_efficiency_purity_bar() {
     const char* energyLabels[nEnergy] = {"40 GeV", "91 GeV", "200 GeV", "350 GeV", "500 GeV"};
     const double energies[nEnergy] = {40, 91, 200, 350, 500};
 
-    // // mono-head
-    // const double efficiency[nParticle][nEnergy] = {
-    //     {0.9517, 0.9459, 0.9223, 0.8852, 0.8498},  // electron
-    //     {0.8622, 0.8742, 0.8529, 0.8247, 0.7982},  // pion
-    //     {0.9514, 0.9366, 0.9095, 0.8677, 0.8291},  // photon
-    //     {0.8290, 0.7950, 0.7486, 0.7242, 0.7068},  // neutron
-    //     {0.8211, 0.7846, 0.7378, 0.7150, 0.6973}   // K0
-    // };
-    // const double purity[nParticle][nEnergy] = {
-    //     {0.8486, 0.8077, 0.7486, 0.6766, 0.6066},  // electron
-    //     {0.9798, 0.9495, 0.8948, 0.8225, 0.7515},  // pion
-    //     {0.9782, 0.9373, 0.8557, 0.7464, 0.6413},  // photon
-    //     {0.9456, 0.8709, 0.7523, 0.6352, 0.5496},  // neutron
-    //     {0.9634, 0.9009, 0.7773, 0.6483, 0.5570}   // K0
-    // };
+    /*
+    // nnqq mono-head
+    const double efficiency[nParticle][nEnergy] = {
+        {0.9517, 0.9459, 0.9223, 0.8852, 0.8498},  // electron
+        {0.8622, 0.8742, 0.8529, 0.8247, 0.7982},  // pion
+        {0.9514, 0.9366, 0.9095, 0.8677, 0.8291},  // photon
+        {0.8290, 0.7950, 0.7486, 0.7242, 0.7068},  // neutron
+        {0.8211, 0.7846, 0.7378, 0.7150, 0.6973}   // K0
+    };
+    const double purity[nParticle][nEnergy] = {
+        {0.8486, 0.8077, 0.7486, 0.6766, 0.6066},  // electron
+        {0.9798, 0.9495, 0.8948, 0.8225, 0.7515},  // pion
+        {0.9782, 0.9373, 0.8557, 0.7464, 0.6413},  // photon
+        {0.9456, 0.8709, 0.7523, 0.6352, 0.5496},  // neutron
+        {0.9634, 0.9009, 0.7773, 0.6483, 0.5570}   // K0
+    };
+    */
 
-    // multi-head
+    /*
+    // nnqq 2M multi-head
     const double efficiency[nParticle][nEnergy] = {
         {0.9637, 0.9629, 0.9518, 0.9358, 0.9213},  // electron
         {0.8572, 0.8664, 0.8543, 0.8361, 0.8205},  // pion
@@ -43,9 +48,64 @@ void plot_efficiency_purity_bar() {
         {0.9415, 0.8740, 0.7718, 0.6734, 0.6040},  // neutron
         {0.9594, 0.9062, 0.8064, 0.6987, 0.6213}   // K0
     };
+    */
 
-    // PandoraPFA results [particle][energy].
-    // Replace -1.0 with measured values; negative values are not drawn.
+    /*
+    // nnqq 2M multi-head-alpha
+    const double efficiency[nParticle][nEnergy] = {
+        {0.9622, 0.9600, 0.9465, 0.9297, 0.9151},  // electron
+        {0.8506, 0.8587, 0.8457, 0.8265, 0.8105},  // pion
+        {0.9619, 0.9500, 0.9306, 0.9090, 0.8906},  // photon
+        {0.8598, 0.8256, 0.7887, 0.7640, 0.7487},  // neutron
+        {0.8483, 0.8174, 0.7769, 0.7522, 0.7383}   // K0
+    };
+    const double purity[nParticle][nEnergy] = {
+        {0.8543, 0.8188, 0.7681, 0.7157, 0.6731},  // electron
+        {0.9786, 0.9502, 0.8981, 0.8406, 0.7931},  // pion
+        {0.9890, 0.9657, 0.9108, 0.8493, 0.7798},  // photon
+        {0.9414, 0.8747, 0.7683, 0.6717, 0.6060},  // neutron
+        {0.9591, 0.9053, 0.8050, 0.6966, 0.6234}   // K0
+    };
+    */
+
+    /*
+    // nnqq 2M multi-head-alpha
+    const double efficiency[nParticle][nEnergy] = {
+        {0.9622, 0.9600, 0.9465, 0.9297, 0.9151},  // electron
+        {0.8506, 0.8587, 0.8457, 0.8265, 0.8105},  // pion
+        {0.9619, 0.9500, 0.9306, 0.9090, 0.8906},  // photon
+        {0.8598, 0.8256, 0.7887, 0.7640, 0.7487},  // neutron
+        {0.8483, 0.8174, 0.7769, 0.7522, 0.7383}   // K0
+    };
+    const double purity[nParticle][nEnergy] = {
+        {0.8543, 0.8188, 0.7681, 0.7157, 0.6731},  // electron
+        {0.9786, 0.9502, 0.8981, 0.8406, 0.7931},  // pion
+        {0.9890, 0.9657, 0.9108, 0.8493, 0.7798},  // photon
+        {0.9414, 0.8747, 0.7683, 0.6717, 0.6060},  // neutron
+        {0.9591, 0.9053, 0.8050, 0.6966, 0.6234}   // K0
+    };
+    */
+
+
+    // nnqq 2M mono-head
+    const double efficiency[nParticle][nEnergy] = {
+        {, , , , },  // electron
+        {, , , , },  // pion
+        {, , , , },  // photon
+        {, , , , },  // neutron
+        {, , , , }   // K0
+    };
+    const double purity[nParticle][nEnergy] = {
+        {, , , , },  // electron
+        {, , , , },  // pion
+        {, , , , },  // photon
+        {, , , , },  // neutron
+        {, , , , }   // K0
+    };
+
+
+
+    // PandoraPFA results [particle][energy]. nnqq 2M
     const double pandoraEfficiency[nParticle][nEnergy] = {
         {0.9836, 0.9748, 0.9577, 0.9409, 0.9286},  // electron
         {0.8798, 0.8760, 0.8607, 0.8396, 0.8207},  // pion
@@ -200,7 +260,7 @@ void plot_efficiency_purity_bar() {
 
     c->Update();
     // c->SaveAs("efficiency_purity_bar.pdf");
-    c->SaveAs("figures/nnqq2M_fixed_uds/efficiency_purity_bar.png");
+    c->SaveAs(Form("figures/nnqq2M_fixed_uds%s/efficiency_purity_bar.png",save_dir.c_str()));
     // cout << "Saved: efficiency_purity_bar.pdf, efficiency_purity_bar.png" << endl;
     cout << "Saved: efficiency_purity_bar.png" << endl;
 }

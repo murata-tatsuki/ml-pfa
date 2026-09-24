@@ -284,6 +284,11 @@ class GravNetModelMultiHead(nn.Module):
         head_names: Optional[List[str]] = None,
         interaction_start_epoch: int = 0,
         interaction_mode: str = "concat",
+        cluster_energy_pooling: bool = False,
+        cluster_energy_source: str = "truth",
+        cluster_energy_tbeta: float = 0.7,
+        cluster_energy_td: float = 0.5,
+        cluster_energy_coordinate_start: int = 1,
     ):
         super(GravNetModelMultiHead, self).__init__()
         if n_heads < 1:
@@ -299,6 +304,11 @@ class GravNetModelMultiHead(nn.Module):
         self.dense_nord = 128
         self.interaction_start_epoch = interaction_start_epoch
         self.interaction_mode = interaction_mode
+        self.cluster_energy_pooling = cluster_energy_pooling
+        self.cluster_energy_source = cluster_energy_source
+        self.cluster_energy_tbeta = cluster_energy_tbeta
+        self.cluster_energy_td = cluster_energy_td
+        self.cluster_energy_coordinate_start = cluster_energy_coordinate_start
 
         # Keep the pre-concat trunk unchanged.
         self.batchnorm1 = nn.BatchNorm1d(self.input_dim)
@@ -327,7 +337,11 @@ class GravNetModelMultiHead(nn.Module):
             self._make_postgn_dense() for _ in range(self.n_heads)
         ])
         self.head_output = nn.ModuleList([
-            self._make_output_block(self.head_output_dims[i]) for i in range(self.n_heads)
+            self._make_output_block(
+                self.head_output_dims[i],
+                positive_output=self.head_specs[i]["kind"] == "regression",
+            )
+            for i in range(self.n_heads)
         ])
 
         # Interaction blocks from clustering head -> each auxiliary head.
@@ -335,6 +349,15 @@ class GravNetModelMultiHead(nn.Module):
         self.interaction_blocks = nn.ModuleList([
             self._make_interaction_block() for _ in range(max(0, self.n_heads - 1))
         ])
+        if self.cluster_energy_pooling:
+            from cluster_energy import ClusterEnergyHead, validate_settings
+            if n_heads < 3 or self.head_output_dims[2] != 1:
+                raise ValueError('Cluster energy pooling requires a scalar second regression head')
+            validate_settings(cluster_energy_source, cluster_energy_tbeta, cluster_energy_td)
+            self.cluster_energy_head = ClusterEnergyHead(self.dense_nord)
+            # Retain old keys for loading legacy multihead checkpoints, but do
+            # not optimize the replaced, unused per-hit output MLP.
+            self.head_output[2].requires_grad_(False)
 
     @staticmethod
     def _default_head_names(n_heads: int) -> List[str]:
@@ -388,14 +411,17 @@ class GravNetModelMultiHead(nn.Module):
         return nn.Sequential(*postgn_dense_modules)
 
     @staticmethod
-    def _make_output_block(out_dim: int) -> nn.Sequential:
-        return nn.Sequential(
+    def _make_output_block(out_dim: int, positive_output: bool = False) -> nn.Sequential:
+        layers = [
             nn.Linear(128, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, out_dim),
-        )
+        ]
+        if positive_output:
+            layers.append(nn.Softplus())
+        return nn.Sequential(*layers)
 
     def _make_interaction_block(self) -> nn.ModuleDict:
         block = nn.ModuleDict()
@@ -450,8 +476,11 @@ class GravNetModelMultiHead(nn.Module):
         batch: Tensor,
         epoch: Union[int, None] = None,
         return_dict: bool = True,
+        truth_cluster_index: Optional[Tensor] = None,
+        detected_energy: Optional[Tensor] = None,
     ):
         device = x.device
+        raw_x = x
 
         # Unchanged trunk before concatenating block outputs.
         x = self.batchnorm1(x)
@@ -472,9 +501,21 @@ class GravNetModelMultiHead(nn.Module):
         interaction_active = self._is_interaction_active(epoch)
 
         outputs = []
+        pooled_energy = None
         for i, feat in enumerate(head_features):
             feat = self._apply_interaction(i, feat, clustering_feature, interaction_active)
-            out = self.head_output[i](feat)
+            if self.cluster_energy_pooling and i == 2:
+                from cluster_energy import cluster_membership
+                track_mask = raw_x[:, 4] > 0.5
+                assignments = cluster_membership(
+                    outputs[0], batch, track_mask, self.cluster_energy_source,
+                    truth_ids=truth_cluster_index, tbeta=self.cluster_energy_tbeta,
+                    td=self.cluster_energy_td, coordinate_start=self.cluster_energy_coordinate_start)
+                pooled_energy = self.cluster_energy_head(
+                    feat, batch, assignments, track_mask, detected_energy)
+                out = pooled_energy['hit_energy'].unsqueeze(-1)
+            else:
+                out = self.head_output[i](feat)
             outputs.append(out)
 
         if not return_dict:
@@ -486,7 +527,7 @@ class GravNetModelMultiHead(nn.Module):
             spec["name"]: out for spec, out in zip(self.head_specs, outputs)
         }
 
-        return {
+        result = {
             "clustering": outputs[0],
             "regressions": outputs[1:],
             "all_heads": outputs,
@@ -495,6 +536,9 @@ class GravNetModelMultiHead(nn.Module):
             "heads_by_name": heads_by_name,
             "interaction_active": interaction_active,
         }
+        if pooled_energy is not None:
+            result['cluster_energy'] = pooled_energy
+        return result
 
 
 class NoiseFilterModel(nn.Module):

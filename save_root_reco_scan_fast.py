@@ -50,6 +50,7 @@ import save_root_reco_w_Cedric as _legacy  # noqa: E402
 from dataset import ILCDataset  # noqa: E402
 from matching import make_matches  # noqa: E402
 from model import get_model, get_model_branch  # noqa: E402
+from cluster_energy import add_inference_arguments, inference_loader_kwargs, pooling_model  # noqa: E402
 from test_yielder_edit import TestYielder  # noqa: E402
 
 
@@ -624,7 +625,13 @@ def _build_prediction_cache(args) -> Tuple[Tuple, bool]:
             energy_regression_cluster=args.energy_regression_cluster,
             energy_regression_weight=args.energy_regression_weight,
             model_variant=args.model_variant,
+            **inference_loader_kwargs(args),
         ).to(device)
+
+    if pooling_model(model) is not None and args.beta_d_scan:
+        raise ValueError('A pooled energy head depends on clustering thresholds and cannot use '
+                         'the one-inference threshold-scan cache. Use '
+                         'save_root_reco_w_Cedric_fast.py --beta-d-scan instead.')
 
     print(
         f"Loading data from {args.datapath} with "
@@ -712,6 +719,7 @@ def _parse_args(argv=None):
         default=int(os.environ.get("FAST_SCAN_WORKERS", "4")),
         help="CPU processes for independent beta groups (default: 4)",
     )
+    add_inference_arguments(parser)
     args = parser.parse_args(argv)
     if args.scan_workers < 1:
         parser.error("--scan-workers must be at least 1")

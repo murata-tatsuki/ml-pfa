@@ -19,10 +19,11 @@
 
 using namespace std;
 
-const int qq_energy = 500;
+const int qq_energy = 350;
 const double c_event_clean_threshold = 0.1;
-const bool use_truth_clustering = true;
-const bool use_pandora = true;
+const bool use_truth_clustering = false;
+const bool use_pandora = false;
+const string train_model = "pretrained";          // multi-head-alpha multi-head mono-head pretrained
 
 
 const double reco_truth_energy_min =
@@ -312,8 +313,9 @@ TH1F* makeEventEnergyRatioHistogram(const string& clustering_directory, const st
             if(exist_file(qq_energy, qqNames[qq], i)) continue;
             const string input_path = Form(
                 "../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/"
-                "tbeta_td_scan/qmin02_lr5e-4/%dGeV/multi-head/%s/%s_%03d.root",
+                "tbeta_td_scan/qmin02_lr5e-4/%dGeV/%s/%s/%s_%03d.root",
                 qq_energy,
+                train_model.c_str(),
                 clustering_directory.c_str(),
                 qqNames[qq].c_str(),
                 i
@@ -460,7 +462,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
     int entry_max[rawfilenum];
     int total_entry_max=0;
     string path_to_file = use_pandora ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco");
-    string picDirectory = Form("figures/nnqq2M_fixed_uds/%dGeV/%s",qq_energy, path_to_file.c_str());
+    string picDirectory = Form("figures/nnqq2M_fixed_uds_%s/%dGeV/%s",train_model.c_str(),qq_energy, path_to_file.c_str());
 
     if(rawfilenum == 1) fileNames_raw[0] = Form("%s",fileName.c_str());
     else {
@@ -470,7 +472,7 @@ void efficiency_purity_check_reco_effpur_contiribution(){
                 const string input_clustering_directory = use_pandora ? "../pandora" : (use_truth_clustering ? "truth_clustering" : "tbeta090td050");
                 // fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/%s/%s_%03d.root", qq_energy, path_to_file.c_str(), qqNames[qq].c_str(), i);
                 // fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_fixed_uds/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/perh5file/%s_%03d.root", qq_energy, qqNames[qq].c_str(), i);
-                fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/multi-head/%s/%s_%03d.root", qq_energy, input_clustering_directory.c_str(), qqNames[qq].c_str(), i);
+                fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/%s/%s/%s_%03d.root", qq_energy,train_model.c_str(), input_clustering_directory.c_str(), qqNames[qq].c_str(), i);
                 fileNames_raw[irawfilenum] = Form("%s",fileNames[qq][i].c_str());
                 irawfilenum++;
             }

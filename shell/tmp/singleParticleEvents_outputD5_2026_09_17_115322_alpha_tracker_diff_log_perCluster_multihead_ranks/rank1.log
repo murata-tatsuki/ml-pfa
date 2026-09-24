@@ -1,0 +1,40 @@
+cuda:1
+thetaphi at main: True
+Loading dataset...
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/train, files=401, events~=400120, shuffle_buffer=256, files_per_chunk=32
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles/validation, files=49, events~=48895, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  400120
+Validating dataset size:  48895
+Batch size:  512
+Loading GravNetModelMultiHead (heads=3, reg_heads=2, interaction=none)
+restart period :  30
+Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x7bf3590a8280>
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1443, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 40, in wait
+    if not wait([self.sentinel], timeout):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt: 
+Process SpawnProcess-2:
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 318, in _bootstrap
+    util._exit_function()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/util.py", line 357, in _exit_function
+    p.join()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 43, in wait
+    return self.poll(os.WNOHANG if timeout == 0.0 else 0)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 27, in poll
+    pid, sts = os.waitpid(self.pid, flag)
+KeyboardInterrupt

@@ -14,6 +14,7 @@ from distutils.util import strtobool
 #import evaluation_noNoise as ev
 import awkward as ak
 from model import get_model, get_model_branch
+from cluster_energy import add_inference_arguments, inference_loader_kwargs, configure_inference
 from dataset import ILCDataset
 from test_yielder_edit import TestYielder
 import ROOT
@@ -1196,7 +1197,7 @@ def save_root(
             if energy_branch:
                 model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
             else:
-                model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant).to(device)
+                model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant, **inference_loader_kwargs(args)).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
     dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe,event_energy=event_energy)
     yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora, event_energy=event_energy)
@@ -1227,6 +1228,7 @@ def save_root(
 
     for tbeta in tbeta_list:
         for td in td_list:
+            configure_inference(model, tbeta=tbeta, td=td)
             tbeta_now = round(tbeta * 100)
             td_now = round(td * 100)
             # outfile = outfileDir + '/tbeta' + format(tbeta_now, '02') + '0td' + format(td_now, '02') + '0.root'
@@ -1806,6 +1808,7 @@ def main():
         ),
     )
 
+    add_inference_arguments(parser)
     args = parser.parse_args()
     timing_cut = bool(strtobool(args.timingCut))
 

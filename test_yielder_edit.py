@@ -3,6 +3,7 @@ import torch
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import Batch
 from model import get_model
+from cluster_energy import inference_forward, configure_inference, pooling_model
 #from dataset import get_dataset
 from event import Event
 from prediction import Prediction
@@ -37,7 +38,7 @@ class TestYielder:
 
             if self.device=='cpu':
                 data.to(self.device)
-                out_gravnet = self.model(data.x, data.batch).to(self.device) if not self.pandora else None
+                out_gravnet = inference_forward(self.model, data).to(self.device) if not self.pandora else None
                 yield i, data, out_gravnet
             else:
                 for event_number, event_data, event_out_gravnet in self.iter_event(i, data):
@@ -46,7 +47,7 @@ class TestYielder:
 
     def iter_event(self, i, data):
         data.to(self.device)
-        out_gravnet = self.model(data.x, data.batch).to(self.device) if not self.pandora else None
+        out_gravnet = inference_forward(self.model, data).to(self.device) if not self.pandora else None
         # data.to('cpu')
         # out_gravnet.to('cpu')
         data_list = data.to_data_list()
@@ -162,6 +163,9 @@ class TestYielder:
                 yield event, prediction
 
     def iter_clustering(self, tbeta=0.7, td=0.5, nmax=None, energyRegression=False, energyRegressionCluster=False, clustering_td_momentum=False, energyRegressionWeight=False):
+        if pooling_model(self.model) is not None and clustering_td_momentum:
+            raise ValueError('Cluster energy pooling requires the standard beta/coordinate clustering')
+        configure_inference(self.model, tbeta=tbeta, td=td)
         for event, prediction in self.iter_pred(nmax, energyRegression, energyRegressionCluster, energyRegressionWeight):
             if not self.pandora:
                 clustering, condensation_points = cluster(event, prediction, tbeta, td, clustering_td_momentum)
@@ -305,7 +309,7 @@ class TestYielderWithMLClustering(TestYielder):
 
     def get_gnn_output(self, batched_data, use_charged_cluster_loss=False, energy_regression=True, energy_regression_cluster=True):
         with torch.no_grad():
-            gnn_outputs: torch.Tensor = self.model(batched_data.x, batched_data.batch).to(self.device)
+            gnn_outputs: torch.Tensor = inference_forward(self.model, batched_data).to(self.device)
             
             pred_betas = torch.sigmoid(gnn_outputs[:,0])
             if energy_regression:
