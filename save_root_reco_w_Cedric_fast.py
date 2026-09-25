@@ -1812,6 +1812,16 @@ def main():
     args = parser.parse_args()
     timing_cut = bool(strtobool(args.timingCut))
 
+    # The old hit-derived Pandora path cannot evaluate the extended schema.
+    # Refuse before resume checks, so an old ROOT is never accepted as the new result.
+    for input_path in (_resolve_multi_h5(args.datapath) if args.multi_h5 else
+                       ([args.datapath] if args.datapath.endswith('.h5') else
+                        sorted(glob.glob(os.path.join(args.datapath, '*.h5'))))):
+        with h5py.File(input_path, 'r') as input_file:
+            if input_file.attrs.get('schema_version') == 'pandora-eval-1':
+                parser.error('pandora-eval-1 requires save_root_pandora_eval.py; '
+                             'see PANDORA_EVAL_ANALYSIS.md for the new command and copied macro')
+
     if args.beta_d_scan:
         if args.multi_h5:
             parser.error(

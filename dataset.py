@@ -231,13 +231,20 @@ class ILCDataset(Dataset):
         return visible_energy.copy(), parton_p4.copy()
 
     @staticmethod
-    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds):
+    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds, row_info=None):
         """
         Build a PyG Data object from numpy hit arrays. Shared by ILCDataset.get and ILCDatasetSharded.
         ds must expose: thetaphi, momentum, momentumAmp, max_momentum, mctpe, test_mode,
         pandora, event_energy, noise_index, and shaper_tanh(self,x,a,b,c,d).
         pand / eventE / jetE may be None when unused.
+        row_info enables extended-H5 input selection independent of MC labels;
+        input_row and integer IDs follow the same mask/permutation as x.
         """
+        if row_info is not None:
+            if ds.mctpe:
+                raise ValueError('Pandora comparison inputs must not use MC track momentum (--mctpe)')
+            if len(row_info) != len(feat) or len(label) != len(feat):
+                raise ValueError('Pandora evaluation input/label/row_info lengths differ')
         x = feat[:, np.r_[0:4, 5:6]]
         y = label[:, 1]
         momenta = feat[:, 7:10] / ds.max_momentum
@@ -278,20 +285,25 @@ class ILCDataset(Dataset):
         x[:, 3] = x[:, 3] / 2000
 
         mcids = label[:, 1]
-        x = x[mcids != -1, :]
-        y = y[mcids != -1]
+        # Truth availability never selects extended-H5 inference inputs.
+        keep = mcids != -1 if row_info is None else (row_info[:, 6] > 0) & np.isfinite(x).all(axis=1)
+        input_rows = np.flatnonzero(keep)
+        x = x[keep, :]
+        y = y[keep]
         if ds.pandora:
-            pand = pand[mcids != -1, :]
-        feat = feat[mcids != -1, :]
-        label = label[mcids != -1, :]
+            pand = pand[keep, :]
+        feat = feat[keep, :]
+        label = label[keep, :]
+        if row_info is not None:
+            row_info = row_info[keep]
 
-        cluster_index = incremental_cluster_index_np(y.squeeze(), noise_index=ds.noise_index)
+        cluster_index = incremental_cluster_index_np(y.reshape(-1), noise_index=ds.noise_index)
         if np.all(cluster_index == 0):
             print("WARNING: No objects in event", event_index)
 
         order = cluster_index.argsort()
         yclus = cluster_index
-        ytrk = np.where(label[:, 0] < 0, 1, 0)
+        ytrk = np.where(label[:, 0] < 0, 1, 0) if row_info is None else row_info[:, 0].astype(np.int64)
         y = np.stack((yclus, ytrk), axis=1)
 
         if not ds.test_mode:
@@ -306,7 +318,7 @@ class ILCDataset(Dataset):
         # bookkeeping (for example when writing ROOT trees).
         label_ordered = label[order]
         hitid = torch.from_numpy(
-            checked_int64_ids(label_ordered[:, 0], "hit ID")
+            checked_int64_ids(label_ordered[:, 0] if row_info is None else row_info[order, 9], "hit ID")
         ).long().cpu()
         mcid = torch.from_numpy(
             checked_int64_ids(label_ordered[:, 1], "MC ID")
@@ -319,6 +331,12 @@ class ILCDataset(Dataset):
             hitid=hitid,
             mcid=mcid,
         )
+        if row_info is not None:
+            data_kwargs.update(
+                input_row=torch.from_numpy(input_rows[order]).long(),
+                row_info=torch.from_numpy(row_info[order].copy()).double(),
+                truth_valid=torch.from_numpy(row_info[order, 5] > 0),
+            )
         if ds.pandora:
             pand_ordered = np.asarray(pand[order])
             pandora_cluster_id = checked_int64_ids(
