@@ -1,5 +1,8 @@
 # Cluster 単位の calorimeter energy regression（option 3）
 
+新形式H5でgapを除外し、truth未対応入力を保持して学習する場合は
+[EXTENDED_H5_TRAINING.md](EXTENDED_H5_TRAINING.md) を参照してください。
+
 `--cluster-energy-pooling` を付けた multi-head model だけで有効になります。
 付けない場合、既存の network・loss・checkpoint の経路を使用します。
 track energy head とその loss の構成は維持します。

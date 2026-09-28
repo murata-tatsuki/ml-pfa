@@ -286,7 +286,15 @@ class ILCDataset(Dataset):
 
         mcids = label[:, 1]
         # Truth availability never selects extended-H5 inference inputs.
-        keep = mcids != -1 if row_info is None else (row_info[:, 6] > 0) & np.isfinite(x).all(axis=1)
+        if row_info is None:
+            keep = mcids != -1
+        else:
+            # Check both raw values (before tanh could hide Inf) and the actual
+            # float32 tensors passed to the model/loss. Truth never selects input.
+            with np.errstate(over='ignore', invalid='ignore'):
+                keep = ((row_info[:, 6] > 0) & np.isfinite(feat).all(axis=1)
+                        & np.isfinite(feat.astype(np.float32)).all(axis=1)
+                        & np.isfinite(x.astype(np.float32)).all(axis=1))
         input_rows = np.flatnonzero(keep)
         x = x[keep, :]
         y = y[keep]

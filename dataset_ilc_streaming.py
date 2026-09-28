@@ -49,6 +49,8 @@ class ILCStreamingDataset(IterableDataset):
         ddp_world_size=None,
         _files=None,
         _event_counts=None,
+        extended_h5_input=False,
+        exclude_gap_hits=False,
     ):
         super().__init__()
         self.root = path
@@ -65,6 +67,11 @@ class ILCStreamingDataset(IterableDataset):
         self.max_momentum = 3.0 if momentum else 1.0
         self.mctpe = mctpe
         self.timingCut = timingCut
+        self.extended_h5_input = extended_h5_input
+        self.exclude_gap_hits = exclude_gap_hits
+        from extended_h5 import validate_dataset_options
+        validate_dataset_options(extended_h5_input, exclude_gap_hits, timingCut,
+                                 mctpe, pandora, test_mode)
         self.seed = int(seed)
         self.epoch = 0
         self.shuffle = bool(shuffle)
@@ -123,6 +130,8 @@ class ILCStreamingDataset(IterableDataset):
             pad_to_equal_workers=self.pad_to_equal_workers,
             ddp_rank=self.ddp_rank,
             ddp_world_size=self.ddp_world_size,
+            extended_h5_input=self.extended_h5_input,
+            exclude_gap_hits=self.exclude_gap_hits,
         )
 
         print(
@@ -250,6 +259,9 @@ class ILCStreamingDataset(IterableDataset):
             yield file_indices[start : start + self.files_per_chunk]
 
     def _iter_file_events(self, file_indices: Iterable[int], rng):
+        if self.extended_h5_input:
+            yield from self._iter_extended_file_events(file_indices, rng)
+            return
         for chunk_file_indices in self._chunked_file_indices(file_indices):
             feat_chunks = []
             label_chunks = []
@@ -316,6 +328,20 @@ class ILCStreamingDataset(IterableDataset):
                 yield ILCDataset.featurize_from_numpy(
                     feat, label, pand, eventE, jetE, f"{path}:{local_i}", self
                 )
+
+    def _iter_extended_file_events(self, file_indices, rng):
+        from extended_h5 import read_training_bundle, training_event
+        for chunk in self._chunked_file_indices(file_indices):
+            bundles = [(self.files[i], read_training_bundle(self.files[i])) for i in chunk]
+            events = [(i, j) for i, (_, b) in enumerate(bundles) for j in range(len(b['feature']))]
+            if self.shuffle:
+                rng.shuffle(events)
+            for file_i, local_i in events:
+                path, bundle = bundles[file_i]
+                data = training_event(bundle, local_i, self, f'{path}:{local_i}')
+                if len(data.x):
+                    yield data
+            del bundles
 
     def _yield_with_buffer(self, stream, rng):
         if self.shuffle_buffer_size <= 1 or not self.shuffle:

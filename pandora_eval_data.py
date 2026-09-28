@@ -11,6 +11,7 @@ import awkward as ak
 import h5py
 import numpy as np
 from dataset import ILCDataset, checked_int64_ids
+from extended_h5 import ECAL_GAP_COLLECTIONS, gap_mask
 
 WIDTHS = dict(feature=13, label=9, pandora=18, row_info=11, pfo=9,
               pfo_links=5, truth_particles=7, cluster=2, event=10, event_eval=23)
@@ -121,12 +122,9 @@ def iter_events(pattern, start=0, stop=-1):
             seen.add(key)
             yield event
 
-ECAL_GAP_COLLECTIONS = frozenset(('EcalBarrelCollectionGapHits', 'EcalEndcapsCollectionGapHits'))
-
 def gap_hit_mask(event):
     """Identify gap calorimeter hits by collection, independently of MC truth."""
-    ids = [i for i, name in enumerate(event['collections']) if name in ECAL_GAP_COLLECTIONS]
-    return (event['row_info'][:, 0] == 0) & np.isin(event['row_info'][:, 1], ids)
+    return gap_mask(event['row_info'], event['collections'])
 
 def model_data(event, input_dim=7, momentum=True, momentum_amp=True, exclude_gap_hits=False):
     if input_dim not in (5, 7):

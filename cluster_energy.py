@@ -107,7 +107,7 @@ class ClusterEnergyHead(nn.Module):
 
 @torch.no_grad()
 def deposited_energy_targets(pooled, truth_ids, truth_energy, detected_energy,
-                             batch, track_mask):
+                             batch, track_mask, truth_valid=None):
     """Allocate each truth energy by its deposited-energy fractions.
 
 The denominator includes ALL calorimeter hits of the truth particle, including
@@ -116,9 +116,10 @@ Noise contributes zero. A zero-deposit truth particle uses equal hit fractions.
 """
     truth_energy = truth_energy.detach().float()
     energy = detected_energy.detach().float().clamp_min(0)
-    if not torch.isfinite(truth_energy).all() or not torch.isfinite(energy).all():
+    known = truth_ids > 0 if truth_valid is None else truth_valid.bool() & (truth_ids > 0)
+    if not torch.isfinite(truth_energy[known]).all() or not torch.isfinite(energy).all():
         raise ValueError('Non-finite energy in pooled regression target')
-    signal = (~track_mask.bool()) & (truth_ids > 0)
+    signal = (~track_mask.bool()) & known
     _, truth_index = torch.unique(torch.stack((batch[signal], truth_ids[signal]), dim=1),
                                   dim=0, return_inverse=True)
     n_truth = int(truth_index.max().item()) + 1 if truth_index.numel() else 0
@@ -135,13 +136,24 @@ Noise contributes zero. A zero-deposit truth particle uses equal hit fractions.
                        dim_size=pooled['energy'].numel())
 
 
+def pooled_supervision_mask(pooled, truth_valid=None):
+    """A cluster containing any unlabelled calo hit has no complete energy target."""
+    if truth_valid is None:
+        return torch.ones_like(pooled['energy'], dtype=torch.bool)
+    selected = pooled['selected']
+    unknown_count = scatter_add((~truth_valid[selected].bool()).long(),
+        pooled['hit_cluster_index'][selected], dim_size=pooled['energy'].numel())
+    return unknown_count == 0
+
+
 def pooled_energy_loss(pooled, truth_ids, truth_energy, detected_energy, batch,
-                       track_mask, loss_name, epsilon=1e-3):
+                       track_mask, loss_name, epsilon=1e-3, truth_valid=None):
     if loss_name not in POOLED_LOSSES:
         raise ValueError(f'Pooled energy supports {POOLED_LOSSES}; got {loss_name}')
-    predicted = pooled['energy'].float()
+    valid = pooled_supervision_mask(pooled, truth_valid)
+    predicted = pooled['energy'][valid].float()
     target = deposited_energy_targets(pooled, truth_ids, truth_energy, detected_energy,
-                                      batch, track_mask)
+                                      batch, track_mask, truth_valid)[valid]
     if loss_name == 'sum':
         # Preserve calc_L_E's existing LE_cluster_coef for the 'sum' mode.
         loss = 5 * (predicted - target).square()
@@ -152,8 +164,8 @@ def pooled_energy_loss(pooled, truth_ids, truth_energy, detected_energy, batch,
         loss = scale_invariant_energy_loss(predicted, target, loss_name, epsilon)
     batch_size = int(batch.max().item()) + 1 if batch.numel() else 1
     if loss_name in ('sum_log_perCluster', 'log_ratio_mse', 'log_scaled_relative'):
-        counts = scatter_add(loss.new_ones(loss.shape), pooled['cluster_batch'], dim_size=batch_size)
-        by_event = scatter_add(loss, pooled['cluster_batch'], dim_size=batch_size)
+        counts = scatter_add(loss.new_ones(loss.shape), pooled['cluster_batch'][valid], dim_size=batch_size)
+        by_event = scatter_add(loss, pooled['cluster_batch'][valid], dim_size=batch_size)
         return (by_event / counts.clamp_min(1)).sum() / batch_size
     return loss.sum() / batch_size
 
@@ -199,7 +211,8 @@ def replace_calo_loss(legacy_energy_loss, components, pooled, data, args, coeffi
     truth_energy = data.label[:, 4:8].float().square().sum(dim=1).sqrt()
     calo_loss = pooled_energy_loss(
         pooled, data.y[:, 0], truth_energy, data.feat[:, 0], data.batch,
-        data.x[:, 4] > 0.5, args.LE_cluster, args.epsilon) * coefficient
+        data.x[:, 4] > 0.5, args.LE_cluster, args.epsilon,
+        truth_valid=getattr(data, 'truth_valid', None)) * coefficient
     result = legacy_energy_loss + calo_loss
     components = dict(components)
     components['L_E_cluster'] = calo_loss.detach()
@@ -213,9 +226,13 @@ def pooling_model(model):
     return model if getattr(model, 'cluster_energy_pooling', False) else None
 
 
-def checkpoint_payload(model, epoch=None):
+def checkpoint_payload(model, epoch=None, args=None):
     raw = model.module if hasattr(model, 'module') else model
     result = dict(model=raw.state_dict())
+    if args is not None and getattr(args, 'extended_h5_input', False):
+        result['training_input_config'] = dict(schema='pandora-eval-1',
+            exclude_gap_hits=args.exclude_gap_hits, unknown_truth='input_only',
+            unknown_calo_cluster_loss='skip_incomplete_cluster')
     pooled = pooling_model(raw)
     if pooled is not None:
         result['cluster_energy_config'] = dict(version=1, source=pooled.cluster_energy_source,

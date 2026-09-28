@@ -21,6 +21,9 @@ from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseF
 from dataset import ILCDataset
 from dataset_ilc_sharded import ILCDatasetSharded
 from dataset_ilc_streaming import ILCStreamingDataset
+from extended_h5 import (add_training_arguments as add_extended_arguments,
+                         validate_training_arguments as validate_extended_arguments)
+from supervised_loss import calc_supervised_loss
 from cluster_energy import (add_training_arguments, validate_training_arguments,
                             training_forward, checkpoint_payload, replace_calo_loss)
 
@@ -35,6 +38,10 @@ def make_ilc_dataset(args, inputdir):
         momentumAmp=args.momentum_amp,
         mctpe=args.mctpe,
     )
+    if getattr(args, "extended_h5_input", False):
+        common.update(extended_h5_input=True, exclude_gap_hits=args.exclude_gap_hits)
+        print(f"Extended H5: retain valid unknown-truth inputs; supervised loss is masked; "
+              f"exclude_gap_hits={args.exclude_gap_hits}")
     if getattr(args, "ilc_streaming", False):
         print(
             "Using ILCStreamingDataset "
@@ -51,7 +58,7 @@ def make_ilc_dataset(args, inputdir):
             files_per_chunk=getattr(args, "stream_files_per_chunk", 1),
             pad_to_equal_workers=True,
         )
-    if getattr(args, "ilc_sharded", False):
+    if getattr(args, "ilc_sharded", False) or getattr(args, "extended_h5_input", False):
         print(
             "Using ILCDatasetSharded (per-file load, no concatenate). "
             f"file_cache_size={getattr(args, 'ilc_file_cache', 2)}"
@@ -243,6 +250,7 @@ def ddp_scheduler_epoch_size(dataset, loader, sampler, args, rank, world_size):
 
 def run_requirements(args):
     validate_training_arguments(args)
+    validate_extended_arguments(args)
     if args.epsilon <= 0:
         raise ValueError("--epsilon must be greater than zero")
     if (args.no_split and args.inputdir_validate is None):
@@ -355,10 +363,16 @@ def collect_pretraining_responses(out, regression_heads, data, args):
         return None
 
     is_signal = data.y[:, 0].long() != 0
+    truth_valid = getattr(data, 'truth_valid', None)
+    if truth_valid is not None:
+        is_signal = is_signal & truth_valid
     if not torch.any(is_signal):
         return None
+    signal_batch = data.batch[is_signal]
+    if truth_valid is not None:
+        _, signal_batch = torch.unique(signal_batch, sorted=True, return_inverse=True)
     object_index, _ = oc.batch_cluster_indices(
-        data.y[is_signal, 0].long() - 1, data.batch[is_signal]
+        data.y[is_signal, 0].long() - 1, signal_batch
     )
     n_objects = int(object_index.max().item()) + 1
     beta_signal = torch.sigmoid(out[:, 0])[is_signal]
@@ -859,7 +873,7 @@ def run_ddp_training(rank, world_size, args):
         mcpdg = data.label[:,2]
         mccharge = data.label[:,3]
 
-        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
+        LV, Lbeta, LE, LE_charge, out_oc = calc_supervised_loss(
             pred_betas,
             pred_cluster_space_coords,
             pred_charge_track_likeness,
@@ -891,6 +905,7 @@ def run_ddp_training(rank, world_size, args):
             weight_muon = weight_muon,
             weight_electron = weight_electron,
             epsilon = args.epsilon,
+            truth_valid=getattr(data, 'truth_valid', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         
@@ -1135,7 +1150,7 @@ def run_ddp_training(rank, world_size, args):
             os.makedirs(ckpt_dir, exist_ok=True)
             # m = torch.jit.script(model)
             #torch.jit.save(m,ckpt)
-            torch.save(checkpoint_payload(model, epoch=checkpoint_number), ckpt)
+            torch.save(checkpoint_payload(model, epoch=checkpoint_number, args=args), ckpt)
 
     min_loss = 1e9
     train_loss_history=[]
@@ -1194,6 +1209,7 @@ def main():
     #print("Parsing arguments")
     parser = argparse.ArgumentParser()
     add_training_arguments(parser)
+    add_extended_arguments(parser)
     parser.add_argument('-d', '--dry', action='store_true', help='Turn off checkpoint saving and run limited number of events')
     parser.add_argument('-v', '--verbose', action='store_true', help='Print more output')
     parser.add_argument('--settings-Sep01', action='store_true', help='Use 21Sep01 settings')
@@ -1274,6 +1290,7 @@ def main():
 
     args = parser.parse_args()
     validate_training_arguments(args)
+    validate_extended_arguments(args)
     if args.epsilon <= 0:
         parser.error('--epsilon must be greater than zero')
     if args.lr_warmup and args.lr_warmup_epochs <= 0:
@@ -1606,7 +1623,7 @@ def main():
         mcpdg = data.label[:,2]
         mccharge = data.label[:,3]
 
-        LV, Lbeta, LE, LE_charge, out_oc = oc.calc_LV_Lbeta(
+        LV, Lbeta, LE, LE_charge, out_oc = calc_supervised_loss(
             pred_betas,
             pred_cluster_space_coords,
             pred_charge_track_likeness,
@@ -1638,6 +1655,7 @@ def main():
             weight_muon = weight_muon,
             weight_electron = weight_electron,
             epsilon = args.epsilon,
+            truth_valid=getattr(data, 'truth_valid', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         
@@ -1911,7 +1929,7 @@ def main():
             os.makedirs(ckpt_dir, exist_ok=True)
             # m = torch.jit.script(model)
             #torch.jit.save(m,ckpt)
-            torch.save(checkpoint_payload(model, epoch=checkpoint_number), ckpt)
+            torch.save(checkpoint_payload(model, epoch=checkpoint_number, args=args), ckpt)
 
     min_loss = 1e9
     train_loss_history=[]

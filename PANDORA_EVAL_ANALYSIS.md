@@ -183,3 +183,39 @@ model.pyとgravnet_model.pyのhashも記録する。
 
 前回のpretrainedをcurrent定義で実行した結果も、物理性能の判断に使う前に、
 そのcheckpointの学習時の出力定義との互換性を確認する必要がある。
+
+
+## Gap hit除外での全エネルギー評価（2026-09-25）
+
+`--exclude-gap-hits`を指定すると、`EcalBarrelCollectionGapHits` と
+`EcalEndcapsCollectionGapHits` のcalorimeter行だけを、特徴量生成・forward前に除く。
+MC対応の有無では選別しない。他の追加hit・trackは残し、PFOのエネルギーは変更しない。
+`input_row` は除外・前処理後も元H5の行番号に戻す。H5自体を編集しない。
+`n_excluded_gap_hits` と `n_invalid_inputs` は重複しない。両者と `n_model_inputs` の和は
+`n_inputs` に一致し、`n_model_hits + n_model_tracks == n_model_inputs` になる。
+`truth_complete` は従来どおり全保存入力に対する定義で、除外後のtruth coverageを意味しない。
+
+`--detail clusters` は `eval_events`・`PfoAnalysisTree`・`eval_clusters` を保存し、
+per-hit/PFO-link/truth-particle/efficiency-purity表は空にする。全量jet energy比較用であり、
+この出力でeff/purを評価したとは解釈しない。`--detail events` はクラスタ表も省略する。
+従来の詳細出力は既定の `--detail full` で維持する。
+比較設定にgap除外とdetailを含め、異なる入力方針のROOTを混ぜない。
+
+全量実行・再開:
+
+```bash
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+python -B /data/suehara/mldata/pfa/murata/pandora_eval/nogap_all_epoch27/run_bepp_all.py --workers 12
+```
+
+3,595 H5の一覧をKEKのLCIO処理一覧と照合し、全749,200イベントを処理する。
+GPU 0/1を使い、TF32を無効化。epoch27のlinear回帰・tbeta=.9・td=.5・alpha energyを固定する。
+既存の正常出力は再検証して再利用できる。入力stat・コード/checkpoint hashが変われば停止する。
+ファイルごとのエラーはauditに残し、1ファイルでも未完了なら全量比較図を出さない。
+全量成功後、compare_all.pyが中央/前方/角度別のPandora・GNN・IDR比較をPNG/PDF/ROOT/CSVに保存する。
+IDR比較は角度最終binを0.97–0.98とし、ニュートリノ補正なしを主結果、補正ありを別結果にする。
+Pandora側の全150分布はKEKのLCIO結果とbin単位で一致することを検証する。
+
+CPU/GPUでは浮動小数点・近傍探索の差によりクラスタリング境界が変わり得るので、
+gap除外効果の200イベント試験では同じGPU経路でgap有無を比較する。
+全量GNNはGPU経路に統一し、過去のCPU小標本の数値をそのまま差し引かない。

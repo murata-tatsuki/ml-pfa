@@ -44,6 +44,8 @@ class ILCDatasetSharded(Dataset):
         event_energy=False,
         file_cache_size=2,
         _entries=None,
+        extended_h5_input=False,
+        exclude_gap_hits=False,
     ):
         super().__init__(path)
         self.flip = flip
@@ -58,6 +60,11 @@ class ILCDatasetSharded(Dataset):
         self.momentumAmp = momentumAmp
         self.max_momentum = 3.0 if momentum else 1.0
         self.mctpe = mctpe
+        self.extended_h5_input = extended_h5_input
+        self.exclude_gap_hits = exclude_gap_hits
+        from extended_h5 import validate_dataset_options
+        validate_dataset_options(extended_h5_input, exclude_gap_hits, timingCut,
+                                 mctpe, pandora, test_mode)
         self.file_cache_size = max(1, int(file_cache_size))
         self._cache: OrderedDict[str, tuple] = OrderedDict()
 
@@ -71,6 +78,14 @@ class ILCDatasetSharded(Dataset):
             print(f"ILCDatasetSharded: {path=} ({len(filenames)} files)")
             entries = []
             for fp in filenames:
+                if self.extended_h5_input:
+                    from extended_h5 import read_training_bundle, training_event
+                    bundle = read_training_bundle(fp)
+                    for local_i in range(len(bundle['feature'])):
+                        data = training_event(bundle, local_i, self, f'{fp}:{local_i}')
+                        if len(data.x):
+                            entries.append((fp, local_i))
+                    continue
                 bundle = la.load_awkward2(fp)
                 feat, label = bundle[0], bundle[1]
                 if timingCut:
@@ -104,6 +119,8 @@ class ILCDatasetSharded(Dataset):
             mctpe=self.mctpe,
             event_energy=self.event_energy,
             file_cache_size=self.file_cache_size,
+            extended_h5_input=self.extended_h5_input,
+            exclude_gap_hits=self.exclude_gap_hits,
         )
 
     def shaper_tanh(self, x, a=1.0, b=1.0, c=0.0, d=0.0):
@@ -113,7 +130,11 @@ class ILCDatasetSharded(Dataset):
         if path in self._cache:
             self._cache.move_to_end(path)
             return self._cache[path]
-        self._cache[path] = la.load_awkward2(path)
+        if self.extended_h5_input:
+            from extended_h5 import read_training_bundle
+            self._cache[path] = read_training_bundle(path)
+        else:
+            self._cache[path] = la.load_awkward2(path)
         self._cache.move_to_end(path)
         while len(self._cache) > self.file_cache_size:
             self._cache.popitem(last=False)
@@ -122,6 +143,9 @@ class ILCDatasetSharded(Dataset):
     def get(self, idx):
         path, local_i = self.entries[idx]
         bundle = self._get_bundle(path)
+        if self.extended_h5_input:
+            from extended_h5 import training_event
+            return training_event(bundle, local_i, self, f'{path}:{local_i}')
         feat_ak, label_ak = bundle[0], bundle[1]
         feat_t = ak.to_numpy(feat_ak[local_i])
         label_t = ak.to_numpy(label_ak[local_i])

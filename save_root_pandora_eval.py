@@ -221,7 +221,7 @@ def write(args, model=None):
             detail=args.detail, exclude_gap_hits=args.exclude_gap_hits,
             exact_pandora_internal_selection=False,
             checkpoint_sha256=sha256(args.checkpoint) if model is not None else None,
-            code_sha256={name:sha256(here/name) for name in ('dataset.py','pandora_eval_data.py',
+            code_sha256={name:sha256(here/name) for name in ('dataset.py','extended_h5.py','pandora_eval_data.py',
                 'pandora_eval_reconstruction.py','save_root_pandora_eval.py', 'model.py', 'gravnet_model.py')})
         file.cd()
         # Comparable files must share these settings, but may have different
