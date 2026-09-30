@@ -14,7 +14,7 @@ import awkward as ak
 import h5py
 import numpy as np
 
-from extended_h5 import read_training_bundle, validate_rows
+from extended_h5 import TRAINING_SCHEMAS, read_training_bundle, validate_rows
 
 
 def _read_group(group):
@@ -42,12 +42,12 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
     with h5py.File(source, 'r') as handle:
         attrs = dict(handle.attrs)
         schema = attrs.get('schema_version')
-        if schema is not None and schema != 'pandora-eval-1':
+        if schema is not None and schema not in TRAINING_SCHEMAS:
             raise ValueError(f'Unsupported H5 schema: {schema}')
-        extended = schema == 'pandora-eval-1'
+        extended = schema in TRAINING_SCHEMAS
         if not extended:
             if 'row_info' in handle or 'collections' in handle:
-                raise ValueError('Extended builders require pandora-eval-1 metadata')
+                raise ValueError('Extended builders require a supported schema_version and metadata')
             names = ['feature', 'label'] + (['event'] if 'event' in handle else [])
             arrays = {name: _read_group(handle[name]) for name in names}
     if extended:

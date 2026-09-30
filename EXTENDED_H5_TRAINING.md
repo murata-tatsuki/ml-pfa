@@ -1,6 +1,6 @@
 # 新H5の学習入力とtruth未対応行
 
-最新版 fixed_uds と同じ `pandora-eval-1` 形式の nnqq2M を学習する場合、
+最新版 fixed_uds (`pandora-eval-1`) または nnqq2M (`nnqq-2m-eval-1`) を学習する場合、
 既存の `train.py` コマンドに次を追加する。
 
 ```bash
@@ -20,6 +20,41 @@ truth 集約 head と組み合わせる場合は以下を併用する。
 学習用 `-i` と validation 用 `-ii` の両方に同じ入力方針を適用する。
 両方とも新形式である必要がある。H5は読取専用で、元のgap hit・全PFO情報・builderを変更しない。
 再生成・結合時には `row_info` と `collections` を含む新形式のgroupを保持すること。
+
+## nnqq2Mのschema対応
+
+`timingcut.py` と学習ローダーは `nnqq-2m-eval-1` を正式に受け付ける。
+fixed udsのschema名に書き換える必要はない。cut出力も元のschema名とmetadataを保持する。
+両形式で `feature` 13列、`label` 9列、`row_info` 11列の学習経路を共有し、
+既存の列定義・行整合性・truth validity検証を適用する。
+nnqqではさらに `metadata.event_definition.version` が
+`higgs-direct-qq-terminal-nu-v1` で、`event` が10列であることを確認する。
+未知のschemaやevent定義は受け付けない。
+
+nnqqの `event[0:8]` はHiggs直下のq/qbarの `(E,px,py,pz)`、
+`event[8]` は `Q - N_H_all + N_H_sim`、`event[9]` は `Q - N_H_all`。
+この定義と値はcut時に変換しない。通常の `train.py` はevent energyを教師に使わず、
+既存どおり粒子ごとの `label` からenergy教師を計算する。
+Pandora比較評価側のschema対応はこの学習用対応には含めない。
+
+転送先の入力ファイルは `raw/nnqq_2M/concat/*.h5` にある。
+`shell/timingcut.sh` は再帰探索しないため、入力には `concat` を指定する。
+出力は旧形式の `tc_nnqq_2M` と混ぜず、新しいディレクトリに保存する。
+例（学習環境のPythonで実行）:
+
+```bash
+cd /home/murata/master
+mkdir -p /home/murata/data_murata/data/tc/tc_nnqq_2M_eval_v1
+python timingcut.py \
+  -i /home/murata/data_murata/data/raw/nnqq_2M/concat/dd_ft0_0.h5 \
+  -o /home/murata/data_murata/data/tc/tc_nnqq_2M_eval_v1/dd_ft0_0.h5
+```
+
+本学習では、重複しないtraining/validationを新形式データから用意し、両方に同じcutを適用する。
+`shell/run_train_energy.sh` の既存 `-i` / `-ii` は旧形式を指しているため更新が必要。
+新形式のconcatは確認したファイルで1000イベント/ファイルあり、
+`--stream-files-per-chunk 32` は旧100イベント/ファイルよりメモリ負荷が大きい。
+まず `--stream-files-per-chunk 1` で測定してから増やす。
 
 ## 「有効な入力」の定義
 

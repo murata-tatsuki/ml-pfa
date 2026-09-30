@@ -20,6 +20,8 @@ from timingcut import timing_cut_file
 
 
 class TimingCutTests(unittest.TestCase):
+    schema = 'pandora-eval-1'
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='test-timingcut-')
         self.addCleanup(self.tmp.cleanup)
@@ -49,7 +51,7 @@ class TimingCutTests(unittest.TestCase):
         with h5py.File(self.output, 'r') as handle:
             self.assertEqual(set(handle), {'feature', 'label', 'row_info', 'collections', 'event'})
             self.assertTrue(handle.attrs['training_only'])
-            self.assertEqual(handle.attrs['schema_version'], 'pandora-eval-1')
+            self.assertEqual(handle.attrs['schema_version'], self.schema)
             self.assertEqual(json.loads(handle.attrs['timing_cut'])['maximum_time'], 14)
         for i in range(3):
             np.testing.assert_equal(ak.to_numpy(actual['feature'][i]), ak.to_numpy(expected_f[i]))
@@ -136,6 +138,75 @@ class TimingCutTests(unittest.TestCase):
                        dict(maximum_time=float('nan')), dict(minimum_pt=-1)):
             with self.assertRaises(ValueError):
                 timing_cut_file(self.source, self.output, **kwargs)
+
+
+class NnqqTimingCutTests(TimingCutTests):
+    """Run the cut/loader/legacy regression contract for the nnqq schema too."""
+    schema = 'nnqq-2m-eval-1'
+
+    def make_input(self):
+        events = super().make_input()
+        with h5py.File(self.source, 'a') as handle:
+            handle.attrs['schema_version'] = self.schema
+            metadata = json.loads(handle.attrs['metadata'])
+            metadata['event_definition'] = {
+                'version': 'higgs-direct-qq-terminal-nu-v1',
+                'event_8': 'Q - N_H_all + N_H_sim', 'event_9': 'Q - N_H_all'}
+            handle.attrs['metadata'] = json.dumps(metadata)
+            del handle['event']
+            values = np.arange(30, dtype=float).reshape(3, 10) + 100
+            form, length, buffers = ak.to_buffers(ak.Array(values))
+            group = handle.create_group('event')
+            group.attrs['form'] = form.to_json()
+            group.attrs['length'] = json.dumps(length)
+            for key, value in buffers.items():
+                group.create_dataset(key, data=value)
+        return events
+
+    def test_preserve_nnqq_metadata_and_event_energy_definitions(self):
+        self.make_input()
+        timing_cut_file(self.source, self.output)
+        with h5py.File(self.source) as src, h5py.File(self.output) as dst:
+            self.assertEqual(src.attrs['metadata'], dst.attrs['metadata'])
+        ds = ILCDatasetSharded(str(self.output), test_mode=True,
+            extended_h5_input=True, exclude_gap_hits=True, event_energy=True)
+        # Event energy decoding must preserve nnqq's supplied values, not
+        # replace them with fixed-uds or sqrt(s)/2 assumptions.
+        bundle = read_training_bundle(self.output)
+        visible, partons = ILCDataset.decode_event_kinematics(bundle['event'][0])
+        np.testing.assert_equal(visible, [108., 109.])
+        np.testing.assert_equal(partons, np.arange(100., 108.).reshape(2, 4))
+        self.assertGreater(len(ds[0].x), 0)
+
+    def test_reject_unknown_schema_and_incompatible_nnqq_metadata(self):
+        for change, pattern in [('schema', 'schema'), ('event', 'event_definition'),
+                                ('columns', 'row_info')]:
+            with self.subTest(change=change):
+                self.make_input()
+                with h5py.File(self.source, 'a') as handle:
+                    metadata = json.loads(handle.attrs['metadata'])
+                    if change == 'schema':
+                        handle.attrs['schema_version'] = 'nnqq-2m-eval-999'
+                    elif change == 'event':
+                        metadata['event_definition']['version'] = 'unknown'
+                    else:
+                        metadata['columns']['row_info'] = ['wrong']
+                    handle.attrs['metadata'] = json.dumps(metadata)
+                self.output.write_bytes(b'unchanged')
+                with self.assertRaisesRegex(ValueError, pattern):
+                    timing_cut_file(self.source, self.output)
+                with self.assertRaisesRegex(ValueError, pattern):
+                    read_training_bundle(self.source)
+                self.assertEqual(self.output.read_bytes(), b'unchanged')
+
+    def test_reject_wrong_nnqq_event_width(self):
+        self.make_input()
+        with h5py.File(self.source, 'a') as handle:
+            form = json.loads(handle['event'].attrs['form'])
+            form['inner_shape'] = [9]
+            handle['event'].attrs['form'] = json.dumps(form)
+        with self.assertRaisesRegex(ValueError, '10 values'):
+            timing_cut_file(self.source, self.output)
 
 
 if __name__ == '__main__':

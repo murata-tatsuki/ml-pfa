@@ -1,4 +1,4 @@
-"""Read-only training input policy for pandora-eval-1 H5 files.
+"""Read-only training input policy for supported extended H5 schemas.
 
 Keep detector inputs independently of truth availability. PFO tables are never
 modified; only feature/label/row_info/event/collections are read for training.
@@ -15,6 +15,28 @@ ECAL_GAP_COLLECTIONS = frozenset((
 ROW_COLUMNS = ['kind', 'collection', 'element', 'detector', 'legacy_row',
                'truth_valid', 'feature_valid', 'pfo_constituent',
                'legacy_model_domain', 'signed_object_id', 'mc_object_id']
+TRAINING_SCHEMAS = frozenset(('pandora-eval-1', 'nnqq-2m-eval-1'))
+NNQQ_EVENT_DEFINITION = 'higgs-direct-qq-terminal-nu-v1'
+
+
+def validate_training_schema(handle):
+    """Check explicit schema contracts without relabelling the source file.
+
+    nnqq shares the detector/truth rows with fixed uds, but its event energies
+    describe the selected Higgs daughters. Preserve that distinction in metadata.
+    These event energies are not the per-particle energy targets used by train.py.
+    """
+    schema = handle.attrs.get('schema_version')
+    if schema not in TRAINING_SCHEMAS:
+        raise ValueError(f'{handle.filename}: unsupported training H5 schema {schema!r}; '
+                         f'expected one of {sorted(TRAINING_SCHEMAS)}')
+    metadata = json.loads(handle.attrs['metadata'])
+    if metadata.get('columns', {}).get('row_info') != ROW_COLUMNS:
+        raise ValueError(f'{handle.filename}: unsupported row_info column definitions')
+    if schema == 'nnqq-2m-eval-1':
+        if metadata.get('event_definition', {}).get('version') != NNQQ_EVENT_DEFINITION:
+            raise ValueError(f'{handle.filename}: unsupported nnqq event_definition')
+    return schema
 
 
 def gap_mask(row_info, collections):
@@ -25,11 +47,7 @@ def gap_mask(row_info, collections):
 def read_training_bundle(path):
     """Load only the builders needed for supervised training, without LCIO."""
     with h5py.File(path, 'r') as f:
-        if f.attrs.get('schema_version') != 'pandora-eval-1':
-            raise ValueError(f'{path}: --extended-h5-input requires pandora-eval-1')
-        metadata = json.loads(f.attrs['metadata'])
-        if metadata.get('columns', {}).get('row_info') != ROW_COLUMNS:
-            raise ValueError(f'{path}: unsupported row_info column definitions')
+        schema = validate_training_schema(f)
         arrays = {}
         for name in ('feature', 'label', 'row_info', 'collections', 'event'):
             g = f[name]
@@ -37,6 +55,8 @@ def read_training_bundle(path):
                                           {k: v[:] for k, v in g.items()})
     if len({len(a) for a in arrays.values()}) != 1:
         raise ValueError(f'{path}: event counts differ between training builders')
+    if schema == 'nnqq-2m-eval-1' and not ak.all(ak.num(arrays['event'], axis=1) == 10):
+        raise ValueError(f'{path}: nnqq event rows must contain 10 values')
     return arrays
 
 
@@ -96,7 +116,7 @@ def validate_dataset_options(extended, exclude_gap, timing_cut=False, mctpe=Fals
 
 def add_training_arguments(parser):
     parser.add_argument('--extended-h5-input', action='store_true',
-        help='Read pandora-eval-1 row_info; retain valid unlabelled inputs and mask their supervision')
+        help='Read pandora-eval-1 or nnqq-2m-eval-1 row_info; retain valid unlabelled inputs and mask their supervision')
     parser.add_argument('--exclude-gap-hits', action='store_true',
         help='Exclude the two ECAL GapHits collections from model inputs; keep H5 unchanged')
 
