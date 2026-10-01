@@ -23,12 +23,15 @@ def _read_group(group):
 
 
 def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
-                    nstart=0, nend=-1):
+                    nstart=0, nend=-1, single_particle=False):
     """Apply time < maximum_time and (calo or track pT > minimum_pt).
 
     nend is an exclusive event index, matching the original CLI. Empty events,
     unknown truth rows and gap rows are retained if they pass these cuts; gap
     and feature-validity selection remain the training loader's responsibility.
+    single_particle additionally skips events with >= 2 truth_particles before
+    applying row cuts. It requires the original truth_particles builder; zero
+    truth particles are retained. Event slicing uses original input indices.
     """
     source, destination = Path(input_path), Path(output_path)
     if source.resolve() == destination.resolve() or (
@@ -45,6 +48,10 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
         if schema is not None and schema not in TRAINING_SCHEMAS:
             raise ValueError(f'Unsupported H5 schema: {schema}')
         extended = schema in TRAINING_SCHEMAS
+        if single_particle:
+            if 'truth_particles' not in handle:
+                raise ValueError('Single-particle timing cut requires truth_particles in the input H5')
+            truth_particles = _read_group(handle['truth_particles'])
         if not extended:
             if 'row_info' in handle or 'collections' in handle:
                 raise ValueError('Extended builders require a supported schema_version and metadata')
@@ -57,6 +64,16 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
         raise ValueError('Event counts differ between training builders')
     stop = total if nend == -1 else min(nend, total)
     arrays = {name: value[nstart:stop] for name, value in arrays.items()}
+    selection = {}
+    if single_particle:
+        if len(truth_particles) != total:
+            raise ValueError('Event counts differ between truth_particles and training builders')
+        # Equivalent to skipping len(truth_particles[event]) >= 2, regardless
+        # of whether those particles have hits surviving the time/pT cuts.
+        keep = ak.num(truth_particles[nstart:stop], axis=1) < 2
+        selection = dict(single_particle=True, truth_particles_count_comparison='< 2',
+                         events_before=len(keep), events_skipped=int(ak.sum(~keep)))
+        arrays = {name: value[keep] for name, value in arrays.items()}
     feat = arrays['feature']
     if not ak.all(ak.num(feat, axis=1) == ak.num(arrays['label'], axis=1)):
         raise ValueError('feature and label row counts differ')
@@ -69,7 +86,7 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
                 ak.to_list(arrays['collections'][index]))
 
     before = int(ak.sum(ak.num(feat, axis=1)))
-    # Do not inspect truth when selecting inputs. Match ILCDataset.timingCut.
+    # Row cuts match ILCDataset.timingCut and do not inspect truth.
     if before:
         pt = np.sqrt(feat[:, :, 7] ** 2 + feat[:, :, 8] ** 2)
         mask = (feat[:, :, 4] < maximum_time) & ((feat[:, :, 5] == 0) | (pt > minimum_pt))
@@ -81,7 +98,7 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
     attrs['timing_cut'] = json.dumps(dict(
         input_path=str(source.resolve()), maximum_time=maximum_time,
         minimum_pt=minimum_pt, time_comparison='<', pt_comparison='>',
-        nstart=nstart, nend=stop, rows_before=before, rows_after=after))
+        nstart=nstart, nend=stop, rows_before=before, rows_after=after, **selection))
 
     # Packing is essential: otherwise Awkward buffers can retain removed rows.
     # Write atomically so failed conversion cannot leave a partial training file.
@@ -107,11 +124,13 @@ def timing_cut_file(input_path, output_path, maximum_time=14, minimum_pt=0.3,
         if os.path.exists(temporary):
             os.unlink(temporary)
     return dict(events=len(arrays['feature']), rows_before=before, rows_after=after,
-                groups=list(arrays))
+                groups=list(arrays), **selection)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(single_particle=False):
+    description = ('Skip events with >= 2 truth_particles, then apply the time and track-pT cuts.'
+                   if single_particle else __doc__)
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-i', '--input', required=True)
     parser.add_argument('-o', '--output', required=True)
     parser.add_argument('--maximumTime', type=float, default=14)
@@ -120,7 +139,8 @@ def main():
     parser.add_argument('--nend', type=int, default=-1, help='Exclusive event index; -1 means all')
     args = parser.parse_args()
     result = timing_cut_file(args.input, args.output, args.maximumTime,
-                             args.minimumPt, args.nstart, args.nend)
+                             args.minimumPt, args.nstart, args.nend,
+                             single_particle=single_particle)
     print(f'Saved {args.output}: {json.dumps(result)}')
 
 

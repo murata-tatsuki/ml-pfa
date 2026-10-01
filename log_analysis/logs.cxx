@@ -437,7 +437,7 @@ void logs(){
     }
 
     if(train_l_v.size()==0) continue;
-    g_train_loss->SetPoint(i,i,train_l_e[i]);
+    g_train_loss->SetPoint(i,i,train_loss[i]);
     g_train_LV->SetPoint(i,i,train_l_v[i]);
     if(train_l_v_att_charged.size()>0) g_train_LV_att_charged->SetPoint(i,i,train_l_v_att_charged[i]);
     if(train_l_v_att_neutral.size()>0) g_train_LV_att_neutral->SetPoint(i,i,train_l_v_att_neutral[i]);

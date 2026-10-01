@@ -15,8 +15,9 @@ ECAL_GAP_COLLECTIONS = frozenset((
 ROW_COLUMNS = ['kind', 'collection', 'element', 'detector', 'legacy_row',
                'truth_valid', 'feature_valid', 'pfo_constituent',
                'legacy_model_domain', 'signed_object_id', 'mc_object_id']
-TRAINING_SCHEMAS = frozenset(('pandora-eval-1', 'nnqq-2m-eval-1'))
+TRAINING_SCHEMAS = frozenset(('pandora-eval-1', 'nnqq-2m-eval-1', 'single-particle-eval-1'))
 NNQQ_EVENT_DEFINITION = 'higgs-direct-qq-terminal-nu-v1'
+SINGLE_PARTICLE_EVENT_DEFINITION = 'single-primary-terminal-nu-v1'
 
 
 def validate_training_schema(handle):
@@ -25,6 +26,8 @@ def validate_training_schema(handle):
     nnqq shares the detector/truth rows with fixed uds, but its event energies
     describe the selected Higgs daughters. Preserve that distinction in metadata.
     These event energies are not the per-particle energy targets used by train.py.
+    Single-particle event rows store the primary four-vector, four zero padding
+    values, and two visible energies. Preserve their own schema and definition.
     """
     schema = handle.attrs.get('schema_version')
     if schema not in TRAINING_SCHEMAS:
@@ -36,6 +39,9 @@ def validate_training_schema(handle):
     if schema == 'nnqq-2m-eval-1':
         if metadata.get('event_definition', {}).get('version') != NNQQ_EVENT_DEFINITION:
             raise ValueError(f'{handle.filename}: unsupported nnqq event_definition')
+    if schema == 'single-particle-eval-1':
+        if metadata.get('event_definition', {}).get('version') != SINGLE_PARTICLE_EVENT_DEFINITION:
+            raise ValueError(f'{handle.filename}: unsupported single-particle event_definition')
     return schema
 
 
@@ -57,6 +63,11 @@ def read_training_bundle(path):
         raise ValueError(f'{path}: event counts differ between training builders')
     if schema == 'nnqq-2m-eval-1' and not ak.all(ak.num(arrays['event'], axis=1) == 10):
         raise ValueError(f'{path}: nnqq event rows must contain 10 values')
+    if schema == 'single-particle-eval-1':
+        if not ak.all(ak.num(arrays['event'], axis=1) == 10):
+            raise ValueError(f'{path}: single-particle event rows must contain 10 values')
+        if not ak.all(arrays['event'][:, 4:8] == 0):
+            raise ValueError(f'{path}: single-particle event padding must be zero')
     return arrays
 
 
@@ -116,7 +127,7 @@ def validate_dataset_options(extended, exclude_gap, timing_cut=False, mctpe=Fals
 
 def add_training_arguments(parser):
     parser.add_argument('--extended-h5-input', action='store_true',
-        help='Read pandora-eval-1 or nnqq-2m-eval-1 row_info; retain valid unlabelled inputs and mask their supervision')
+        help='Read pandora-eval-1, nnqq-2m-eval-1 or single-particle-eval-1 row_info; retain valid unlabelled inputs and mask their supervision')
     parser.add_argument('--exclude-gap-hits', action='store_true',
         help='Exclude the two ECAL GapHits collections from model inputs; keep H5 unchanged')
 
