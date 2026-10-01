@@ -5,6 +5,7 @@ import torch
 from cluster_energy import inference_forward, configure_inference, pooling_model
 from clustering import cluster
 from prediction import Prediction
+from particle_heads import raw_model, decode_clusters
 
 
 def configure_regression_output(model, activation):
@@ -18,6 +19,8 @@ def configure_regression_output(model, activation):
     if activation != 'linear':
         raise ValueError(f'Unknown regression output activation: {activation}')
     raw = model.model if hasattr(model, 'model') else model
+    if getattr(raw, 'five_particle_energy_heads', False):
+        raise ValueError('Five particle heads use their trained output activation; do not request legacy linear compatibility')
     if not hasattr(raw, 'head_output') or not hasattr(raw, 'head_specs'):
         raise ValueError('Linear regression compatibility requires a multihead model')
     if getattr(raw, 'cluster_energy_pooling', False):
@@ -39,13 +42,37 @@ def predict(model, data, device, tbeta, td, calo_head=True, truth=False):
     configure_inference(model, source='truth' if truth else 'predicted', tbeta=tbeta, td=td)
     data = data.clone().to(device)
     data.batch = torch.zeros(len(data.x), dtype=torch.long, device=device)
+    raw = raw_model(model)
+    particle_mode = getattr(raw, 'pid_head', False) or getattr(raw, 'five_particle_energy_heads', False)
+    pid_logits = energies = None
     with torch.no_grad():
-        output = inference_forward(model, data).detach().cpu().numpy()
+        if particle_mode:
+            result = model(data.x, data.batch, return_dict=True,
+                           epoch=getattr(raw, 'particle_heads_inference_epoch', raw.interaction_start_epoch))
+            pid_logits = result.get('pid_logits')
+            coords = result['clustering'][:, raw.cluster_energy_coordinate_start:]
+            if pid_logits is not None:
+                pid_logits = pid_logits.detach().cpu().numpy()
+            if raw.five_particle_energy_heads:
+                energies = torch.cat(result['regressions'], 1).detach().cpu().numpy()
+                if pid_logits is None:
+                    raise ValueError('Normal five-head inference requires --pid-head in the trained model; use truth-PID diagnostics for a model without PID')
+                # Clustering consumes beta and coordinates only; these placeholders
+                # are replaced by one species-specific readout after membership.
+                zero = result['clustering'].new_zeros((len(data.x), 2))
+                output = torch.cat((result['clustering'][:, :1], zero, coords), 1).cpu().numpy()
+            else:
+                parts = [result['clustering'][:, :1]] + result['regressions'][:(2 if calo_head else 1)] + [coords]
+                output = torch.cat(parts, 1).cpu().numpy()
+        else:
+            output = inference_forward(model, data).detach().cpu().numpy()
     expected_minimum = 4 if calo_head else 3
     if output.ndim != 2 or len(output) != len(data.x) or output.shape[1] < expected_minimum:
         raise ValueError(f'Unexpected model output shape: {output.shape}')
     if not np.isfinite(output).all():
         raise ValueError('Non-finite model output')
+    if any(v is not None and not np.isfinite(v).all() for v in (pid_logits, energies)):
+        raise ValueError('Non-finite particle head output')
     beta = torch.sigmoid(torch.from_numpy(output[:, 0])).numpy()
     tracker = output[:, 1]
     calo = output[:, 2] if calo_head else None
@@ -58,7 +85,11 @@ def predict(model, data, device, tbeta, td, calo_head=True, truth=False):
     else:
         prediction = Prediction(beta, coordinates, None, track, tracker, calo)
         assignments, _ = cluster(SimpleNamespace(), prediction, tbeta, td)
-    return dict(beta=beta, tracker=tracker, calo=calo, assignments=assignments)
+    if energies is not None:
+        tracker = np.full(len(beta), np.nan)
+        calo = np.full(len(beta), np.nan)
+    return dict(beta=beta, tracker=tracker, calo=calo, assignments=assignments,
+                pid_logits=pid_logits, species_energies=energies)
 
 
 def energy_clusters(data, prediction, policy='alpha'):
@@ -71,6 +102,10 @@ def energy_clusters(data, prediction, policy='alpha'):
     assignments = prediction['assignments']
     track = data.x[:, 4].numpy() > .5
     result = []
+    particle_readout = {}
+    if prediction.get('pid_logits') is not None or prediction.get('species_energies') is not None:
+        particle_readout = {c['cluster']: c for c in decode_clusters(assignments, prediction['beta'], track,
+            energies=prediction.get('species_energies'), pid_logits=prediction.get('pid_logits'))}
     for ci in np.unique(assignments):
         if ci <= 0:
             continue
@@ -83,7 +118,17 @@ def energy_clusters(data, prediction, policy='alpha'):
                        if prediction['calo'] is not None else float(prediction['tracker'][seed]))
         alpha = float(prediction['tracker'][seed]) if track[seed] else calorimeter
         any_track = float(prediction['tracker'][tracks[np.argsort(-prediction['beta'][tracks])[0]]]) if len(tracks) else calorimeter
-        result.append(dict(cluster=int(ci), energy=alpha if policy == 'alpha' else any_track,
+        extra = {}
+        if int(ci) in particle_readout:
+            readout = particle_readout[int(ci)]
+            extra = dict(pid=readout['pid'], energy_head=readout['energy_head'], energy_fallback=readout['energy_fallback'],
+                         pid_seed_input_row=int(data.input_row[readout['seed']]))
+            if prediction.get('species_energies') is not None:
+                alpha = any_track = readout['energy']
+                seed = readout['seed']
+            else:
+                extra.update(energy_head=-1, energy_fallback=0)
+        result.append(dict(**extra, cluster=int(ci), energy=alpha if policy == 'alpha' else any_track,
             energy_alpha=alpha, energy_any_track=any_track, n_tracks=len(tracks),
             n_inputs=len(indices), seed_input_row=int(data.input_row[seed]),
             members=set(map(int, data.input_row[indices].numpy()))))

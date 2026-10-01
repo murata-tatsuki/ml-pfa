@@ -229,6 +229,13 @@ def pooling_model(model):
 def checkpoint_payload(model, epoch=None, args=None):
     raw = model.module if hasattr(model, 'module') else model
     result = dict(model=raw.state_dict())
+    from particle_heads import checkpoint_config
+    config = checkpoint_config(raw, epoch)
+    if config is not None:
+        if args is not None:
+            config.update(pid_loss_weight=getattr(args, 'pid_loss_weight', 1.),
+                          epochs_noPID=getattr(args, 'epochs_noPID', -1))
+        result['particle_heads_config'] = config
     if args is not None and getattr(args, 'extended_h5_input', False):
         result['training_input_config'] = dict(schema='pandora-eval-1',
             exclude_gap_hits=args.exclude_gap_hits, unknown_truth='input_only',

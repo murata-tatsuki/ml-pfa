@@ -16,6 +16,7 @@ import ROOT
 import torch
 from model import get_model
 from cluster_energy import pooling_model
+from particle_heads import raw_model, checkpoint_config, SPECIES
 from pandora_eval_data import iter_events, model_data, gap_hit_mask
 from pandora_eval_reconstruction import predict, energy_clusters, pandora_clusters, overlap_metrics, configure_regression_output
 
@@ -70,6 +71,11 @@ def write(args, model=None):
             model_variant=args.model_variant, cluster_energy_source='predicted',
             cluster_energy_tbeta=args.tbeta, cluster_energy_td=args.td).to(args.device).eval()
         configure_regression_output(model, args.regression_output_activation)
+    particle_config = checkpoint_config(model, getattr(raw_model(model), 'particle_heads_inference_epoch', None)) if model is not None else None
+    if particle_config and particle_config['five_particle_energy_heads'] and not args.calo_head:
+        raise ValueError('Five-head readout requires --calo-head')
+    if particle_config and particle_config['five_particle_energy_heads'] and not particle_config['pid_head']:
+        raise ValueError('Normal five-head inference requires PID; use diagnose_particle_heads.py for truth-PID diagnosis')
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, staging = tempfile.mkstemp(prefix=f'.{output.name}.', suffix='.tmp.root', dir=output.parent)
     os.close(fd)
@@ -97,10 +103,13 @@ def write(args, model=None):
         pfos = Tree('pfo', integers=('event','pfo_index','object_id','type','n_tracks','n_clusters'),
                     doubles=('energy','px','py','pz'))
         links = Tree('pfo_links', integers=('event','pfo_index','kind','object_id','input_row','cluster_id'))
+        node_energy_fields = tuple('energy_' + s for s in SPECIES) if particle_config and particle_config['five_particle_energy_heads'] else ()
+        node_pid_fields = tuple('pid_logit_' + s for s in SPECIES) if particle_config and particle_config['pid_head'] else ()
         hits = Tree('eval_hits', integers=('event','input_row','input_rank','kind','collection','element',
                     'detector','legacy_row','truth_valid','feature_valid','model_input','object_id',
-                    'truth_label','gnn_cluster','truth_cluster'), doubles=('deposit','beta','tracker_energy','calo_energy'))
-        clusters = Tree('eval_clusters', integers=('event','algorithm','cluster','n_tracks','n_inputs','seed_input_row'),
+                    'truth_label','gnn_cluster','truth_cluster'), doubles=('deposit','beta','tracker_energy','calo_energy') + node_energy_fields + node_pid_fields)
+        particle_fields = ('pid','energy_head','energy_fallback','pid_seed_input_row') if particle_config else ()
+        clusters = Tree('eval_clusters', integers=('event','algorithm','cluster','n_tracks','n_inputs','seed_input_row') + particle_fields,
                         doubles=('energy','energy_alpha','energy_any_track'))
         matches = Tree('eval_matches', integers=('event','algorithm','truth_label','truth_pdg','matched','cluster',
                         'truth_n_inputs','overlap_n_inputs'), doubles=('truth_energy','reco_energy','overlap_energy',
@@ -121,11 +130,15 @@ def write(args, model=None):
             # 0 is unassigned/unknown; no unknown MC cluster is created.
             truth_assignment[selected] = data.y[:, 0].numpy()
             beta = np.full(n, np.nan); tracker = beta.copy(); calo = beta.copy()
+            node_particle_values = {k: np.full(n, np.nan) for k in node_energy_fields + node_pid_fields}
             predictions = {}; gnn_ok = truth_ok = False; error = ''
             if model is not None:
                 try:
                     if len(selected):
                         prediction = predict(model, data, args.device, args.tbeta, args.td, args.calo_head)
+                        for fields, key in ((node_energy_fields, 'species_energies'), (node_pid_fields, 'pid_logits')):
+                            for j, field in enumerate(fields):
+                                node_particle_values[field][selected] = prediction[key][:, j]
                         predictions[1] = energy_clusters(data, prediction, args.energy_policy)
                         gnn_assignment[selected] = prediction['assignments']
                         beta[selected] = prediction['beta']; tracker[selected] = prediction['tracker']
@@ -196,11 +209,14 @@ def write(args, model=None):
                         feature_valid=int(info[6]),model_input=int(input_rank[row]>=0),object_id=int(info[9]),
                         truth_label=int(event['label'][row,1]),gnn_cluster=int(gnn_assignment[row]),
                         truth_cluster=int(truth_assignment[row]),deposit=float(event['feature'][row,0]),
-                        beta=float(beta[row]),tracker_energy=float(tracker[row]),calo_energy=float(calo[row])))
+                        beta=float(beta[row]),tracker_energy=float(tracker[row]),calo_energy=float(calo[row]),
+                        **{k: float(v[row]) for k, v in node_particle_values.items()}))
             if args.detail != 'events':
                 for algorithm, cs in predictions.items():
                     for c in cs:
-                        clusters.fill(dict(event=i,algorithm=algorithm,**c))
+                        defaults = {k: -1 for k in particle_fields}
+                        defaults.update(c)
+                        clusters.fill(dict(event=i,algorithm=algorithm,**defaults))
                     if args.detail == 'full':
                         for match in overlap_metrics(event, cs, selected):
                             matches.fill(dict(event=i,algorithm=algorithm,**match))
@@ -224,16 +240,22 @@ def write(args, model=None):
             code_sha256={name:sha256(here/name) for name in ('dataset.py','extended_h5.py','pandora_eval_data.py',
                 'pandora_eval_reconstruction.py','save_root_pandora_eval.py', 'model.py', 'gravnet_model.py')})
         file.cd()
+        if particle_config:
+            metadata['particle_heads_config'] = particle_config
+            metadata['code_sha256']['particle_heads.py'] = sha256(here/'particle_heads.py')
+            metadata['energy_policy'] = 'particle_species_track_alpha_or_calo_sum' if particle_config['five_particle_energy_heads'] else args.energy_policy
         # Comparable files must share these settings, but may have different
         # source paths, event ranges and H5 creation times.
         configurations = [dict(analysis_settings=x['metadata']['analysis_settings'],
                                input_inventory=x['metadata']['input_inventory']) for x in provenance.values()]
         configuration = dict(input=configurations[0] if configurations else None,
-            checkpoint_sha256=metadata['checkpoint_sha256'], energy_policy=args.energy_policy,
+            checkpoint_sha256=metadata['checkpoint_sha256'], energy_policy=metadata['energy_policy'],
             input_dim=args.input_dim, output_dim=args.output_dim, momentum=args.momentum,
             momentum_amp=args.momentum_amp, calo_head=args.calo_head, tbeta=args.tbeta, td=args.td,
             regression_output_activation=args.regression_output_activation,
             model_variant=args.model_variant, exclude_gap_hits=args.exclude_gap_hits, detail=args.detail, code_sha256=metadata['code_sha256'])
+        if particle_config:
+            configuration['particle_heads_config'] = particle_config
         ROOT.TObjString(json.dumps(configuration, sort_keys=True)).Write('comparison_configuration')
         ROOT.TObjString(json.dumps(metadata,sort_keys=True)).Write('pandora_eval_metadata')
         file.Write(); file.Close()

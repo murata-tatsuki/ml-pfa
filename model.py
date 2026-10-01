@@ -75,10 +75,14 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
             if epoch is None:
                 epoch = getattr(self.model, 'cluster_energy_inference_epoch',
                                 self.model.interaction_start_epoch)
+        if epoch is None and hasattr(self.model, 'particle_heads_inference_epoch'):
+            epoch = self.model.particle_heads_inference_epoch
         result = self.model(x, batch, epoch=epoch, return_dict=True, **kwargs)
         if return_dict:
             return result
 
+        if getattr(self.model, 'five_particle_energy_heads', False):
+            raise ValueError('Five-head checkpoints require structured readout; use save_root_pandora_eval.py or return_dict=True, not legacy two-energy writers')
         clustering = result["clustering"]
         regressions = result.get("regressions", [])
 
@@ -132,6 +136,8 @@ def get_model(
         print(f'{input_dim=}')
         checkpoint = torch.load(ckpt, map_location=torch.device('cpu'))
         state_dict = _extract_state_dict(checkpoint)
+        from particle_heads import validate_checkpoint_config
+        particle_config = validate_checkpoint_config(state_dict, checkpoint.get('particle_heads_config'))
 
         if model_variant not in {"auto", "legacy", "multihead"}:
             raise ValueError(f"Unknown model_variant: {model_variant}")
@@ -193,11 +199,17 @@ def get_model(
                 n_heads=n_heads,
                 regression_output_dims=regression_output_dims,
                 interaction_mode=interaction_mode,
+                pid_head=particle_config.get('pid_head', False),
+                five_particle_energy_heads=particle_config.get('five_particle_energy_heads', False),
                 **pooling_kwargs,
             )
             if pooled_checkpoint:
                 model.cluster_energy_inference_epoch = config.get(
                     'inference_epoch', model.interaction_start_epoch)
+            if particle_config:
+                model.interaction_start_epoch = particle_config['interaction_start_epoch']
+                model.particle_heads_inference_epoch = particle_config['inference_epoch']
+                model.cluster_energy_coordinate_start = particle_config.get('coordinate_start', 1)
             model.load_state_dict(state_dict)
             model = LegacyCompatibleMultiHeadAdapter(
                 model,

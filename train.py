@@ -15,6 +15,7 @@ from torch_scatter import scatter_add, scatter_max
 #import torch_cmspepr.objectcondensation as oc
 # import objectcondensation as oc
 import objectcondensation as oc
+import particle_heads as ph
 #import torch.nn.functional as f
 
 from gravnet_model import GravnetModel,GravNetModelBranch,GravnetModelWithNoiseFilter,GravNetModelMultiHead
@@ -251,6 +252,7 @@ def ddp_scheduler_epoch_size(dataset, loader, sampler, args, rank, world_size):
 def run_requirements(args):
     validate_training_arguments(args)
     validate_extended_arguments(args)
+    ph.validate_arguments(args)
     if args.epsilon <= 0:
         raise ValueError("--epsilon must be greater than zero")
     if (args.no_split and args.inputdir_validate is None):
@@ -306,6 +308,8 @@ def load_checkpoint_state(model, ckpt_path):
     for key, value in state_dict.items():
         name = key.replace("module.", "") if key.startswith("module.") else key
         cleaned_state_dict[name] = value
+    if ph.checkpoint_config(model, None) is not None or 'particle_heads_config' in checkpoint or any(k.startswith('pid_') or k == '_particle_energy_version' for k in cleaned_state_dict):
+        return ph.load_training_checkpoint(model, cleaned_state_dict, checkpoint.get('particle_heads_config'))
     pooled_checkpoint = any(k.startswith('cluster_energy_head.') for k in cleaned_state_dict)
     if pooled_checkpoint and not getattr(model, 'cluster_energy_pooling', False):
         raise ValueError('Checkpoint contains a cluster energy head; enable --cluster-energy-pooling')
@@ -356,6 +360,8 @@ def get_energy_heads(out, regression_heads, args):
 
 def collect_pretraining_responses(out, regression_heads, data, args):
     """Build one predicted/true response entry per truth particle."""
+    if getattr(args, 'five_particle_energy_heads', False):
+        return ph.pretraining_responses(out, regression_heads, data)
     tracker_energy, cluster_energy = get_energy_heads(
         out, regression_heads, args
     )
@@ -541,6 +547,8 @@ def build_model(args, input_dim, output_dimension, ddp=False):
             regression_output_dims=regression_dims if n_reg_heads > 0 else 1,
             interaction_start_epoch=args.multihead_interaction_start_epoch,
             interaction_mode=args.multihead_interaction_mode,
+            pid_head=getattr(args, 'pid_head', False),
+            five_particle_energy_heads=getattr(args, 'five_particle_energy_heads', False),
             cluster_energy_pooling=getattr(args, 'cluster_energy_pooling', False),
             cluster_energy_source=getattr(args, 'cluster_energy_source', 'truth'),
             cluster_energy_tbeta=getattr(args, 'cluster_energy_tbeta', 0.7),
@@ -766,7 +774,7 @@ def run_ddp_training(rank, world_size, args):
                 test_loss += loss_components["L_beta"]
             if epoch > args.epochs_noLE:
                 test_loss += loss_components["L_E"]
-        return test_loss
+        return test_loss + loss_components.get('L_PID', 0.)
 
     def check_coords(out,data) :
         learning_para={}
@@ -785,7 +793,10 @@ def run_ddp_training(rank, world_size, args):
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None):
+        if getattr(args, 'five_particle_energy_heads', False):
+            return ph.five_head_training_loss(out, regression_heads, pid_logits, data, args,
+                i_epoch, qmin, return_components, loss_offset)
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -908,6 +919,11 @@ def run_ddp_training(rank, world_size, args):
             truth_valid=getattr(data, 'truth_valid', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
+        pid_loss = 0.
+        if getattr(args, 'pid_head', False):
+            _, pid_loss, pid_metrics = ph.auxiliary_losses(out, regression_heads, pid_logits,
+                data, args, i_epoch, er_coef)
+            out_oc = dict(out_oc, **pid_metrics)
         
         if return_components:
             return out_oc
@@ -925,7 +941,7 @@ def run_ddp_training(rank, world_size, args):
                     return_loss += Lbeta
                 if i_epoch > args.epochs_noLE:
                     return_loss += LE
-            return return_loss, out_oc
+            return return_loss + pid_loss, out_oc
 
     def train(epoch):
         train_acc=0.
@@ -984,7 +1000,7 @@ def run_ddp_training(rank, world_size, args):
                         if args.jit:
                             raise
                         else:
-                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
+                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
                             update(components)
                     if scaler is not None:
                         scaler.scale(loss).backward()
@@ -1034,7 +1050,7 @@ def run_ddp_training(rank, world_size, args):
                 #     print(f"  {k}: {v.item():.6f}")
                 print('Training epoch', epoch)
                 print(layer_grads)  ## is NOT the mean of all GPUs
-                print(oc.formatted_loss_components_string_train(loss_components))
+                print((oc.formatted_loss_components_string_train(loss_components) + ph.format_metrics(loss_components)))
                 return_loss = loss_components["L_V"] + loss_offset
                 if args.LE_track == 'alpha_tracker_modifing_charged0':
                     if i_epoch > args.epochs_nobeta:
@@ -1048,6 +1064,7 @@ def run_ddp_training(rank, world_size, args):
                         return_loss += loss_components["L_beta"]
                     if i_epoch > args.epochs_noLE:
                         return_loss += loss_components["L_E"]
+                return_loss = return_loss + loss_components.get('L_PID', 0.)
             train_loss = return_loss.item() if rank == 0 else last_loss.item()
             # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
             return train_loss,None,None,None,None
@@ -1105,7 +1122,7 @@ def run_ddp_training(rank, world_size, args):
                     if args.jit:
                         raise
                     else:
-                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None))
+                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None))
                 batch_count += 1
                 if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
                     total_label = pbar_total if pbar_total is not None else "?"
@@ -1131,7 +1148,7 @@ def run_ddp_training(rank, world_size, args):
         # Compute total loss with the same epoch gating as the training loss.
         test_loss = compose_validation_loss(loss_components, epoch)
         if rank == 0:
-            print('test ' + oc.formatted_loss_components_string(loss_components))
+            print('test ' + (oc.formatted_loss_components_string(loss_components) + ph.format_metrics(loss_components)))
             if args.pretraining:
                 log_pretraining_metrics(
                     pretraining_metrics,
@@ -1288,9 +1305,11 @@ def main():
     parser.add_argument('--amp', action='store_true', help='Enable CUDA mixed precision (torch.cuda.amp.autocast). Off: same as before.')
     parser.add_argument('--amp-dtype', type=str, default='bf16', choices=['bf16', 'fp16'], help='AMP compute dtype: bf16 (A100+), fp16 (uses GradScaler). Ignored unless --amp.')
 
+    ph.add_arguments(parser)
     args = parser.parse_args()
     validate_training_arguments(args)
     validate_extended_arguments(args)
+    ph.validate_arguments(args)
     if args.epsilon <= 0:
         parser.error('--epsilon must be greater than zero')
     if args.lr_warmup and args.lr_warmup_epochs <= 0:
@@ -1513,7 +1532,7 @@ def main():
                 test_loss += loss_components["L_beta"]
             if epoch > args.epochs_noLE:
                 test_loss += loss_components["L_E"]
-        return test_loss
+        return test_loss + loss_components.get('L_PID', 0.)
 
     train_accu=[]
     test_accu=[]
@@ -1535,7 +1554,10 @@ def main():
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None):
+        if getattr(args, 'five_particle_energy_heads', False):
+            return ph.five_head_training_loss(out, regression_heads, pid_logits, data, args,
+                i_epoch, qmin, return_components, loss_offset)
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -1658,6 +1680,11 @@ def main():
             truth_valid=getattr(data, 'truth_valid', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
+        pid_loss = 0.
+        if getattr(args, 'pid_head', False):
+            _, pid_loss, pid_metrics = ph.auxiliary_losses(out, regression_heads, pid_logits,
+                data, args, i_epoch, er_coef)
+            out_oc = dict(out_oc, **pid_metrics)
         
         if return_components:
             return out_oc
@@ -1675,7 +1702,7 @@ def main():
                     return_loss += Lbeta
                 if i_epoch > args.epochs_noLE:
                     return_loss += LE
-            return return_loss, out_oc
+            return return_loss + pid_loss, out_oc
 
     def loss_fn_jit(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False):
         device = out.device
@@ -1809,7 +1836,7 @@ def main():
                         # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                         raise
                     else:
-                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
+                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
                         update(components)
                 if scaler is not None:
                     scaler.scale(loss).backward()
@@ -1842,7 +1869,7 @@ def main():
             print(layer_grads)
             for key in loss_components:
                 loss_components[key] /= batch_count
-            print(oc.formatted_loss_components_string_train(loss_components))
+            print((oc.formatted_loss_components_string_train(loss_components) + ph.format_metrics(loss_components)))
             return loss.item()
             # return loss.item(),cluster_space_coords_list,data_y_list,data,first_para
         except Exception:
@@ -1899,7 +1926,7 @@ def main():
                                 return_components=True,
                                 use_charge_track_likeness=args.use_charged_cluster_loss,
                                 regression_heads=regression_heads,
-                                cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None,
+                                pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None,
                             )
                         )
                 batch_count += 1
@@ -1910,7 +1937,7 @@ def main():
             loss_components[key] /= batch_count
         # Compute total loss and do printout
         test_loss = compose_validation_loss(loss_components, epoch)
-        print('test ' + oc.formatted_loss_components_string(loss_components))
+        print('test ' + (oc.formatted_loss_components_string(loss_components) + ph.format_metrics(loss_components)))
         if args.pretraining:
             log_pretraining_metrics(
                 merge_pretraining_responses(pretraining_batches),

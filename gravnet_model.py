@@ -289,6 +289,8 @@ class GravNetModelMultiHead(nn.Module):
         cluster_energy_tbeta: float = 0.7,
         cluster_energy_td: float = 0.5,
         cluster_energy_coordinate_start: int = 1,
+        pid_head: bool = False,
+        five_particle_energy_heads: bool = False,
     ):
         super(GravNetModelMultiHead, self).__init__()
         if n_heads < 1:
@@ -304,6 +306,14 @@ class GravNetModelMultiHead(nn.Module):
         self.dense_nord = 128
         self.interaction_start_epoch = interaction_start_epoch
         self.interaction_mode = interaction_mode
+        self.pid_head = pid_head
+        self.five_particle_energy_heads = five_particle_energy_heads
+        if five_particle_energy_heads:
+            if n_heads != 6 or cluster_energy_pooling:
+                raise ValueError('Five species heads require n_heads=6 and no cluster pooling')
+            from particle_heads import SPECIES
+            head_names = ['clustering'] + list(SPECIES)
+            self.register_buffer('_particle_energy_version', torch.tensor(1))
         self.cluster_energy_pooling = cluster_energy_pooling
         self.cluster_energy_source = cluster_energy_source
         self.cluster_energy_tbeta = cluster_energy_tbeta
@@ -329,6 +339,8 @@ class GravNetModelMultiHead(nn.Module):
             head_names=head_names,
         )
         self.head_output_dims = [spec["out_dim"] for spec in self.head_specs]
+        if five_particle_energy_heads and any(d != 1 for d in self.head_output_dims[1:]):
+            raise ValueError('Each of the five particle energy heads must output one scalar')
         self.head_names = [spec["name"] for spec in self.head_specs]
         self.regression_head_names = [spec["name"] for spec in self.head_specs[1:]]
 
@@ -349,6 +361,9 @@ class GravNetModelMultiHead(nn.Module):
         self.interaction_blocks = nn.ModuleList([
             self._make_interaction_block() for _ in range(max(0, self.n_heads - 1))
         ])
+        if self.pid_head:
+            self.pid_postgn_dense = self._make_postgn_dense()
+            self.pid_output = self._make_output_block(5, positive_output=False)
         if self.cluster_energy_pooling:
             from cluster_energy import ClusterEnergyHead, validate_settings
             if n_heads < 3 or self.head_output_dims[2] != 1:
@@ -536,6 +551,8 @@ class GravNetModelMultiHead(nn.Module):
             "heads_by_name": heads_by_name,
             "interaction_active": interaction_active,
         }
+        if self.pid_head:
+            result['pid_logits'] = self.pid_output(self.pid_postgn_dense(x))
         if pooled_energy is not None:
             result['cluster_energy'] = pooled_energy
         return result
