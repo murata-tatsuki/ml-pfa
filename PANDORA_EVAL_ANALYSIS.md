@@ -205,7 +205,7 @@ per-hit/PFO-link/truth-particle/efficiency-purity表は空にする。全量jet 
 
 ```bash
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
-python -B /data/suehara/mldata/pfa/murata/pandora_eval/nogap_all_epoch27/run_bepp_all.py --workers 12
+python -B /data/suehara/mldata/pfa/murata/pandora_eval/input_ablation_epoch27/A_nogap_all_inputs/run_bepp_all.py --workers 12
 ```
 
 3,595 H5の一覧をKEKのLCIO処理一覧と照合し、全749,200イベントを処理する。
