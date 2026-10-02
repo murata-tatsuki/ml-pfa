@@ -1,0 +1,55 @@
+Nodes: mg0117 
+Master: mg0117:29500
+Training: /work/gw25/w25002/data/tc_nnqq_2M_nobrems/train; validation: /work/gw25/w25002/data/tc_nnqq_2M_nobrems/validation
+Outputs: /work/gw25/w25002/checkpoint/energy_1gpu_3444167.opbs
+2026-09-29T09:49:29+09:00
+[W socket.cpp:464] [c10d] The server socket cannot be initialized on [::]:29500 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:697] [c10d] The client socket cannot be initialized to connect to [::ffff:172.17.2.53]:29500 (errno: 97 - Address family not supported by protocol).
+['train.py', '-i', '/work/gw25/w25002/data/tc_nnqq_2M_nobrems/train', '-ii', '/work/gw25/w25002/data/tc_nnqq_2M_nobrems/validation', '--no-split', '--thetaphi', '--epochs', '500', '--beta-track', '--force-track-alpha', '--batch-size', '32', '--output-dimension', '5', '--ckptdir', '/work/gw25/w25002/checkpoint/energy_1gpu_3444167.opbs/checkpoints', '--energy-regression', '--energy-regression-cluster', '--LE-track', 'alpha_tracker_diff_log_perCluster', '--LE-cluster', 'sum_log_perCluster', '--momentum', '--momentum-amp', '--qmin', '0.2', '--learning-rate', '4e-4', '--ddp-lr-scaling', 'none', '--weight-decay', '1e-4', '--lr-policy', 'cosineReduce', '--clip-value', '10', '--clip-mode', 'value', '--seed', '1009', '--ddp', '--ddp-log-dir', '/work/gw25/w25002/checkpoint/energy_1gpu_3444167.opbs/ranks', '--progress-rank', '0', '--progress-mininterval', '20', '--rank-log-interval', '2000', '--ilc-streaming', '--stream-files-per-chunk', '8', '--stream-shuffle-buffer', '256', '--num-workers', '2', '--epochs-nobeta', '1', '--epochs-noLE', '3', '--use-multihead-model', '--multihead-regression-heads', '2', '--multihead-interaction-mode', 'none', '--extended-h5-input', '--exclude-gap-hits', '--benchmark-batches', '10', '--benchmark-warmup', '2', '--epochs-nobeta', '-1', '--epochs-noLE', '-1', '--rank-log-interval', '1', '--no-benchmark-loader-sweep', '--benchmark-batch-sizes', '16', '32', '64', '128']
+[W socket.cpp:697] [c10d] The client socket cannot be initialized to connect to [::ffff:172.17.2.53]:29500 (errno: 97 - Address family not supported by protocol).
+rank0 train e0:   0% 0/122500 [00:00<?, ?it/s]rank0 train e0:   0% 0/122500 [00:00<?, ?it/s, loss=?][rank0]:[W reducer.cpp:1360] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+rank0 train e0:   0% 0/122500 [00:15<?, ?it/s, loss=20.2]rank0 train e0:   0% 0/122500 [00:16<?, ?it/s, loss=24.1]rank0 train e0:   0% 0/122500 [00:16<?, ?it/s, loss=18]  rank0 train e0:   0% 0/122500 [00:16<?, ?it/s, loss=19]rank0 train e0:   0% 0/122500 [00:17<?, ?it/s, loss=18]rank0 train e0:   0% 0/122500 [00:17<?, ?it/s, loss=16.2]rank0 train e0:   0% 0/122500 [00:18<?, ?it/s, loss=16.2]rank0 train e0:   0% 0/122500 [00:18<?, ?it/s, loss=13.8]rank0 train e0:   0% 0/122500 [00:18<?, ?it/s, loss=13.8]rank0 train e0:   0% 0/122500 [00:19<?, ?it/s, loss=14.5]rank0 train e0:   0% 0/122500 [00:19<?, ?it/s, loss=13]  rank0 train e0:   0% 0/122500 [00:20<?, ?it/s, loss=13]                                                       rank0 valid e0:   0% 0/1250 [00:00<?, ?it/s]                                            rank0 train e0:   0% 0/61250 [00:00<?, ?it/s]rank0 train e0:   0% 0/61250 [00:00<?, ?it/s, loss=?]rank0 train e0:   0% 0/61250 [00:14<?, ?it/s, loss=19.7]rank0 train e0:   0% 0/61250 [00:15<?, ?it/s, loss=22.7]rank0 train e0:   0% 0/61250 [00:16<?, ?it/s, loss=21.1]rank0 train e0:   0% 0/61250 [00:17<?, ?it/s, loss=19]  rank0 train e0:   0% 0/61250 [00:17<?, ?it/s, loss=18.5]rank0 train e0:   0% 0/61250 [00:18<?, ?it/s, loss=18]  rank0 train e0:   0% 0/61250 [00:19<?, ?it/s, loss=15.3]rank0 train e0:   0% 0/61250 [00:19<?, ?it/s, loss=14.3]rank0 train e0:   0% 0/61250 [00:20<?, ?it/s, loss=14.2]rank0 train e0:   0% 9/61250 [00:20<39:03:09,  2.30s/it, loss=14.2]rank0 train e0:   0% 9/61250 [00:21<39:03:09,  2.30s/it, loss=13.6]rank0 train e0:   0% 9/61250 [00:22<39:03:09,  2.30s/it, loss=13.6]rank0 train e0:   0% 9/61250 [00:22<39:03:09,  2.30s/it, loss=12.6]                                                                   rank0 valid e0:   0% 0/625 [00:00<?, ?it/s]rank0 valid e0:   2% 10/625 [00:20<20:35,  2.01s/it]                                                    rank0 train e0:   0% 0/30625 [00:00<?, ?it/s]rank0 train e0:   0% 0/30625 [00:00<?, ?it/s, loss=?]rank0 train e0:   0% 0/30625 [00:16<?, ?it/s, loss=21.3]rank0 train e0:   0% 0/30625 [00:17<?, ?it/s, loss=21.7]rank0 train e0:   0% 0/30625 [00:19<?, ?it/s, loss=20.2]rank0 train e0:   0% 0/30625 [00:20<?, ?it/s, loss=20]  rank0 train e0:   0% 4/30625 [00:20<44:21:06,  5.21s/it, loss=20]rank0 train e0:   0% 4/30625 [00:22<44:21:06,  5.21s/it, loss=19.2]rank0 train e0:   0% 4/30625 [00:24<44:21:06,  5.21s/it, loss=16.4]rank0 train e0:   0% 4/30625 [00:25<44:21:06,  5.21s/it, loss=15.3]rank0 train e0:   0% 4/30625 [00:27<44:21:06,  5.21s/it, loss=13.4]rank0 train e0:   0% 4/30625 [00:28<44:21:06,  5.21s/it, loss=13]                                                                   [2026-09-29 09:51:36,622] torch.distributed.elastic.multiprocessing.api: [ERROR] failed (exitcode: 1) local_rank: 0 (pid: 171271) of binary: /usr/bin/python
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/run.py", line 810, in <module>
+    main()
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 351, in wrapper
+    return f(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/run.py", line 806, in main
+    run(args)
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/run.py", line 797, in run
+    elastic_launch(
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/launcher/api.py", line 134, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/usr/local/lib/python3.10/dist-packages/torch/distributed/launcher/api.py", line 264, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-09-29_09:51:36
+  host      : mg0117
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 171271)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpiexec detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[25533,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------

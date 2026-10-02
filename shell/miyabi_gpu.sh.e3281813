@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/w25002/ml-pfa/train.py", line 1792, in <module>
+    main()
+  File "/home/w25002/ml-pfa/train.py", line 1066, in main
+    if not args.dp: torch.cuda.set_device(device)
+  File "/usr/local/lib/python3.10/dist-packages/torch/cuda/__init__.py", line 402, in set_device
+    device = _get_device_index(device)
+  File "/usr/local/lib/python3.10/dist-packages/torch/cuda/_utils.py", line 39, in _get_device_index
+    return _torch_get_device_index(device, optional, allow_cpu)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_utils.py", line 792, in _get_device_index
+    raise ValueError(
+ValueError: Expected a torch.device with a specified index or an integer, but got:cuda

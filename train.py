@@ -1,7 +1,9 @@
 import os, os.path as osp
 import socket
+import copy
+import random
 from contextlib import nullcontext
-from time import strftime
+from time import strftime, perf_counter
 import tqdm
 import torch
 from torch.cuda.amp import GradScaler, autocast
@@ -123,6 +125,8 @@ def make_data_loader(dataset, batch_size, args, shuffle=False, ddp=False, sample
     if is_streaming_dataset(dataset):
         return DataLoader(dataset, shuffle=False, **common)
     return DataLoader(dataset, shuffle=(shuffle and sampler is None), sampler=sampler, **common)
+from training_checkpoint import TrainingCheckpoint
+from epoch_time_budget import EpochTimeBudget
 from lrscheduler import CyclicLRWithRestarts
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 #from sklearn.manifold import TSNE
@@ -585,6 +589,72 @@ def build_model(args, input_dim, output_dimension, ddp=False):
 def setup_ddp(rank, world_size):
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
+def ddp_learning_rate(args, world_size):
+    """Preserve legacy scaling unless an explicit optimizer LR is requested."""
+    return args.learning_rate * (world_size if args.ddp_lr_scaling == 'linear' else 1)
+
+def benchmark_loader_configs(args, world_size, validation_files=None):
+    baseline = (args.stream_files_per_chunk, args.stream_shuffle_buffer, data_loader_num_workers(args, ddp=True))
+    candidates = [baseline]
+    if args.benchmark_loader_sweep and args.ilc_streaming:
+        candidates += [(8, 256, 2), (8, 256, 4), (8, 128, 4)]
+    # An empty validation rank would fail rather than provide useful timings.
+    return list(dict.fromkeys(c for c in candidates
+                             if validation_files is None or
+                             world_size * max(1, c[2]) <= validation_files))
+
+
+def benchmark_process_tree_rss_mib():
+    """Approximate host RSS including DataLoader children (shared pages may repeat)."""
+    pending, seen, pages = [os.getpid()], set(), 0
+    while pending:
+        pid = pending.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        try:
+            with open(f'/proc/{pid}/statm') as stream:
+                pages += int(stream.read().split()[1])
+            with open(f'/proc/{pid}/task/{pid}/children') as stream:
+                pending.extend(map(int, stream.read().split()))
+        except (OSError, ValueError, IndexError):
+            pass
+    return pages * os.sysconf('SC_PAGE_SIZE') / 1024**2
+
+
+def benchmark_batches(iterable, args, device, phase):
+    """Bound a timing run; measure loading + compute after warm-up on each rank."""
+    if not args.benchmark_batches:
+        yield from iterable
+        return
+    torch.cuda.synchronize(device)
+    torch.cuda.reset_peak_memory_stats(device)
+    started = previous = measured_start = perf_counter()
+    events = steps = 0
+    peak_rss = 0.
+    rank = dist.get_rank()
+    for index, data in enumerate(iterable, 1):
+        yield data
+        torch.cuda.synchronize(device)
+        now = perf_counter()
+        print(f"BENCH_STEP phase={phase} rank={rank} batch={index} "
+              f"events={data.num_graphs} seconds={now - previous:.6f}", flush=True)
+        if index <= args.benchmark_warmup:
+            measured_start = now
+        else:
+            events += data.num_graphs
+            steps += 1
+        previous = now
+        peak_rss = max(peak_rss, benchmark_process_tree_rss_mib())
+        if index >= args.benchmark_warmup + args.benchmark_batches:
+            break
+    elapsed = previous - measured_start
+    print(f"BENCH_RESULT phase={phase} rank={rank} measured_steps={steps} "
+          f"events={events} seconds={elapsed:.6f} "
+          f"total_seconds={previous - started:.6f} host_tree_rss_mib={peak_rss:.1f} "
+          f"gpu_peak_allocated_mib={torch.cuda.max_memory_allocated(device) / 1024**2:.1f} "
+          f"gpu_peak_reserved_mib={torch.cuda.max_memory_reserved(device) / 1024**2:.1f}", flush=True)
+
 def cleanup():
     dist.destroy_process_group()
 
@@ -605,19 +675,21 @@ def configure_ddp_rank_logging(args, rank):
     sys.stdout = log_file
     sys.stderr = log_file
 
-def run_ddp_training(rank, world_size, args):
+def run_ddp_training(rank, world_size, args, local_rank=None):
     configure_ddp_rank_logging(args, rank)
-    # local_rank = rank  # このrankは 0〜(len(visible_gpus)-1)
-    # setup_ddp(local_rank, world_size)
-    # torch.cuda.set_device(local_rank)
-
+    # mp.spawn uses a single node; torchrun supplies a separate local GPU index.
+    if local_rank is None:
+        local_rank = rank
+    torch.cuda.set_device(local_rank)
     setup_ddp(rank, world_size)
-    torch.cuda.set_device(rank)
-
-    # device = torch.device(f"cuda:{local_rank}")
-    device = torch.device(f"cuda:{rank}")
-    print(device)
+    device = torch.device(f"cuda:{local_rank}")
+    print(f"DDP: host={socket.gethostname()} rank={rank}/{world_size} device={device}", flush=True)
     run_requirements(args)
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
     reduce_noise = args.reduce_noise
     n_epochs = args.epochs
     batch_size = args.batch_size
@@ -629,7 +701,10 @@ def run_ddp_training(rank, world_size, args):
     min_lr=args.min_lr
 
     batch_size = batch_size * world_size
-    lr_input = lr_input * world_size
+    lr_input = ddp_learning_rate(args, world_size)
+    print(f"RUN_CONFIG gpus={world_size} batch_per_gpu={args.batch_size} "
+          f"global_batch={batch_size} optimizer_lr={lr_input} "
+          f"weight_decay={weight_decay_input} seed={args.seed}", flush=True)
 
     shuffle = True
 
@@ -704,10 +779,8 @@ def run_ddp_training(rank, world_size, args):
         output_dimension=output_dimension,
         ddp=args.ddp,
     )
-    # model.to(local_rank)
-    # model = DDP(model, device_ids=[local_rank])
-    model.to(rank)
-    ddp_kwargs = dict(device_ids=[rank])
+    model.to(device)
+    ddp_kwargs = dict(device_ids=[local_rank])
     if args.use_multihead_model:
         # Early epochs can skip regression-head losses, so some head parameters
         # legitimately receive no gradient until L_E is enabled.
@@ -726,6 +799,7 @@ def run_ddp_training(rank, world_size, args):
     scheduler_batch_size = args.batch_size
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
     scaler = amp_grad_scaler(args)
+    scheduler = None
     if getattr(args, "amp", False) and rank == 0:
         print(f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}")
     if not args.settings_Sep01:
@@ -958,7 +1032,7 @@ def run_ddp_training(rank, world_size, args):
                     loss_components[key] = value.detach().clone()
                 else:
                     loss_components[key] += value.detach()
-        if not args.settings_Sep01: 
+        if not args.settings_Sep01 and not args.benchmark_batches:
             if not args.ReduceLROnPlateau: scheduler.step()
         try:
             show_progress = should_show_progress(args, rank=rank)
@@ -985,7 +1059,7 @@ def run_ddp_training(rank, world_size, args):
                 pbar.set_postfix({'loss': '?'})
             join_context = model.join() if streaming_train else nullcontext()
             with join_context:
-                for i, data in enumerate(pbar):
+                for i, data in enumerate(benchmark_batches(pbar, args, device, "train")):
                     # print(i, data.x.shape, data.y.shape)
                     data = data.to(device)
                     optimizer.zero_grad()
@@ -1014,7 +1088,7 @@ def run_ddp_training(rank, world_size, args):
                         if not args.no_clipping:
                             clip_gradients(model, args)
                         optimizer.step()
-                    if not args.settings_Sep01: 
+                    if not args.settings_Sep01 and not args.benchmark_batches:
                         if not args.ReduceLROnPlateau: scheduler.batch_step()
                     if show_progress:
                         pbar.set_postfix({'loss': float(loss)})
@@ -1097,7 +1171,7 @@ def run_ddp_training(rank, world_size, args):
                 ddp=True,
             )
             for data in tqdm.tqdm(
-                test_loader,
+                benchmark_batches(test_loader, args, device, "validation"),
                 total=pbar_total,
                 disable=not show_progress,
                 file=pbar_stream,
@@ -1159,15 +1233,7 @@ def run_ddp_training(rank, world_size, args):
         return test_loss.item()
 
     ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(checkpoint_payload(model, epoch=checkpoint_number, args=args), ckpt)
+    checkpointer = TrainingCheckpoint(model, optimizer, scheduler, scaler, args, checkpoint_payload)
 
     min_loss = 1e9
     train_loss_history=[]
@@ -1176,8 +1242,66 @@ def run_ddp_training(rank, world_size, args):
     train_acc_history=[]
     test_acc_history=[]
     learning_rates=[]
+    start_epoch = 0
+    if args.resume:
+        start_epoch, history = checkpointer.load(args.resume)
+        min_loss = history['min_loss']
+        train_loss_history = history['train_loss']
+        test_loss_history = history['test_loss']
+        learning_rates = history['learning_rates']
 
-    for i_epoch in range(n_epochs):
+    def save_epoch(completed_epoch):
+        if not args.dry and not args.benchmark_batches:
+            checkpointer.save(ckpt_dir, completed_epoch, dict(
+                min_loss=min_loss, train_loss=train_loss_history,
+                test_loss=test_loss_history, learning_rates=learning_rates))
+
+    # Also support interruption during the very first epoch.
+    if not args.resume:
+        if not args.dry and not args.benchmark_batches and osp.lexists(osp.join(ckpt_dir, 'last.pth.tar')):
+            raise ValueError('Checkpoint directory already contains last.pth.tar; use --resume or a new directory.')
+        save_epoch(-1)
+
+    if args.benchmark_batches:
+        configs = benchmark_loader_configs(
+            args, world_size,
+            len(test_dataset.files) if is_streaming_dataset(test_dataset) else None)
+        if not configs:
+            raise ValueError('Too few validation files for the benchmark worker counts')
+        configs = [(chunk, buffer, workers, batch)
+                   for batch in (args.benchmark_batch_sizes or [args.batch_size])
+                   for chunk, buffer, workers in configs]
+        n_epochs = len(configs)
+        initial_model = {k: v.detach().cpu().clone() for k, v in model.module.state_dict().items()}
+        initial_optimizer = copy.deepcopy(optimizer.state_dict())
+        initial_cpu_rng = torch.get_rng_state()
+        initial_cuda_rng = torch.cuda.get_rng_state(device)
+    epoch_budget = EpochTimeBudget(args.epoch_budget_deadline, args.epoch_budget_stop_file)
+    for loop_index in range(start_epoch, n_epochs):
+        # Decide only at a saved epoch boundary. Every rank takes the same branch
+        # before advancing either the scheduler or the data iterator.
+        stop = [epoch_budget.should_stop(loop_index) if rank == 0 else False]
+        if args.epoch_budget_deadline:
+            dist.broadcast_object_list(stop, src=0)
+        if stop[0]:
+            break
+        epoch_started = perf_counter()
+        i_epoch = 0 if args.benchmark_batches else loop_index
+        if args.benchmark_batches:
+            args.stream_files_per_chunk, args.stream_shuffle_buffer, args.num_workers, args.batch_size = configs[loop_index]
+            print(f"BENCH_CONFIG chunk={args.stream_files_per_chunk} "
+                  f"buffer={args.stream_shuffle_buffer} workers={args.num_workers}", flush=True)
+            print(f"BENCH_RUN gpus={world_size} batch_per_gpu={args.batch_size} "
+                  f"global_batch={world_size * args.batch_size} optimizer_lr={lr_input} "
+                  f"precision={args.amp_dtype if args.amp else 'fp32'}", flush=True)
+            model.module.load_state_dict(initial_model)
+            optimizer.load_state_dict(initial_optimizer)
+            torch.set_rng_state(initial_cpu_rng)
+            torch.cuda.set_rng_state(initial_cuda_rng, device)
+            if scaler is not None:
+                scaler = amp_grad_scaler(args)
+            train_loader = make_data_loader(train_dataset, args.batch_size, args, ddp=True, sampler=train_sampler)
+            test_loader = make_data_loader(test_dataset, args.batch_size, args, ddp=True, sampler=test_sampler)
         if train_sampler is not None:
             train_sampler.set_epoch(i_epoch)
         if test_sampler is not None:
@@ -1204,7 +1328,6 @@ def run_ddp_training(rank, world_size, args):
             learning_rates.append(optimizer.param_groups[0]["lr"])
             print("learning rate : ", learning_rates)
             print("train loss : ", train_loss)
-            write_checkpoint(i_epoch)
 
         test_loss= test(i_epoch)
         if args.ReduceLROnPlateau:
@@ -1213,7 +1336,15 @@ def run_ddp_training(rank, world_size, args):
         test_loss_history.append(test_loss)
         if test_loss < min_loss:
             min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
+        save_epoch(i_epoch)
+        if rank == 0 and args.epoch_budget_deadline:
+            epoch_seconds = perf_counter() - epoch_started
+            epoch_budget.record(epoch_seconds)
+            print(f'EPOCH_TIME epoch={i_epoch} seconds={epoch_seconds:.3f}', flush=True)
+        if rank == 0:
+            print(f"EPOCH_RESULT epoch={i_epoch} train_loss={train_loss:.8g} "
+                  f"validation_loss={test_loss:.8g} lr={optimizer.param_groups[0]['lr']:.8g}",
+                  flush=True)
 
     cleanup()
 
@@ -1238,6 +1369,13 @@ def main():
     parser.add_argument('--cuda', type=str, default='cuda')
     parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--benchmark-batches', type=int, default=0,
+                        help='DDP timing run: measured batches per rank per phase; no checkpoints.')
+    parser.add_argument('--benchmark-warmup', type=int, default=2)
+    parser.add_argument('--benchmark-batch-sizes', type=int, nargs='+',
+                        help='Benchmark only: local batch sizes, in execution order.')
+    parser.add_argument('--benchmark-loader-sweep', action=argparse.BooleanOptionalAction,
+                        default=True, help='Benchmark only: compare baseline with chunk/buffer/workers 8/256/2, 8/256/4, 8/128/4.')
     parser.add_argument('--epochs-nobeta', type=int, default=7)
     parser.add_argument('--epochs-noLE', type=int, default=15)
     parser.add_argument('--beta-track', action='store_true', help='Include L_beta_track term')
@@ -1261,6 +1399,10 @@ def main():
     parser.add_argument('-i-tune', '--inputdir-tune', type=str, help='Specify input directory for training (option)')                   ## not using now
     parser.add_argument('-ii-tune', '--inputdir-validate-tune', type=str, help='Specify input directory for validating')                ## not using now
     parser.add_argument('--learning-rate', type=float, default=9.0e-6)                                                                  ## not using now
+    parser.add_argument('--ddp-lr-scaling', choices=['linear', 'none'], default='linear',
+                        help='linear: legacy GPU-count scaling; none: use learning-rate directly.')
+    parser.add_argument('--seed', type=int, default=None,
+                        help='Optional model/training RNG seed; streaming order uses stream-seed.')
     parser.add_argument('--weight-decay', type=float, default=1e-4)                                                                     ## not using now
     parser.add_argument('--lr-warmup', action='store_true', help='Linearly warm up the learning rate before starting the cyclic/restart scheduler')
     parser.add_argument('--lr-warmup-epochs', type=int, default=5, help='Number of warm-up epochs used to reach --learning-rate (ignored unless --lr-warmup is set)')
@@ -1283,6 +1425,11 @@ def main():
     parser.add_argument('--multihead-interaction-mode', type=str, default='concat', choices=['none', 'concat', 'add', 'gate'], help='Interaction mode for multi-head model')
     parser.add_argument('--restart-period', type=int, default=30)
     parser.add_argument('--jit', action='store_true', help='Use compiled python program')                                               ## not using now
+    parser.add_argument('--resume', type=str, default='', help='Resume full training state; rerun the first incomplete epoch.')
+    parser.add_argument('--epoch-budget-deadline', type=float, default=0,
+                        help='Internal launcher option: Unix deadline for training, excluding PBS cleanup time.')
+    parser.add_argument('--epoch-budget-stop-file', default=None,
+                        help='Internal launcher option: signal successful stopping at a saved epoch boundary.')
     parser.add_argument('--model-ckpt', type=str, default='', help='Use trained model parameters')
     parser.add_argument('--ReduceLROnPlateau', action='store_true', help='Use ReduceLROnPlateau scheduler')
     parser.add_argument('--qmin', type=float, default=1., help='')
@@ -1307,6 +1454,28 @@ def main():
 
     ph.add_arguments(parser)
     args = parser.parse_args()
+    if bool(args.epoch_budget_deadline) != bool(args.epoch_budget_stop_file):
+        parser.error('--epoch-budget-deadline and --epoch-budget-stop-file must be supplied together')
+    if args.epoch_budget_deadline and (not np.isfinite(args.epoch_budget_deadline) or
+                                      args.epoch_budget_deadline < 0 or args.dry or args.benchmark_batches):
+        parser.error('Epoch time budgeting requires a positive deadline and checkpoint-enabled training')
+    if args.resume and (args.model_ckpt or args.benchmark_batches):
+        parser.error('--resume cannot be combined with --model-ckpt or benchmark mode')
+    if args.resume and not osp.isfile(args.resume):
+        parser.error('--resume checkpoint does not exist: ' + args.resume)
+    if args.benchmark_batches < 0 or args.benchmark_warmup < 0:
+        parser.error('Benchmark batch counts must be nonnegative')
+    if args.batch_size <= 0 or (args.benchmark_batch_sizes is not None and
+                              any(b <= 0 for b in args.benchmark_batch_sizes)):
+        parser.error('Batch sizes must be positive')
+    if args.benchmark_batch_sizes and not args.benchmark_batches:
+        parser.error('--benchmark-batch-sizes requires --benchmark-batches')
+    if args.benchmark_batches:
+        if not args.ddp:
+            parser.error('--benchmark-batches requires --ddp')
+        args.epochs = 1
+        if args.seed is None:
+            args.seed = 1009
     validate_training_arguments(args)
     validate_extended_arguments(args)
     ph.validate_arguments(args)
@@ -1331,6 +1500,18 @@ def main():
     min_lr=args.min_lr
 
     if args.ddp:
+        # Externally launched workers must join the existing job, not spawn
+        # another single-node job or replace its rendezvous address/port.
+        if "RANK" in os.environ:
+            if args.gpus is not None:
+                parser.error("With torchrun, omit --gpus; the launcher selects GPUs on each node.")
+            rank = int(os.environ["RANK"])
+            world_size = int(os.environ["WORLD_SIZE"])
+            local_rank = int(os.environ["LOCAL_RANK"])
+            if not 0 <= local_rank < torch.cuda.device_count():
+                parser.error(f"LOCAL_RANK={local_rank} has no visible CUDA device")
+            run_ddp_training(rank, world_size, args, local_rank=local_rank)
+            return
         # GPU選択: --gpus で指定されたGPUのみを使用。未指定の場合は全GPUを使用
         if args.gpus is not None:
             visible_gpus = [int(x.strip()) for x in args.gpus.split(',') if x.strip()]
@@ -1486,6 +1667,7 @@ def main():
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
     scaler = amp_grad_scaler(args)
+    scheduler = None
     if getattr(args, "amp", False):
         print(
             f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}"
@@ -1948,15 +2130,7 @@ def main():
         return test_loss.item()
 
     ckpt_dir = strftime('checkpoint/ckpts_gravnet_new02_%b%d_%H%M') if args.ckptdir is None else args.ckptdir
-    def write_checkpoint(checkpoint_number=None, best=False):
-        ckpt = 'ckpt_best.pth.tar' if best else 'ckpt_{0}_1.pth.tar'.format(checkpoint_number)
-        ckpt = osp.join(ckpt_dir, ckpt)
-        if best: print('Saving epoch {0} as new best'.format(checkpoint_number))
-        if not args.dry:
-            os.makedirs(ckpt_dir, exist_ok=True)
-            # m = torch.jit.script(model)
-            #torch.jit.save(m,ckpt)
-            torch.save(checkpoint_payload(model, epoch=checkpoint_number, args=args), ckpt)
+    checkpointer = TrainingCheckpoint(model, optimizer, scheduler, scaler, args, checkpoint_payload)
 
     min_loss = 1e9
     train_loss_history=[]
@@ -1965,8 +2139,31 @@ def main():
     train_acc_history=[]
     test_acc_history=[]
     learning_rates=[]
+    start_epoch = 0
+    if args.resume:
+        start_epoch, history = checkpointer.load(args.resume)
+        min_loss = history['min_loss']
+        train_loss_history = history['train_loss']
+        test_loss_history = history['test_loss']
+        learning_rates = history['learning_rates']
 
-    for i_epoch in range(n_epochs):
+    def save_epoch(completed_epoch):
+        if not args.dry and not args.benchmark_batches:
+            checkpointer.save(ckpt_dir, completed_epoch, dict(
+                min_loss=min_loss, train_loss=train_loss_history,
+                test_loss=test_loss_history, learning_rates=learning_rates))
+
+    # Also support interruption during the very first epoch.
+    if not args.resume:
+        if not args.dry and not args.benchmark_batches and osp.lexists(osp.join(ckpt_dir, 'last.pth.tar')):
+            raise ValueError('Checkpoint directory already contains last.pth.tar; use --resume or a new directory.')
+        save_epoch(-1)
+
+    epoch_budget = EpochTimeBudget(args.epoch_budget_deadline, args.epoch_budget_stop_file)
+    for i_epoch in range(start_epoch, n_epochs):
+        if epoch_budget.should_stop(i_epoch):
+            break
+        epoch_started = perf_counter()
         configure_streaming_dataset(
             train_dataset,
             epoch=i_epoch,
@@ -1989,7 +2186,6 @@ def main():
         print("learning rate : ", learning_rates)
         train_loss_history.append(train_loss)
         print("train loss : ", train_loss)
-        write_checkpoint(i_epoch)
 
         test_loss= test(i_epoch)
         if args.ReduceLROnPlateau:
@@ -1998,7 +2194,13 @@ def main():
         test_loss_history.append(test_loss)
         if test_loss < min_loss:
             min_loss = test_loss
-            #write_checkpoint(i_epoch, best=True)
+
+        save_epoch(i_epoch)
+
+        if args.epoch_budget_deadline:
+            epoch_seconds = perf_counter() - epoch_started
+            epoch_budget.record(epoch_seconds)
+            print(f'EPOCH_TIME epoch={i_epoch} seconds={epoch_seconds:.3f}', flush=True)
 
         #if i_epoch==0 or i_epoch==30 : check_plots(cluster_space_para,data_y)
         #if i_epoch==30 : check_plots(cluster_space_para,data_y)

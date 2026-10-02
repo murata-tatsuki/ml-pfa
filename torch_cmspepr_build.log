@@ -1,0 +1,16 @@
+Looking in indexes: https://pypi.org/simple, https://pypi.ngc.nvidia.com
+Processing /home/w25002/pytorch_cmspepr
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Building wheels for collected packages: torch-cmspepr
+  Building wheel for torch-cmspepr (setup.py): started
+  Building wheel for torch-cmspepr (setup.py): still running...
+  Building wheel for torch-cmspepr (setup.py): finished with status 'done'
+  Created wheel for torch-cmspepr: filename=torch_cmspepr-1.0.0-cp310-cp310-linux_aarch64.whl size=133694 sha256=930d9d9a7d72c9fdf53b00e414937585fcfd2bc6db946fb53c59d0a6ad430840
+  Stored in directory: /tmp/pip-ephem-wheel-cache-0yoq02ts/wheels/20/a7/7c/bd53825552b206b0b4a323ba0836377c0e34ef6a277fe5de30
+Successfully built torch-cmspepr
+Installing collected packages: torch-cmspepr
+Successfully installed torch-cmspepr-1.0.0
+
+[notice] A new release of pip is available: 23.3.2 -> 26.2.1
+[notice] To update, run: python -m pip install --upgrade pip

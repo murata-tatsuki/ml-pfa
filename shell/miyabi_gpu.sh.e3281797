@@ -1,0 +1,26 @@
+[W socket.cpp:464] [c10d] The server socket cannot be initialized on [::]:47089 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:697] [c10d] The client socket cannot be initialized to connect to [localhost]:47089 (errno: 97 - Address family not supported by protocol).
+Traceback (most recent call last):
+  File "/home/w25002/ml-pfa/train.py", line 1792, in <module>
+    main()
+  File "/home/w25002/ml-pfa/train.py", line 1059, in main
+    mp.spawn(run_ddp_training, args=(world_size, args), nprocs=world_size, join=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/multiprocessing/spawn.py", line 246, in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method="spawn")
+  File "/usr/local/lib/python3.10/dist-packages/torch/multiprocessing/spawn.py", line 202, in start_processes
+    while not context.join():
+  File "/usr/local/lib/python3.10/dist-packages/torch/multiprocessing/spawn.py", line 145, in join
+    raise ProcessExitedException(
+torch.multiprocessing.spawn.ProcessExitedException: process 0 terminated with signal SIGKILL
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[24969,1],0]
+  Exit code:    1
+--------------------------------------------------------------------------
+Cgroup memsw limit exceeded: s

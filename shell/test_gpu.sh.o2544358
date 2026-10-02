@@ -1,0 +1,116 @@
+['/home/w25002/ml-pfa/train.py', '-i', '/home/w25002/work/data/train', '-ii', '/home/w25002/work/data/validation', '--no-split', '--thetaphi', '--cuda', 'cuda:0', '--epochs', '1', '--batch-size', '4', '--output-dimension', '5', '--ckptdir', '/home/w25002/work/checkpoint/test', '--momentum', '--momentum-amp', '--qmin', '0.2', '--learning-rate', '2e-5', '--lr-policy', 'cosineReduce', '--clip-value', '10']
+Using device:  cuda:0
+learning rate : 2e-05 ,  weght decay : 0.0001 , regression coefficient : 1
+momentum and energy of virtual hits are NOT MC truth
+using detected values
+thetaphi at main: True
+Loading dataset...
+ILCDataset: path='/home/w25002/work/data/train'
+filenames=['/home/w25002/work/data/train/nnqq_0_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_0_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_1_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_1_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_2_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_2_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_3_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_3_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_4_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_4_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_5_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_5_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_6_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_6_uu_ft0.h5', '/home/w25002/work/data/train/nnqq_7_dd_ft0.h5', '/home/w25002/work/data/train/nnqq_7_uu_ft0.h5']
+Reading file: file='/home/w25002/work/data/train/nnqq_0_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_0_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_1_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_1_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_2_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_2_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_3_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_3_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_4_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_4_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_5_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_5_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_6_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_6_uu_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_7_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/train/nnqq_7_uu_ft0.h5'
+Making ak_feats...
+Making ak_labels...
+ILCDataset: path='/home/w25002/work/data/validation'
+filenames=['/home/w25002/work/data/validation/nnqq_9_dd_ft0.h5', '/home/w25002/work/data/validation/nnqq_9_uu_ft0.h5']
+Reading file: file='/home/w25002/work/data/validation/nnqq_9_dd_ft0.h5'
+Reading file: file='/home/w25002/work/data/validation/nnqq_9_uu_ft0.h5'
+Making ak_feats...
+Making ak_labels...
+Training dataset size:  1600
+Validating dataset size:  200
+Batch size:  4
+Loading GravnetModel
+Hello
+restart period :  30
+Training epoch 0
+[9.43762368e+00 2.89664650e-01 1.35919604e+02 5.01205440e-01
+ 1.01830683e+01 9.65955985e-07 9.12106393e+01 8.77254331e-01
+ 2.32229018e+02 5.05327813e-06 1.00088387e+01 2.04552397e+00
+ 1.66856917e+02 3.55255671e+00 7.15140575e+00 2.02865352e+00
+ 1.42892439e+02 3.53782636e+00 2.05569160e+02 8.56409451e-01
+ 4.65466539e+00 5.61102443e-01 5.65914651e+00 2.91676321e-07
+ 2.55209936e+01 8.44072728e-01 9.60267598e+01 1.16822359e-06
+ 3.68396992e+00 7.84457716e-01 6.35757682e+01 1.36351763e+00
+ 2.95480761e+00 8.74832279e-01 5.88858262e+01 1.51902542e+00
+ 8.82446909e+01 3.72020721e-01 2.03540448e+00 3.44898078e-01
+ 3.36215632e+00 1.41089484e-07 1.10316910e+01 3.65461433e-01
+ 4.09378842e+01 4.96074952e-07 1.64866434e+00 3.56346367e-01
+ 2.83023181e+01 6.12863632e-01 1.39101581e+00 4.31647436e-01
+ 2.75316277e+01 7.47237767e-01 4.20224988e+01 1.84747448e-01
+ 1.02357853e+00 2.87839912e-01 1.47691970e+00 5.93564774e-08
+ 4.69549303e+00 1.44127322e-01 1.82401376e+01 2.08612656e-07
+ 7.61658606e-01 1.63609089e-01 1.29708054e+01 2.82253318e-01
+ 6.61214323e-01 2.18639591e-01 1.31899333e+01 3.79318362e-01
+ 2.10500773e+01 8.96094665e-02 5.30015301e-01 2.71214785e-01
+ 3.55817007e+01 9.43770992e-01 7.02327221e-01 3.58132159e-01
+ 1.37584716e+01 6.17166133e-01 5.26609552e-01 2.52688695e-01
+ 1.03015882e+01 4.41445125e-01 4.26583765e-01 1.97819033e-01
+ 8.25232489e+00 3.41425134e-01 5.27916841e-01 7.79497306e-01
+ 7.07354813e+00 1.44151429e+00 8.87160368e+00 3.92174787e+00
+ 1.26416216e+01 9.26674024e+00]
+train  L_V                   = +7.8717 (101.8%)
+ train    L_V_attractive      = +0.0070 (0.1%)
+ train      L_V_attractive_charged      = +0.0041 (0.1%)
+ train      L_V_attractive_neutral      = +0.0030 (0.0%)
+ train    L_V_repulsive       = +7.8646 (101.7%)
+ train      L_V_repulsive_charged       = +3.5694 (46.2%)
+ train      L_V_repulsive_neutral       = +4.2952 (55.6%)
+ train    L_charged_cluster   = +0.0000 (0.0%)
+ train  L_beta              = -0.1400 (-1.8%)
+ train    L_beta_noise        = +0.0000 (0.0%)
+ train    L_beta_sig          = -0.1400 (-1.8%)
+ train    L_beta_suppress     = +0.0000 (0.0%)
+ train    L_beta_track        = +0.0000 (0.0%)
+ train      L_beta_norms_term   = -0.2970 (-3.8%)
+ train      L_beta_logbeta_term = +0.1570 (2.0%)
+ train  L_E   = +0.0000 (0.0%)
+ train    L_E_charge = +0.0000 (0.0%)
+ train    L_E_cond = +0.0000 (0.0%)
+ train    L_E_cluster = +0.0000 (0.0%)
+ train    L_E_w_photon   = +0.0000 (0.0%)
+ train    L_E_w_charged_hadron   = +0.0000 (0.0%)
+ train    L_E_w_neutral_hadron   = +0.0000 (0.0%)
+ train    L_E_w_muon     = +0.0000 (0.0%)
+ train    L_E_w_electron = +0.0000 (0.0%)
+learning rate :  [1.994549285891432e-05]
+train loss :  5.512264728546143
+test   L_V                   = +4.6761 (100.6%)
+    L_V_attractive      = +0.0018 (0.0%)
+      L_V_attractive_charged      = +0.0015 (0.0%)
+      L_V_attractive_neutral      = +0.0003 (0.0%)
+    L_V_repulsive       = +4.6743 (100.5%)
+      L_V_repulsive_charged       = +2.1986 (47.3%)
+      L_V_repulsive_neutral       = +2.4757 (53.2%)
+    L_charged_cluster   = +0.0000 (0.0%)
+  L_beta              = -0.0260 (-0.6%)
+    L_beta_noise        = +0.0000 (0.0%)
+    L_beta_sig          = -0.0260 (-0.6%)
+    L_beta_suppress     = +0.0000 (0.0%)
+    L_beta_track        = +0.0000 (0.0%)
+      L_beta_norms_term   = -0.2496 (-5.4%)
+      L_beta_logbeta_term = +0.2237 (4.8%)
+  L_E   = +0.0000 (0.0%)
+    L_E_charge = +0.0000 (0.0%)
+    L_E_cond = +0.0000 (0.0%)
+    L_E_cluster = +0.0000 (0.0%)
+    L_E_w_photon   = +0.0000 (0.0%)
+    L_E_w_charged_hadron   = +0.0000 (0.0%)
+    L_E_w_neutral_hadron   = +0.0000 (0.0%)
+    L_E_w_muon     = +0.0000 (0.0%)
+    L_E_w_electron = +0.0000 (0.0%)
+Returning 5.650149345397949

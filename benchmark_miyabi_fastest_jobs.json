@@ -1,0 +1,59 @@
+{
+  "maximum_gpu_minutes": 57.234,
+  "budget_note": "Completed all earlier jobs including failures: 2474 GPU-sec (41.234 GPU-min); final job 16*60 sec adds at most 960 GPU-sec; total cap 3434 GPU-sec (57.234 GPU-min). No automatic submissions.",
+  "jobs": [
+    {
+      "id": "3444017",
+      "gpus": 4,
+      "walltime_minutes": 10,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_4gpu_3444017.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-bench4.o3444017"
+    },
+    {
+      "id": "3444167",
+      "gpus": 1,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_1gpu_3444167.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale1.o3444167"
+    },
+    {
+      "id": "3444121",
+      "gpus": 2,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_2gpu_3444121.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale2.o3444121"
+    },
+    {
+      "id": "3444188",
+      "gpus": 4,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_4gpu_3444188.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale4.o3444188"
+    },
+    {
+      "id": "3444199",
+      "gpus": 8,
+      "walltime_minutes": 3,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_8gpu_3444199.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-fast8.o3444199"
+    },
+    {
+      "id": "3444200",
+      "gpus": 4,
+      "walltime_minutes": 2,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_4gpu_3444200.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-fastamp.o3444200"
+    },
+    {
+      "id": "3444218",
+      "gpus": 16,
+      "walltime_minutes": 1,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_16gpu_3444218.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-fast16.o3444218"
+    }
+  ],
+  "failed_gpu_seconds": 20,
+  "report_name": "benchmark_miyabi_fastest",
+  "ranking_metric": "walltime",
+  "objective": "目的: 学習完了までの実時間を短縮。今回は速度測定のみ、精度は未評価。"
+}

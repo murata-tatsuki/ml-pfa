@@ -1,0 +1,13 @@
+Nodes: mg0102 mg0109 mg0110 mg0111 
+Master: mg0102:29500
+Training: /work/gw25/w25002/data/tc_nnqq_2M_nobrems/train; validation: /work/gw25/w25002/data/tc_nnqq_2M_nobrems/validation
+Outputs: /work/gw25/w25002/checkpoint/energy_4gpu_3443959.opbs
+2026-09-29T09:15:14+09:00
+ERROR: You have attempted to pass environment variables to Open MPI
+with both the "-x" method and by setting the MCA parameter "mca_base_env_list".
+
+Open MPI does not support mixing these two methods.  Please choose one
+method and try launching your job again.
+
+Your job will now abort.
+[mg0102:315015] [[10726,0],0] ORTE_ERROR_LOG: Fatal in file ../../../../orte/mca/schizo/base/schizo_base_stubs.c at line 86

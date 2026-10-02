@@ -1,0 +1,35 @@
+{
+  "maximum_gpu_minutes": 49.067,
+  "budget_note": "Completed 4-GPU job: 4*206 sec; failed jobs 3443959 and 3444120: 20 GPU-sec; remaining maxima: 1*300+2*300+4*300 sec = 49.067 GPU-min total. Watchers never submit jobs.",
+  "jobs": [
+    {
+      "id": "3444017",
+      "gpus": 4,
+      "walltime_minutes": 10,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_4gpu_3444017.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-bench4.o3444017"
+    },
+    {
+      "id": "3444167",
+      "gpus": 1,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_1gpu_3444167.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale1.o3444167"
+    },
+    {
+      "id": "3444121",
+      "gpus": 2,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_2gpu_3444121.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale2.o3444121"
+    },
+    {
+      "id": "3444188",
+      "gpus": 4,
+      "walltime_minutes": 5,
+      "run_dir": "/work/gw25/w25002/checkpoint/energy_4gpu_3444188.opbs",
+      "pbs_output": "/home/w25002/ml-pfa/pfa-scale4.o3444188"
+    }
+  ],
+  "failed_gpu_seconds": 20
+}

@@ -9,8 +9,9 @@ from torch_geometric.nn.conv import MessagePassing
 
 try:
     from torch_cmspepr import knn_graph
-except ImportError:
+except ImportError as error:
     knn_graph = None
+    _knn_import_error = error
 
 
 class GravNetConv(MessagePassing):
@@ -45,7 +46,7 @@ class GravNetConv(MessagePassing):
         super(GravNetConv, self).__init__(flow='target_to_source', **kwargs)
 
         if knn_graph is None:
-            raise ImportError('`GravNetConv` requires `torch-cluster`.')
+            raise ImportError('`GravNetConv` requires `torch_cmspepr` and its compiled KNN extensions.') from _knn_import_error
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -88,7 +89,9 @@ class GravNetConv(MessagePassing):
         edge_weight = torch.exp(-10. * edge_weight)  # 10 gives a better spread
 
         # propagate_type: (x: OptPairTensor, edge_weight: OptTensor)
-        out = self.propagate(edge_index, x=(h_l, None),
+        # This is a homogeneous graph: both endpoints use the same features.
+        # With target_to_source flow, MessagePassing lifts x[1] for x_j.
+        out = self.propagate(edge_index, x=(h_l, h_l),
                              edge_weight=edge_weight,
                              size=(s_l.size(0), s_l.size(0)))
 

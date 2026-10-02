@@ -57,6 +57,52 @@ class ClusterEnergyTests(unittest.TestCase):
         self.assertGreater(h.grad[:2].abs().sum().item(), 0)
         self.assertEqual(h.grad[2:].abs().sum().item(), 0)
 
+    def test_truth_training_checkpoint_resumes_optimizer_cosine_and_next_update(self):
+        from lrscheduler import CyclicLRWithRestarts
+        from training_checkpoint import TrainingCheckpoint
+        data = self.make_data()
+        args = SimpleNamespace(cluster_energy_pooling=True, cluster_energy_source='truth',
+                               clip_mode='norm')
+
+        def build():
+            model = GravNetModelMultiHead(input_dim=5, output_dim=5, n_heads=3,
+                interaction_mode='none', cluster_energy_pooling=True, cluster_energy_source='truth')
+            opt = torch.optim.AdamW(model.parameters(), lr=4e-4)
+            scheduler = CyclicLRWithRestarts(opt, 2, 2, policy='cosineReduce', restart_period=2)
+            cp = TrainingCheckpoint(model, opt, scheduler, None, args, checkpoint_payload)
+            return model, opt, scheduler, cp
+
+        def step(state):
+            model, opt, scheduler, _ = state
+            scheduler.step()
+            opt.zero_grad()
+            output = model(data.x, data.batch, truth_cluster_index=data.y[:, 0],
+                           detected_energy=data.feat[:, 0])
+            pooled = output['cluster_energy']
+            torch.testing.assert_close(pooled['assignments'], data.y[:, 0])
+            loss = pooled_energy_loss(pooled, data.y[:, 0], torch.full_like(data.feat[:, 0], 5.),
+                data.feat[:, 0], data.batch, data.x[:, 4] > .5, 'sum_log_perCluster')
+            loss = loss + output['clustering'].square().mean() + output['regressions'][0].square().mean()
+            self.assertTrue(torch.isfinite(loss))
+            loss.backward()
+            self.assertTrue(any(p.grad is not None and p.grad.abs().sum() > 0
+                                for p in model.cluster_energy_head.parameters()))
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
+            opt.step()
+            scheduler.batch_step()
+
+        with tempfile.TemporaryDirectory() as directory:
+            original = build()
+            step(original)
+            original[3].save(directory, 0, {})
+            step(original)
+            resumed = build()
+            self.assertEqual(resumed[3].load(str(Path(directory) / 'last.pth.tar'))[0], 1)
+            step(resumed)
+            for name, value in original[0].state_dict().items():
+                torch.testing.assert_close(value, resumed[0].state_dict()[name], rtol=0, atol=0)
+            self.assertEqual(original[1].param_groups[0]['lr'], resumed[1].param_groups[0]['lr'])
+
     def test_permutation_invariance(self):
         n = 12
         h = torch.randn(n, 5)

@@ -47,10 +47,15 @@ def fixture(unknown_only=False):
                      'EcalBarrelCollectionGapHits', 'EcalEndcapsCollectionGapHits'], global_index=0)
 
 
-def write_fixture(path, events):
+def write_fixture(path, events, schema='pandora-eval-1'):
     with h5py.File(path, 'w') as f:
-        f.attrs['schema_version'] = 'pandora-eval-1'
-        f.attrs['metadata'] = json.dumps(dict(columns=dict(row_info=ROW_COLUMNS)))
+        f.attrs['schema_version'] = schema
+        metadata = dict(columns=dict(row_info=ROW_COLUMNS))
+        definitions = {'nnqq-2m-eval-1': 'higgs-direct-qq-terminal-nu-v1',
+                       'single-particle-eval-1': 'single-primary-terminal-nu-v1'}
+        if schema in definitions:
+            metadata['event_definition'] = dict(version=definitions[schema])
+        f.attrs['metadata'] = json.dumps(metadata)
         for name in ('feature', 'label', 'row_info', 'collections', 'event'):
             rows = [e[name].tolist() if isinstance(e[name], np.ndarray) else e[name] for e in events]
             form, length, buffers = ak.to_buffers(ak.Array(rows))
@@ -70,6 +75,76 @@ def settings():
 
 
 class ExtendedTrainingTests(unittest.TestCase):
+    def test_nnqq_training_schema_uses_same_row_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'nnqq.h5'
+            write_fixture(path, [fixture()], schema='nnqq-2m-eval-1')
+            bundle = read_training_bundle(path)
+            self.assertEqual(len(bundle['feature']), 1)
+            self.assertEqual(len(training_event(bundle, 0, settings(), 0).x), 61)
+            with h5py.File(path, 'r+') as f:
+                f.attrs['metadata'] = json.dumps(dict(columns=dict(row_info=[])))
+            with self.assertRaisesRegex(ValueError, 'row_info'):
+                read_training_bundle(path)
+
+    def test_supported_schemas_preserve_training_inputs_and_file(self):
+        expected = model_data(fixture(), exclude_gap_hits=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'input.h5'
+            for schema in ('pandora-eval-1', 'nnqq-2m-eval-1', 'single-particle-eval-1'):
+                with self.subTest(schema=schema):
+                    write_fixture(path, [fixture()], schema=schema)
+                    before = hashlib.sha256(path.read_bytes()).hexdigest()
+                    actual = training_event(read_training_bundle(path), 0, settings(), 0)
+                    for key in ('x', 'y', 'feat', 'label', 'input_row', 'truth_valid', 'hitid'):
+                        torch.testing.assert_close(actual[key], expected[key], rtol=0, atol=0)
+                    self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def test_extended_event_definition_is_required_and_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'input.h5'
+            for schema in ('nnqq-2m-eval-1', 'single-particle-eval-1'):
+                for definition in (None, {}, {'version': 'incorrect-v1'}):
+                    with self.subTest(schema=schema, definition=definition):
+                        write_fixture(path, [fixture()], schema=schema)
+                        with h5py.File(path, 'r+') as f:
+                            metadata = json.loads(f.attrs['metadata'])
+                            if definition is None:
+                                del metadata['event_definition']
+                            else:
+                                metadata['event_definition'] = definition
+                            f.attrs['metadata'] = json.dumps(metadata)
+                        with self.assertRaisesRegex(ValueError, 'event_definition'):
+                            read_training_bundle(path)
+
+    def test_extended_event_length_is_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'input.h5'
+            for schema in ('nnqq-2m-eval-1', 'single-particle-eval-1'):
+                for width in (9, 11):
+                    with self.subTest(schema=schema, width=width):
+                        event = fixture(); event['event'] = np.zeros(width)
+                        write_fixture(path, [event], schema=schema)
+                        with self.assertRaisesRegex(ValueError, 'must contain 10 values'):
+                            read_training_bundle(path)
+
+    def test_single_particle_padding_is_checked_without_restricting_nnqq(self):
+        event = fixture(); event['event'][4] = 1.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'input.h5'
+            write_fixture(path, [event], schema='single-particle-eval-1')
+            with self.assertRaisesRegex(ValueError, 'padding must be zero'):
+                read_training_bundle(path)
+            write_fixture(path, [event], schema='nnqq-2m-eval-1')
+            self.assertEqual(ak.to_list(read_training_bundle(path)['event'])[0][4], 1.)
+
+    def test_unknown_schema_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'input.h5'
+            write_fixture(path, [fixture()], schema='unknown-eval-1')
+            with self.assertRaisesRegex(ValueError, 'unsupported training H5 schema'):
+                read_training_bundle(path)
+
     def setUp(self):
         torch.manual_seed(3); torch.set_num_threads(1)
 
