@@ -1,2 +1,4 @@
 __pycache__/
 *.py[cod]
+/build/
+/knn_event_parallel/_C.so
