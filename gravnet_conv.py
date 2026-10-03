@@ -9,8 +9,9 @@ from torch_geometric.nn.conv import MessagePassing
 
 try:
     from torch_cmspepr import knn_graph
-except ImportError:
+except ImportError as error:
     knn_graph = None
+    _knn_import_error = error
 
 
 class GravNetConv(MessagePassing):
@@ -36,21 +37,26 @@ class GravNetConv(MessagePassing):
         num_workers (int): Number of workers to use for k-NN computation.
             Has no effect in case :obj:`batch` is not :obj:`None`, or the input
             lies on the GPU. (default: :obj:`1`)
+        knn_backend (str): ``legacy`` (default) or the separately built
+            ``event-parallel`` CUDA extension. The latter supports eager execution.
         **kwargs (optional): Additional arguments of
             :class:`torch_geometric.nn.conv.MessagePassing`.
     """
     def __init__(self, in_channels: int, out_channels: int,
                  space_dimensions: int, propagate_dimensions: int, k: int,
-                 num_workers: int = 1, **kwargs):
+                 num_workers: int = 1, knn_backend: str = 'legacy', **kwargs):
         super(GravNetConv, self).__init__(flow='target_to_source', **kwargs)
 
         if knn_graph is None:
-            raise ImportError('`GravNetConv` requires `torch-cluster`.')
+            raise ImportError('`GravNetConv` requires `torch_cmspepr` and its compiled KNN extensions.') from _knn_import_error
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.k = k
         self.num_workers = num_workers
+        if knn_backend not in ('legacy', 'event-parallel'):
+            raise ValueError('Unknown KNN backend: ' + knn_backend)
+        self.knn_backend = knn_backend
 
         self.lin_s = Linear(in_channels, space_dimensions)
         self.lin_h = Linear(in_channels, propagate_dimensions)
@@ -82,17 +88,28 @@ class GravNetConv(MessagePassing):
         # print("GravnetConv: space coordinate:", s_l)
 
         # torch_cmspepr.select_knn は BFloat16 未対応（"set_defaults" not implemented for 'BFloat16'）
-        edge_index = knn_graph(s_l.to(dtype=torch.float32), self.k, b)
+        if self.knn_backend == 'legacy':
+            edge_index = knn_graph(s_l.to(dtype=torch.float32), self.k, b)
+        else:
+            edge_index = self._event_parallel_graph(s_l.to(dtype=torch.float32), b)
 
         edge_weight = (s_l[edge_index[1]] - s_l[edge_index[0]]).pow(2).sum(-1)
         edge_weight = torch.exp(-10. * edge_weight)  # 10 gives a better spread
 
         # propagate_type: (x: OptPairTensor, edge_weight: OptTensor)
-        out = self.propagate(edge_index, x=(h_l, None),
+        # This is a homogeneous graph: both endpoints use the same features.
+        # With target_to_source flow, MessagePassing lifts x[1] for x_j.
+        out = self.propagate(edge_index, x=(h_l, h_l),
                              edge_weight=edge_weight,
                              size=(s_l.size(0), s_l.size(0)))
 
         return self.lin(torch.cat([out, x], dim=-1))
+
+    @torch.jit.unused
+    def _event_parallel_graph(self, x: Tensor, batch: OptTensor) -> Tensor:
+        # Optional extension is never loaded by the legacy path.
+        from knn_event_parallel import knn_graph as parallel_graph
+        return parallel_graph(x, self.k, batch)
 
     def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
         return x_j * edge_weight.unsqueeze(1)
@@ -109,3 +126,24 @@ class GravNetConv(MessagePassing):
         return '{}({}, {}, k={})'.format(self.__class__.__name__,
                                          self.in_channels, self.out_channels,
                                          self.k)
+
+
+def configure_knn_backend(model, backend='legacy'):
+    """Choose a runtime implementation without changing checkpoint parameters.
+
+    The optional backend is for eager training; retain legacy for TorchScript.
+    """
+    if backend not in ('legacy', 'event-parallel'):
+        raise ValueError('Unknown KNN backend: ' + backend)
+    if backend == 'event-parallel':
+        from knn_event_parallel import load_extension
+        load_extension()  # Fail early rather than after reading the training data.
+    count = 0
+    for layer in model.modules():
+        if isinstance(layer, GravNetConv):
+            layer.knn_backend = backend
+            count += 1
+    if backend != 'legacy' and count == 0:
+        raise ValueError('This model has no supported GravNetConv layers')
+    print(f'KNN backend={backend} GravNet_layers={count}', flush=True)
+    return model

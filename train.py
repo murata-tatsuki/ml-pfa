@@ -535,6 +535,8 @@ def pretraining_metrics_log_path(args):
 
 
 def build_model(args, input_dim, output_dimension, ddp=False):
+    from gravnet_conv import configure_knn_backend
+    knn_backend = getattr(args, 'knn_backend', 'legacy')
     if args.use_multihead_model:
         clustering_output_dim = args.output_dimension + (1 if args.use_charged_cluster_loss else 0)
         n_reg_heads = args.multihead_regression_heads if args.energy_regression else 0
@@ -563,7 +565,7 @@ def build_model(args, input_dim, output_dimension, ddp=False):
                 "Loading GravNetModelMultiHead "
                 f"(heads={n_heads}, reg_heads={n_reg_heads}, interaction={args.multihead_interaction_mode})"
             )
-        return model
+        return configure_knn_backend(model, knn_backend)
 
     if args.model_ckpt == "":
         if not args.energy_branch:
@@ -579,7 +581,7 @@ def build_model(args, input_dim, output_dimension, ddp=False):
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
         else:
             model = get_model(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
-    return model
+    return configure_knn_backend(model, knn_backend)
 
 
 def setup_ddp(rank, world_size):
@@ -1278,6 +1280,8 @@ def main():
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')                       ## not using now
     parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
     parser.add_argument('--use-multihead-model', action='store_true', help='Use GravNetModelMultiHead instead of legacy GravNet models')
+    parser.add_argument('--knn-backend', choices=['legacy', 'event-parallel'], default='legacy',
+                        help='KNN execution backend; event-parallel requires the separately built knn_event_parallel extension')
     parser.add_argument('--multihead-regression-heads', type=int, default=1, help='Number of regression heads for multi-head model (head-0 is clustering)')
     parser.add_argument('--multihead-interaction-start-epoch', type=int, default=5, help='Epoch to enable clustering->regression interaction in multi-head model')
     parser.add_argument('--multihead-interaction-mode', type=str, default='concat', choices=['none', 'concat', 'add', 'gate'], help='Interaction mode for multi-head model')
