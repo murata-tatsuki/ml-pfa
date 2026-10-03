@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from torch_geometric.typing import OptTensor, PairTensor, PairOptTensor
 
 import torch
@@ -57,6 +57,7 @@ class GravNetConv(MessagePassing):
         if knn_backend not in ('legacy', 'event-parallel'):
             raise ValueError('Unknown KNN backend: ' + knn_backend)
         self.knn_backend = knn_backend
+        self.knn_block_size = 128
 
         self.lin_s = Linear(in_channels, space_dimensions)
         self.lin_h = Linear(in_channels, propagate_dimensions)
@@ -71,7 +72,8 @@ class GravNetConv(MessagePassing):
 
     def forward(
             self, x: Tensor,
-            batch: OptTensor = None) -> Tensor:
+            batch: OptTensor = None,
+            knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
         """"""
 
         assert x.dim() == 2, 'Static graphs not supported in `GravNetConv`.'
@@ -91,7 +93,7 @@ class GravNetConv(MessagePassing):
         if self.knn_backend == 'legacy':
             edge_index = knn_graph(s_l.to(dtype=torch.float32), self.k, b)
         else:
-            edge_index = self._event_parallel_graph(s_l.to(dtype=torch.float32), b)
+            edge_index = self._event_parallel_graph(s_l.to(dtype=torch.float32), b, knn_plan)
 
         edge_weight = (s_l[edge_index[1]] - s_l[edge_index[0]]).pow(2).sum(-1)
         edge_weight = torch.exp(-10. * edge_weight)  # 10 gives a better spread
@@ -106,10 +108,13 @@ class GravNetConv(MessagePassing):
         return self.lin(torch.cat([out, x], dim=-1))
 
     @torch.jit.unused
-    def _event_parallel_graph(self, x: Tensor, batch: OptTensor) -> Tensor:
+    def _event_parallel_graph(self, x: Tensor, batch: OptTensor,
+                              plan: Optional[Tuple[Tensor, Tensor, int, int, int]]) -> Tensor:
         # Optional extension is never loaded by the legacy path.
-        from knn_event_parallel import knn_graph as parallel_graph
-        return parallel_graph(x, self.k, batch)
+        from knn_event_parallel import knn_graph as parallel_graph, plan_from_batch
+        if plan is None:
+            plan = plan_from_batch(x, batch, self.knn_block_size)
+        return parallel_graph(x, self.k, batch, plan=plan)
 
     def message(self, x_j: Tensor, edge_weight: Tensor) -> Tensor:
         return x_j * edge_weight.unsqueeze(1)
@@ -128,13 +133,15 @@ class GravNetConv(MessagePassing):
                                          self.k)
 
 
-def configure_knn_backend(model, backend='legacy'):
+def configure_knn_backend(model, backend='legacy', block_size=128):
     """Choose a runtime implementation without changing checkpoint parameters.
 
     The optional backend is for eager training; retain legacy for TorchScript.
     """
     if backend not in ('legacy', 'event-parallel'):
         raise ValueError('Unknown KNN backend: ' + backend)
+    if block_size not in (128, 256, 512, 1024):
+        raise ValueError('Invalid KNN block size')
     if backend == 'event-parallel':
         from knn_event_parallel import load_extension
         load_extension()  # Fail early rather than after reading the training data.
@@ -142,8 +149,19 @@ def configure_knn_backend(model, backend='legacy'):
     for layer in model.modules():
         if isinstance(layer, GravNetConv):
             layer.knn_backend = backend
+            layer.knn_block_size = block_size
             count += 1
     if backend != 'legacy' and count == 0:
         raise ValueError('This model has no supported GravNetConv layers')
     print(f'KNN backend={backend} GravNet_layers={count}', flush=True)
     return model
+
+
+@torch.jit.unused
+def resolve_knn_plan(blocks, x, batch, plan):
+    """Build at most once per model forward for callers without a CPU plan."""
+    layer = blocks[0].gravnet_layer
+    if plan is None and layer.knn_backend == 'event-parallel':
+        from knn_event_parallel import plan_from_batch
+        return plan_from_batch(x, batch, layer.knn_block_size)
+    return plan

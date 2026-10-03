@@ -1,6 +1,7 @@
 import os, os.path as osp
 import socket
 from contextlib import nullcontext
+from knn_event_parallel import prepare_training_batch
 from time import strftime
 import tqdm
 import torch
@@ -565,7 +566,7 @@ def build_model(args, input_dim, output_dimension, ddp=False):
                 "Loading GravNetModelMultiHead "
                 f"(heads={n_heads}, reg_heads={n_reg_heads}, interaction={args.multihead_interaction_mode})"
             )
-        return configure_knn_backend(model, knn_backend)
+        return configure_knn_backend(model, knn_backend, getattr(args, 'knn_block_size', 128))
 
     if args.model_ckpt == "":
         if not args.energy_branch:
@@ -581,7 +582,7 @@ def build_model(args, input_dim, output_dimension, ddp=False):
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
         else:
             model = get_model(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
-    return configure_knn_backend(model, knn_backend)
+    return configure_knn_backend(model, knn_backend, getattr(args, 'knn_block_size', 128))
 
 
 def setup_ddp(rank, world_size):
@@ -989,14 +990,14 @@ def run_ddp_training(rank, world_size, args):
             with join_context:
                 for i, data in enumerate(pbar):
                     # print(i, data.x.shape, data.y.shape)
-                    data = data.to(device)
+                    data = prepare_training_batch(data, args).to(device)
                     optimizer.zero_grad()
                     # if i == 0 : first_para = check_data(data)
                     with amp_autocast(args):
                         if args.use_multihead_model:
                             result = training_forward(model, data, args, epoch=epoch)
                         else:
-                            result = model(data.x, data.batch)
+                            result = training_forward(model, data, args)
                         out, regression_heads = get_model_outputs(result, args)
                         # learning_para = check_coords(out,data)
                         if args.jit:
@@ -1108,12 +1109,12 @@ def run_ddp_training(rank, world_size, args):
                 desc=f"rank{rank} valid e{epoch}",
                 leave=False,
             ):
-                data = data.to(device)
+                data = prepare_training_batch(data, args).to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
                         result = training_forward(eval_model, data, args, epoch=epoch)
                     else:
-                        result = eval_model(data.x, data.batch)
+                        result = training_forward(eval_model, data, args)
                     out, regression_heads = get_model_outputs(result, args)
                     if args.pretraining:
                         pretraining_batches.append(
@@ -1280,6 +1281,8 @@ def main():
     parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')                       ## not using now
     parser.add_argument('--energy-branch', action='store_true', help='Change GNN model to bypass energy')
     parser.add_argument('--use-multihead-model', action='store_true', help='Use GravNetModelMultiHead instead of legacy GravNet models')
+    parser.add_argument('--knn-block-size', type=int, choices=[128, 256, 512, 1024], default=128,
+                        help='CUDA query threads per block for event-parallel KNN (default: 128)')
     parser.add_argument('--knn-backend', choices=['legacy', 'event-parallel'], default='legacy',
                         help='KNN execution backend; event-parallel requires the separately built knn_event_parallel extension')
     parser.add_argument('--multihead-regression-heads', type=int, default=1, help='Number of regression heads for multi-head model (head-0 is clustering)')
@@ -1826,14 +1829,14 @@ def main():
                 pbar.set_postfix({'loss': '?'})
             for i, data in enumerate(pbar):
                 # print(i, data.x.shape, data.y.shape)
-                data = data.to(device)
+                data = prepare_training_batch(data, args).to(device)
                 optimizer.zero_grad()
                 if i == 0 : first_para = check_data(data)
                 with amp_autocast(args):
                     if args.use_multihead_model:
                         result = training_forward(model, data, args, epoch=epoch)
                     else:
-                        result = model(data.x, data.batch)
+                        result = training_forward(model, data, args)
                     out, regression_heads = get_model_outputs(result, args)
                     learning_para = check_coords(out,data)
                     if args.jit:
@@ -1905,12 +1908,12 @@ def main():
                 desc=f"valid e{epoch}",
                 leave=False,
             ):
-                data = data.to(device)
+                data = prepare_training_batch(data, args).to(device)
                 with amp_autocast(args):
                     if args.use_multihead_model:
                         result = training_forward(model, data, args, epoch=epoch)
                     else:
-                        result = model(data.x, data.batch)
+                        result = training_forward(model, data, args)
                     out, regression_heads = get_model_outputs(result, args)
                     if args.pretraining:
                         pretraining_batches.append(

@@ -67,8 +67,10 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
         self.energy_regression_cluster = energy_regression_cluster
 
     def forward(self, x, batch, epoch=None, return_dict=False,
-                truth_cluster_index=None, detected_energy=None):
+                truth_cluster_index=None, detected_energy=None, knn_plan=None):
         kwargs = {}
+        if knn_plan is not None:
+            kwargs['knn_plan'] = knn_plan
         if getattr(self.model, 'cluster_energy_pooling', False):
             kwargs.update(truth_cluster_index=truth_cluster_index, detected_energy=detected_energy)
             # Pooled checkpoints retain the interaction schedule in metadata.

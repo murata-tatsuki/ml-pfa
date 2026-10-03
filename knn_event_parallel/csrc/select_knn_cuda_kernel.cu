@@ -1,5 +1,5 @@
 // Derived from cms-pepr/pytorch_cmspepr e94c49b; BSD-3-Clause, see ../LICENSE.
-// Only the event scheduling changes; the per-vertex search is preserved.
+// Scheduling and allocation variants share the unchanged per-vertex search.
 #include <torch/extension.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -74,7 +74,7 @@ __global__ void set_defaults(
     d_dist[I2D(i_v, n, n_neigh)] = 0;
 }
 
-template <typename scalar_t> 
+template <typename scalar_t, bool Packed>
 __global__ void select_knn_kernel(
     const scalar_t *d_coord,
     const int32_t *d_row_splits,
@@ -86,17 +86,21 @@ __global__ void select_knn_kernel(
     const int32_t n_neigh,
     const int32_t n_coords,
 
-    const scalar_t max_radius
+    const scalar_t max_radius,
+    const int32_t *tasks,
+    const int32_t n_tasks
     ){
 
-    const int32_t j_rs = blockIdx.y;
+    const int32_t j_rs = Packed ? tasks[blockIdx.x] : blockIdx.y;
 
     //really no buffering at all here
 
     const int32_t start_vert = d_row_splits[j_rs];
     const int32_t end_vert = d_row_splits[j_rs + 1];
 
-    const int32_t i_v = blockIdx.x * blockDim.x + threadIdx.x + start_vert;
+    const int32_t i_v = Packed
+        ? tasks[n_tasks + blockIdx.x] + threadIdx.x
+        : blockIdx.x * blockDim.x + threadIdx.x + start_vert;
     if (i_v >= end_vert || i_v >= n_vert)
         return;//this will be a problem with actual RS
 
@@ -198,14 +202,68 @@ std::tuple<torch::Tensor, torch::Tensor> select_knn_cuda_fn(
     // Different events write disjoint rows. Candidate order within a row is unchanged.
     const dim3 event_grid(max_blocks, n_rs - 1);
     AT_DISPATCH_FLOATING_TYPES(coords.type(), "select_knn_kernel", ([&] {
-        select_knn_kernel <scalar_t> <<<event_grid, block_size, 0, stream>>> (
+        select_knn_kernel <scalar_t, false> <<<event_grid, block_size, 0, stream>>> (
             coords.data_ptr<scalar_t>(), row_splits.data_ptr<int32_t>(),
             mask.data_ptr<int32_t>(), output_idx_tensor.data_ptr<int32_t>(),
             output_dist_tensor.data_ptr<scalar_t>(), n_vert, n_neigh, n_coords,
-            max_radius);
+            max_radius, nullptr, 0);
     }));
     C10_CUDA_KERNEL_LAUNCH_CHECK();
 
     return std::make_tuple(output_idx_tensor, output_dist_tensor);
 
+}
+
+
+// Host launch information is prepared from the CPU Batch.ptr once per batch.
+// No device scalar reads, device-to-host copies, or stream synchronization here.
+// zero_init=true and packed=false are retained for isolated A/B measurements.
+std::tuple<torch::Tensor, torch::Tensor> select_knn_planned_cuda_fn(
+    torch::Tensor coords, torch::Tensor row_splits, torch::Tensor mask,
+    int64_t n_neighbours, double max_radius, int64_t mask_mode,
+    torch::Tensor tasks, int64_t block_size, int64_t max_blocks,
+    bool packed, bool zero_init)
+{
+    const c10::cuda::CUDAGuard device_guard(coords.device());
+    const auto stream = c10::cuda::getCurrentCUDAStream(coords.get_device());
+    const auto n_vert = coords.size(0);
+    auto dist_options = coords.options();
+    auto idx_options = coords.options().dtype(torch::kInt32);
+    auto distances = zero_init ? torch::zeros({n_vert, n_neighbours}, dist_options)
+                               : torch::empty({n_vert, n_neighbours}, dist_options);
+    auto indices = zero_init ? torch::zeros({n_vert, n_neighbours}, idx_options)
+                             : torch::empty({n_vert, n_neighbours}, idx_options);
+    if (n_vert == 0) return std::make_tuple(indices, distances);
+    if (max_radius > 0) max_radius *= max_radius;
+
+    // This writes EVERY output element, including padding and the self slot.
+    dim3 block(256, 4);
+    dim3 grid((n_vert + block.x - 1) / block.x,
+              (n_neighbours + block.y - 1) / block.y);
+    AT_DISPATCH_FLOATING_TYPES(coords.type(), "set_defaults", ([&] {
+        set_defaults<scalar_t><<<grid, block, 0, stream>>>(
+            distances.data_ptr<scalar_t>(), indices.data_ptr<int32_t>(),
+            n_vert, n_neighbours);
+    }));
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+    const auto n_tasks = tasks.size(1);
+    const dim3 event_grid(packed ? n_tasks : max_blocks,
+                          packed ? 1 : row_splits.numel() - 1);
+    AT_DISPATCH_FLOATING_TYPES(coords.type(), "select_knn_kernel", ([&] {
+        if (packed) {
+            select_knn_kernel<scalar_t, true><<<event_grid, block_size, 0, stream>>>(
+                coords.data_ptr<scalar_t>(), row_splits.data_ptr<int32_t>(),
+                mask.data_ptr<int32_t>(), indices.data_ptr<int32_t>(),
+                distances.data_ptr<scalar_t>(), n_vert, n_neighbours, coords.size(1),
+                max_radius, tasks.data_ptr<int32_t>(), n_tasks);
+        } else {
+            select_knn_kernel<scalar_t, false><<<event_grid, block_size, 0, stream>>>(
+                coords.data_ptr<scalar_t>(), row_splits.data_ptr<int32_t>(),
+                mask.data_ptr<int32_t>(), indices.data_ptr<int32_t>(),
+                distances.data_ptr<scalar_t>(), n_vert, n_neighbours, coords.size(1),
+                max_radius, nullptr, 0);
+        }
+    }));
+    C10_CUDA_KERNEL_LAUNCH_CHECK();
+    return std::make_tuple(indices, distances);
 }

@@ -194,12 +194,18 @@ def validate_training_arguments(args):
 
 
 def training_forward(model, data, args, epoch=None):
+    knn_kwargs = {}
+    if getattr(args, 'knn_backend', 'legacy') == 'event-parallel':
+        plan = getattr(data, 'knn_plan', None)
+        if plan is not None:
+            # PyG apply/to may convert tuples into lists.
+            knn_kwargs['knn_plan'] = tuple(plan)
     if args.use_multihead_model:
-        kwargs = dict(epoch=epoch, return_dict=True)
+        kwargs = dict(epoch=epoch, return_dict=True, **knn_kwargs)
         if getattr(args, 'cluster_energy_pooling', False):
             kwargs.update(truth_cluster_index=data.y[:, 0], detected_energy=data.feat[:, 0])
         return model(data.x, data.batch, **kwargs)
-    return model(data.x, data.batch)
+    return model(data.x, data.batch, **knn_kwargs)
 
 
 def replace_calo_loss(legacy_energy_loss, components, pooled, data, args, coefficient):

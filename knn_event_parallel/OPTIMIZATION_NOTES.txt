@@ -1,0 +1,78 @@
+KNN changes 1 / 3 / 5 (2026-10-04)
+
+Scope
+- Only the event-parallel backend changes. train.py still defaults to legacy.
+- 1: build batch-local launch metadata from CPU Batch.ptr before data.to(device),
+  transfer once, and share across GravNet layers. The planned CUDA operator has
+  no device-to-host copies or explicit stream synchronization.
+- 3: one task per needed event/query block; omit rectangular-grid padding blocks.
+  --knn-block-size accepts 128, 256, 512 or 1024; default is now 128,
+  based on the TITAN RTX measurements. Compare on other training GPUs as needed.
+- 5: allocate outputs with empty; set_defaults still initializes EVERY element,
+  including missing-neighbor sentinels and distances. Remove only duplicate zeros.
+- Candidate traversal, distance arithmetic, replacement/tie handling, edge order,
+  differentiable edge-distance recomputation, and mean/max aggregation are retained.
+- No new model parameters/buffers or checkpoint format changes.
+- Plans support eager single-device/DDP. DataParallel cannot split event metadata
+  like ordinary node tensors and is explicitly rejected for this backend.
+- Callers without CPU ptr still work: model forward prepares a plan once via a
+  CPU copy of batch. For full benefit, pass a plan made before moving data to GPU.
+- GPU plans must be consumed on their upload stream, or after a CUDA stream wait.
+
+Build in the actual training Python/CUDA environment
+  python knn_event_parallel/build.py build_ext --inplace
+Set CUDA_HOME and TORCH_CUDA_ARCH_LIST for the installed toolkit / target GPU if
+needed. Existing _C.so must be rebuilt; stale libraries receive an explicit error.
+Do not copy the audit's locally built sm_75/PyTorch-1.12 binary to another runtime.
+
+Training: retain the existing command and add/use
+  --knn-backend event-parallel --knn-block-size 128
+
+Correctness tests (run from the repository root)
+  python -m unittest test_knn_optimizations test_knn_event_parallel test_gravnet_message_flow -v
+GPU tests check index equality, distance bits, edge order, ties, duplicate points,
+short/empty events, padding, block boundaries, and a non-default stream. Existing
+GravNet tests also compare outputs/gradients with numerical tolerances because
+GPU scatter reductions are not generally bitwise deterministic.
+
+Per-change timing on the saved real nnqq batch
+  python benchmark_knn_optimizations.py \
+    --cached-inputs /home/murata/gravnet_performance_audit_20261003/nnqq_inputs_3.pt \
+    --checkpoint /home/murata/master/checkpoint/energy_regression/ckpts_gravnet_new02_2026_09_29_120252_outputD5_multihead/ckpt_27_1.pth.tar \
+    --epoch 27 --repeats 12 --output /tmp/knn_nnqq_135.json
+
+Future performance checks use nnqq by default. Skip single for now unless
+explicitly requested or needed for a specific issue. Repeat nnqq with
+--batch-index 1 and 2 for more input batches.
+An alternative --coordinates file is a torch-saved dict with CPU 'ptr' and a list
+of learned 'coordinates' tensors. Do not compare different coordinates per mode.
+
+Benchmark interpretation
+The 1024 variants below intentionally retain the historical comparison settings;
+they are not the current training default (128).
+- baseline: original event-parallel scheduling, GPU counts, CPU row-split readback,
+  and zero allocation. This is NOT the older serial-event legacy implementation.
+- 1_only: precomputed metadata, rectangular grid, zero allocation, block=1024.
+- 1_3: add packed tasks, retain zero allocation and block=1024.
+- 1_5: metadata plus single initialization, rectangular grid.
+- 1_3_5: packed tasks and single initialization; also sweep other block sizes.
+- Fail before timing if any index, distance-bit or edge-order comparison fails.
+- Warm up, randomize variant order, save every sample and median wall time.
+- search_only and graph exclude plan preparation. The inclusive graph measurement
+  includes CPU preparation/H2D once per batch and KNN calls for all recorded layers.
+- These are KNN measurements, not full training-step or epoch speedups; model
+  feature aggregation, dense layers, loss, backward, data loading and DDP are excluded.
+- --describe-only works without a GPU and reports block counts, NOT timings.
+
+Local validation
+CUDA source compiled successfully with PyTorch 1.12.1 / CUDA 11.3 / sm_75.
+The default execution sandbox hides GPU devices, but GPU access works outside it.
+GPU tests subsequently passed on TITAN RTX: index/distance-bit/edge-order checks,
+stream handling, and output/gradient checks. All 40 unique CPU/GPU tests passed.
+Per-change timings on real nnqq and single batches are available in
+/home/murata/knn_optimization_20261004/GPU_REPORT.txt.
+At block=1024, packed scheduling can slow nnqq; block=128 was faster in these
+measurements. Changes 1 and 5 alone have small/mixed deltas. Do not infer full
+training throughput from KNN-only measurements.
+The per-query candidate-search body is unchanged from the pre-edit snapshot in
+/home/murata/knn_optimization_20261004/before.

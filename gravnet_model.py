@@ -5,7 +5,7 @@ from torch import Tensor
 from torch_scatter import scatter_min, scatter_max, scatter_mean
 
 # from torch_cmspepr import GravNetConv
-from gravnet_conv import GravNetConv
+from gravnet_conv import GravNetConv, resolve_knn_plan
 # from torch_cmspepr.objectcondensation import scatter_count
 from objectcondensation import scatter_count
 
@@ -86,8 +86,9 @@ class GravNetBlock(nn.Module):
             nn.BatchNorm1d(96)
             )
 
-    def forward(self, x: Tensor, batch: Tensor) -> Tensor:
-        x = self.gravnet_layer(x, batch)
+    def forward(self, x: Tensor, batch: Tensor,
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+        x = self.gravnet_layer(x, batch, knn_plan=knn_plan)
         x = self.post_gravnet(x)
         assert x.size(1) == 96
         x = global_exchange(x, batch)
@@ -147,7 +148,10 @@ class GravnetModel(nn.Module):
             nn.Linear(64, self.output_dim)
             )
 
-    def forward(self, x: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, x: Tensor, batch: Tensor,
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+        if not torch.jit.is_scripting():
+            knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
         device = x.device
         # print('forward called on device', device)
         x = self.batchnorm1(x)
@@ -157,7 +161,7 @@ class GravnetModel(nn.Module):
 
         x_gravnet_per_block = [] # To store intermediate outputs
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch)
+            x = gravnet_block(x, batch, knn_plan=knn_plan)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4*96)
@@ -232,7 +236,10 @@ class GravNetModelBranch(nn.Module):
             nn.Linear(64, self.output_dim)
             )
 
-    def forward(self, x: Tensor, batch: Tensor) -> Tensor:
+    def forward(self, x: Tensor, batch: Tensor,
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+        if not torch.jit.is_scripting():
+            knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
         device = x.device
         energy_var = x[:,-5:-1]
         trackbit_var = x[:,4]
@@ -247,7 +254,7 @@ class GravNetModelBranch(nn.Module):
 
         x_gravnet_per_block = [] # To store intermediate outputs
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch)
+            x = gravnet_block(x, batch, knn_plan=knn_plan)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4*96)
@@ -493,7 +500,10 @@ class GravNetModelMultiHead(nn.Module):
         return_dict: bool = True,
         truth_cluster_index: Optional[Tensor] = None,
         detected_energy: Optional[Tensor] = None,
+        knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
     ):
+        if not torch.jit.is_scripting():
+            knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
         device = x.device
         raw_x = x
 
@@ -505,7 +515,7 @@ class GravNetModelMultiHead(nn.Module):
 
         x_gravnet_per_block = []
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch)
+            x = gravnet_block(x, batch, knn_plan=knn_plan)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4 * 96)
