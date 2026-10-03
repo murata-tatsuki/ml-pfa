@@ -15,6 +15,7 @@ _RUNTIME_OPTIONS = {
     'pretraining_metrics_log_path', 'master_addr', 'master_port', 'gpus', 'cuda',
     'progress_rank', 'progress_mininterval', 'rank_log_interval', 'verbose',
     'epoch_budget_deadline', 'epoch_budget_stop_file',
+    'knn_backend',  # Execution scheduling only; model/optimizer state is unchanged.
 }
 
 

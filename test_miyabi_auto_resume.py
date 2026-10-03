@@ -87,6 +87,10 @@ class AutoResumeTests(unittest.TestCase):
     def test_normal_completion_never_submits(self):
         self.assertEqual(self.scenario('complete', 0), [])
 
+    def test_knn_backend_survives_automatic_resubmission(self):
+        command = self.scenario(extra={'KNN_BACKEND': 'event-parallel'})[0]
+        self.assertIn('KNN_BACKEND=event-parallel', command[command.index('-v') + 1])
+
     def test_truth_pooling_and_norm_clipping_survive_automatic_resubmission(self):
         command = self.scenario(extra=dict(CLUSTER_ENERGY_POOLING='1',
             CLUSTER_ENERGY_SOURCE='truth', CLIP_MODE='norm'))[0]

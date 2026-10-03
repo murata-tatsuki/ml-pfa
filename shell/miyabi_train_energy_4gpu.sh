@@ -48,6 +48,7 @@ unset GLOO_SOCKET_IFNAME NCCL_SOCKET_IFNAME
 
 args=(
     train.py
+    --knn-backend "${KNN_BACKEND:-legacy}"
     -i "$TRAIN_DIR" -ii "$VALID_DIR"
     --no-split --thetaphi --epochs "${EPOCHS:-500}"
     --beta-track --force-track-alpha

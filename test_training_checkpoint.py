@@ -191,6 +191,24 @@ class TrainingCheckpointTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'pid_head'):
                 build()[3].load(directory + '/last.pth.tar')
 
+    def test_knn_backend_switch_preserves_checkpoint_resume(self):
+        # KNN scheduling adds no parameters and must not invalidate old checkpoints.
+        with tempfile.TemporaryDirectory() as directory:
+            seed()
+            original = build()
+            epoch(original)
+            original[3].save(directory, 0, {})
+            expected_lrs = epoch(original)
+            expected_weights = copy.deepcopy(original[0].state_dict())
+            resumed = build()
+            resumed[3].args.knn_backend = 'event-parallel'
+            resumed_cp = TrainingCheckpoint(resumed[0], resumed[1], resumed[2], None,
+                                            resumed[3].args, payload)
+            self.assertNotIn('knn_backend', resumed_cp.config)
+            self.assertEqual(resumed_cp.load(directory + '/last.pth.tar')[0], 1)
+            self.assertEqual(epoch(resumed), expected_lrs)
+            self.assert_tree_equal(resumed[0].state_dict(), expected_weights)
+
     def test_reject_weights_only_and_changed_batch_or_world_size(self):
         with tempfile.TemporaryDirectory() as directory:
             path = directory + '/old.pth'
