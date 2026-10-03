@@ -4405,3 +4405,2096 @@ Pretraining energy response by particle species:
   Electron: n=782 Mean=1.959996 Std=1.400505 RMS90=0.788507
   Muon: n=1998 Mean=1.397781 Std=1.335418 RMS90=0.455991
 
+Epoch 339
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.456528 Std=1.964095 RMS90=0.416012
+  50-150 GeV: n=21867 Mean=0.969799 Std=0.261527 RMS90=0.164661
+  >150 GeV: n=70 Mean=0.840961 Std=0.161816 RMS90=0.135037
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958055 Std=0.127700 RMS90=0.072587
+  K0: n=11257 Mean=1.008100 Std=0.136499 RMS90=0.074750
+  Photon: n=6167 Mean=0.994779 Std=0.067501 RMS90=0.034813
+  Pion: n=13008 Mean=1.640912 Std=2.471627 RMS90=0.619153
+  Electron: n=782 Mean=2.105509 Std=1.793844 RMS90=0.889059
+  Muon: n=1998 Mean=1.373473 Std=1.318932 RMS90=0.431401
+
+Epoch 340
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.433481 Std=1.857958 RMS90=0.407778
+  50-150 GeV: n=21867 Mean=0.968320 Std=0.263253 RMS90=0.165359
+  >150 GeV: n=70 Mean=0.829070 Std=0.180566 RMS90=0.152526
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960567 Std=0.125858 RMS90=0.071989
+  K0: n=11257 Mean=1.010920 Std=0.140112 RMS90=0.075630
+  Photon: n=6167 Mean=0.989688 Std=0.070410 RMS90=0.036707
+  Pion: n=13008 Mean=1.605810 Std=2.346324 RMS90=0.615791
+  Electron: n=782 Mean=1.841965 Std=1.244722 RMS90=0.715043
+  Muon: n=1998 Mean=1.416461 Std=1.418195 RMS90=0.463344
+
+Epoch 341
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.426102 Std=1.771990 RMS90=0.390771
+  50-150 GeV: n=21867 Mean=0.946247 Std=0.254741 RMS90=0.172624
+  >150 GeV: n=70 Mean=0.871833 Std=0.111646 RMS90=0.090856
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.949773 Std=0.120771 RMS90=0.072092
+  K0: n=11257 Mean=0.999280 Std=0.133596 RMS90=0.074640
+  Photon: n=6167 Mean=0.988020 Std=0.065377 RMS90=0.035335
+  Pion: n=13008 Mean=1.552660 Std=2.175633 RMS90=0.609722
+  Electron: n=782 Mean=2.137757 Std=2.195697 RMS90=0.918496
+  Muon: n=1998 Mean=1.454641 Std=1.521538 RMS90=0.471607
+
+Epoch 342
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.387244 Std=1.626540 RMS90=0.358324
+  50-150 GeV: n=21867 Mean=0.938414 Std=0.236191 RMS90=0.157997
+  >150 GeV: n=70 Mean=0.898595 Std=0.091585 RMS90=0.077487
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.952367 Std=0.118494 RMS90=0.072302
+  K0: n=11257 Mean=1.001961 Std=0.136120 RMS90=0.075712
+  Photon: n=6167 Mean=0.988057 Std=0.067976 RMS90=0.037770
+  Pion: n=13008 Mean=1.480409 Std=1.999095 RMS90=0.553430
+  Electron: n=782 Mean=1.792973 Std=1.787140 RMS90=0.705610
+  Muon: n=1998 Mean=1.510527 Std=1.569724 RMS90=0.550990
+
+Epoch 343
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.491671 Std=1.842269 RMS90=0.435196
+  50-150 GeV: n=21867 Mean=0.979771 Std=0.277285 RMS90=0.177472
+  >150 GeV: n=70 Mean=0.833401 Std=0.168683 RMS90=0.136713
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962582 Std=0.125163 RMS90=0.072512
+  K0: n=11257 Mean=1.013017 Std=0.135885 RMS90=0.074277
+  Photon: n=6167 Mean=0.996378 Std=0.064136 RMS90=0.033301
+  Pion: n=13008 Mean=1.689925 Std=2.265407 RMS90=0.659428
+  Electron: n=782 Mean=2.331125 Std=2.175710 RMS90=1.007416
+  Muon: n=1998 Mean=1.410617 Std=1.453839 RMS90=0.453677
+
+Epoch 344
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.445199 Std=1.820130 RMS90=0.391520
+  50-150 GeV: n=21867 Mean=0.963877 Std=0.267166 RMS90=0.182779
+  >150 GeV: n=70 Mean=0.834255 Std=0.173071 RMS90=0.142432
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.966244 Std=0.127123 RMS90=0.071734
+  K0: n=11257 Mean=1.017028 Std=0.140700 RMS90=0.075474
+  Photon: n=6167 Mean=0.996681 Std=0.064081 RMS90=0.032950
+  Pion: n=13008 Mean=1.590890 Std=2.251337 RMS90=0.626206
+  Electron: n=782 Mean=1.986378 Std=1.882997 RMS90=0.820498
+  Muon: n=1998 Mean=1.452173 Std=1.624772 RMS90=0.488622
+
+Epoch 345
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.439402 Std=1.814557 RMS90=0.405932
+  50-150 GeV: n=21867 Mean=0.962260 Std=0.261924 RMS90=0.172791
+  >150 GeV: n=70 Mean=0.837169 Std=0.168148 RMS90=0.143125
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957522 Std=0.119852 RMS90=0.072225
+  K0: n=11257 Mean=1.008540 Std=0.135828 RMS90=0.074253
+  Photon: n=6167 Mean=0.991953 Std=0.068809 RMS90=0.034377
+  Pion: n=13008 Mean=1.597711 Std=2.266998 RMS90=0.619492
+  Electron: n=782 Mean=1.985800 Std=1.669705 RMS90=0.820629
+  Muon: n=1998 Mean=1.436517 Std=1.461942 RMS90=0.471340
+
+Epoch 346
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.491910 Std=1.704143 RMS90=0.443157
+  50-150 GeV: n=21867 Mean=0.972286 Std=0.261797 RMS90=0.165955
+  >150 GeV: n=70 Mean=0.865800 Std=0.127508 RMS90=0.104848
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955649 Std=0.119208 RMS90=0.071015
+  K0: n=11257 Mean=1.008207 Std=0.135997 RMS90=0.074336
+  Photon: n=6167 Mean=0.998144 Std=0.076279 RMS90=0.036764
+  Pion: n=13008 Mean=1.689554 Std=2.092543 RMS90=0.654660
+  Electron: n=782 Mean=2.216181 Std=1.863632 RMS90=0.984767
+  Muon: n=1998 Mean=1.440161 Std=1.426482 RMS90=0.457024
+
+Epoch 347
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.394380 Std=1.795680 RMS90=0.364377
+  50-150 GeV: n=21867 Mean=0.958781 Std=0.245749 RMS90=0.163846
+  >150 GeV: n=70 Mean=0.855524 Std=0.139635 RMS90=0.118642
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958625 Std=0.122263 RMS90=0.072221
+  K0: n=11257 Mean=1.009297 Std=0.137987 RMS90=0.074018
+  Photon: n=6167 Mean=0.993400 Std=0.063788 RMS90=0.032949
+  Pion: n=13008 Mean=1.520916 Std=2.255820 RMS90=0.566972
+  Electron: n=782 Mean=1.817302 Std=1.467697 RMS90=0.705002
+  Muon: n=1998 Mean=1.445990 Std=1.452397 RMS90=0.477971
+
+Epoch 348
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.424695 Std=1.830973 RMS90=0.386569
+  50-150 GeV: n=21867 Mean=0.968579 Std=0.260186 RMS90=0.171027
+  >150 GeV: n=70 Mean=0.843909 Std=0.165430 RMS90=0.139246
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961677 Std=0.121602 RMS90=0.071533
+  K0: n=11257 Mean=1.011873 Std=0.138740 RMS90=0.074672
+  Photon: n=6167 Mean=0.990052 Std=0.065071 RMS90=0.033570
+  Pion: n=13008 Mean=1.581351 Std=2.288639 RMS90=0.596721
+  Electron: n=782 Mean=1.943057 Std=1.619793 RMS90=0.751909
+  Muon: n=1998 Mean=1.428377 Std=1.494423 RMS90=0.470692
+
+Epoch 349
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.390282 Std=1.628703 RMS90=0.375981
+  50-150 GeV: n=21867 Mean=0.958672 Std=0.249268 RMS90=0.157357
+  >150 GeV: n=70 Mean=0.854653 Std=0.145450 RMS90=0.120477
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.952002 Std=0.130379 RMS90=0.071267
+  K0: n=11257 Mean=1.002004 Std=0.136225 RMS90=0.074129
+  Photon: n=6167 Mean=0.984674 Std=0.067285 RMS90=0.033976
+  Pion: n=13008 Mean=1.537091 Std=2.030898 RMS90=0.576477
+  Electron: n=782 Mean=1.783081 Std=1.427286 RMS90=0.661656
+  Muon: n=1998 Mean=1.411784 Std=1.392850 RMS90=0.451492
+
+Epoch 350
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.419823 Std=1.777417 RMS90=0.395455
+  50-150 GeV: n=21867 Mean=0.963855 Std=0.251295 RMS90=0.156770
+  >150 GeV: n=70 Mean=0.826973 Std=0.168490 RMS90=0.143673
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959241 Std=0.127491 RMS90=0.071669
+  K0: n=11257 Mean=1.009991 Std=0.142295 RMS90=0.077371
+  Photon: n=6167 Mean=0.991618 Std=0.077967 RMS90=0.037652
+  Pion: n=13008 Mean=1.580284 Std=2.245836 RMS90=0.586067
+  Electron: n=782 Mean=1.845067 Std=1.241624 RMS90=0.715446
+  Muon: n=1998 Mean=1.386373 Std=1.325089 RMS90=0.447300
+
+Epoch 351
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.401656 Std=1.781717 RMS90=0.388591
+  50-150 GeV: n=21867 Mean=0.971037 Std=0.249346 RMS90=0.156908
+  >150 GeV: n=70 Mean=0.835123 Std=0.166927 RMS90=0.142419
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961170 Std=0.120521 RMS90=0.071236
+  K0: n=11257 Mean=1.012039 Std=0.139792 RMS90=0.075214
+  Photon: n=6167 Mean=0.989752 Std=0.072785 RMS90=0.036789
+  Pion: n=13008 Mean=1.563794 Std=2.258618 RMS90=0.569261
+  Electron: n=782 Mean=1.729801 Std=1.014845 RMS90=0.656700
+  Muon: n=1998 Mean=1.397779 Std=1.330735 RMS90=0.455821
+
+Epoch 352
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.431750 Std=1.805706 RMS90=0.399570
+  50-150 GeV: n=21867 Mean=0.958396 Std=0.256499 RMS90=0.164720
+  >150 GeV: n=70 Mean=0.837035 Std=0.163104 RMS90=0.143259
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.953845 Std=0.121912 RMS90=0.071510
+  K0: n=11257 Mean=1.003311 Std=0.137536 RMS90=0.074572
+  Photon: n=6167 Mean=0.985332 Std=0.065719 RMS90=0.034567
+  Pion: n=13008 Mean=1.593350 Std=2.256099 RMS90=0.614964
+  Electron: n=782 Mean=1.936836 Std=1.612780 RMS90=0.761015
+  Muon: n=1998 Mean=1.426331 Std=1.464145 RMS90=0.472044
+
+Epoch 353
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.452918 Std=1.853075 RMS90=0.406137
+  50-150 GeV: n=21867 Mean=0.970708 Std=0.257751 RMS90=0.164568
+  >150 GeV: n=70 Mean=0.845192 Std=0.166762 RMS90=0.140365
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965294 Std=0.135799 RMS90=0.071880
+  K0: n=11257 Mean=1.016271 Std=0.138116 RMS90=0.074203
+  Photon: n=6167 Mean=0.997140 Std=0.066576 RMS90=0.033288
+  Pion: n=13008 Mean=1.620522 Std=2.319297 RMS90=0.625193
+  Electron: n=782 Mean=1.986159 Std=1.648897 RMS90=0.806013
+  Muon: n=1998 Mean=1.429088 Std=1.446202 RMS90=0.460797
+
+Epoch 354
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.456555 Std=1.832855 RMS90=0.421401
+  50-150 GeV: n=21867 Mean=0.963558 Std=0.262254 RMS90=0.170209
+  >150 GeV: n=70 Mean=0.831903 Std=0.165583 RMS90=0.141321
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956995 Std=0.115948 RMS90=0.072090
+  K0: n=11257 Mean=1.007389 Std=0.136935 RMS90=0.074865
+  Photon: n=6167 Mean=0.992948 Std=0.065070 RMS90=0.034702
+  Pion: n=13008 Mean=1.629312 Std=2.288718 RMS90=0.635418
+  Electron: n=782 Mean=2.016791 Std=1.679950 RMS90=0.828625
+  Muon: n=1998 Mean=1.431007 Std=1.460335 RMS90=0.486564
+
+Epoch 355
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.433214 Std=1.756134 RMS90=0.398979
+  50-150 GeV: n=21867 Mean=0.971305 Std=0.264288 RMS90=0.177683
+  >150 GeV: n=70 Mean=0.834654 Std=0.181743 RMS90=0.146332
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963634 Std=0.127692 RMS90=0.071977
+  K0: n=11257 Mean=1.014888 Std=0.136525 RMS90=0.074137
+  Photon: n=6167 Mean=1.000024 Std=0.065306 RMS90=0.033128
+  Pion: n=13008 Mean=1.590679 Std=2.195356 RMS90=0.611951
+  Electron: n=782 Mean=1.977104 Std=1.583386 RMS90=0.801041
+  Muon: n=1998 Mean=1.420565 Std=1.416306 RMS90=0.466979
+
+Epoch 356
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.453075 Std=1.692753 RMS90=0.425187
+  50-150 GeV: n=21867 Mean=0.970308 Std=0.261896 RMS90=0.163585
+  >150 GeV: n=70 Mean=0.836768 Std=0.164963 RMS90=0.140907
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956526 Std=0.127703 RMS90=0.072612
+  K0: n=11257 Mean=1.005708 Std=0.137886 RMS90=0.075408
+  Photon: n=6167 Mean=0.989246 Std=0.066280 RMS90=0.035351
+  Pion: n=13008 Mean=1.636814 Std=2.091873 RMS90=0.626516
+  Electron: n=782 Mean=2.086871 Std=1.686430 RMS90=0.879236
+  Muon: n=1998 Mean=1.413227 Std=1.429223 RMS90=0.458201
+
+Epoch 357
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.404242 Std=1.731242 RMS90=0.379586
+  50-150 GeV: n=21867 Mean=0.956097 Std=0.257939 RMS90=0.176217
+  >150 GeV: n=70 Mean=0.843533 Std=0.180560 RMS90=0.136650
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961957 Std=0.128809 RMS90=0.071542
+  K0: n=11257 Mean=1.012986 Std=0.138101 RMS90=0.074262
+  Photon: n=6167 Mean=0.995383 Std=0.064979 RMS90=0.033013
+  Pion: n=13008 Mean=1.524742 Std=2.158187 RMS90=0.589765
+  Electron: n=782 Mean=1.854553 Std=1.603909 RMS90=0.753938
+  Muon: n=1998 Mean=1.441690 Std=1.519912 RMS90=0.495152
+
+Epoch 358
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.448861 Std=1.935819 RMS90=0.406013
+  50-150 GeV: n=21867 Mean=0.964372 Std=0.260350 RMS90=0.178234
+  >150 GeV: n=70 Mean=0.845991 Std=0.171400 RMS90=0.146014
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.966243 Std=0.118865 RMS90=0.072662
+  K0: n=11257 Mean=1.016695 Std=0.138320 RMS90=0.075993
+  Photon: n=6167 Mean=0.995623 Std=0.064137 RMS90=0.033970
+  Pion: n=13008 Mean=1.609763 Std=2.445923 RMS90=0.618861
+  Electron: n=782 Mean=1.927195 Std=1.493043 RMS90=0.805514
+  Muon: n=1998 Mean=1.404455 Std=1.420788 RMS90=0.471187
+
+Epoch 359
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.431247 Std=1.612280 RMS90=0.389281
+  50-150 GeV: n=21867 Mean=0.968073 Std=0.263970 RMS90=0.165956
+  >150 GeV: n=70 Mean=0.847287 Std=0.148006 RMS90=0.123664
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962612 Std=0.124893 RMS90=0.071409
+  K0: n=11257 Mean=1.014033 Std=0.140255 RMS90=0.076050
+  Photon: n=6167 Mean=0.994210 Std=0.068713 RMS90=0.034377
+  Pion: n=13008 Mean=1.585250 Std=1.979510 RMS90=0.607252
+  Electron: n=782 Mean=1.954375 Std=1.655912 RMS90=0.729347
+  Muon: n=1998 Mean=1.436377 Std=1.542131 RMS90=0.490629
+
+Epoch 360
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.423721 Std=1.602893 RMS90=0.388956
+  50-150 GeV: n=21867 Mean=0.955033 Std=0.251341 RMS90=0.171283
+  >150 GeV: n=70 Mean=0.850876 Std=0.146633 RMS90=0.118455
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959353 Std=0.126060 RMS90=0.071619
+  K0: n=11257 Mean=1.010447 Std=0.139235 RMS90=0.075835
+  Photon: n=6167 Mean=1.003985 Std=0.066357 RMS90=0.034293
+  Pion: n=13008 Mean=1.545675 Std=1.961902 RMS90=0.593413
+  Electron: n=782 Mean=2.036397 Std=1.832358 RMS90=0.840902
+  Muon: n=1998 Mean=1.443256 Std=1.529861 RMS90=0.503033
+
+Epoch 361
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.375833 Std=1.577706 RMS90=0.363202
+  50-150 GeV: n=21867 Mean=0.973886 Std=0.261325 RMS90=0.173819
+  >150 GeV: n=70 Mean=0.858646 Std=0.164228 RMS90=0.127994
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964062 Std=0.122550 RMS90=0.073301
+  K0: n=11257 Mean=1.014566 Std=0.134828 RMS90=0.073861
+  Photon: n=6167 Mean=0.999334 Std=0.062726 RMS90=0.032352
+  Pion: n=13008 Mean=1.516631 Std=1.967655 RMS90=0.561600
+  Electron: n=782 Mean=1.679630 Std=1.284260 RMS90=0.604092
+  Muon: n=1998 Mean=1.407330 Std=1.436389 RMS90=0.479198
+
+Epoch 362
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.428104 Std=1.664966 RMS90=0.399311
+  50-150 GeV: n=21867 Mean=0.968264 Std=0.264809 RMS90=0.172929
+  >150 GeV: n=70 Mean=0.840292 Std=0.164422 RMS90=0.138335
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956882 Std=0.124987 RMS90=0.073240
+  K0: n=11257 Mean=1.005695 Std=0.135500 RMS90=0.074434
+  Photon: n=6167 Mean=0.989064 Std=0.061182 RMS90=0.033142
+  Pion: n=13008 Mean=1.599468 Std=2.061531 RMS90=0.605565
+  Electron: n=782 Mean=1.957858 Std=1.561026 RMS90=0.769012
+  Muon: n=1998 Mean=1.403632 Std=1.473422 RMS90=0.476809
+
+Epoch 363
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.402500 Std=1.662293 RMS90=0.398857
+  50-150 GeV: n=21867 Mean=0.982016 Std=0.258022 RMS90=0.157829
+  >150 GeV: n=70 Mean=0.832401 Std=0.179057 RMS90=0.167755
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.951095 Std=0.121814 RMS90=0.072144
+  K0: n=11257 Mean=1.002784 Std=0.134368 RMS90=0.073882
+  Photon: n=6167 Mean=0.994050 Std=0.065693 RMS90=0.034558
+  Pion: n=13008 Mean=1.591956 Std=2.071685 RMS90=0.586336
+  Electron: n=782 Mean=1.796927 Std=1.194925 RMS90=0.662978
+  Muon: n=1998 Mean=1.412328 Std=1.439603 RMS90=0.442573
+
+Epoch 364
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.509181 Std=1.818925 RMS90=0.462759
+  50-150 GeV: n=21867 Mean=0.973887 Std=0.275798 RMS90=0.172731
+  >150 GeV: n=70 Mean=0.838432 Std=0.159942 RMS90=0.134987
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956863 Std=0.117677 RMS90=0.072457
+  K0: n=11257 Mean=1.007605 Std=0.135764 RMS90=0.075587
+  Photon: n=6167 Mean=0.993937 Std=0.064372 RMS90=0.034849
+  Pion: n=13008 Mean=1.722456 Std=2.243955 RMS90=0.684572
+  Electron: n=782 Mean=2.252274 Std=1.916387 RMS90=0.995596
+  Muon: n=1998 Mean=1.431297 Std=1.470824 RMS90=0.467528
+
+Epoch 365
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.392726 Std=1.703973 RMS90=0.383532
+  50-150 GeV: n=21867 Mean=0.960416 Std=0.254623 RMS90=0.159381
+  >150 GeV: n=70 Mean=0.836887 Std=0.165685 RMS90=0.149775
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.949542 Std=0.116933 RMS90=0.072258
+  K0: n=11257 Mean=0.998474 Std=0.135526 RMS90=0.074060
+  Photon: n=6167 Mean=0.978871 Std=0.065494 RMS90=0.037741
+  Pion: n=13008 Mean=1.556004 Std=2.132596 RMS90=0.582052
+  Electron: n=782 Mean=1.734087 Std=1.269035 RMS90=0.699082
+  Muon: n=1998 Mean=1.405085 Std=1.458374 RMS90=0.468203
+
+Epoch 366
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.427770 Std=1.779145 RMS90=0.399684
+  50-150 GeV: n=21867 Mean=0.966131 Std=0.260984 RMS90=0.171254
+  >150 GeV: n=70 Mean=0.856220 Std=0.150696 RMS90=0.125659
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956853 Std=0.119228 RMS90=0.072907
+  K0: n=11257 Mean=1.007932 Std=0.133590 RMS90=0.073510
+  Photon: n=6167 Mean=0.998873 Std=0.061193 RMS90=0.032433
+  Pion: n=13008 Mean=1.583995 Std=2.207767 RMS90=0.620585
+  Electron: n=782 Mean=1.854793 Std=1.572604 RMS90=0.736117
+  Muon: n=1998 Mean=1.475415 Std=1.615805 RMS90=0.520158
+
+Epoch 367
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.412253 Std=1.663246 RMS90=0.387440
+  50-150 GeV: n=21867 Mean=0.973454 Std=0.250272 RMS90=0.163263
+  >150 GeV: n=70 Mean=0.854916 Std=0.154151 RMS90=0.129419
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.967693 Std=0.132165 RMS90=0.072267
+  K0: n=11257 Mean=1.017876 Std=0.142331 RMS90=0.075923
+  Photon: n=6167 Mean=0.999142 Std=0.068060 RMS90=0.034432
+  Pion: n=13008 Mean=1.557187 Std=2.071973 RMS90=0.584482
+  Electron: n=782 Mean=1.821243 Std=1.317430 RMS90=0.686639
+  Muon: n=1998 Mean=1.452622 Std=1.488984 RMS90=0.481563
+
+Epoch 368
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.425913 Std=1.907240 RMS90=0.382917
+  50-150 GeV: n=21867 Mean=0.958987 Std=0.237880 RMS90=0.158346
+  >150 GeV: n=70 Mean=0.869266 Std=0.131641 RMS90=0.109879
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956562 Std=0.117000 RMS90=0.071801
+  K0: n=11257 Mean=1.007385 Std=0.136860 RMS90=0.074667
+  Photon: n=6167 Mean=0.996404 Std=0.069310 RMS90=0.034273
+  Pion: n=13008 Mean=1.564278 Std=2.374354 RMS90=0.582223
+  Electron: n=782 Mean=1.995699 Std=1.835547 RMS90=0.866340
+  Muon: n=1998 Mean=1.462611 Std=1.578274 RMS90=0.477616
+
+Epoch 369
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.421994 Std=2.080579 RMS90=0.380073
+  50-150 GeV: n=21867 Mean=0.972619 Std=0.239919 RMS90=0.154543
+  >150 GeV: n=70 Mean=0.866823 Std=0.135740 RMS90=0.116737
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958546 Std=0.123752 RMS90=0.073037
+  K0: n=11257 Mean=1.009921 Std=0.133919 RMS90=0.073337
+  Photon: n=6167 Mean=0.997876 Std=0.063061 RMS90=0.032846
+  Pion: n=13008 Mean=1.575190 Std=2.608926 RMS90=0.573590
+  Electron: n=782 Mean=1.980564 Std=1.824657 RMS90=0.794507
+  Muon: n=1998 Mean=1.472813 Std=1.586905 RMS90=0.486894
+
+Epoch 370
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.362463 Std=1.722098 RMS90=0.338404
+  50-150 GeV: n=21867 Mean=0.941124 Std=0.229893 RMS90=0.149213
+  >150 GeV: n=70 Mean=0.870029 Std=0.112830 RMS90=0.093872
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.948008 Std=0.141466 RMS90=0.072354
+  K0: n=11257 Mean=0.998268 Std=0.138690 RMS90=0.078166
+  Photon: n=6167 Mean=0.989579 Std=0.074297 RMS90=0.039223
+  Pion: n=13008 Mean=1.466597 Std=2.133323 RMS90=0.545008
+  Electron: n=782 Mean=1.615380 Std=1.412812 RMS90=0.609135
+  Muon: n=1998 Mean=1.461449 Std=1.687970 RMS90=0.489576
+
+Epoch 371
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.378385 Std=1.825177 RMS90=0.374649
+  50-150 GeV: n=21867 Mean=0.964306 Std=0.231750 RMS90=0.149601
+  >150 GeV: n=70 Mean=0.840061 Std=0.165401 RMS90=0.136692
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.951252 Std=0.130436 RMS90=0.072944
+  K0: n=11257 Mean=1.001811 Std=0.132938 RMS90=0.073468
+  Photon: n=6167 Mean=0.994165 Std=0.060893 RMS90=0.032325
+  Pion: n=13008 Mean=1.533036 Std=2.303687 RMS90=0.557475
+  Electron: n=782 Mean=1.667450 Std=1.191205 RMS90=0.604713
+  Muon: n=1998 Mean=1.387260 Std=1.415333 RMS90=0.430017
+
+Epoch 372
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.454173 Std=1.971438 RMS90=0.397900
+  50-150 GeV: n=21867 Mean=0.957503 Std=0.247620 RMS90=0.171717
+  >150 GeV: n=70 Mean=0.858966 Std=0.148707 RMS90=0.125895
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.968629 Std=0.135883 RMS90=0.072960
+  K0: n=11257 Mean=1.019173 Std=0.137359 RMS90=0.075403
+  Photon: n=6167 Mean=0.998245 Std=0.063481 RMS90=0.032587
+  Pion: n=13008 Mean=1.582456 Std=2.454973 RMS90=0.616494
+  Electron: n=782 Mean=2.122931 Std=2.051856 RMS90=0.977720
+  Muon: n=1998 Mean=1.455045 Std=1.578149 RMS90=0.468723
+
+Epoch 373
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.460636 Std=1.807196 RMS90=0.429695
+  50-150 GeV: n=21867 Mean=0.964142 Std=0.242656 RMS90=0.148019
+  >150 GeV: n=70 Mean=0.860938 Std=0.128640 RMS90=0.112687
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.951427 Std=0.118212 RMS90=0.072417
+  K0: n=11257 Mean=1.000611 Std=0.138537 RMS90=0.076382
+  Photon: n=6167 Mean=0.988715 Std=0.067048 RMS90=0.036899
+  Pion: n=13008 Mean=1.642905 Std=2.239753 RMS90=0.610334
+  Electron: n=782 Mean=2.125029 Std=1.667909 RMS90=0.904651
+  Muon: n=1998 Mean=1.435304 Std=1.504158 RMS90=0.461716
+
+Epoch 374
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.365156 Std=2.009519 RMS90=0.331787
+  50-150 GeV: n=21867 Mean=0.949327 Std=0.247502 RMS90=0.170564
+  >150 GeV: n=70 Mean=0.856720 Std=0.142025 RMS90=0.113282
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959947 Std=0.119697 RMS90=0.072503
+  K0: n=11257 Mean=1.009581 Std=0.136718 RMS90=0.075594
+  Photon: n=6167 Mean=0.990045 Std=0.063795 RMS90=0.034371
+  Pion: n=13008 Mean=1.457448 Std=2.523992 RMS90=0.547221
+  Electron: n=782 Mean=1.727595 Std=1.679502 RMS90=0.694316
+  Muon: n=1998 Mean=1.465113 Std=1.682441 RMS90=0.488533
+
+Epoch 375
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.401487 Std=1.729347 RMS90=0.381583
+  50-150 GeV: n=21867 Mean=0.975113 Std=0.250586 RMS90=0.161980
+  >150 GeV: n=70 Mean=0.853232 Std=0.142750 RMS90=0.120050
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961119 Std=0.118375 RMS90=0.072262
+  K0: n=11257 Mean=1.012372 Std=0.139540 RMS90=0.074502
+  Photon: n=6167 Mean=0.992228 Std=0.064456 RMS90=0.033040
+  Pion: n=13008 Mean=1.567693 Std=2.170593 RMS90=0.577997
+  Electron: n=782 Mean=1.736411 Std=1.322767 RMS90=0.637564
+  Muon: n=1998 Mean=1.403783 Std=1.393034 RMS90=0.455935
+
+Epoch 376
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.405393 Std=1.757760 RMS90=0.392287
+  50-150 GeV: n=21867 Mean=0.984940 Std=0.256223 RMS90=0.160610
+  >150 GeV: n=70 Mean=0.841189 Std=0.158409 RMS90=0.134724
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964176 Std=0.124235 RMS90=0.073068
+  K0: n=11257 Mean=1.015355 Std=0.133042 RMS90=0.073855
+  Photon: n=6167 Mean=1.002891 Std=0.064272 RMS90=0.034131
+  Pion: n=13008 Mean=1.576411 Std=2.201415 RMS90=0.580094
+  Electron: n=782 Mean=1.755542 Std=1.299189 RMS90=0.678511
+  Muon: n=1998 Mean=1.423639 Std=1.473010 RMS90=0.460605
+
+Epoch 377
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.419707 Std=2.061411 RMS90=0.365397
+  50-150 GeV: n=21867 Mean=0.950226 Std=0.245170 RMS90=0.167705
+  >150 GeV: n=70 Mean=0.832520 Std=0.185834 RMS90=0.132671
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.954399 Std=0.115811 RMS90=0.071781
+  K0: n=11257 Mean=1.005164 Std=0.136047 RMS90=0.073921
+  Photon: n=6167 Mean=0.988880 Std=0.062753 RMS90=0.032485
+  Pion: n=13008 Mean=1.536287 Std=2.535361 RMS90=0.590087
+  Electron: n=782 Mean=1.917905 Std=2.113005 RMS90=0.822466
+  Muon: n=1998 Mean=1.556345 Std=1.980557 RMS90=0.544482
+
+Epoch 378
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.475937 Std=2.091552 RMS90=0.430561
+  50-150 GeV: n=21867 Mean=0.965460 Std=0.258153 RMS90=0.164052
+  >150 GeV: n=70 Mean=0.832223 Std=0.169550 RMS90=0.137974
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.948099 Std=0.128282 RMS90=0.072131
+  K0: n=11257 Mean=0.998016 Std=0.130578 RMS90=0.074172
+  Photon: n=6167 Mean=0.991340 Std=0.065591 RMS90=0.034712
+  Pion: n=13008 Mean=1.656876 Std=2.587945 RMS90=0.645012
+  Electron: n=782 Mean=2.211186 Std=2.146581 RMS90=1.004682
+  Muon: n=1998 Mean=1.520373 Std=1.726227 RMS90=0.508640
+
+Epoch 379
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.449643 Std=1.922769 RMS90=0.408629
+  50-150 GeV: n=21867 Mean=0.986638 Std=0.246620 RMS90=0.148788
+  >150 GeV: n=70 Mean=0.855790 Std=0.150166 RMS90=0.127798
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960146 Std=0.137885 RMS90=0.073569
+  K0: n=11257 Mean=1.010357 Std=0.130762 RMS90=0.073745
+  Photon: n=6167 Mean=0.993322 Std=0.063619 RMS90=0.033442
+  Pion: n=13008 Mean=1.644095 Std=2.392336 RMS90=0.602591
+  Electron: n=782 Mean=2.045878 Std=1.778217 RMS90=0.819309
+  Muon: n=1998 Mean=1.463824 Std=1.502178 RMS90=0.476086
+
+Epoch 380
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.439523 Std=1.780263 RMS90=0.397987
+  50-150 GeV: n=21867 Mean=0.964638 Std=0.245196 RMS90=0.152257
+  >150 GeV: n=70 Mean=0.824135 Std=0.178717 RMS90=0.126303
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956071 Std=0.126199 RMS90=0.071453
+  K0: n=11257 Mean=1.006315 Std=0.139001 RMS90=0.075094
+  Photon: n=6167 Mean=0.983970 Std=0.067297 RMS90=0.034678
+  Pion: n=13008 Mean=1.600434 Std=2.172374 RMS90=0.596791
+  Electron: n=782 Mean=1.975687 Std=1.957403 RMS90=0.794674
+  Muon: n=1998 Mean=1.495008 Std=1.705410 RMS90=0.509168
+
+Epoch 381
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.283410 Std=1.753248 RMS90=0.331087
+  50-150 GeV: n=21867 Mean=0.898363 Std=0.211087 RMS90=0.127740
+  >150 GeV: n=70 Mean=0.904910 Std=0.106198 RMS90=0.047382
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.891410 Std=0.131856 RMS90=0.071085
+  K0: n=11257 Mean=0.934135 Std=0.144807 RMS90=0.078656
+  Photon: n=6167 Mean=0.929722 Std=0.075172 RMS90=0.045072
+  Pion: n=13008 Mean=1.397173 Std=2.196241 RMS90=0.478386
+  Electron: n=782 Mean=1.418688 Std=0.912579 RMS90=0.529670
+  Muon: n=1998 Mean=1.499255 Std=1.582483 RMS90=0.491481
+
+Epoch 382
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.403870 Std=1.853818 RMS90=0.375621
+  50-150 GeV: n=21867 Mean=0.969553 Std=0.235721 RMS90=0.151013
+  >150 GeV: n=70 Mean=0.857234 Std=0.142486 RMS90=0.118307
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956520 Std=0.127828 RMS90=0.072628
+  K0: n=11257 Mean=1.007322 Std=0.131078 RMS90=0.073387
+  Photon: n=6167 Mean=1.001595 Std=0.064360 RMS90=0.033717
+  Pion: n=13008 Mean=1.556748 Std=2.331135 RMS90=0.572966
+  Electron: n=782 Mean=1.788160 Std=1.410142 RMS90=0.721825
+  Muon: n=1998 Mean=1.445861 Std=1.446714 RMS90=0.465763
+
+Epoch 383
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.435526 Std=1.786265 RMS90=0.419687
+  50-150 GeV: n=21867 Mean=0.970817 Std=0.232331 RMS90=0.143166
+  >150 GeV: n=70 Mean=0.845204 Std=0.146960 RMS90=0.120730
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.953045 Std=0.123090 RMS90=0.072866
+  K0: n=11257 Mean=1.002426 Std=0.134001 RMS90=0.073899
+  Photon: n=6167 Mean=0.988009 Std=0.063652 RMS90=0.034234
+  Pion: n=13008 Mean=1.614512 Std=2.222348 RMS90=0.594045
+  Electron: n=782 Mean=2.000858 Std=1.593254 RMS90=0.843991
+  Muon: n=1998 Mean=1.443233 Std=1.429300 RMS90=0.462030
+
+Epoch 384
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.486910 Std=1.855296 RMS90=0.444836
+  50-150 GeV: n=21867 Mean=0.985905 Std=0.246223 RMS90=0.144302
+  >150 GeV: n=70 Mean=0.856018 Std=0.149123 RMS90=0.129918
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955642 Std=0.140473 RMS90=0.071874
+  K0: n=11257 Mean=1.006432 Std=0.136709 RMS90=0.074140
+  Photon: n=6167 Mean=1.001161 Std=0.072395 RMS90=0.033485
+  Pion: n=13008 Mean=1.705558 Std=2.299916 RMS90=0.627463
+  Electron: n=782 Mean=2.214668 Std=1.786196 RMS90=0.982047
+  Muon: n=1998 Mean=1.430080 Std=1.387998 RMS90=0.445311
+
+Epoch 385
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.437567 Std=1.803598 RMS90=0.406604
+  50-150 GeV: n=21867 Mean=0.973994 Std=0.250482 RMS90=0.152369
+  >150 GeV: n=70 Mean=0.859352 Std=0.135884 RMS90=0.113328
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957543 Std=0.140780 RMS90=0.070989
+  K0: n=11257 Mean=1.007678 Std=0.141203 RMS90=0.074781
+  Photon: n=6167 Mean=0.991871 Std=0.069813 RMS90=0.034594
+  Pion: n=13008 Mean=1.614620 Std=2.250890 RMS90=0.595157
+  Electron: n=782 Mean=1.879204 Std=1.414938 RMS90=0.723876
+  Muon: n=1998 Mean=1.481724 Std=1.499145 RMS90=0.472068
+
+Epoch 386
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.400285 Std=1.809462 RMS90=0.373548
+  50-150 GeV: n=21867 Mean=0.982950 Std=0.231212 RMS90=0.141869
+  >150 GeV: n=70 Mean=0.862193 Std=0.142687 RMS90=0.125208
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.967869 Std=0.131272 RMS90=0.071755
+  K0: n=11257 Mean=1.017766 Std=0.139530 RMS90=0.075348
+  Photon: n=6167 Mean=0.991544 Std=0.064921 RMS90=0.032779
+  Pion: n=13008 Mean=1.557752 Std=2.271588 RMS90=0.545528
+  Electron: n=782 Mean=1.715052 Std=1.205268 RMS90=0.612435
+  Muon: n=1998 Mean=1.483748 Std=1.480243 RMS90=0.473510
+
+Epoch 387
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.392544 Std=1.712078 RMS90=0.375492
+  50-150 GeV: n=21867 Mean=0.946378 Std=0.230160 RMS90=0.145191
+  >150 GeV: n=70 Mean=0.836754 Std=0.138662 RMS90=0.117599
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.938241 Std=0.137379 RMS90=0.071473
+  K0: n=11257 Mean=0.985890 Std=0.133306 RMS90=0.073952
+  Photon: n=6167 Mean=0.968643 Std=0.063668 RMS90=0.034762
+  Pion: n=13008 Mean=1.536847 Std=2.103616 RMS90=0.557201
+  Electron: n=782 Mean=1.837382 Std=1.661989 RMS90=0.723910
+  Muon: n=1998 Mean=1.498845 Std=1.619025 RMS90=0.525071
+
+Epoch 388
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.390310 Std=1.882913 RMS90=0.359945
+  50-150 GeV: n=21867 Mean=0.974302 Std=0.234951 RMS90=0.151302
+  >150 GeV: n=70 Mean=0.863173 Std=0.144236 RMS90=0.120479
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958042 Std=0.133660 RMS90=0.073061
+  K0: n=11257 Mean=1.009164 Std=0.132873 RMS90=0.072711
+  Photon: n=6167 Mean=0.995912 Std=0.062215 RMS90=0.032360
+  Pion: n=13008 Mean=1.535486 Std=2.355438 RMS90=0.544352
+  Electron: n=782 Mean=1.778580 Std=1.532487 RMS90=0.629966
+  Muon: n=1998 Mean=1.487058 Std=1.552098 RMS90=0.509466
+
+Epoch 389
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.484977 Std=1.841258 RMS90=0.424671
+  50-150 GeV: n=21867 Mean=0.993638 Std=0.253292 RMS90=0.144854
+  >150 GeV: n=70 Mean=0.882427 Std=0.092490 RMS90=0.074281
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961438 Std=0.126847 RMS90=0.074399
+  K0: n=11257 Mean=1.009709 Std=0.135745 RMS90=0.076882
+  Photon: n=6167 Mean=0.998052 Std=0.069192 RMS90=0.039560
+  Pion: n=13008 Mean=1.706285 Std=2.264094 RMS90=0.615722
+  Electron: n=782 Mean=2.141309 Std=1.866167 RMS90=0.884858
+  Muon: n=1998 Mean=1.476776 Std=1.534485 RMS90=0.473274
+
+Epoch 390
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.439337 Std=2.076531 RMS90=0.386959
+  50-150 GeV: n=21867 Mean=0.962868 Std=0.246108 RMS90=0.161185
+  >150 GeV: n=70 Mean=0.827124 Std=0.188881 RMS90=0.166583
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960230 Std=0.135895 RMS90=0.072321
+  K0: n=11257 Mean=1.011263 Std=0.136767 RMS90=0.074531
+  Photon: n=6167 Mean=0.996143 Std=0.065532 RMS90=0.033190
+  Pion: n=13008 Mean=1.588044 Std=2.598086 RMS90=0.601321
+  Electron: n=782 Mean=1.870048 Std=1.714704 RMS90=0.769496
+  Muon: n=1998 Mean=1.506889 Std=1.727657 RMS90=0.499448
+
+Epoch 391
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.400558 Std=2.008605 RMS90=0.358942
+  50-150 GeV: n=21867 Mean=0.972427 Std=0.245133 RMS90=0.153293
+  >150 GeV: n=70 Mean=0.867120 Std=0.135408 RMS90=0.116077
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961878 Std=0.124387 RMS90=0.071837
+  K0: n=11257 Mean=1.013347 Std=0.138440 RMS90=0.073921
+  Photon: n=6167 Mean=0.993165 Std=0.062854 RMS90=0.032210
+  Pion: n=13008 Mean=1.540961 Std=2.518011 RMS90=0.555910
+  Electron: n=782 Mean=1.823574 Std=1.642285 RMS90=0.666287
+  Muon: n=1998 Mean=1.491775 Std=1.634075 RMS90=0.503369
+
+Epoch 392
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.493214 Std=1.852983 RMS90=0.444044
+  50-150 GeV: n=21867 Mean=0.982641 Std=0.246774 RMS90=0.144563
+  >150 GeV: n=70 Mean=0.848074 Std=0.137088 RMS90=0.118678
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962536 Std=0.131595 RMS90=0.073254
+  K0: n=11257 Mean=1.010609 Std=0.137789 RMS90=0.077276
+  Photon: n=6167 Mean=0.983070 Std=0.070447 RMS90=0.038098
+  Pion: n=13008 Mean=1.710749 Std=2.298824 RMS90=0.633706
+  Electron: n=782 Mean=2.086808 Std=1.690761 RMS90=0.853810
+  Muon: n=1998 Mean=1.474792 Std=1.451675 RMS90=0.469941
+
+Epoch 393
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.413285 Std=1.779092 RMS90=0.386719
+  50-150 GeV: n=21867 Mean=0.983619 Std=0.233258 RMS90=0.136753
+  >150 GeV: n=70 Mean=0.838881 Std=0.161340 RMS90=0.137975
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959326 Std=0.125620 RMS90=0.072480
+  K0: n=11257 Mean=1.010020 Std=0.137559 RMS90=0.074064
+  Photon: n=6167 Mean=0.995935 Std=0.066406 RMS90=0.033877
+  Pion: n=13008 Mean=1.597661 Std=2.232293 RMS90=0.555755
+  Electron: n=782 Mean=1.821836 Std=1.204865 RMS90=0.683774
+  Muon: n=1998 Mean=1.411754 Std=1.400419 RMS90=0.433621
+
+Epoch 394
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.446692 Std=1.939269 RMS90=0.423419
+  50-150 GeV: n=21867 Mean=0.974072 Std=0.241954 RMS90=0.145892
+  >150 GeV: n=70 Mean=0.846914 Std=0.154139 RMS90=0.147068
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.948694 Std=0.122721 RMS90=0.071882
+  K0: n=11257 Mean=0.998965 Std=0.134771 RMS90=0.074080
+  Photon: n=6167 Mean=0.997302 Std=0.063559 RMS90=0.033068
+  Pion: n=13008 Mean=1.643654 Std=2.430867 RMS90=0.599707
+  Electron: n=782 Mean=1.945768 Std=1.523769 RMS90=0.762459
+  Muon: n=1998 Mean=1.450693 Std=1.464474 RMS90=0.454613
+
+Epoch 395
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.409289 Std=1.838946 RMS90=0.384598
+  50-150 GeV: n=21867 Mean=0.958589 Std=0.233132 RMS90=0.147426
+  >150 GeV: n=70 Mean=0.853367 Std=0.142840 RMS90=0.123556
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957395 Std=0.133300 RMS90=0.072030
+  K0: n=11257 Mean=1.005996 Std=0.136011 RMS90=0.075169
+  Photon: n=6167 Mean=0.979818 Std=0.064894 RMS90=0.034092
+  Pion: n=13008 Mean=1.557368 Std=2.309677 RMS90=0.575736
+  Electron: n=782 Mean=1.778106 Std=1.473458 RMS90=0.695636
+  Muon: n=1998 Mean=1.456036 Std=1.440759 RMS90=0.457122
+
+Epoch 396
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.507914 Std=2.035905 RMS90=0.443019
+  50-150 GeV: n=21867 Mean=0.966693 Std=0.260189 RMS90=0.170918
+  >150 GeV: n=70 Mean=0.811579 Std=0.208016 RMS90=0.177233
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959543 Std=0.127266 RMS90=0.071800
+  K0: n=11257 Mean=1.010715 Std=0.133913 RMS90=0.073447
+  Photon: n=6167 Mean=0.997380 Std=0.066869 RMS90=0.032596
+  Pion: n=13008 Mean=1.698617 Std=2.521951 RMS90=0.673684
+  Electron: n=782 Mean=2.221127 Std=2.195898 RMS90=0.993508
+  Muon: n=1998 Mean=1.461904 Std=1.601541 RMS90=0.484711
+
+Epoch 397
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.519413 Std=2.012621 RMS90=0.453740
+  50-150 GeV: n=21867 Mean=0.976581 Std=0.262957 RMS90=0.171249
+  >150 GeV: n=70 Mean=0.833222 Std=0.182182 RMS90=0.172427
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.968020 Std=0.138580 RMS90=0.071351
+  K0: n=11257 Mean=1.019195 Std=0.140302 RMS90=0.075912
+  Photon: n=6167 Mean=0.997070 Std=0.066621 RMS90=0.033257
+  Pion: n=13008 Mean=1.723415 Std=2.509680 RMS90=0.677900
+  Electron: n=782 Mean=2.227106 Std=1.989948 RMS90=0.977458
+  Muon: n=1998 Mean=1.441909 Std=1.465785 RMS90=0.462434
+
+Epoch 398
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.443735 Std=1.909607 RMS90=0.390673
+  50-150 GeV: n=21867 Mean=0.969393 Std=0.257471 RMS90=0.162530
+  >150 GeV: n=70 Mean=0.833832 Std=0.163166 RMS90=0.143474
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964825 Std=0.121034 RMS90=0.071841
+  K0: n=11257 Mean=1.016824 Std=0.140193 RMS90=0.076926
+  Photon: n=6167 Mean=0.999940 Std=0.080545 RMS90=0.040496
+  Pion: n=13008 Mean=1.611302 Std=2.410447 RMS90=0.597771
+  Electron: n=782 Mean=1.846232 Std=1.426409 RMS90=0.719369
+  Muon: n=1998 Mean=1.417240 Std=1.427199 RMS90=0.464109
+
+Epoch 399
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.407460 Std=1.827690 RMS90=0.378487
+  50-150 GeV: n=21867 Mean=0.982215 Std=0.246523 RMS90=0.153166
+  >150 GeV: n=70 Mean=0.961963 Std=0.056155 RMS90=0.039870
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963796 Std=0.118851 RMS90=0.073395
+  K0: n=11257 Mean=1.014990 Std=0.133543 RMS90=0.075337
+  Photon: n=6167 Mean=1.007182 Std=0.073390 RMS90=0.036458
+  Pion: n=13008 Mean=1.566381 Std=2.313008 RMS90=0.566233
+  Electron: n=782 Mean=1.617571 Std=1.072802 RMS90=0.589858
+  Muon: n=1998 Mean=1.531566 Std=1.385750 RMS90=0.475062
+
+Epoch 400
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.465546 Std=1.892521 RMS90=0.411564
+  50-150 GeV: n=21867 Mean=0.957275 Std=0.260262 RMS90=0.174615
+  >150 GeV: n=70 Mean=0.858752 Std=0.142615 RMS90=0.121187
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961110 Std=0.132781 RMS90=0.072893
+  K0: n=11257 Mean=1.011090 Std=0.134592 RMS90=0.074342
+  Photon: n=6167 Mean=0.994854 Std=0.062819 RMS90=0.033630
+  Pion: n=13008 Mean=1.613135 Std=2.335745 RMS90=0.635346
+  Electron: n=782 Mean=2.120214 Std=2.137811 RMS90=0.913480
+  Muon: n=1998 Mean=1.478983 Std=1.609572 RMS90=0.508168
+
+Epoch 401
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.464017 Std=1.797079 RMS90=0.416440
+  50-150 GeV: n=21867 Mean=0.962761 Std=0.252557 RMS90=0.162634
+  >150 GeV: n=70 Mean=0.834127 Std=0.167603 RMS90=0.144415
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959683 Std=0.127730 RMS90=0.071852
+  K0: n=11257 Mean=1.010772 Std=0.135920 RMS90=0.073841
+  Photon: n=6167 Mean=0.995544 Std=0.068071 RMS90=0.034285
+  Pion: n=13008 Mean=1.631586 Std=2.237394 RMS90=0.627882
+  Electron: n=782 Mean=2.041525 Std=1.747596 RMS90=0.876103
+  Muon: n=1998 Mean=1.439375 Std=1.436174 RMS90=0.470422
+
+Epoch 402
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.451848 Std=1.804956 RMS90=0.401663
+  50-150 GeV: n=21867 Mean=0.948313 Std=0.257875 RMS90=0.179083
+  >150 GeV: n=70 Mean=0.847994 Std=0.158158 RMS90=0.131627
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963223 Std=0.120456 RMS90=0.070950
+  K0: n=11257 Mean=1.014197 Std=0.139635 RMS90=0.074494
+  Photon: n=6167 Mean=0.992644 Std=0.066529 RMS90=0.032993
+  Pion: n=13008 Mean=1.579494 Std=2.225613 RMS90=0.639551
+  Electron: n=782 Mean=2.001194 Std=2.032623 RMS90=0.861680
+  Muon: n=1998 Mean=1.470458 Std=1.624855 RMS90=0.493390
+
+Epoch 403
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.475389 Std=1.873226 RMS90=0.414529
+  50-150 GeV: n=21867 Mean=0.975066 Std=0.240345 RMS90=0.149597
+  >150 GeV: n=70 Mean=0.925046 Std=0.107720 RMS90=0.077622
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.976312 Std=0.131650 RMS90=0.070902
+  K0: n=11257 Mean=1.028907 Std=0.151232 RMS90=0.076464
+  Photon: n=6167 Mean=1.006764 Std=0.073839 RMS90=0.034740
+  Pion: n=13008 Mean=1.630250 Std=2.332158 RMS90=0.608365
+  Electron: n=782 Mean=2.038026 Std=1.766358 RMS90=0.871904
+  Muon: n=1998 Mean=1.485665 Std=1.526697 RMS90=0.505177
+
+Epoch 404
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.484100 Std=1.746442 RMS90=0.429210
+  50-150 GeV: n=21867 Mean=0.973369 Std=0.263840 RMS90=0.169959
+  >150 GeV: n=70 Mean=0.846018 Std=0.165889 RMS90=0.139741
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.966084 Std=0.120080 RMS90=0.071505
+  K0: n=11257 Mean=1.017593 Std=0.141764 RMS90=0.075142
+  Photon: n=6167 Mean=0.999722 Std=0.066293 RMS90=0.032978
+  Pion: n=13008 Mean=1.664141 Std=2.147024 RMS90=0.643509
+  Electron: n=782 Mean=2.186998 Std=1.954441 RMS90=0.964637
+  Muon: n=1998 Mean=1.425092 Std=1.489216 RMS90=0.472996
+
+Epoch 405
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.498037 Std=1.890240 RMS90=0.430549
+  50-150 GeV: n=21867 Mean=0.970555 Std=0.261009 RMS90=0.173543
+  >150 GeV: n=70 Mean=0.826309 Std=0.187298 RMS90=0.164298
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.967987 Std=0.133425 RMS90=0.072448
+  K0: n=11257 Mean=1.019463 Std=0.138589 RMS90=0.074384
+  Photon: n=6167 Mean=1.002127 Std=0.068561 RMS90=0.033454
+  Pion: n=13008 Mean=1.681440 Std=2.345870 RMS90=0.650958
+  Electron: n=782 Mean=2.181166 Std=2.011132 RMS90=0.988692
+  Muon: n=1998 Mean=1.410713 Std=1.469228 RMS90=0.462408
+
+Epoch 406
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.457630 Std=1.883934 RMS90=0.420992
+  50-150 GeV: n=21867 Mean=0.961513 Std=0.253195 RMS90=0.159292
+  >150 GeV: n=70 Mean=0.837297 Std=0.157286 RMS90=0.131983
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.950568 Std=0.112371 RMS90=0.071259
+  K0: n=11257 Mean=1.002924 Std=0.137232 RMS90=0.074304
+  Photon: n=6167 Mean=0.996278 Std=0.080922 RMS90=0.039336
+  Pion: n=13008 Mean=1.644395 Std=2.371351 RMS90=0.616684
+  Electron: n=782 Mean=2.006236 Std=1.601647 RMS90=0.828282
+  Muon: n=1998 Mean=1.377558 Std=1.316790 RMS90=0.441106
+
+Epoch 407
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.442361 Std=1.925101 RMS90=0.385908
+  50-150 GeV: n=21867 Mean=0.943709 Std=0.252410 RMS90=0.177170
+  >150 GeV: n=70 Mean=0.842720 Std=0.154938 RMS90=0.127217
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957838 Std=0.120820 RMS90=0.072563
+  K0: n=11257 Mean=1.008258 Std=0.134928 RMS90=0.073798
+  Photon: n=6167 Mean=0.992235 Std=0.063509 RMS90=0.033036
+  Pion: n=13008 Mean=1.560022 Std=2.369887 RMS90=0.611092
+  Electron: n=782 Mean=2.093318 Std=2.335116 RMS90=0.934442
+  Muon: n=1998 Mean=1.469003 Std=1.667481 RMS90=0.499458
+
+Epoch 408
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.416876 Std=1.880866 RMS90=0.377877
+  50-150 GeV: n=21867 Mean=0.951019 Std=0.253766 RMS90=0.173296
+  >150 GeV: n=70 Mean=0.858824 Std=0.145643 RMS90=0.126259
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964497 Std=0.116333 RMS90=0.071809
+  K0: n=11257 Mean=1.016643 Std=0.136087 RMS90=0.073967
+  Photon: n=6167 Mean=0.999214 Std=0.065305 RMS90=0.032983
+  Pion: n=13008 Mean=1.530142 Std=2.343702 RMS90=0.604086
+  Electron: n=782 Mean=1.802719 Std=1.712911 RMS90=0.740503
+  Muon: n=1998 Mean=1.466789 Std=1.695222 RMS90=0.518471
+
+Epoch 409
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.409936 Std=1.764760 RMS90=0.362618
+  50-150 GeV: n=21867 Mean=0.950449 Std=0.245119 RMS90=0.165450
+  >150 GeV: n=70 Mean=0.912560 Std=0.086531 RMS90=0.068857
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961828 Std=0.125972 RMS90=0.071890
+  K0: n=11257 Mean=1.011926 Std=0.138525 RMS90=0.074532
+  Photon: n=6167 Mean=0.991109 Std=0.067235 RMS90=0.034293
+  Pion: n=13008 Mean=1.526338 Std=2.192579 RMS90=0.574019
+  Electron: n=782 Mean=1.822944 Std=1.646439 RMS90=0.760764
+  Muon: n=1998 Mean=1.467928 Std=1.602410 RMS90=0.507466
+
+Epoch 410
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.507799 Std=1.908115 RMS90=0.451586
+  50-150 GeV: n=21867 Mean=0.960928 Std=0.260609 RMS90=0.169281
+  >150 GeV: n=70 Mean=0.838975 Std=0.164530 RMS90=0.138510
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958249 Std=0.129400 RMS90=0.072153
+  K0: n=11257 Mean=1.008743 Std=0.136810 RMS90=0.075384
+  Photon: n=6167 Mean=0.989568 Std=0.068256 RMS90=0.035161
+  Pion: n=13008 Mean=1.703054 Std=2.369822 RMS90=0.670922
+  Electron: n=782 Mean=2.233110 Std=2.013301 RMS90=1.023747
+  Muon: n=1998 Mean=1.407220 Std=1.435069 RMS90=0.451178
+
+Epoch 411
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.549199 Std=1.763233 RMS90=0.474666
+  50-150 GeV: n=21867 Mean=0.972692 Std=0.280007 RMS90=0.179159
+  >150 GeV: n=70 Mean=0.833387 Std=0.186655 RMS90=0.143536
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959163 Std=0.129195 RMS90=0.072346
+  K0: n=11257 Mean=1.010410 Std=0.134165 RMS90=0.073920
+  Photon: n=6167 Mean=0.994601 Std=0.071131 RMS90=0.035467
+  Pion: n=13008 Mean=1.777954 Std=2.134815 RMS90=0.719802
+  Electron: n=782 Mean=2.474627 Std=2.299663 RMS90=1.200202
+  Muon: n=1998 Mean=1.387128 Std=1.466629 RMS90=0.469735
+
+Epoch 412
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.434784 Std=1.818231 RMS90=0.389539
+  50-150 GeV: n=21867 Mean=0.949136 Std=0.256863 RMS90=0.176032
+  >150 GeV: n=70 Mean=0.847506 Std=0.155263 RMS90=0.131027
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959249 Std=0.125037 RMS90=0.072966
+  K0: n=11257 Mean=1.008002 Std=0.137972 RMS90=0.075305
+  Photon: n=6167 Mean=0.985875 Std=0.065658 RMS90=0.036076
+  Pion: n=13008 Mean=1.570648 Std=2.262955 RMS90=0.609386
+  Electron: n=782 Mean=1.935703 Std=1.781000 RMS90=0.824248
+  Muon: n=1998 Mean=1.449456 Std=1.554804 RMS90=0.487559
+
+Epoch 413
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.421000 Std=1.844697 RMS90=0.378611
+  50-150 GeV: n=21867 Mean=0.954882 Std=0.249453 RMS90=0.172933
+  >150 GeV: n=70 Mean=0.834158 Std=0.176203 RMS90=0.146598
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965485 Std=0.132273 RMS90=0.071812
+  K0: n=11257 Mean=1.016408 Std=0.137344 RMS90=0.074610
+  Photon: n=6167 Mean=0.999209 Std=0.065046 RMS90=0.033282
+  Pion: n=13008 Mean=1.545615 Std=2.304838 RMS90=0.592275
+  Electron: n=782 Mean=1.876067 Std=1.780544 RMS90=0.778201
+  Muon: n=1998 Mean=1.420702 Std=1.523559 RMS90=0.466721
+
+Epoch 414
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.526034 Std=1.899072 RMS90=0.454013
+  50-150 GeV: n=21867 Mean=0.967467 Std=0.267719 RMS90=0.176402
+  >150 GeV: n=70 Mean=0.828178 Std=0.187122 RMS90=0.154651
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962917 Std=0.125796 RMS90=0.072542
+  K0: n=11257 Mean=1.013615 Std=0.138849 RMS90=0.075399
+  Photon: n=6167 Mean=0.995593 Std=0.069134 RMS90=0.035021
+  Pion: n=13008 Mean=1.730355 Std=2.345748 RMS90=0.684723
+  Electron: n=782 Mean=2.271197 Std=2.070894 RMS90=1.017948
+  Muon: n=1998 Mean=1.417961 Std=1.506924 RMS90=0.468729
+
+Epoch 415
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.408909 Std=1.669403 RMS90=0.374024
+  50-150 GeV: n=21867 Mean=0.945223 Std=0.259183 RMS90=0.180008
+  >150 GeV: n=70 Mean=0.838198 Std=0.165417 RMS90=0.143065
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957453 Std=0.133757 RMS90=0.071450
+  K0: n=11257 Mean=1.007884 Std=0.137780 RMS90=0.074711
+  Photon: n=6167 Mean=0.995726 Std=0.068147 RMS90=0.034060
+  Pion: n=13008 Mean=1.526947 Std=2.067598 RMS90=0.607966
+  Electron: n=782 Mean=1.744411 Std=1.566712 RMS90=0.725034
+  Muon: n=1998 Mean=1.456206 Std=1.608344 RMS90=0.505590
+
+Epoch 416
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.524748 Std=2.065009 RMS90=0.454128
+  50-150 GeV: n=21867 Mean=0.960743 Std=0.266485 RMS90=0.176705
+  >150 GeV: n=70 Mean=0.837662 Std=0.180445 RMS90=0.155393
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962342 Std=0.126701 RMS90=0.072132
+  K0: n=11257 Mean=1.012977 Std=0.136152 RMS90=0.074986
+  Photon: n=6167 Mean=0.996496 Std=0.069455 RMS90=0.034148
+  Pion: n=13008 Mean=1.712541 Std=2.564343 RMS90=0.697170
+  Electron: n=782 Mean=2.280110 Std=2.233609 RMS90=1.104779
+  Muon: n=1998 Mean=1.446854 Std=1.578659 RMS90=0.464287
+
+Epoch 417
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.445302 Std=1.766003 RMS90=0.402038
+  50-150 GeV: n=21867 Mean=0.955981 Std=0.251907 RMS90=0.165529
+  >150 GeV: n=70 Mean=0.871450 Std=0.128646 RMS90=0.105381
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960894 Std=0.124517 RMS90=0.072065
+  K0: n=11257 Mean=1.011513 Std=0.137017 RMS90=0.074295
+  Photon: n=6167 Mean=0.993986 Std=0.064723 RMS90=0.033050
+  Pion: n=13008 Mean=1.585179 Std=2.174669 RMS90=0.616623
+  Electron: n=782 Mean=2.038206 Std=2.024561 RMS90=0.878748
+  Muon: n=1998 Mean=1.454341 Std=1.545478 RMS90=0.489943
+
+Epoch 418
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.433570 Std=1.713475 RMS90=0.397212
+  50-150 GeV: n=21867 Mean=0.960275 Std=0.254207 RMS90=0.169197
+  >150 GeV: n=70 Mean=0.856434 Std=0.147897 RMS90=0.117275
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960992 Std=0.123730 RMS90=0.072387
+  K0: n=11257 Mean=1.011635 Std=0.136054 RMS90=0.073965
+  Photon: n=6167 Mean=0.993675 Std=0.064595 RMS90=0.032953
+  Pion: n=13008 Mean=1.583985 Std=2.123018 RMS90=0.607996
+  Electron: n=782 Mean=1.918757 Std=1.667711 RMS90=0.829040
+  Muon: n=1998 Mean=1.423651 Std=1.525428 RMS90=0.485377
+
+Epoch 419
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.503327 Std=2.090083 RMS90=0.431819
+  50-150 GeV: n=21867 Mean=0.934644 Std=0.258814 RMS90=0.179590
+  >150 GeV: n=70 Mean=0.831975 Std=0.165233 RMS90=0.142568
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.950243 Std=0.122721 RMS90=0.072315
+  K0: n=11257 Mean=0.998912 Std=0.134160 RMS90=0.074201
+  Photon: n=6167 Mean=0.980691 Std=0.065695 RMS90=0.035959
+  Pion: n=13008 Mean=1.654174 Std=2.567606 RMS90=0.680670
+  Electron: n=782 Mean=2.338492 Std=2.620563 RMS90=1.124750
+  Muon: n=1998 Mean=1.473572 Std=1.729885 RMS90=0.485753
+
+Epoch 420
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.456377 Std=1.789650 RMS90=0.400499
+  50-150 GeV: n=21867 Mean=0.920301 Std=0.254237 RMS90=0.178005
+  >150 GeV: n=70 Mean=0.844046 Std=0.142034 RMS90=0.119168
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.950667 Std=0.127601 RMS90=0.072213
+  K0: n=11257 Mean=0.999770 Std=0.137668 RMS90=0.077323
+  Photon: n=6167 Mean=0.985080 Std=0.073530 RMS90=0.037939
+  Pion: n=13008 Mean=1.556124 Std=2.179336 RMS90=0.650538
+  Electron: n=782 Mean=2.097192 Std=2.284737 RMS90=1.028545
+  Muon: n=1998 Mean=1.503515 Std=1.742983 RMS90=0.519572
+
+Epoch 421
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.435277 Std=1.781076 RMS90=0.381920
+  50-150 GeV: n=21867 Mean=0.942170 Std=0.244728 RMS90=0.161985
+  >150 GeV: n=70 Mean=0.890315 Std=0.110439 RMS90=0.080072
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955645 Std=0.122838 RMS90=0.071586
+  K0: n=11257 Mean=1.005393 Std=0.138212 RMS90=0.075181
+  Photon: n=6167 Mean=0.984986 Std=0.069217 RMS90=0.035629
+  Pion: n=13008 Mean=1.557016 Std=2.187565 RMS90=0.596672
+  Electron: n=782 Mean=2.046818 Std=2.049045 RMS90=0.881407
+  Muon: n=1998 Mean=1.463063 Std=1.627797 RMS90=0.516020
+
+Epoch 422
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.611699 Std=1.906337 RMS90=0.523843
+  50-150 GeV: n=21867 Mean=0.974734 Std=0.284721 RMS90=0.176969
+  >150 GeV: n=70 Mean=0.845416 Std=0.162728 RMS90=0.134228
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960751 Std=0.131004 RMS90=0.073080
+  K0: n=11257 Mean=1.009468 Std=0.135132 RMS90=0.076122
+  Photon: n=6167 Mean=0.994517 Std=0.067824 RMS90=0.036843
+  Pion: n=13008 Mean=1.856821 Std=2.275065 RMS90=0.769878
+  Electron: n=782 Mean=2.797494 Std=2.798952 RMS90=1.396355
+  Muon: n=1998 Mean=1.466468 Std=1.588847 RMS90=0.499481
+
+Epoch 423
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.470370 Std=1.727516 RMS90=0.420379
+  50-150 GeV: n=21867 Mean=0.952434 Std=0.252927 RMS90=0.166056
+  >150 GeV: n=70 Mean=0.855037 Std=0.136105 RMS90=0.114777
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.954861 Std=0.125416 RMS90=0.072026
+  K0: n=11257 Mean=1.003810 Std=0.137384 RMS90=0.075335
+  Photon: n=6167 Mean=0.983410 Std=0.065395 RMS90=0.034289
+  Pion: n=13008 Mean=1.638353 Std=2.118516 RMS90=0.636682
+  Electron: n=782 Mean=2.077122 Std=1.958855 RMS90=0.919176
+  Muon: n=1998 Mean=1.443699 Std=1.539574 RMS90=0.485859
+
+Epoch 424
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.460649 Std=1.863301 RMS90=0.406908
+  50-150 GeV: n=21867 Mean=0.958954 Std=0.254232 RMS90=0.171372
+  >150 GeV: n=70 Mean=0.857729 Std=0.149894 RMS90=0.124609
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962580 Std=0.129902 RMS90=0.071786
+  K0: n=11257 Mean=1.013392 Std=0.136775 RMS90=0.074074
+  Photon: n=6167 Mean=0.997068 Std=0.064827 RMS90=0.032761
+  Pion: n=13008 Mean=1.616684 Std=2.323301 RMS90=0.625718
+  Electron: n=782 Mean=1.999185 Std=1.810967 RMS90=0.820709
+  Muon: n=1998 Mean=1.438842 Std=1.505917 RMS90=0.472285
+
+Epoch 425
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.435784 Std=1.706900 RMS90=0.404095
+  50-150 GeV: n=21867 Mean=0.965727 Std=0.253867 RMS90=0.170074
+  >150 GeV: n=70 Mean=0.841090 Std=0.173757 RMS90=0.150521
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961406 Std=0.132878 RMS90=0.072417
+  K0: n=11257 Mean=1.011829 Std=0.137978 RMS90=0.074458
+  Photon: n=6167 Mean=0.996591 Std=0.064870 RMS90=0.033368
+  Pion: n=13008 Mean=1.600185 Std=2.124742 RMS90=0.605699
+  Electron: n=782 Mean=1.896768 Std=1.582642 RMS90=0.761095
+  Muon: n=1998 Mean=1.398349 Std=1.430767 RMS90=0.454927
+
+Epoch 426
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.435975 Std=1.766871 RMS90=0.396179
+  50-150 GeV: n=21867 Mean=0.963392 Std=0.252779 RMS90=0.171057
+  >150 GeV: n=70 Mean=0.844154 Std=0.159196 RMS90=0.138282
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.969142 Std=0.128484 RMS90=0.071357
+  K0: n=11257 Mean=1.020679 Std=0.138819 RMS90=0.074769
+  Photon: n=6167 Mean=0.999231 Std=0.069475 RMS90=0.033307
+  Pion: n=13008 Mean=1.576838 Std=2.201205 RMS90=0.610533
+  Electron: n=782 Mean=1.894612 Std=1.691230 RMS90=0.768192
+  Muon: n=1998 Mean=1.427066 Std=1.498597 RMS90=0.466540
+
+Epoch 427
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.500078 Std=1.941939 RMS90=0.434662
+  50-150 GeV: n=21867 Mean=0.947527 Std=0.264102 RMS90=0.180714
+  >150 GeV: n=70 Mean=0.832414 Std=0.167897 RMS90=0.147246
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962345 Std=0.123962 RMS90=0.071833
+  K0: n=11257 Mean=1.012735 Std=0.137050 RMS90=0.074607
+  Photon: n=6167 Mean=0.992509 Std=0.065181 RMS90=0.033494
+  Pion: n=13008 Mean=1.644334 Std=2.371578 RMS90=0.676865
+  Electron: n=782 Mean=2.290988 Std=2.475333 RMS90=1.137361
+  Muon: n=1998 Mean=1.479242 Std=1.732665 RMS90=0.514158
+
+Epoch 428
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.482421 Std=1.943939 RMS90=0.439075
+  50-150 GeV: n=21867 Mean=0.957613 Std=0.262307 RMS90=0.169035
+  >150 GeV: n=70 Mean=0.832302 Std=0.166662 RMS90=0.134943
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.946801 Std=0.118513 RMS90=0.072132
+  K0: n=11257 Mean=0.996643 Std=0.132342 RMS90=0.073436
+  Photon: n=6167 Mean=0.980775 Std=0.067388 RMS90=0.035734
+  Pion: n=13008 Mean=1.681510 Std=2.424166 RMS90=0.652575
+  Electron: n=782 Mean=2.155241 Std=1.941188 RMS90=0.957302
+  Muon: n=1998 Mean=1.416251 Std=1.423583 RMS90=0.459989
+
+Epoch 429
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.451399 Std=1.737723 RMS90=0.414002
+  50-150 GeV: n=21867 Mean=0.960139 Std=0.251041 RMS90=0.165894
+  >150 GeV: n=70 Mean=0.839676 Std=0.159801 RMS90=0.127295
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955226 Std=0.115021 RMS90=0.071223
+  K0: n=11257 Mean=1.006408 Std=0.138242 RMS90=0.073714
+  Photon: n=6167 Mean=0.994381 Std=0.067722 RMS90=0.033060
+  Pion: n=13008 Mean=1.623594 Std=2.165813 RMS90=0.618169
+  Electron: n=782 Mean=2.033069 Std=1.739691 RMS90=0.921860
+  Muon: n=1998 Mean=1.378003 Std=1.332429 RMS90=0.447013
+
+Epoch 430
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.456611 Std=1.818181 RMS90=0.410833
+  50-150 GeV: n=21867 Mean=0.960294 Std=0.252721 RMS90=0.164387
+  >150 GeV: n=70 Mean=0.871548 Std=0.120869 RMS90=0.096749
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957089 Std=0.115851 RMS90=0.071846
+  K0: n=11257 Mean=1.008021 Std=0.136427 RMS90=0.073681
+  Photon: n=6167 Mean=1.001720 Std=0.065244 RMS90=0.034056
+  Pion: n=13008 Mean=1.612169 Std=2.246189 RMS90=0.617482
+  Electron: n=782 Mean=2.051779 Std=1.862745 RMS90=0.899431
+  Muon: n=1998 Mean=1.464027 Std=1.601636 RMS90=0.498454
+
+Epoch 431
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.491252 Std=1.931878 RMS90=0.425829
+  50-150 GeV: n=21867 Mean=0.978194 Std=0.262255 RMS90=0.167279
+  >150 GeV: n=70 Mean=0.849531 Std=0.157745 RMS90=0.141199
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963458 Std=0.122308 RMS90=0.072722
+  K0: n=11257 Mean=1.013785 Std=0.134959 RMS90=0.074339
+  Photon: n=6167 Mean=0.995515 Std=0.067020 RMS90=0.033464
+  Pion: n=13008 Mean=1.692578 Std=2.399036 RMS90=0.636641
+  Electron: n=782 Mean=2.191939 Std=1.912124 RMS90=0.943852
+  Muon: n=1998 Mean=1.420042 Std=1.510334 RMS90=0.454946
+
+Epoch 432
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.419324 Std=1.757052 RMS90=0.386651
+  50-150 GeV: n=21867 Mean=0.962432 Std=0.249960 RMS90=0.164457
+  >150 GeV: n=70 Mean=0.841220 Std=0.156444 RMS90=0.147858
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955583 Std=0.123914 RMS90=0.072605
+  K0: n=11257 Mean=1.005465 Std=0.133404 RMS90=0.074049
+  Photon: n=6167 Mean=0.997867 Std=0.062873 RMS90=0.032398
+  Pion: n=13008 Mean=1.576538 Std=2.180206 RMS90=0.590275
+  Electron: n=782 Mean=1.900609 Std=1.701239 RMS90=0.796915
+  Muon: n=1998 Mean=1.394753 Std=1.519300 RMS90=0.452594
+
+Epoch 433
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.542457 Std=1.710942 RMS90=0.457700
+  50-150 GeV: n=21867 Mean=1.000193 Std=0.259900 RMS90=0.174916
+  >150 GeV: n=70 Mean=0.862323 Std=0.158832 RMS90=0.139296
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=1.006412 Std=0.131594 RMS90=0.075689
+  K0: n=11257 Mean=1.060202 Std=0.142242 RMS90=0.077639
+  Photon: n=6167 Mean=1.027145 Std=0.067916 RMS90=0.035729
+  Pion: n=13008 Mean=1.725183 Std=2.113656 RMS90=0.690243
+  Electron: n=782 Mean=2.121538 Std=1.779191 RMS90=1.011924
+  Muon: n=1998 Mean=1.451998 Std=1.454745 RMS90=0.477260
+
+Epoch 434
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.437133 Std=1.770862 RMS90=0.383652
+  50-150 GeV: n=21867 Mean=0.956482 Std=0.255654 RMS90=0.173729
+  >150 GeV: n=70 Mean=0.850589 Std=0.159979 RMS90=0.126793
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961348 Std=0.121047 RMS90=0.071557
+  K0: n=11257 Mean=1.012768 Std=0.137246 RMS90=0.074384
+  Photon: n=6167 Mean=1.004742 Std=0.064587 RMS90=0.033704
+  Pion: n=13008 Mean=1.573814 Std=2.183450 RMS90=0.611335
+  Electron: n=782 Mean=1.911659 Std=1.876856 RMS90=0.805344
+  Muon: n=1998 Mean=1.448276 Std=1.640015 RMS90=0.498733
+
+Epoch 435
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.463072 Std=1.747295 RMS90=0.426821
+  50-150 GeV: n=21867 Mean=0.952983 Std=0.265353 RMS90=0.177849
+  >150 GeV: n=70 Mean=0.848650 Std=0.154967 RMS90=0.117593
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.949432 Std=0.116039 RMS90=0.072619
+  K0: n=11257 Mean=1.000201 Std=0.133552 RMS90=0.073272
+  Photon: n=6167 Mean=0.990416 Std=0.062142 RMS90=0.032143
+  Pion: n=13008 Mean=1.630289 Std=2.146776 RMS90=0.652143
+  Electron: n=782 Mean=2.084022 Std=1.987404 RMS90=0.884802
+  Muon: n=1998 Mean=1.446425 Std=1.542924 RMS90=0.510000
+
+Epoch 436
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.448235 Std=1.916731 RMS90=0.414539
+  50-150 GeV: n=21867 Mean=0.945583 Std=0.278451 RMS90=0.190828
+  >150 GeV: n=70 Mean=0.847196 Std=0.158599 RMS90=0.132347
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957291 Std=0.113029 RMS90=0.071325
+  K0: n=11257 Mean=1.008775 Std=0.137919 RMS90=0.073886
+  Photon: n=6167 Mean=0.989165 Std=0.066430 RMS90=0.033650
+  Pion: n=13008 Mean=1.584705 Std=2.385907 RMS90=0.664858
+  Electron: n=782 Mean=1.943680 Std=1.910374 RMS90=0.823171
+  Muon: n=1998 Mean=1.462913 Std=1.668151 RMS90=0.512789
+
+Epoch 437
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.477527 Std=1.785281 RMS90=0.409230
+  50-150 GeV: n=21867 Mean=0.946751 Std=0.264790 RMS90=0.175328
+  >150 GeV: n=70 Mean=0.838104 Std=0.171704 RMS90=0.142059
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959714 Std=0.116109 RMS90=0.071227
+  K0: n=11257 Mean=1.010149 Std=0.141381 RMS90=0.075369
+  Photon: n=6167 Mean=0.990969 Std=0.076376 RMS90=0.034200
+  Pion: n=13008 Mean=1.625612 Std=2.199198 RMS90=0.649928
+  Electron: n=782 Mean=2.243043 Std=2.140962 RMS90=1.088523
+  Muon: n=1998 Mean=1.393196 Std=1.494132 RMS90=0.435868
+
+Epoch 438
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.478684 Std=1.840586 RMS90=0.418348
+  50-150 GeV: n=21867 Mean=0.963364 Std=0.270099 RMS90=0.178544
+  >150 GeV: n=70 Mean=0.839469 Std=0.169542 RMS90=0.144032
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959422 Std=0.120387 RMS90=0.072165
+  K0: n=11257 Mean=1.009587 Std=0.137882 RMS90=0.074422
+  Photon: n=6167 Mean=0.990038 Std=0.063853 RMS90=0.032822
+  Pion: n=13008 Mean=1.663984 Std=2.280172 RMS90=0.648940
+  Electron: n=782 Mean=2.112799 Std=1.966083 RMS90=0.957066
+  Muon: n=1998 Mean=1.396676 Std=1.491405 RMS90=0.445145
+
+Epoch 439
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.443909 Std=1.903552 RMS90=0.390935
+  50-150 GeV: n=21867 Mean=0.950549 Std=0.269860 RMS90=0.183400
+  >150 GeV: n=70 Mean=0.895494 Std=0.105893 RMS90=0.088255
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962010 Std=0.115696 RMS90=0.073003
+  K0: n=11257 Mean=1.012991 Std=0.134027 RMS90=0.073496
+  Photon: n=6167 Mean=0.995731 Std=0.063732 RMS90=0.032955
+  Pion: n=13008 Mean=1.565874 Std=2.337161 RMS90=0.624959
+  Electron: n=782 Mean=1.977787 Std=2.211378 RMS90=0.846295
+  Muon: n=1998 Mean=1.509552 Std=1.790710 RMS90=0.542617
+
+Epoch 440
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.410151 Std=1.750417 RMS90=0.381483
+  50-150 GeV: n=21867 Mean=0.926079 Std=0.231453 RMS90=0.160382
+  >150 GeV: n=70 Mean=0.919226 Std=0.087975 RMS90=0.067980
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.936385 Std=0.125494 RMS90=0.074318
+  K0: n=11257 Mean=0.984477 Std=0.127927 RMS90=0.073845
+  Photon: n=6167 Mean=0.992599 Std=0.063330 RMS90=0.037018
+  Pion: n=13008 Mean=1.504889 Std=2.115462 RMS90=0.584450
+  Electron: n=782 Mean=2.028332 Std=2.257033 RMS90=0.973615
+  Muon: n=1998 Mean=1.554314 Std=1.762651 RMS90=0.545838
+
+Epoch 441
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.450216 Std=1.789334 RMS90=0.389205
+  50-150 GeV: n=21867 Mean=0.944553 Std=0.262196 RMS90=0.184280
+  >150 GeV: n=70 Mean=0.841835 Std=0.159999 RMS90=0.133364
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.969579 Std=0.119945 RMS90=0.071998
+  K0: n=11257 Mean=1.020595 Std=0.142928 RMS90=0.076287
+  Photon: n=6167 Mean=0.996750 Std=0.066249 RMS90=0.033723
+  Pion: n=13008 Mean=1.556103 Std=2.202817 RMS90=0.630805
+  Electron: n=782 Mean=2.042320 Std=2.096766 RMS90=0.932518
+  Muon: n=1998 Mean=1.463024 Std=1.649711 RMS90=0.508455
+
+Epoch 442
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.488076 Std=1.768039 RMS90=0.425340
+  50-150 GeV: n=21867 Mean=0.966125 Std=0.262254 RMS90=0.174954
+  >150 GeV: n=70 Mean=0.832445 Std=0.174735 RMS90=0.153011
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965846 Std=0.116298 RMS90=0.072021
+  K0: n=11257 Mean=1.017424 Std=0.139066 RMS90=0.075746
+  Photon: n=6167 Mean=0.994448 Std=0.069366 RMS90=0.035070
+  Pion: n=13008 Mean=1.667002 Std=2.183820 RMS90=0.648279
+  Electron: n=782 Mean=2.093794 Std=1.897507 RMS90=0.947526
+  Muon: n=1998 Mean=1.426150 Std=1.490023 RMS90=0.464906
+
+Epoch 443
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.467340 Std=1.838295 RMS90=0.413303
+  50-150 GeV: n=21867 Mean=0.933587 Std=0.269356 RMS90=0.187016
+  >150 GeV: n=70 Mean=0.840512 Std=0.167594 RMS90=0.138409
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955456 Std=0.118783 RMS90=0.071901
+  K0: n=11257 Mean=1.007043 Std=0.134114 RMS90=0.072981
+  Photon: n=6167 Mean=0.996123 Std=0.063282 RMS90=0.033119
+  Pion: n=13008 Mean=1.571209 Std=2.201473 RMS90=0.666641
+  Electron: n=782 Mean=2.144777 Std=2.760337 RMS90=0.941613
+  Muon: n=1998 Mean=1.552791 Std=1.855297 RMS90=0.570964
+
+Epoch 444
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.464201 Std=1.713290 RMS90=0.418117
+  50-150 GeV: n=21867 Mean=0.965679 Std=0.270706 RMS90=0.180025
+  >150 GeV: n=70 Mean=0.831001 Std=0.208530 RMS90=0.139142
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963445 Std=0.126245 RMS90=0.071741
+  K0: n=11257 Mean=1.015359 Std=0.136809 RMS90=0.073823
+  Photon: n=6167 Mean=1.005557 Std=0.068031 RMS90=0.032893
+  Pion: n=13008 Mean=1.633901 Std=2.131211 RMS90=0.637433
+  Electron: n=782 Mean=2.075736 Std=1.741060 RMS90=0.907401
+  Muon: n=1998 Mean=1.367285 Std=1.383953 RMS90=0.481859
+
+Epoch 445
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.578906 Std=1.915717 RMS90=0.492637
+  50-150 GeV: n=21867 Mean=0.941797 Std=0.268810 RMS90=0.177140
+  >150 GeV: n=70 Mean=0.827571 Std=0.165264 RMS90=0.141759
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.946801 Std=0.117988 RMS90=0.072047
+  K0: n=11257 Mean=0.995909 Std=0.135655 RMS90=0.076273
+  Photon: n=6167 Mean=0.980299 Std=0.072225 RMS90=0.037726
+  Pion: n=13008 Mean=1.776291 Std=2.294628 RMS90=0.741209
+  Electron: n=782 Mean=2.749665 Std=2.831875 RMS90=1.435433
+  Muon: n=1998 Mean=1.479056 Std=1.638998 RMS90=0.486087
+
+Epoch 446
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.463543 Std=1.853898 RMS90=0.425714
+  50-150 GeV: n=21867 Mean=0.983398 Std=0.260022 RMS90=0.166423
+  >150 GeV: n=70 Mean=0.835302 Std=0.186619 RMS90=0.160416
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965895 Std=0.118146 RMS90=0.073145
+  K0: n=11257 Mean=1.016691 Std=0.135725 RMS90=0.074637
+  Photon: n=6167 Mean=0.997272 Std=0.065571 RMS90=0.033808
+  Pion: n=13008 Mean=1.668041 Std=2.331962 RMS90=0.618310
+  Electron: n=782 Mean=1.914899 Std=1.401250 RMS90=0.759514
+  Muon: n=1998 Mean=1.399052 Std=1.364606 RMS90=0.452127
+
+Epoch 447
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.490695 Std=1.766073 RMS90=0.428526
+  50-150 GeV: n=21867 Mean=0.959636 Std=0.251289 RMS90=0.165582
+  >150 GeV: n=70 Mean=0.855890 Std=0.133742 RMS90=0.108397
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958654 Std=0.123915 RMS90=0.071420
+  K0: n=11257 Mean=1.009110 Std=0.137688 RMS90=0.074668
+  Photon: n=6167 Mean=0.990196 Std=0.068146 RMS90=0.033656
+  Pion: n=13008 Mean=1.663962 Std=2.162000 RMS90=0.648533
+  Electron: n=782 Mean=2.260352 Std=2.089161 RMS90=1.018146
+  Muon: n=1998 Mean=1.439854 Std=1.511308 RMS90=0.458077
+
+Epoch 448
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.454289 Std=1.825786 RMS90=0.407142
+  50-150 GeV: n=21867 Mean=0.961451 Std=0.258757 RMS90=0.171332
+  >150 GeV: n=70 Mean=0.839467 Std=0.174220 RMS90=0.158905
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.967148 Std=0.118824 RMS90=0.073014
+  K0: n=11257 Mean=1.018203 Std=0.138646 RMS90=0.075418
+  Photon: n=6167 Mean=0.995413 Std=0.067351 RMS90=0.034622
+  Pion: n=13008 Mean=1.613763 Std=2.292755 RMS90=0.631541
+  Electron: n=782 Mean=1.874497 Std=1.517314 RMS90=0.792180
+  Muon: n=1998 Mean=1.414908 Std=1.457791 RMS90=0.484009
+
+Epoch 449
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.377310 Std=1.663546 RMS90=0.338560
+  50-150 GeV: n=21867 Mean=0.926207 Std=0.241043 RMS90=0.173526
+  >150 GeV: n=70 Mean=0.837831 Std=0.161937 RMS90=0.137084
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.954654 Std=0.117273 RMS90=0.070922
+  K0: n=11257 Mean=1.006229 Std=0.135487 RMS90=0.073649
+  Photon: n=6167 Mean=0.993506 Std=0.066357 RMS90=0.034231
+  Pion: n=13008 Mean=1.440455 Std=2.024726 RMS90=0.564667
+  Electron: n=782 Mean=1.739390 Std=1.912450 RMS90=0.722784
+  Muon: n=1998 Mean=1.491327 Std=1.797142 RMS90=0.511551
+
+Epoch 450
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.489497 Std=1.773511 RMS90=0.426785
+  50-150 GeV: n=21867 Mean=0.948284 Std=0.257813 RMS90=0.176475
+  >150 GeV: n=70 Mean=0.844993 Std=0.154840 RMS90=0.136586
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959215 Std=0.116548 RMS90=0.071841
+  K0: n=11257 Mean=1.009646 Std=0.140300 RMS90=0.074976
+  Photon: n=6167 Mean=0.990046 Std=0.067071 RMS90=0.033378
+  Pion: n=13008 Mean=1.634415 Std=2.152065 RMS90=0.666747
+  Electron: n=782 Mean=2.221841 Std=2.289136 RMS90=1.017662
+  Muon: n=1998 Mean=1.503693 Std=1.668423 RMS90=0.502260
+
+Epoch 451
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.489658 Std=1.857369 RMS90=0.421290
+  50-150 GeV: n=21867 Mean=0.968269 Std=0.269650 RMS90=0.180925
+  >150 GeV: n=70 Mean=0.839463 Std=0.174411 RMS90=0.150029
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964138 Std=0.118132 RMS90=0.072768
+  K0: n=11257 Mean=1.014690 Std=0.138644 RMS90=0.075192
+  Photon: n=6167 Mean=0.994133 Std=0.064890 RMS90=0.033123
+  Pion: n=13008 Mean=1.676104 Std=2.301837 RMS90=0.660054
+  Electron: n=782 Mean=2.133430 Std=1.896144 RMS90=0.952674
+  Muon: n=1998 Mean=1.418688 Std=1.533736 RMS90=0.463651
+
+Epoch 452
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.480125 Std=1.713679 RMS90=0.417243
+  50-150 GeV: n=21867 Mean=0.955089 Std=0.266650 RMS90=0.181894
+  >150 GeV: n=70 Mean=0.843791 Std=0.158201 RMS90=0.126511
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.967479 Std=0.116308 RMS90=0.071654
+  K0: n=11257 Mean=1.019299 Std=0.139279 RMS90=0.075239
+  Photon: n=6167 Mean=0.996643 Std=0.068297 RMS90=0.033093
+  Pion: n=13008 Mean=1.624410 Std=2.093463 RMS90=0.651011
+  Electron: n=782 Mean=2.260141 Std=2.262319 RMS90=1.070448
+  Muon: n=1998 Mean=1.402654 Std=1.482175 RMS90=0.469959
+
+Epoch 453
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.503527 Std=1.820275 RMS90=0.443534
+  50-150 GeV: n=21867 Mean=0.946147 Std=0.267407 RMS90=0.182557
+  >150 GeV: n=70 Mean=0.822509 Std=0.182949 RMS90=0.149630
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957418 Std=0.120881 RMS90=0.072324
+  K0: n=11257 Mean=1.008038 Std=0.135495 RMS90=0.075155
+  Photon: n=6167 Mean=0.986694 Std=0.067409 RMS90=0.035424
+  Pion: n=13008 Mean=1.677150 Std=2.243746 RMS90=0.692830
+  Electron: n=782 Mean=2.200688 Std=2.148282 RMS90=1.027300
+  Muon: n=1998 Mean=1.395801 Std=1.500894 RMS90=0.458955
+
+Epoch 454
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.388793 Std=1.657378 RMS90=0.351857
+  50-150 GeV: n=21867 Mean=0.929599 Std=0.242598 RMS90=0.172091
+  >150 GeV: n=70 Mean=0.866995 Std=0.119883 RMS90=0.102994
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961677 Std=0.115427 RMS90=0.072084
+  K0: n=11257 Mean=1.013018 Std=0.139060 RMS90=0.074116
+  Photon: n=6167 Mean=0.993971 Std=0.065987 RMS90=0.033631
+  Pion: n=13008 Mean=1.442640 Std=2.003068 RMS90=0.562427
+  Electron: n=782 Mean=1.867456 Std=2.159389 RMS90=0.814704
+  Muon: n=1998 Mean=1.514865 Std=1.777050 RMS90=0.559207
+
+Epoch 455
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.503695 Std=1.866397 RMS90=0.443408
+  50-150 GeV: n=21867 Mean=0.937897 Std=0.265139 RMS90=0.183933
+  >150 GeV: n=70 Mean=0.853345 Std=0.147819 RMS90=0.126755
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.953718 Std=0.117876 RMS90=0.071939
+  K0: n=11257 Mean=1.004894 Std=0.139779 RMS90=0.073464
+  Photon: n=6167 Mean=0.993413 Std=0.063430 RMS90=0.032697
+  Pion: n=13008 Mean=1.647214 Std=2.280750 RMS90=0.693800
+  Electron: n=782 Mean=2.263410 Std=2.318247 RMS90=1.013378
+  Muon: n=1998 Mean=1.496554 Std=1.695144 RMS90=0.509332
+
+Epoch 456
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.065046 Std=1.664905 RMS90=0.309604
+  50-150 GeV: n=21867 Mean=0.713713 Std=0.281766 RMS90=0.177805
+  >150 GeV: n=70 Mean=0.599795 Std=0.171638 RMS90=0.142426
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.652859 Std=0.160963 RMS90=0.124881
+  K0: n=11257 Mean=0.679800 Std=0.165701 RMS90=0.129610
+  Photon: n=6167 Mean=0.783242 Std=0.196057 RMS90=0.166728
+  Pion: n=13008 Mean=1.273922 Std=2.129325 RMS90=0.496289
+  Electron: n=782 Mean=1.530495 Std=1.406780 RMS90=0.691944
+  Muon: n=1998 Mean=0.991141 Std=0.390516 RMS90=0.254874
+
+Epoch 457
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.482873 Std=1.852326 RMS90=0.416291
+  50-150 GeV: n=21867 Mean=0.937964 Std=0.255235 RMS90=0.174558
+  >150 GeV: n=70 Mean=0.877310 Std=0.118973 RMS90=0.100995
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.966080 Std=0.115404 RMS90=0.073310
+  K0: n=11257 Mean=1.016456 Std=0.138877 RMS90=0.076031
+  Photon: n=6167 Mean=0.983965 Std=0.067487 RMS90=0.035128
+  Pion: n=13008 Mean=1.606623 Std=2.284383 RMS90=0.669050
+  Electron: n=782 Mean=2.044074 Std=2.077516 RMS90=0.941917
+  Muon: n=1998 Mean=1.510281 Std=1.681820 RMS90=0.535892
+
+Epoch 458
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.459949 Std=1.706215 RMS90=0.417127
+  50-150 GeV: n=21867 Mean=0.942778 Std=0.255548 RMS90=0.179170
+  >150 GeV: n=70 Mean=0.830307 Std=0.165809 RMS90=0.142125
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955320 Std=0.124659 RMS90=0.071574
+  K0: n=11257 Mean=1.005707 Std=0.136528 RMS90=0.073833
+  Photon: n=6167 Mean=0.992989 Std=0.065188 RMS90=0.032737
+  Pion: n=13008 Mean=1.602448 Std=2.095339 RMS90=0.646276
+  Electron: n=782 Mean=2.117804 Std=2.154918 RMS90=0.967475
+  Muon: n=1998 Mean=1.395536 Std=1.445042 RMS90=0.448785
+
+Epoch 459
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.434132 Std=1.798697 RMS90=0.410665
+  50-150 GeV: n=21867 Mean=0.945569 Std=0.266872 RMS90=0.183621
+  >150 GeV: n=70 Mean=0.822982 Std=0.183151 RMS90=0.161981
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963763 Std=0.118128 RMS90=0.073070
+  K0: n=11257 Mean=1.012880 Std=0.136978 RMS90=0.075727
+  Photon: n=6167 Mean=0.987923 Std=0.066687 RMS90=0.034905
+  Pion: n=13008 Mean=1.572141 Std=2.256456 RMS90=0.653811
+  Electron: n=782 Mean=1.782355 Std=1.556911 RMS90=0.774274
+  Muon: n=1998 Mean=1.393691 Std=1.522229 RMS90=0.461989
+
+Epoch 460
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.510013 Std=1.895014 RMS90=0.448671
+  50-150 GeV: n=21867 Mean=0.956047 Std=0.264409 RMS90=0.179149
+  >150 GeV: n=70 Mean=0.839663 Std=0.171308 RMS90=0.141795
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964113 Std=0.117183 RMS90=0.073199
+  K0: n=11257 Mean=1.014514 Std=0.135142 RMS90=0.074368
+  Photon: n=6167 Mean=0.995536 Std=0.063184 RMS90=0.033473
+  Pion: n=13008 Mean=1.682010 Std=2.335114 RMS90=0.686441
+  Electron: n=782 Mean=2.221347 Std=2.201874 RMS90=1.011210
+  Muon: n=1998 Mean=1.436678 Std=1.582649 RMS90=0.482252
+
+Epoch 461
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.449611 Std=1.576042 RMS90=0.400818
+  50-150 GeV: n=21867 Mean=0.956229 Std=0.268449 RMS90=0.181848
+  >150 GeV: n=70 Mean=0.837660 Std=0.159874 RMS90=0.135364
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960621 Std=0.117720 RMS90=0.071625
+  K0: n=11257 Mean=1.011245 Std=0.136880 RMS90=0.074291
+  Photon: n=6167 Mean=0.995771 Std=0.065549 RMS90=0.034669
+  Pion: n=13008 Mean=1.600166 Std=1.920299 RMS90=0.636269
+  Electron: n=782 Mean=2.095887 Std=1.924661 RMS90=0.936079
+  Muon: n=1998 Mean=1.381476 Std=1.503570 RMS90=0.461459
+
+Epoch 462
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.484327 Std=1.715060 RMS90=0.434142
+  50-150 GeV: n=21867 Mean=0.956994 Std=0.262778 RMS90=0.174579
+  >150 GeV: n=70 Mean=0.842369 Std=0.154156 RMS90=0.117843
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955781 Std=0.113097 RMS90=0.071829
+  K0: n=11257 Mean=1.006782 Std=0.136296 RMS90=0.075025
+  Photon: n=6167 Mean=0.986104 Std=0.071634 RMS90=0.036660
+  Pion: n=13008 Mean=1.668220 Std=2.111048 RMS90=0.644371
+  Electron: n=782 Mean=2.176864 Std=2.039130 RMS90=0.967808
+  Muon: n=1998 Mean=1.385785 Std=1.375774 RMS90=0.452965
+
+Epoch 463
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.476083 Std=1.682825 RMS90=0.415211
+  50-150 GeV: n=21867 Mean=0.962375 Std=0.271512 RMS90=0.181652
+  >150 GeV: n=70 Mean=0.819238 Std=0.184623 RMS90=0.152519
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.971785 Std=0.118701 RMS90=0.072382
+  K0: n=11257 Mean=1.022235 Std=0.140554 RMS90=0.077374
+  Photon: n=6167 Mean=0.996696 Std=0.074429 RMS90=0.037427
+  Pion: n=13008 Mean=1.638217 Std=2.078558 RMS90=0.660823
+  Electron: n=782 Mean=1.980624 Std=1.822722 RMS90=0.842971
+  Muon: n=1998 Mean=1.415144 Std=1.491632 RMS90=0.464853
+
+Epoch 464
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.462581 Std=1.654181 RMS90=0.417128
+  50-150 GeV: n=21867 Mean=0.947758 Std=0.259248 RMS90=0.173315
+  >150 GeV: n=70 Mean=0.849660 Std=0.137897 RMS90=0.119892
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955242 Std=0.116054 RMS90=0.072176
+  K0: n=11257 Mean=1.005645 Std=0.134660 RMS90=0.074322
+  Photon: n=6167 Mean=0.992301 Std=0.067398 RMS90=0.034925
+  Pion: n=13008 Mean=1.609471 Std=2.021953 RMS90=0.640081
+  Electron: n=782 Mean=2.097714 Std=2.023095 RMS90=0.908152
+  Muon: n=1998 Mean=1.445257 Std=1.512756 RMS90=0.489015
+
+Epoch 465
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.430476 Std=1.728872 RMS90=0.398357
+  50-150 GeV: n=21867 Mean=0.960058 Std=0.258351 RMS90=0.175719
+  >150 GeV: n=70 Mean=0.851873 Std=0.153045 RMS90=0.144035
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964265 Std=0.117899 RMS90=0.072513
+  K0: n=11257 Mean=1.015638 Std=0.135681 RMS90=0.073718
+  Photon: n=6167 Mean=0.995819 Std=0.065669 RMS90=0.032581
+  Pion: n=13008 Mean=1.576359 Std=2.166326 RMS90=0.608335
+  Electron: n=782 Mean=1.787881 Std=1.503311 RMS90=0.703931
+  Muon: n=1998 Mean=1.440103 Std=1.431195 RMS90=0.479837
+
+Epoch 466
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.454954 Std=1.810765 RMS90=0.409555
+  50-150 GeV: n=21867 Mean=0.964290 Std=0.263542 RMS90=0.175067
+  >150 GeV: n=70 Mean=0.839313 Std=0.171022 RMS90=0.146602
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958372 Std=0.117243 RMS90=0.072110
+  K0: n=11257 Mean=1.009256 Std=0.134971 RMS90=0.073682
+  Photon: n=6167 Mean=0.994251 Std=0.065489 RMS90=0.032829
+  Pion: n=13008 Mean=1.632792 Std=2.266180 RMS90=0.626234
+  Electron: n=782 Mean=2.037792 Std=1.720671 RMS90=0.886897
+  Muon: n=1998 Mean=1.368282 Std=1.357356 RMS90=0.431979
+
+Epoch 467
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.424338 Std=1.643515 RMS90=0.372165
+  50-150 GeV: n=21867 Mean=0.947075 Std=0.265869 RMS90=0.189446
+  >150 GeV: n=70 Mean=0.843577 Std=0.169898 RMS90=0.149906
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.971494 Std=0.119350 RMS90=0.071253
+  K0: n=11257 Mean=1.023732 Std=0.140363 RMS90=0.074874
+  Photon: n=6167 Mean=0.997310 Std=0.066314 RMS90=0.032944
+  Pion: n=13008 Mean=1.522754 Std=2.011556 RMS90=0.617576
+  Electron: n=782 Mean=1.832276 Std=1.729609 RMS90=0.796455
+  Muon: n=1998 Mean=1.470209 Std=1.751033 RMS90=0.515129
+
+Epoch 468
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.513554 Std=1.845707 RMS90=0.449702
+  50-150 GeV: n=21867 Mean=0.950143 Std=0.262174 RMS90=0.179549
+  >150 GeV: n=70 Mean=0.861829 Std=0.149636 RMS90=0.117159
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964866 Std=0.117964 RMS90=0.073282
+  K0: n=11257 Mean=1.015574 Std=0.135314 RMS90=0.074290
+  Photon: n=6167 Mean=0.991522 Std=0.064034 RMS90=0.032847
+  Pion: n=13008 Mean=1.676146 Std=2.257063 RMS90=0.693954
+  Electron: n=782 Mean=2.281480 Std=2.300792 RMS90=1.099866
+  Muon: n=1998 Mean=1.429287 Std=1.621693 RMS90=0.483072
+
+Epoch 469
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.509884 Std=1.789934 RMS90=0.453092
+  50-150 GeV: n=21867 Mean=0.958767 Std=0.269214 RMS90=0.183099
+  >150 GeV: n=70 Mean=0.867341 Std=0.156814 RMS90=0.120628
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.969386 Std=0.122755 RMS90=0.073188
+  K0: n=11257 Mean=1.020960 Std=0.134809 RMS90=0.074007
+  Photon: n=6167 Mean=0.999295 Std=0.064541 RMS90=0.033018
+  Pion: n=13008 Mean=1.671835 Std=2.187758 RMS90=0.699692
+  Electron: n=782 Mean=2.221649 Std=2.196420 RMS90=1.059346
+  Muon: n=1998 Mean=1.454877 Std=1.614972 RMS90=0.513685
+
+Epoch 470
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.485021 Std=1.748853 RMS90=0.425422
+  50-150 GeV: n=21867 Mean=0.966484 Std=0.263500 RMS90=0.170067
+  >150 GeV: n=70 Mean=0.823615 Std=0.185983 RMS90=0.176056
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964369 Std=0.119712 RMS90=0.072010
+  K0: n=11257 Mean=1.015798 Std=0.137003 RMS90=0.074276
+  Photon: n=6167 Mean=0.996971 Std=0.066495 RMS90=0.033176
+  Pion: n=13008 Mean=1.670326 Std=2.158780 RMS90=0.656598
+  Electron: n=782 Mean=2.059358 Std=1.887191 RMS90=0.837952
+  Muon: n=1998 Mean=1.396985 Std=1.478409 RMS90=0.453906
+
+Epoch 471
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.522715 Std=1.823907 RMS90=0.453557
+  50-150 GeV: n=21867 Mean=0.957200 Std=0.268889 RMS90=0.180339
+  >150 GeV: n=70 Mean=0.826735 Std=0.180616 RMS90=0.141043
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961397 Std=0.114877 RMS90=0.070958
+  K0: n=11257 Mean=1.012429 Std=0.139107 RMS90=0.074947
+  Photon: n=6167 Mean=0.993581 Std=0.068009 RMS90=0.034141
+  Pion: n=13008 Mean=1.707407 Std=2.231901 RMS90=0.696493
+  Electron: n=782 Mean=2.315711 Std=2.209412 RMS90=1.109558
+  Muon: n=1998 Mean=1.421785 Std=1.567113 RMS90=0.482747
+
+Epoch 472
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.545451 Std=1.906037 RMS90=0.466810
+  50-150 GeV: n=21867 Mean=0.951743 Std=0.267021 RMS90=0.178505
+  >150 GeV: n=70 Mean=0.831242 Std=0.182199 RMS90=0.137695
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955700 Std=0.116461 RMS90=0.072163
+  K0: n=11257 Mean=1.005755 Std=0.134522 RMS90=0.074502
+  Photon: n=6167 Mean=0.989673 Std=0.064462 RMS90=0.033013
+  Pion: n=13008 Mean=1.730009 Std=2.296855 RMS90=0.709756
+  Electron: n=782 Mean=2.502227 Std=2.755464 RMS90=1.176013
+  Muon: n=1998 Mean=1.477762 Std=1.646854 RMS90=0.518554
+
+Epoch 473
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.518237 Std=1.951838 RMS90=0.453149
+  50-150 GeV: n=21867 Mean=0.919327 Std=0.257519 RMS90=0.182698
+  >150 GeV: n=70 Mean=0.825408 Std=0.174604 RMS90=0.146855
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957817 Std=0.115916 RMS90=0.071455
+  K0: n=11257 Mean=1.008210 Std=0.140981 RMS90=0.075199
+  Photon: n=6167 Mean=0.984386 Std=0.068475 RMS90=0.035962
+  Pion: n=13008 Mean=1.628934 Std=2.359988 RMS90=0.716050
+  Electron: n=782 Mean=2.231879 Std=2.676808 RMS90=1.080283
+  Muon: n=1998 Mean=1.572840 Std=1.919358 RMS90=0.581718
+
+Epoch 474
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.444949 Std=1.746229 RMS90=0.404698
+  50-150 GeV: n=21867 Mean=0.960314 Std=0.260360 RMS90=0.169229
+  >150 GeV: n=70 Mean=0.841222 Std=0.164558 RMS90=0.136511
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964221 Std=0.114945 RMS90=0.072084
+  K0: n=11257 Mean=1.014822 Std=0.140241 RMS90=0.075283
+  Photon: n=6167 Mean=0.990554 Std=0.066991 RMS90=0.033921
+  Pion: n=13008 Mean=1.604869 Std=2.183458 RMS90=0.624702
+  Electron: n=782 Mean=1.853307 Std=1.532909 RMS90=0.725767
+  Muon: n=1998 Mean=1.414454 Std=1.453718 RMS90=0.463800
+
+Epoch 475
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.453460 Std=1.663130 RMS90=0.405623
+  50-150 GeV: n=21867 Mean=0.936874 Std=0.254782 RMS90=0.179050
+  >150 GeV: n=70 Mean=0.832542 Std=0.176821 RMS90=0.155166
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957795 Std=0.121828 RMS90=0.071646
+  K0: n=11257 Mean=1.008126 Std=0.137722 RMS90=0.074489
+  Photon: n=6167 Mean=0.990687 Std=0.065442 RMS90=0.033043
+  Pion: n=13008 Mean=1.575747 Std=2.028584 RMS90=0.650884
+  Electron: n=782 Mean=1.965616 Std=2.018044 RMS90=0.847837
+  Muon: n=1998 Mean=1.471447 Std=1.637634 RMS90=0.500538
+
+Epoch 476
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.449304 Std=1.712432 RMS90=0.402526
+  50-150 GeV: n=21867 Mean=0.930171 Std=0.252091 RMS90=0.178151
+  >150 GeV: n=70 Mean=0.856047 Std=0.153801 RMS90=0.124160
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.960782 Std=0.115209 RMS90=0.071949
+  K0: n=11257 Mean=1.011742 Std=0.136373 RMS90=0.074178
+  Photon: n=6167 Mean=0.997501 Std=0.065018 RMS90=0.032292
+  Pion: n=13008 Mean=1.556540 Std=2.101814 RMS90=0.662468
+  Electron: n=782 Mean=1.880389 Std=1.949778 RMS90=0.909200
+  Muon: n=1998 Mean=1.452915 Std=1.693165 RMS90=0.481224
+
+Epoch 477
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.483962 Std=1.806988 RMS90=0.437637
+  50-150 GeV: n=21867 Mean=0.950519 Std=0.261984 RMS90=0.173971
+  >150 GeV: n=70 Mean=0.853498 Std=0.144643 RMS90=0.118622
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.954138 Std=0.120619 RMS90=0.071162
+  K0: n=11257 Mean=1.003435 Std=0.138298 RMS90=0.075168
+  Photon: n=6167 Mean=0.983169 Std=0.064882 RMS90=0.034140
+  Pion: n=13008 Mean=1.658187 Std=2.224974 RMS90=0.662386
+  Electron: n=782 Mean=2.135712 Std=2.003702 RMS90=0.959925
+  Muon: n=1998 Mean=1.429678 Std=1.559660 RMS90=0.473515
+
+Epoch 478
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.458245 Std=1.691502 RMS90=0.413769
+  50-150 GeV: n=21867 Mean=0.961850 Std=0.264766 RMS90=0.173235
+  >150 GeV: n=70 Mean=0.840018 Std=0.162098 RMS90=0.138096
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959853 Std=0.119922 RMS90=0.071545
+  K0: n=11257 Mean=1.011341 Std=0.134543 RMS90=0.073137
+  Photon: n=6167 Mean=0.992163 Std=0.067691 RMS90=0.033040
+  Pion: n=13008 Mean=1.629422 Std=2.090802 RMS90=0.634099
+  Electron: n=782 Mean=2.090365 Std=1.803598 RMS90=0.900160
+  Muon: n=1998 Mean=1.366397 Std=1.432179 RMS90=0.458697
+
+Epoch 479
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.469036 Std=1.760092 RMS90=0.414671
+  50-150 GeV: n=21867 Mean=0.959047 Std=0.256150 RMS90=0.171967
+  >150 GeV: n=70 Mean=0.847466 Std=0.161402 RMS90=0.136037
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.966858 Std=0.117694 RMS90=0.071439
+  K0: n=11257 Mean=1.018359 Std=0.140318 RMS90=0.075643
+  Photon: n=6167 Mean=0.998693 Std=0.066754 RMS90=0.033969
+  Pion: n=13008 Mean=1.628263 Std=2.195236 RMS90=0.631582
+  Electron: n=782 Mean=2.024291 Std=1.782577 RMS90=0.871617
+  Muon: n=1998 Mean=1.391477 Std=1.386868 RMS90=0.452775
+
+Epoch 480
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.462744 Std=1.636561 RMS90=0.410889
+  50-150 GeV: n=21867 Mean=0.951489 Std=0.262464 RMS90=0.180874
+  >150 GeV: n=70 Mean=0.845369 Std=0.157388 RMS90=0.130675
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965096 Std=0.115272 RMS90=0.072104
+  K0: n=11257 Mean=1.016433 Std=0.136038 RMS90=0.074342
+  Photon: n=6167 Mean=0.995594 Std=0.065770 RMS90=0.033307
+  Pion: n=13008 Mean=1.602043 Std=2.003812 RMS90=0.648760
+  Electron: n=782 Mean=1.977912 Std=1.850166 RMS90=0.897939
+  Muon: n=1998 Mean=1.457304 Std=1.593972 RMS90=0.507767
+
+Epoch 481
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.442249 Std=1.674171 RMS90=0.407382
+  50-150 GeV: n=21867 Mean=0.962884 Std=0.259148 RMS90=0.171254
+  >150 GeV: n=70 Mean=0.848795 Std=0.154159 RMS90=0.128258
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959651 Std=0.119009 RMS90=0.072045
+  K0: n=11257 Mean=1.010013 Std=0.134885 RMS90=0.074195
+  Photon: n=6167 Mean=0.993733 Std=0.064704 RMS90=0.032840
+  Pion: n=13008 Mean=1.614321 Std=2.087017 RMS90=0.623758
+  Electron: n=782 Mean=1.844705 Std=1.498517 RMS90=0.762679
+  Muon: n=1998 Mean=1.396974 Std=1.409794 RMS90=0.452856
+
+Epoch 482
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.475753 Std=1.805183 RMS90=0.428086
+  50-150 GeV: n=21867 Mean=0.955080 Std=0.269498 RMS90=0.183201
+  >150 GeV: n=70 Mean=0.828689 Std=0.182780 RMS90=0.163868
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.965548 Std=0.119611 RMS90=0.071274
+  K0: n=11257 Mean=1.016773 Std=0.139145 RMS90=0.074538
+  Photon: n=6167 Mean=0.994203 Std=0.065157 RMS90=0.032740
+  Pion: n=13008 Mean=1.632913 Std=2.236594 RMS90=0.674401
+  Electron: n=782 Mean=1.955799 Std=1.825264 RMS90=0.859352
+  Muon: n=1998 Mean=1.449175 Std=1.608634 RMS90=0.499888
+
+Epoch 483
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.480271 Std=1.793926 RMS90=0.436874
+  50-150 GeV: n=21867 Mean=0.965075 Std=0.260751 RMS90=0.162204
+  >150 GeV: n=70 Mean=0.839472 Std=0.165863 RMS90=0.145374
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.953766 Std=0.124610 RMS90=0.071676
+  K0: n=11257 Mean=1.003509 Std=0.136665 RMS90=0.073868
+  Photon: n=6167 Mean=0.989624 Std=0.063903 RMS90=0.033722
+  Pion: n=13008 Mean=1.687568 Std=2.237307 RMS90=0.640585
+  Electron: n=782 Mean=2.078694 Std=1.648559 RMS90=0.879942
+  Muon: n=1998 Mean=1.359814 Std=1.356550 RMS90=0.430104
+
+Epoch 484
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.488829 Std=1.854912 RMS90=0.446990
+  50-150 GeV: n=21867 Mean=0.942300 Std=0.273913 RMS90=0.188038
+  >150 GeV: n=70 Mean=0.834753 Std=0.169090 RMS90=0.134332
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.963680 Std=0.115792 RMS90=0.071928
+  K0: n=11257 Mean=1.014572 Std=0.136199 RMS90=0.074253
+  Photon: n=6167 Mean=0.990848 Std=0.064464 RMS90=0.033614
+  Pion: n=13008 Mean=1.634248 Std=2.276200 RMS90=0.712375
+  Electron: n=782 Mean=1.927677 Std=1.856913 RMS90=0.856306
+  Muon: n=1998 Mean=1.491403 Std=1.891357 RMS90=0.539126
+
+Epoch 485
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.477620 Std=1.636453 RMS90=0.430659
+  50-150 GeV: n=21867 Mean=0.941342 Std=0.254799 RMS90=0.168350
+  >150 GeV: n=70 Mean=0.847838 Std=0.133428 RMS90=0.122219
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958003 Std=0.116500 RMS90=0.072325
+  K0: n=11257 Mean=1.006224 Std=0.141909 RMS90=0.079665
+  Photon: n=6167 Mean=0.986372 Std=0.073976 RMS90=0.041565
+  Pion: n=13008 Mean=1.628933 Std=2.001871 RMS90=0.662077
+  Electron: n=782 Mean=1.995416 Std=1.851278 RMS90=0.851186
+  Muon: n=1998 Mean=1.456441 Std=1.570369 RMS90=0.491124
+
+Epoch 486
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.434924 Std=1.762825 RMS90=0.391039
+  50-150 GeV: n=21867 Mean=0.950718 Std=0.248355 RMS90=0.167285
+  >150 GeV: n=70 Mean=0.894155 Std=0.101270 RMS90=0.081439
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959373 Std=0.121293 RMS90=0.072044
+  K0: n=11257 Mean=1.009850 Std=0.134313 RMS90=0.073902
+  Photon: n=6167 Mean=0.988121 Std=0.068746 RMS90=0.033251
+  Pion: n=13008 Mean=1.582555 Std=2.211901 RMS90=0.608248
+  Electron: n=782 Mean=1.877475 Std=1.588628 RMS90=0.800986
+  Muon: n=1998 Mean=1.397240 Std=1.376426 RMS90=0.449857
+
+Epoch 487
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.481273 Std=1.739416 RMS90=0.412703
+  50-150 GeV: n=21867 Mean=0.942593 Std=0.261014 RMS90=0.170219
+  >150 GeV: n=70 Mean=0.841791 Std=0.142194 RMS90=0.113935
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.953847 Std=0.123313 RMS90=0.073149
+  K0: n=11257 Mean=1.000708 Std=0.140656 RMS90=0.079461
+  Photon: n=6167 Mean=0.980729 Std=0.070654 RMS90=0.039955
+  Pion: n=13008 Mean=1.648996 Std=2.137467 RMS90=0.649745
+  Electron: n=782 Mean=2.060228 Std=1.976150 RMS90=0.904519
+  Muon: n=1998 Mean=1.426251 Std=1.545476 RMS90=0.473016
+
+Epoch 488
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.475024 Std=1.697654 RMS90=0.418723
+  50-150 GeV: n=21867 Mean=0.943553 Std=0.262289 RMS90=0.183314
+  >150 GeV: n=70 Mean=0.859231 Std=0.152583 RMS90=0.120675
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.959328 Std=0.122475 RMS90=0.072557
+  K0: n=11257 Mean=1.010114 Std=0.134445 RMS90=0.073767
+  Photon: n=6167 Mean=0.996309 Std=0.063911 RMS90=0.032782
+  Pion: n=13008 Mean=1.610013 Std=2.038458 RMS90=0.674235
+  Electron: n=782 Mean=2.060031 Std=2.350225 RMS90=0.862786
+  Muon: n=1998 Mean=1.489812 Std=1.748512 RMS90=0.505094
+
+Epoch 489
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.521829 Std=1.804327 RMS90=0.449567
+  50-150 GeV: n=21867 Mean=0.956113 Std=0.267996 RMS90=0.181893
+  >150 GeV: n=70 Mean=0.857307 Std=0.149695 RMS90=0.118159
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962681 Std=0.116564 RMS90=0.071155
+  K0: n=11257 Mean=1.014110 Std=0.136792 RMS90=0.074302
+  Photon: n=6167 Mean=0.997451 Std=0.066028 RMS90=0.032794
+  Pion: n=13008 Mean=1.694779 Std=2.187213 RMS90=0.697365
+  Electron: n=782 Mean=2.384547 Std=2.450495 RMS90=1.133482
+  Muon: n=1998 Mean=1.427719 Std=1.591000 RMS90=0.467070
+
+Epoch 490
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.564937 Std=1.848333 RMS90=0.483720
+  50-150 GeV: n=21867 Mean=0.957043 Std=0.279097 RMS90=0.184756
+  >150 GeV: n=70 Mean=0.831047 Std=0.186507 RMS90=0.138119
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964564 Std=0.119013 RMS90=0.071882
+  K0: n=11257 Mean=1.014123 Std=0.138161 RMS90=0.076310
+  Photon: n=6167 Mean=0.987146 Std=0.068787 RMS90=0.036341
+  Pion: n=13008 Mean=1.777419 Std=2.253651 RMS90=0.742704
+  Electron: n=782 Mean=2.385572 Std=2.278481 RMS90=1.115723
+  Muon: n=1998 Mean=1.402430 Std=1.593972 RMS90=0.476040
+
+Epoch 491
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.499536 Std=1.766483 RMS90=0.444273
+  50-150 GeV: n=21867 Mean=0.958788 Std=0.261025 RMS90=0.171805
+  >150 GeV: n=70 Mean=0.826533 Std=0.172825 RMS90=0.152863
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.962230 Std=0.126623 RMS90=0.071868
+  K0: n=11257 Mean=1.012173 Std=0.137327 RMS90=0.074984
+  Photon: n=6167 Mean=0.995566 Std=0.066655 RMS90=0.034442
+  Pion: n=13008 Mean=1.686055 Std=2.190716 RMS90=0.667421
+  Electron: n=782 Mean=2.097683 Std=1.839873 RMS90=0.956214
+  Muon: n=1998 Mean=1.394618 Std=1.420003 RMS90=0.449394
+
+Epoch 492
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.458639 Std=1.748277 RMS90=0.412078
+  50-150 GeV: n=21867 Mean=0.950825 Std=0.258488 RMS90=0.175234
+  >150 GeV: n=70 Mean=0.845041 Std=0.145028 RMS90=0.123042
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.956734 Std=0.124307 RMS90=0.071881
+  K0: n=11257 Mean=1.006148 Std=0.135284 RMS90=0.074589
+  Photon: n=6167 Mean=0.989863 Std=0.065903 RMS90=0.033984
+  Pion: n=13008 Mean=1.621151 Std=2.169915 RMS90=0.639711
+  Electron: n=782 Mean=1.934464 Std=1.681923 RMS90=0.830904
+  Muon: n=1998 Mean=1.418716 Std=1.526284 RMS90=0.465714
+
+Epoch 493
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.504641 Std=1.718747 RMS90=0.446060
+  50-150 GeV: n=21867 Mean=0.959986 Std=0.272073 RMS90=0.183408
+  >150 GeV: n=70 Mean=0.841273 Std=0.169305 RMS90=0.150439
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964687 Std=0.116232 RMS90=0.072924
+  K0: n=11257 Mean=1.015671 Std=0.135021 RMS90=0.074673
+  Photon: n=6167 Mean=0.997710 Std=0.065015 RMS90=0.033452
+  Pion: n=13008 Mean=1.681916 Std=2.103085 RMS90=0.693498
+  Electron: n=782 Mean=2.148467 Std=1.993004 RMS90=0.977222
+  Muon: n=1998 Mean=1.432449 Std=1.572860 RMS90=0.492947
+
+Epoch 494
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.491764 Std=1.723215 RMS90=0.439222
+  50-150 GeV: n=21867 Mean=0.950559 Std=0.267244 RMS90=0.183364
+  >150 GeV: n=70 Mean=0.822847 Std=0.180236 RMS90=0.154556
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.958757 Std=0.118638 RMS90=0.072717
+  K0: n=11257 Mean=1.009009 Std=0.133919 RMS90=0.074043
+  Photon: n=6167 Mean=0.992494 Std=0.063645 RMS90=0.032809
+  Pion: n=13008 Mean=1.664996 Std=2.117467 RMS90=0.688757
+  Electron: n=782 Mean=2.076276 Std=1.932627 RMS90=0.967508
+  Muon: n=1998 Mean=1.409437 Std=1.552095 RMS90=0.456679
+
+Epoch 495
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.471111 Std=1.762704 RMS90=0.425171
+  50-150 GeV: n=21867 Mean=0.941750 Std=0.260298 RMS90=0.175690
+  >150 GeV: n=70 Mean=0.846316 Std=0.146850 RMS90=0.128062
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955725 Std=0.119753 RMS90=0.071615
+  K0: n=11257 Mean=1.006017 Std=0.134114 RMS90=0.073744
+  Photon: n=6167 Mean=0.988241 Std=0.066783 RMS90=0.033795
+  Pion: n=13008 Mean=1.622809 Std=2.178793 RMS90=0.669984
+  Electron: n=782 Mean=1.941769 Std=1.791640 RMS90=0.842836
+  Muon: n=1998 Mean=1.456832 Std=1.613022 RMS90=0.497582
+
+Epoch 496
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.487545 Std=1.774483 RMS90=0.439759
+  50-150 GeV: n=21867 Mean=0.967803 Std=0.264920 RMS90=0.170122
+  >150 GeV: n=70 Mean=0.834096 Std=0.172010 RMS90=0.141640
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.964021 Std=0.116350 RMS90=0.071598
+  K0: n=11257 Mean=1.015062 Std=0.138421 RMS90=0.074638
+  Photon: n=6167 Mean=0.995433 Std=0.064469 RMS90=0.033250
+  Pion: n=13008 Mean=1.677780 Std=2.200007 RMS90=0.660202
+  Electron: n=782 Mean=2.066550 Std=1.823314 RMS90=0.865674
+  Muon: n=1998 Mean=1.399562 Std=1.443454 RMS90=0.453647
+
+Epoch 497
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.506837 Std=1.809399 RMS90=0.439487
+  50-150 GeV: n=21867 Mean=0.943531 Std=0.266628 RMS90=0.182113
+  >150 GeV: n=70 Mean=0.861077 Std=0.139494 RMS90=0.113685
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.957878 Std=0.115482 RMS90=0.071348
+  K0: n=11257 Mean=1.007934 Std=0.136194 RMS90=0.074063
+  Photon: n=6167 Mean=0.991671 Std=0.062708 RMS90=0.033139
+  Pion: n=13008 Mean=1.661399 Std=2.192429 RMS90=0.697590
+  Electron: n=782 Mean=2.231444 Std=2.373552 RMS90=1.036801
+  Muon: n=1998 Mean=1.478707 Std=1.724282 RMS90=0.542946
+
+Epoch 498
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.459468 Std=1.741496 RMS90=0.413888
+  50-150 GeV: n=21867 Mean=0.947403 Std=0.263852 RMS90=0.182527
+  >150 GeV: n=70 Mean=0.857438 Std=0.151718 RMS90=0.125797
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.961806 Std=0.115005 RMS90=0.071738
+  K0: n=11257 Mean=1.012931 Std=0.136689 RMS90=0.073738
+  Photon: n=6167 Mean=0.995144 Std=0.063391 RMS90=0.032525
+  Pion: n=13008 Mean=1.601675 Std=2.153954 RMS90=0.658779
+  Electron: n=782 Mean=1.911796 Std=1.780137 RMS90=0.804958
+  Muon: n=1998 Mean=1.443951 Std=1.608232 RMS90=0.507324
+
+Epoch 499
+Pretraining energy response (E_pred / E_true) by true-energy bin:
+  1-50 GeV: n=22369 Mean=1.458935 Std=1.771941 RMS90=0.417629
+  50-150 GeV: n=21867 Mean=0.951848 Std=0.260278 RMS90=0.176250
+  >150 GeV: n=70 Mean=0.831948 Std=0.175689 RMS90=0.151111
+Pretraining energy response by particle species:
+  Neutron: n=11095 Mean=0.955784 Std=0.124449 RMS90=0.072253
+  K0: n=11257 Mean=1.004764 Std=0.136449 RMS90=0.074839
+  Photon: n=6167 Mean=0.989561 Std=0.065003 RMS90=0.034832
+  Pion: n=13008 Mean=1.629436 Std=2.211088 RMS90=0.641588
+  Electron: n=782 Mean=1.932194 Std=1.709003 RMS90=0.825563
+  Muon: n=1998 Mean=1.393726 Std=1.420209 RMS90=0.459727
+
