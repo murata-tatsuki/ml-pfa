@@ -162,7 +162,8 @@ def five_head_training_loss(out, regressions, pid_logits, data, args, epoch, qmi
         cluster_track_index=data.y[:, 1], qmin=qmin, tracker_energy=None,
         detected_energy=data.feat[:, 0], Ecl_regression=False, weight_regression=False,
         l_beta_suppression=args.l_beta_suppression, epoch=epoch, epsilon=args.epsilon,
-        truth_valid=getattr(data, 'truth_valid', None))
+        truth_valid=getattr(data, 'truth_valid', None),
+        truth_metadata=getattr(data, 'truth_metadata', None))
     ramp = min(1., max(0., (epoch - args.epochs_noLE) / 10.) ** 2)
     coefficient = args.regression_coefficinet * (ramp if args.LE_gradually else 1.)
     le, lp, extra = auxiliary_losses(out, regressions, pid_logits, data, args, epoch, coefficient)

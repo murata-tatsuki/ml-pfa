@@ -195,6 +195,9 @@ def prepare_training_batch(data, args):
     """Called before H2D; PyG transfers plan tensors with the other batch fields."""
     # Batch.ptr is already on the CPU before H2D. Reuse these exact counts
     # in all global exchanges; DataParallel replicas compute their own counts.
+    if not getattr(args, 'dp', False) and getattr(data, 'y', None) is not None:
+        from supervised_loss import prepare_supervised_metadata
+        data.truth_metadata = prepare_supervised_metadata(data)
     ptr = getattr(data, 'ptr', None)
     if ptr is not None and not getattr(args, 'dp', False):
         data.event_counts = (ptr[1:] - ptr[:-1]).long()

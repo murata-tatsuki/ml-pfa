@@ -920,6 +920,7 @@ def run_ddp_training(rank, world_size, args):
             weight_electron = weight_electron,
             epsilon = args.epsilon,
             truth_valid=getattr(data, 'truth_valid', None),
+            truth_metadata=getattr(data, 'truth_metadata', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         pid_loss = 0.
@@ -1685,6 +1686,7 @@ def main():
             weight_electron = weight_electron,
             epsilon = args.epsilon,
             truth_valid=getattr(data, 'truth_valid', None),
+            truth_metadata=getattr(data, 'truth_metadata', None),
         )
         LE, out_oc = replace_calo_loss(LE, out_oc, cluster_energy, data, args, er_coef)
         pid_loss = 0.

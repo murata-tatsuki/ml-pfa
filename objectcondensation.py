@@ -375,6 +375,123 @@ def calc_L_E_weight_fast(
 
 
 
+def _oc_truth_metadata(cluster_index_per_event, batch, cluster_track_index):
+    """Prediction-independent OC indices; shared by CPU preparation and fallback."""
+    noise_cluster_index = 0
+    # cluster_index: unique index over events
+    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
+    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
+    cluster_index, n_clusters_per_event = batch_cluster_indices(cluster_index_per_event, batch)
+    n_clusters = n_clusters_per_event.sum()
+    batch_size = batch.max()+1
+    n_hits_per_event = torch.bincount(batch.long())
+
+    # Index of cluster -> event (n_clusters,)
+    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
+
+    # Per-hit boolean, indicating whether hit is sig or noise
+    is_noise = cluster_index_per_event == noise_cluster_index
+    is_sig = ~is_noise
+    is_trk = is_sig & (cluster_track_index == 1)
+    n_hits_sig = is_sig.sum()
+
+
+    # Per-cluster boolean, indicating whether cluster is an object or noise
+    is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
+    is_object_track = scatter_max(is_trk.long(), cluster_index)[0].bool()
+    is_noise_cluster = ~is_object
+
+    # FIXME: This assumes noise_cluster_index == 0!!
+    # Not sure how to do this in a performant way in case noise_cluster_index != 0
+    if noise_cluster_index != 0: raise NotImplementedError
+    object_index_per_event = cluster_index_per_event[is_sig] - 1
+    object_index, n_objects_per_event = batch_cluster_indices(object_index_per_event, batch[is_sig])
+    n_hits_per_object = scatter_count(object_index)
+    batch_object = batch_cluster[is_object]
+    batch_object_track = batch_cluster[is_object_track]
+    n_objects = is_object.sum()
+    n_objects_track = is_object_track.sum()
+
+    assert object_index.size() == (n_hits_sig,)
+    assert is_object.size() == (n_clusters,)
+    assert torch.all(n_hits_per_object > 0)
+    assert object_index.max()+1 == n_objects
+
+    return dict(
+        cluster_index=cluster_index,
+        batch_size=batch_size,
+        n_hits_per_event=n_hits_per_event,
+        is_noise=is_noise,
+        is_sig=is_sig,
+        is_trk=is_trk,
+        is_object=is_object,
+        is_object_track=is_object_track,
+        is_noise_cluster=is_noise_cluster,
+        object_index=object_index,
+        n_objects_per_event=n_objects_per_event,
+        n_hits_per_object=n_hits_per_object,
+        batch_object=batch_object,
+        n_objects=n_objects,
+    )
+
+
+def prepare_oc_metadata(cluster_index_per_event, batch, cluster_track_index):
+    """Prepare once on CPU for the exact, already-selected loss rows.
+
+    Transfer tensor entries with the batch; retain split counts as Python lists.
+    Metadata is batch-local and must be rebuilt after changing truth or row order.
+    Predicted alpha selection and all differentiable operations stay in the loss.
+    """
+    if any(t.device.type != 'cpu' for t in (cluster_index_per_event, batch, cluster_track_index)):
+        raise ValueError('OC metadata must be prepared before data.to(device)')
+    ids, events = cluster_index_per_event.numpy(), batch.numpy()
+    ordered = bool(np.all(events[1:] >= events[:-1]))
+    # Labelled extended-H5 batches contain positive, contiguous object IDs.
+    # Use integer arrays for this common case to avoid repeated CPU scatter and
+    # boolean-indexing kernels. Unsorted/noisy legacy inputs use the same helper
+    # as the original GPU path below.
+    if events.size and ordered and events[0] == 0 and np.all(ids > 0):
+        counts = np.bincount(events)
+        if np.all(counts > 0):
+            starts = np.r_[0, counts.cumsum()[:-1]]
+            objects = np.maximum.reduceat(ids, starts)
+            # The legacy cluster-offset helper passes offsets through float32.
+            # Beyond its exact integer range, retain that helper's semantics.
+            if int(objects.sum()) + len(counts) < 2**24:
+                object_offsets = np.r_[0, objects.cumsum()[:-1]]
+                cluster_offsets = object_offsets + np.arange(len(counts))
+                cluster_index = ids + cluster_offsets[events]
+                object_index = ids - 1 + object_offsets[events]
+                hits_per_object = np.bincount(object_index)
+                assert np.all(hits_per_object > 0)
+                n_objects = int(objects.sum())
+                assert len(hits_per_object) == n_objects
+                is_object = np.ones(n_objects + len(counts), dtype=bool)
+                is_object[cluster_offsets] = False
+                is_trk = cluster_track_index.numpy() == 1
+                is_object_track = np.zeros_like(is_object)
+                is_object_track[cluster_index[is_trk]] = True
+                arrays = dict(cluster_index=cluster_index, n_hits_per_event=counts,
+                    is_noise=np.zeros(ids.size, dtype=bool), is_sig=np.ones(ids.size, dtype=bool),
+                    is_trk=is_trk, is_object=is_object, is_object_track=is_object_track,
+                    is_noise_cluster=~is_object, object_index=object_index,
+                    n_objects_per_event=objects, n_hits_per_object=hits_per_object,
+                    batch_object=np.repeat(np.arange(len(counts)), objects))
+                result = {key: torch.from_numpy(value) for key, value in arrays.items()}
+                result.update(batch_size=torch.tensor(len(counts)), n_objects=n_objects,
+                              n_hits=ids.size, hit_counts=counts.tolist(),
+                              object_counts=objects.tolist(), order=None, all_signal=True)
+                return result
+    result = _oc_truth_metadata(cluster_index_per_event, batch, cluster_track_index)
+    result['n_objects'] = int(result['n_objects'])
+    result['all_signal'] = bool(result['is_sig'].all())
+    result['n_hits'] = batch.numel()
+    result['hit_counts'] = result['n_hits_per_event'].tolist()
+    result['object_counts'] = result['n_objects_per_event'].tolist()
+    result['order'] = None if ordered else torch.sort(batch, stable=True).indices
+    return result
+
+
 def calc_LV_Lbeta(
     beta: torch.Tensor, cluster_space_coords: torch.Tensor, # Predicted by model
     charged_cluster_likeness: torch.Tensor, # Predicted by model, for track matching option
@@ -411,6 +528,7 @@ def calc_LV_Lbeta(
     weight_muon = None,
     weight_electron = None,
     epsilon: float = 1e-3,
+    oc_metadata = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
     """
     Calculates the L_V and L_beta object condensation losses.
@@ -443,49 +561,33 @@ def calc_LV_Lbeta(
     # ________________________________
     # Calculate a bunch of needed counts and indices locally
 
-    # cluster_index: unique index over events
-    # E.g. cluster_index_per_event=[ 0, 0, 1, 2, 0, 0, 1], batch=[0, 0, 0, 0, 1, 1, 1]
-    #      -> cluster_index=[ 0, 0, 1, 2, 3, 3, 4 ]
-    cluster_index, n_clusters_per_event = batch_cluster_indices(cluster_index_per_event, batch)
-    n_clusters = n_clusters_per_event.sum()
+    if noise_cluster_index != 0:
+        raise NotImplementedError
     n_hits, cluster_space_dim = cluster_space_coords.size()
-    batch_size = batch.max()+1
-    n_hits_per_event = torch.bincount(batch.long())
-
-    # Index of cluster -> event (n_clusters,)
-    batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
-
-    # Per-hit boolean, indicating whether hit is sig or noise
-    is_noise = cluster_index_per_event == noise_cluster_index
-    is_sig = ~is_noise
-    is_trk = is_sig & (cluster_track_index == 1)
-    n_hits_sig = is_sig.sum()
-
-    # mark hits that should be associated to tracks
+    if oc_metadata is None:
+        metadata = _oc_truth_metadata(cluster_index_per_event, batch, cluster_track_index)
+    else:
+        metadata = oc_metadata
+        if metadata['n_hits'] != n_hits or metadata['cluster_index'].device != device:
+            raise ValueError('OC metadata does not match loss shape/device')
+    cluster_index = metadata['cluster_index']
+    batch_size = metadata['batch_size']
+    n_hits_per_event = metadata['n_hits_per_event']
+    is_noise = metadata['is_noise']
+    is_sig = metadata['is_sig']
+    is_trk = metadata['is_trk']
+    is_object = metadata['is_object']
+    is_object_track = metadata['is_object_track']
+    is_noise_cluster = metadata['is_noise_cluster']
+    object_index = metadata['object_index']
+    n_objects_per_event = metadata['n_objects_per_event']
+    n_hits_per_object = metadata['n_hits_per_object']
+    batch_object = metadata['batch_object']
+    n_objects = metadata['n_objects']
     is_trk_cluster = is_trk.to(torch.float)
-    is_trk_cluster_prev = is_trk_cluster.clone() #for debug
-    
-
-    # Per-cluster boolean, indicating whether cluster is an object or noise
-    is_object = scatter_max(is_sig.long(), cluster_index)[0].bool()
-    is_object_track = scatter_max(is_trk.long(), cluster_index)[0].bool()
-    is_noise_cluster = ~is_object
-
-    # FIXME: This assumes noise_cluster_index == 0!!
-    # Not sure how to do this in a performant way in case noise_cluster_index != 0
-    if noise_cluster_index != 0: raise NotImplementedError
-    object_index_per_event = cluster_index_per_event[is_sig] - 1
-    object_index, n_objects_per_event = batch_cluster_indices(object_index_per_event, batch[is_sig])
-    n_hits_per_object = scatter_count(object_index)
-    batch_object = batch_cluster[is_object]
-    batch_object_track = batch_cluster[is_object_track]
-    n_objects = is_object.sum()
-    n_objects_track = is_object_track.sum()
-
-    assert object_index.size() == (n_hits_sig,)
-    assert is_object.size() == (n_clusters,)
-    assert torch.all(n_hits_per_object > 0)
-    assert object_index.max()+1 == n_objects
+    # CPU metadata can prove this mask selects every row; avoid GPU nonzero
+    # synchronization and repeated copies when selecting signal predictions.
+    signal_selection = slice(None) if oc_metadata is not None and metadata['all_signal'] else is_sig
 
     # ________________________________
     # L_V term
@@ -505,14 +607,14 @@ def calc_LV_Lbeta(
     assert q.size() == (n_hits,)
 
     # Calculate q_alpha, the max q per object, and the indices of said maxima
-    q_alpha, index_alpha = scatter_max(q[is_sig], object_index)
+    q_alpha, index_alpha = scatter_max(q[signal_selection], object_index)
     assert q_alpha.size() == (n_objects,)
 
     if force_track_alpha:
         q_track = q.clone().detach()
         q_track[~is_trk] = 0
 
-        q_track_alpha, index_track_alpha = scatter_max(q_track[is_sig], object_index)
+        q_track_alpha, index_track_alpha = scatter_max(q_track[signal_selection], object_index)
         assert q_track_alpha.size() == (n_objects,)
 
         q_alpha = torch.where(q_track_alpha > 0, q_track_alpha, q_alpha)
@@ -521,23 +623,23 @@ def calc_LV_Lbeta(
         #index_alpha = [idxt_a if qt_a > 0 else idx_a for idxt_a, qt_a, idx_a in zip(index_track_alpha, q_track_alpha, index_alpha)]
 
     # Get the cluster space coordinates and betas for these maxima hits too
-    x_alpha = cluster_space_coords[is_sig][index_alpha]
-    beta_alpha = beta[is_sig][index_alpha]
+    x_alpha = cluster_space_coords[signal_selection][index_alpha]
+    beta_alpha = beta[signal_selection][index_alpha]
     assert x_alpha.size() == (n_objects, cluster_space_dim)
     assert beta_alpha.size() == (n_objects,)
 
     # Attraction only connects each signal hit to its own object alpha.
     # Keep norm()+huber (including the epsilon), q multiplication, and alpha
     # selection/detachment identical to the original dense formulation.
-    own_norms = (cluster_space_coords[is_sig] - x_alpha[object_index]).norm(dim=-1)
+    own_norms = (cluster_space_coords[signal_selection] - x_alpha[object_index]).norm(dim=-1)
     norms_att = huber(own_norms + 1e-5, 4.) if huberize_norm_for_V_attractive else own_norms**2
-    attraction = q[is_sig] * q_alpha[object_index] * norms_att
+    attraction = q[signal_selection] * q_alpha[object_index] * norms_att
     attractive_per_object = scatter_add(attraction, object_index, dim_size=x_alpha.size(0))
     L_V_attractive = (scatter_add(attractive_per_object, batch_object) / n_hits_per_event).sum()
 
     with torch.no_grad():
         is_trk_clu = is_object_track[cluster_index]
-        charged_signal = is_trk_clu[is_sig]
+        charged_signal = is_trk_clu[signal_selection]
         def attractive_component(mask):
             per_object = scatter_add(attraction * mask, object_index, dim_size=x_alpha.size(0))
             return (scatter_add(per_object, batch_object) / n_hits_per_event).sum()
@@ -547,13 +649,20 @@ def calc_LV_Lbeta(
     # Repulsion uses event-local rectangular matrices. Never allocate an
     # N_hits x N_objects matrix spanning multiple events. Sort by event so
     # direct callers with interleaved event rows retain the same semantics.
-    order = torch.sort(batch, stable=True).indices
-    hit_counts = n_hits_per_event.tolist()
-    object_counts = n_objects_per_event.tolist()
-    coords_by_event = cluster_space_coords[order].split(hit_counts)
-    q_by_event = q[order].split(hit_counts)
-    truth_by_event = cluster_index_per_event[order].split(hit_counts)
-    charged_by_event = is_trk_clu[order].split(hit_counts)
+    if oc_metadata is None:
+        order = torch.sort(batch, stable=True).indices
+        hit_counts = n_hits_per_event.tolist()
+        object_counts = n_objects_per_event.tolist()
+    else:
+        order = metadata['order']
+        hit_counts = metadata['hit_counts']
+        object_counts = metadata['object_counts']
+    def event_split(value):
+        return (value if order is None else value[order]).split(hit_counts)
+    coords_by_event = event_split(cluster_space_coords)
+    q_by_event = event_split(q)
+    truth_by_event = event_split(cluster_index_per_event)
+    charged_by_event = event_split(is_trk_clu)
     alpha_by_event = x_alpha.split(object_counts)
     qa_by_event = q_alpha.split(object_counts)
     repulsive, repulsive_charged, repulsive_neutral = [], [], []
@@ -622,7 +731,7 @@ def calc_LV_Lbeta(
         
         if l_beta_suppression:
             if epoch > 100:
-                beta_sq_sum = scatter_add((beta[is_sig]**2), object_index)
+                beta_sq_sum = scatter_add((beta[signal_selection]**2), object_index)
                 beta_sq_alpha = beta_alpha**2
                 non_alpha_sq = beta_sq_sum - beta_sq_alpha
                 non_alpha_term = non_alpha_sq / (n_hits_per_object + 1e-8)
@@ -633,7 +742,7 @@ def calc_LV_Lbeta(
             # # # lambda_secondary = 1.0  # strength of penalty; tune as hyperparameter
             # # # # beta for signal hits only (is_sig mask applied earlier)
             # # # # object_index maps each signal hit -> object id in [0, n_objects)
-            # # # beta_sum_per_object = scatter_add(beta[is_sig], object_index)  # (n_objects,)
+            # # # beta_sum_per_object = scatter_add(beta[signal_selection], object_index)  # (n_objects,)
             # # # # leftover beta excluding the alpha (the largest beta in the object)
             # # # non_alpha_sum = beta_sum_per_object - beta_alpha  # (n_objects,)
             # # # # normalize by hits-per-object to make term size-insensitive to object multiplicity
@@ -642,7 +751,7 @@ def calc_LV_Lbeta(
             # # # L_beta_suppress = (scatter_add(non_alpha_avg, batch_object) / n_objects_per_event).sum()
             # # # L_beta_suppress = lambda_secondary * L_beta_suppress
 
-            # beta_sig = beta[is_sig]
+            # beta_sig = beta[signal_selection]
             # obj_idx = batch_object
             # # mask: exclude condensation hits (index_alpha gives condensation per object)
             # mask_non_alpha = torch.ones_like(beta_sig, dtype=torch.bool)
@@ -674,13 +783,13 @@ def calc_LV_Lbeta(
         beta_track[~is_trk] = 0
         
         # Calculate q_alpha, the max q per object, and the indices of said maxima
-        q_alpha_track, index_alpha_track = scatter_max(q_track[is_sig], object_index)
+        q_alpha_track, index_alpha_track = scatter_max(q_track[signal_selection], object_index)
  
         assert q_alpha_track.size() == (n_objects,)
 
         # Get the cluster space coordinates and betas for these maxima hits too
-        #x_alpha_track = cluster_space_coords[is_sig][index_alpha_track]
-        beta_alpha_track = beta_track[is_sig][index_alpha_track]
+        #x_alpha_track = cluster_space_coords[signal_selection][index_alpha_track]
+        beta_alpha_track = beta_track[signal_selection][index_alpha_track]
 
         L_beta_track = (scatter_add((1-beta_alpha_track), batch_object) / n_objects_per_event).sum()
 
