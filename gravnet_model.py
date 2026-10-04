@@ -367,7 +367,8 @@ class GravNetModelMultiHead(nn.Module):
 
         # One full post-concat head per task.
         self.head_postgn_dense = nn.ModuleList([
-            self._make_postgn_dense() for _ in range(self.n_heads)
+            self._make_postgn_dense(first_bn_eps=1e-3 if i == 0 else 1e-5)
+            for i in range(self.n_heads)
         ])
         self.head_output = nn.ModuleList([
             self._make_output_block(
@@ -436,13 +437,15 @@ class GravNetModelMultiHead(nn.Module):
             })
         return specs
 
-    def _make_postgn_dense(self) -> nn.Sequential:
+    def _make_postgn_dense(self, first_bn_eps: float = 1e-5) -> nn.Sequential:
         postgn_dense_modules = nn.ModuleList()
         for i in range(self.n_postgn_dense_blocks):
             postgn_dense_modules.extend([
                 nn.Linear(4 * 96 if i == 0 else self.dense_nord, self.dense_nord),
                 nn.ReLU(),
-                nn.BatchNorm1d(self.dense_nord),
+                # Limit eval-time amplification of near-zero running variance
+                # in the clustering head's first BatchNorm.
+                nn.BatchNorm1d(self.dense_nord, eps=first_bn_eps if i == 0 else 1e-5),
             ])
         return nn.Sequential(*postgn_dense_modules)
 
