@@ -11,25 +11,28 @@ from objectcondensation import scatter_count
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-def global_exchange(x: Tensor, batch: Tensor) -> Tensor:
+def global_exchange(x: Tensor, batch: Tensor,
+                    event_counts: Optional[Tensor] = None) -> Tensor:
     """
     Adds columns for the means, mins, and maxs per feature, per batch.
     Assumes x: (n_hits x n_features), batch: (n_hits),
     and that the batches are sorted!
     """
-    n_hits_per_event = scatter_count(batch)
+    if event_counts is None:
+        event_counts = scatter_count(batch)
+    n_hits_per_event = event_counts
     n_hits, n_features = x.size()
-    batch_size = int(batch.max()) + 1
+    batch_size = event_counts.numel()
 
     # minmeanmax: (batch_size x 3*n_features)
     meanminmax = torch.cat((
-        scatter_mean(x, batch, dim=0),
-        scatter_min(x, batch, dim=0)[0],
-        scatter_max(x, batch, dim=0)[0]
+        scatter_mean(x, batch, dim=0, dim_size=batch_size),
+        scatter_min(x, batch, dim=0, dim_size=batch_size)[0],
+        scatter_max(x, batch, dim=0, dim_size=batch_size)[0]
         ), dim=1)
     assert list(meanminmax.size()) == [batch_size, 3*n_features]
 
-    meanminmax = torch.repeat_interleave(meanminmax, n_hits_per_event, dim=0)
+    meanminmax = torch.repeat_interleave(meanminmax, n_hits_per_event, dim=0, output_size=n_hits)
     assert list(meanminmax.size()) == [n_hits, 3*n_features]
 
     out = torch.cat((meanminmax, x), dim=1)
@@ -87,11 +90,12 @@ class GravNetBlock(nn.Module):
             )
 
     def forward(self, x: Tensor, batch: Tensor,
-                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
+                event_counts: Optional[Tensor] = None) -> Tensor:
         x = self.gravnet_layer(x, batch, knn_plan=knn_plan)
         x = self.post_gravnet(x)
         assert x.size(1) == 96
-        x = global_exchange(x, batch)
+        x = global_exchange(x, batch, event_counts)
         x = self.output(x)
         assert x.size(1) == 96
         return x
@@ -149,19 +153,22 @@ class GravnetModel(nn.Module):
             )
 
     def forward(self, x: Tensor, batch: Tensor,
-                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
+                event_counts: Optional[Tensor] = None) -> Tensor:
         if not torch.jit.is_scripting():
             knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
+        if event_counts is None:
+            event_counts = (knn_plan[0][1:] - knn_plan[0][:-1]).long() if knn_plan is not None else scatter_count(batch)
         device = x.device
         # print('forward called on device', device)
         x = self.batchnorm1(x)
-        x = global_exchange(x, batch)
+        x = global_exchange(x, batch, event_counts)
         x = self.input(x)
         assert x.device == device
 
         x_gravnet_per_block = [] # To store intermediate outputs
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch, knn_plan=knn_plan)
+            x = gravnet_block(x, batch, knn_plan=knn_plan, event_counts=event_counts)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4*96)
@@ -237,9 +244,12 @@ class GravNetModelBranch(nn.Module):
             )
 
     def forward(self, x: Tensor, batch: Tensor,
-                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None) -> Tensor:
+                knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
+                event_counts: Optional[Tensor] = None) -> Tensor:
         if not torch.jit.is_scripting():
             knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
+        if event_counts is None:
+            event_counts = (knn_plan[0][1:] - knn_plan[0][:-1]).long() if knn_plan is not None else scatter_count(batch)
         device = x.device
         energy_var = x[:,-5:-1]
         trackbit_var = x[:,4]
@@ -248,13 +258,13 @@ class GravNetModelBranch(nn.Module):
         device = energy_var.device
         # print('forward called on device', device)
         x = self.batchnorm1(x)
-        x = global_exchange(x, batch)
+        x = global_exchange(x, batch, event_counts)
         x = self.input(x)
         assert x.device == device
 
         x_gravnet_per_block = [] # To store intermediate outputs
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch, knn_plan=knn_plan)
+            x = gravnet_block(x, batch, knn_plan=knn_plan, event_counts=event_counts)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4*96)
@@ -501,21 +511,24 @@ class GravNetModelMultiHead(nn.Module):
         truth_cluster_index: Optional[Tensor] = None,
         detected_energy: Optional[Tensor] = None,
         knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
+        event_counts: Optional[Tensor] = None,
     ):
         if not torch.jit.is_scripting():
             knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
+        if event_counts is None:
+            event_counts = (knn_plan[0][1:] - knn_plan[0][:-1]).long() if knn_plan is not None else scatter_count(batch)
         device = x.device
         raw_x = x
 
         # Unchanged trunk before concatenating block outputs.
         x = self.batchnorm1(x)
-        x = global_exchange(x, batch)
+        x = global_exchange(x, batch, event_counts)
         x = self.input(x)
         assert x.device == device
 
         x_gravnet_per_block = []
         for gravnet_block in self.gravnet_blocks:
-            x = gravnet_block(x, batch, knn_plan=knn_plan)
+            x = gravnet_block(x, batch, knn_plan=knn_plan, event_counts=event_counts)
             x_gravnet_per_block.append(x)
         x = torch.cat(x_gravnet_per_block, dim=-1)
         assert x.size() == (x.size(0), 4 * 96)

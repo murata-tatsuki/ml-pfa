@@ -450,7 +450,7 @@ def calc_LV_Lbeta(
     n_clusters = n_clusters_per_event.sum()
     n_hits, cluster_space_dim = cluster_space_coords.size()
     batch_size = batch.max()+1
-    n_hits_per_event = scatter_count(batch)
+    n_hits_per_event = torch.bincount(batch.long())
 
     # Index of cluster -> event (n_clusters,)
     batch_cluster = scatter_counts_to_indices(n_clusters_per_event)
@@ -460,7 +460,6 @@ def calc_LV_Lbeta(
     is_sig = ~is_noise
     is_trk = is_sig & (cluster_track_index == 1)
     n_hits_sig = is_sig.sum()
-    n_sig_hits_per_event = scatter_count(batch[is_sig])
 
     # mark hits that should be associated to tracks
     is_trk_cluster = is_trk.to(torch.float)
@@ -527,103 +526,52 @@ def calc_LV_Lbeta(
     assert x_alpha.size() == (n_objects, cluster_space_dim)
     assert beta_alpha.size() == (n_objects,)
 
-    # Connectivity matrix from hit (row) -> cluster (column)
-    # Index to matrix, e.g.:
-    # [1, 3, 1, 0] --> [
-    #     [0, 1, 0, 0],
-    #     [0, 0, 0, 1],
-    #     [0, 1, 0, 0],
-    #     [1, 0, 0, 0]
-    #     ]
-    M = torch.nn.functional.one_hot(cluster_index).long()
+    # Attraction only connects each signal hit to its own object alpha.
+    # Keep norm()+huber (including the epsilon), q multiplication, and alpha
+    # selection/detachment identical to the original dense formulation.
+    own_norms = (cluster_space_coords[is_sig] - x_alpha[object_index]).norm(dim=-1)
+    norms_att = huber(own_norms + 1e-5, 4.) if huberize_norm_for_V_attractive else own_norms**2
+    attraction = q[is_sig] * q_alpha[object_index] * norms_att
+    attractive_per_object = scatter_add(attraction, object_index, dim_size=x_alpha.size(0))
+    L_V_attractive = (scatter_add(attractive_per_object, batch_object) / n_hits_per_event).sum()
 
-    # Anti-connectivity matrix; be sure not to connect hits to clusters in different events!
-    M_inv = get_inter_event_norms_mask(batch, n_clusters_per_event) - M
-
-    # Throw away noise cluster columns; we never need them
-    M = M[:,is_object]
-    M_inv = M_inv[:,is_object]
-    assert M.size() == (n_hits, n_objects)
-    assert M_inv.size() == (n_hits, n_objects)
-
-    # Calculate all norms
-    # Warning: Should not be used without a mask!
-    # Contains norms between hits and objects from different events
-    # (n_hits, 1, cluster_space_dim) - (1, n_objects, cluster_space_dim)
-    #   gives (n_hits, n_objects, cluster_space_dim)
-    norms = (cluster_space_coords.unsqueeze(1) - x_alpha.unsqueeze(0)).norm(dim=-1)
-    assert norms.size() == (n_hits, n_objects)
-
-
-    # -------
-    # Attractive potential term
-
-    # First get all the relevant norms: We only want norms of signal hits
-    # w.r.t. the object they belong to, i.e. no noise hits and no noise clusters.
-    # First select all norms of all signal hits w.r.t. all objects, mask out later
-    norms_att = norms[is_sig]
-
-    # Power-scale the norms
-    if huberize_norm_for_V_attractive:
-        # Huberized version (linear but times 4)
-        # Be sure to not move 'off-diagonal' away from zero
-        # (i.e. norms of hits w.r.t. clusters they do _not_ belong to)
-        norms_att = huber(norms_att+1e-5, 4.)
-    else:
-        # Paper version is simply norms squared (no need for mask)
-        norms_att = norms_att**2
-    assert norms_att.size() == (n_hits_sig, n_objects)
-
-    # Now apply the mask to keep only norms of signal hits w.r.t. to the object
-    # they belong to
-    norms_att *= M[is_sig]
-
-    # Final potential term
-    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
-    V_attractive = q[is_sig].unsqueeze(-1) * q_alpha.unsqueeze(0) * norms_att
-    assert V_attractive.size() == (n_hits_sig, n_objects)
-    with torch.no_grad():
-        V_attractive_all = V_attractive
-
-    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum over events
-    V_attractive = scatter_add(V_attractive.sum(dim=0), batch_object) / n_hits_per_event
-    assert V_attractive.size() == (batch_size,)
-    L_V_attractive = V_attractive.sum()
-
-    assert is_sig.size()==is_trk.size()
     with torch.no_grad():
         is_trk_clu = get_clusters_with_track(cluster_index, is_trk)
-        V_attractive_charged = scatter_add(V_attractive_all[is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
-        L_V_attractive_charged = V_attractive_charged.sum()
-        V_attractive_neutral = scatter_add(V_attractive_all[~is_trk_clu].sum(dim=0), batch_object) / n_hits_per_event
-        L_V_attractive_neutral = V_attractive_neutral.sum()
+        charged_signal = is_trk_clu[is_sig]
+        def attractive_component(mask):
+            per_object = scatter_add(attraction * mask, object_index, dim_size=x_alpha.size(0))
+            return (scatter_add(per_object, batch_object) / n_hits_per_event).sum()
+        L_V_attractive_charged = attractive_component(charged_signal)
+        L_V_attractive_neutral = attractive_component(~charged_signal)
 
-
-    # -------
-    # Repulsive potential term
-
-    # Get all the relevant norms: We want norms of any hit w.r.t. to 
-    # objects they do *not* belong to, i.e. no noise clusters.
-    # We do however want to keep norms of noise hits w.r.t. objects
-    # Power-scale the norms: Gaussian scaling term instead of a cone
-    # Mask out the norms of hits w.r.t. the cluster they belong to
-    norms_rep = torch.exp(-4.*norms**2) * M_inv
-    
-    # (n_sig_hits, 1) * (1, n_objects) * (n_sig_hits, n_objects)
-    V_repulsive = q.unsqueeze(1) * q_alpha.unsqueeze(0) * norms_rep
-    # No need to apply a V = max(0, V); by construction V>=0
-    assert V_repulsive.size() == (n_hits, n_objects)
-    with torch.no_grad():
-        V_repulsive_all = V_repulsive
-
-    # Sum over hits, then sum per event, then divide by n_hits_per_event, then sum up events
-    L_V_repulsive = (scatter_add(V_repulsive.sum(dim=0), batch_object)/n_hits_per_event).sum()
+    # Repulsion uses event-local rectangular matrices. Never allocate an
+    # N_hits x N_objects matrix spanning multiple events. Sort by event so
+    # direct callers with interleaved event rows retain the same semantics.
+    order = torch.sort(batch, stable=True).indices
+    hit_counts = n_hits_per_event.tolist()
+    object_counts = n_objects_per_event.tolist()
+    coords_by_event = cluster_space_coords[order].split(hit_counts)
+    q_by_event = q[order].split(hit_counts)
+    truth_by_event = cluster_index_per_event[order].split(hit_counts)
+    charged_by_event = is_trk_clu[order].split(hit_counts)
+    alpha_by_event = x_alpha.split(object_counts)
+    qa_by_event = q_alpha.split(object_counts)
+    repulsive, repulsive_charged, repulsive_neutral = [], [], []
+    for coords_e, q_e, truth_e, charged_e, alpha_e, qa_e in zip(
+            coords_by_event, q_by_event, truth_by_event, charged_by_event,
+            alpha_by_event, qa_by_event):
+        norms_e = (coords_e.unsqueeze(1) - alpha_e.unsqueeze(0)).norm(dim=-1)
+        other_object = truth_e.unsqueeze(1) != torch.arange(1, alpha_e.size(0) + 1, device=device)
+        rep_e = q_e.unsqueeze(1) * qa_e.unsqueeze(0) * (torch.exp(-4. * norms_e**2) * other_object)
+        repulsive.append(rep_e.sum(dim=0))
+        with torch.no_grad():
+            repulsive_charged.append((rep_e * charged_e.unsqueeze(1)).sum(dim=0))
+            repulsive_neutral.append((rep_e * (~charged_e).unsqueeze(1)).sum(dim=0))
+    L_V_repulsive = (scatter_add(torch.cat(repulsive), batch_object) / n_hits_per_event).sum()
     L_V = L_V_attractive + L_V_repulsive
-
     with torch.no_grad():
-        L_V_repulsive_charged = (scatter_add(V_repulsive_all[is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
-        L_V_repulsive_neutral = (scatter_add(V_repulsive_all[~is_trk_clu].sum(dim=0), batch_object)/n_hits_per_event).sum()
-
+        L_V_repulsive_charged = (scatter_add(torch.cat(repulsive_charged), batch_object) / n_hits_per_event).sum()
+        L_V_repulsive_neutral = (scatter_add(torch.cat(repulsive_neutral), batch_object) / n_hits_per_event).sum()
 
     # ________________________________
     # L_beta term
@@ -651,7 +599,7 @@ def calc_LV_Lbeta(
         # belong to (like in V_attractive)
         # Apply transformation first, and then apply mask to keep only the norms we want,
         # then sum over hits, so the result is (n_objects,)
-        norms_beta_sig = (1./(20.*norms[is_sig]**2+1.) * M[is_sig]).sum(dim=0)
+        norms_beta_sig = scatter_add(1./(20.*own_norms**2+1.), object_index, dim_size=x_alpha.size(0))
         assert torch.all(norms_beta_sig >= 1.) and torch.all(norms_beta_sig <= n_hits_per_object)
         # Subtract from 1. to remove self interaction, divide by number of hits per object
         norms_beta_sig = (1. - norms_beta_sig) / n_hits_per_object

@@ -195,6 +195,9 @@ def validate_training_arguments(args):
 
 def training_forward(model, data, args, epoch=None):
     knn_kwargs = {}
+    counts = getattr(data, 'event_counts', None)
+    if counts is not None and not getattr(args, 'dp', False):
+        knn_kwargs['event_counts'] = counts
     if getattr(args, 'knn_backend', 'legacy') == 'event-parallel':
         plan = getattr(data, 'knn_plan', None)
         if plan is not None:

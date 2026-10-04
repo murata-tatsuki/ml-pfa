@@ -67,8 +67,10 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
         self.energy_regression_cluster = energy_regression_cluster
 
     def forward(self, x, batch, epoch=None, return_dict=False,
-                truth_cluster_index=None, detected_energy=None, knn_plan=None):
+                truth_cluster_index=None, detected_energy=None, knn_plan=None, event_counts=None):
         kwargs = {}
+        if event_counts is not None:
+            kwargs['event_counts'] = event_counts
         if knn_plan is not None:
             kwargs['knn_plan'] = knn_plan
         if getattr(self.model, 'cluster_energy_pooling', False):
