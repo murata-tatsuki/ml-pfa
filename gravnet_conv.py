@@ -98,11 +98,16 @@ class GravNetConv(MessagePassing):
         edge_weight = (s_l[edge_index[1]] - s_l[edge_index[0]]).pow(2).sum(-1)
         edge_weight = torch.exp(-10. * edge_weight)  # 10 gives a better spread
 
-        # propagate_type: (x: OptPairTensor, edge_weight: OptTensor)
+        # propagate_type: (x: OptPairTensor, edge_weight: OptTensor, regular_knn: bool)
         # This is a homogeneous graph: both endpoints use the same features.
         # With target_to_source flow, MessagePassing lifts x[1] for x_j.
+        # Both KNN backends emit query-major edges, with at most k per hit.
+        # N*k edges therefore prove that every hit has a complete contiguous
+        # neighborhood, without reading any GPU scalar. Missing/radius-filtered
+        # neighbors retain the general scatter path and its true mean divisor.
+        regular_knn = edge_index.size(1) == s_l.size(0) * self.k
         out = self.propagate(edge_index, x=(h_l, h_l),
-                             edge_weight=edge_weight,
+                             edge_weight=edge_weight, regular_knn=regular_knn,
                              size=(s_l.size(0), s_l.size(0)))
 
         return self.lin(torch.cat([out, x], dim=-1))
@@ -120,7 +125,14 @@ class GravNetConv(MessagePassing):
         return x_j * edge_weight.unsqueeze(1)
 
     def aggregate(self, inputs: Tensor, index: Tensor,
-                  dim_size: Optional[int] = None) -> Tensor:
+                  dim_size: Optional[int] = None,
+                  regular_knn: bool = False) -> Tensor:
+        if regular_knn and dim_size is not None and self.k > 0:
+            if inputs.dim() == 2 and inputs.size(0) == dim_size * self.k:
+                neighbors = inputs.reshape(dim_size, self.k, inputs.size(1))
+                # Preserve mean/max feature order. At tied maxima, max(dim)
+                # selects one neighbor; its gradient may differ from scatter.
+                return torch.cat([neighbors.mean(dim=1), neighbors.max(dim=1)[0]], dim=-1)
         out_mean = scatter(inputs, index, dim=self.node_dim, dim_size=dim_size,
                            reduce='mean')
         out_max = scatter(inputs, index, dim=self.node_dim, dim_size=dim_size,

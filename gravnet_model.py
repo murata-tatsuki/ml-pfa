@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
-from torch_scatter import scatter_min, scatter_max, scatter_mean
+from torch_scatter import segment_csr
 
 # from torch_cmspepr import GravNetConv
 from gravnet_conv import GravNetConv, resolve_knn_plan
@@ -24,11 +24,15 @@ def global_exchange(x: Tensor, batch: Tensor,
     n_hits, n_features = x.size()
     batch_size = event_counts.numel()
 
+    # Sorted batches occupy contiguous event ranges. Empty events produce
+    # zero statistics, as in scatter. Reduction order and the selected hit at
+    # tied extrema may differ from the atomic scatter implementation.
+    ptr = torch.cat((event_counts.new_zeros(1), event_counts.cumsum(0)))
     # minmeanmax: (batch_size x 3*n_features)
     meanminmax = torch.cat((
-        scatter_mean(x, batch, dim=0, dim_size=batch_size),
-        scatter_min(x, batch, dim=0, dim_size=batch_size)[0],
-        scatter_max(x, batch, dim=0, dim_size=batch_size)[0]
+        segment_csr(x, ptr, reduce='mean'),
+        segment_csr(x, ptr, reduce='min'),
+        segment_csr(x, ptr, reduce='max')
         ), dim=1)
     assert list(meanminmax.size()) == [batch_size, 3*n_features]
 
