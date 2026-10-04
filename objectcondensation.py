@@ -536,7 +536,7 @@ def calc_LV_Lbeta(
     L_V_attractive = (scatter_add(attractive_per_object, batch_object) / n_hits_per_event).sum()
 
     with torch.no_grad():
-        is_trk_clu = get_clusters_with_track(cluster_index, is_trk)
+        is_trk_clu = is_object_track[cluster_index]
         charged_signal = is_trk_clu[is_sig]
         def attractive_component(mask):
             per_object = scatter_add(attraction * mask, object_index, dim_size=x_alpha.size(0))
