@@ -727,7 +727,7 @@ def run_ddp_training(rank, world_size, args):
         world_size=world_size,
     )
     scheduler_batch_size = args.batch_size
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input, foreach=True)
     scaler = amp_grad_scaler(args)
     if getattr(args, "amp", False) and rank == 0:
         print(f"AMP enabled: dtype={args.amp_dtype}, GradScaler={'on' if scaler is not None else 'off'}")
@@ -1491,7 +1491,7 @@ def main():
     epoch_size_tune = len(train_loader.dataset) if (args.inputdir_tune and args.inputdir_validate_tune is not None) else 0
     epoch_size = epoch_size + epoch_size_tune
     
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_input, weight_decay=weight_decay_input, foreach=True)
     scaler = amp_grad_scaler(args)
     if getattr(args, "amp", False):
         print(
