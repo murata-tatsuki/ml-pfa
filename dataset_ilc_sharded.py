@@ -46,6 +46,7 @@ class ILCDatasetSharded(Dataset):
         _entries=None,
         extended_h5_input=False,
         exclude_gap_hits=False,
+        detector_one_hot=False,
     ):
         super().__init__(path)
         self.flip = flip
@@ -62,9 +63,10 @@ class ILCDatasetSharded(Dataset):
         self.mctpe = mctpe
         self.extended_h5_input = extended_h5_input
         self.exclude_gap_hits = exclude_gap_hits
+        self.detector_one_hot = detector_one_hot
         from extended_h5 import validate_dataset_options
         validate_dataset_options(extended_h5_input, exclude_gap_hits, timingCut,
-                                 mctpe, pandora, test_mode)
+                                 mctpe, pandora, test_mode, detector_one_hot)
         self.file_cache_size = max(1, int(file_cache_size))
         self._cache: OrderedDict[str, tuple] = OrderedDict()
 
@@ -121,6 +123,7 @@ class ILCDatasetSharded(Dataset):
             file_cache_size=self.file_cache_size,
             extended_h5_input=self.extended_h5_input,
             exclude_gap_hits=self.exclude_gap_hits,
+            detector_one_hot=self.detector_one_hot,
         )
 
     def shaper_tanh(self, x, a=1.0, b=1.0, c=0.0, d=0.0):

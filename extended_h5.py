@@ -19,6 +19,57 @@ TRAINING_SCHEMAS = frozenset(('pandora-eval-1', 'nnqq-2m-eval-1', 'single-partic
 NNQQ_EVENT_DEFINITION = 'higgs-direct-qq-terminal-nu-v1'
 SINGLE_PARTICLE_EVENT_DEFINITION = 'single-primary-terminal-nu-v1'
 
+# Fixed column order shared by every file/split and recorded in checkpoints.
+DETECTOR_CATEGORIES = ((0, 'unknown'), (1, 'ECAL'), (2, 'HCAL'), (3, 'LCAL'),
+                       (4, 'LHCAL'), (5, 'MUON'), (7, 'track'))
+REGION_CATEGORIES = ('unspecified', 'barrel', 'endcap', 'endcap_ring')
+COLLECTION_REGIONS = {
+    'EcalBarrelCollectionRec': 1, 'EcalBarrelCollectionGapHits': 1,
+    'HcalBarrelCollectionRec': 1,
+    'EcalEndcapsCollectionRec': 2, 'EcalEndcapsCollectionGapHits': 2,
+    'HcalEndcapsCollectionRec': 2,
+    'EcalEndcapRingCollectionRec': 3, 'HcalEndcapRingCollectionRec': 3,
+}
+DETECTOR_ONE_HOT_DIM = len(DETECTOR_CATEGORIES) + len(REGION_CATEGORIES)
+
+
+def detector_one_hot_config():
+    return dict(version=1, detector_categories=[list(x) for x in DETECTOR_CATEGORIES],
+                region_categories=list(REGION_CATEGORIES),
+                collection_regions=dict(COLLECTION_REGIONS),
+                added_input_dim=DETECTOR_ONE_HOT_DIM)
+
+
+def detector_one_hot_features(row_info, collections):
+    """Encode stored detector identity and explicit collection regions, never truth."""
+    from dataset import checked_int64_ids
+    if row_info is None or collections is None:
+        raise ValueError('--detector-one-hot requires row_info and collections in extended H5')
+    ids = checked_int64_ids(row_info[:, [1, 3]], 'collection/detector IDs')
+    if np.any((ids[:, 0] < 0) | (ids[:, 0] >= len(collections))):
+        raise ValueError('Unknown input collection for --detector-one-hot')
+    detector_ids = np.asarray([x[0] for x in DETECTOR_CATEGORIES])
+    detector = ids[:, 1, None] == detector_ids[None, :]
+    if not detector.any(axis=1).all():
+        raise ValueError(f'Unsupported detector IDs for --detector-one-hot: '
+                         f'{np.unique(ids[~detector.any(axis=1), 1]).tolist()}')
+    # MUON/LCAL/LHCAL/track collections do not encode barrel/endcap. Do not
+    # guess their region from coordinates or from their detector category.
+    collection_regions = np.asarray([COLLECTION_REGIONS.get(name, 0)
+                                     for name in collections], dtype=np.int64)
+    region = np.eye(len(REGION_CATEGORIES), dtype=np.float32)[collection_regions[ids[:, 0]]]
+    return np.concatenate((detector.astype(np.float32), region), axis=1)
+
+
+def validate_one_hot_checkpoint(checkpoint, enabled):
+    config = checkpoint.get('training_input_config', {})
+    saved = config.get('detector_one_hot', False)
+    if bool(saved) != bool(enabled):
+        raise ValueError('Checkpoint --detector-one-hot setting differs from requested input; '
+                         'use matching options or train a new model without --model-ckpt')
+    if enabled and config.get('detector_one_hot_config') != detector_one_hot_config():
+        raise ValueError('Checkpoint detector one-hot category mapping is incompatible')
+
 
 def validate_training_schema(handle):
     """Check explicit schema contracts without relabelling the source file.
@@ -107,7 +158,7 @@ def training_event(bundle, index, ds, event_index):
     if ds.event_energy:
         event_e, jet_e = ILCDataset.decode_event_kinematics(bundle['event'][index])
     data = ILCDataset.featurize_from_numpy(feat[rows], label[rows], None,
-        event_e, jet_e, event_index, ds, row_info=info[rows])
+        event_e, jet_e, event_index, ds, row_info=info[rows], collections=collections)
     data.input_row = data.input_row.new_tensor(rows[data.input_row.numpy()])
     # Integer diagnostics collate per event; no changes to the stored H5.
     data.n_stored_inputs = data.input_row.new_tensor([len(feat)])
@@ -117,7 +168,9 @@ def training_event(bundle, index, ds, event_index):
 
 
 def validate_dataset_options(extended, exclude_gap, timing_cut=False, mctpe=False, pandora=False,
-                             test_mode=True):
+                             test_mode=True, detector_one_hot=False):
+    if detector_one_hot and not extended:
+        raise ValueError('--detector-one-hot requires --extended-h5-input for training')
     if exclude_gap and not extended:
         raise ValueError('--exclude-gap-hits requires --extended-h5-input for training')
     if extended and (timing_cut or mctpe or pandora or not test_mode):
@@ -126,16 +179,22 @@ def validate_dataset_options(extended, exclude_gap, timing_cut=False, mctpe=Fals
 
 
 def add_training_arguments(parser):
+    add_detector_one_hot_argument(parser)
     parser.add_argument('--extended-h5-input', action='store_true',
         help='Read pandora-eval-1, nnqq-2m-eval-1 or single-particle-eval-1 row_info; retain valid unlabelled inputs and mask their supervision')
     parser.add_argument('--exclude-gap-hits', action='store_true',
         help='Exclude the two ECAL GapHits collections from model inputs; keep H5 unchanged')
 
 
+def add_detector_one_hot_argument(parser):
+    parser.add_argument('--detector-one-hot', action='store_true',
+        help='Append 7 detector and 4 collection-region one-hot features from stored H5 metadata')
+
+
 def validate_training_arguments(args):
     extended = getattr(args, 'extended_h5_input', False)
     validate_dataset_options(extended, getattr(args, 'exclude_gap_hits', False),
-        args.timing_cut, args.mctpe)
+        args.timing_cut, args.mctpe, detector_one_hot=getattr(args, 'detector_one_hot', False))
     if extended and (args.jit or args.dp or args.energy_branch or args.energy_regression_weight):
         raise ValueError('Extended H5 training supports eager single-device/DDP; '
                          'jit, dp, energy-branch and energy-regression-weight are unsupported')

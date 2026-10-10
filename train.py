@@ -24,7 +24,8 @@ from dataset import ILCDataset
 from dataset_ilc_sharded import ILCDatasetSharded
 from dataset_ilc_streaming import ILCStreamingDataset
 from extended_h5 import (add_training_arguments as add_extended_arguments,
-                         validate_training_arguments as validate_extended_arguments)
+                         validate_training_arguments as validate_extended_arguments,
+                         DETECTOR_ONE_HOT_DIM, validate_one_hot_checkpoint)
 from supervised_loss import calc_supervised_loss
 from cluster_energy import (add_training_arguments, validate_training_arguments,
                             training_forward, checkpoint_payload, replace_calo_loss)
@@ -41,9 +42,10 @@ def make_ilc_dataset(args, inputdir):
         mctpe=args.mctpe,
     )
     if getattr(args, "extended_h5_input", False):
-        common.update(extended_h5_input=True, exclude_gap_hits=args.exclude_gap_hits)
+        common.update(extended_h5_input=True, exclude_gap_hits=args.exclude_gap_hits,
+                      detector_one_hot=getattr(args, 'detector_one_hot', False))
         print(f"Extended H5: retain valid unknown-truth inputs; supervised loss is masked; "
-              f"exclude_gap_hits={args.exclude_gap_hits}")
+              f"exclude_gap_hits={args.exclude_gap_hits}; detector_one_hot={common['detector_one_hot']}")
     if getattr(args, "ilc_streaming", False):
         print(
             "Using ILCStreamingDataset "
@@ -293,6 +295,8 @@ def index_setup(args):
         index_pred_cluster_energy = index_pred_cluster_energy + 1 if index_pred_cluster_energy!=0 else 0
 
     additional_input_dimension = 0
+    if getattr(args, 'detector_one_hot', False):
+        additional_input_dimension += DETECTOR_ONE_HOT_DIM
     if (args.momentum):
         additional_input_dimension += 3   # adding momentum to model input
         if (args.momentum_amp):
@@ -301,8 +305,9 @@ def index_setup(args):
     return output_dimension, index_pred_tracker_energy, index_pred_cluster_energy, index_pred_cluster_space_coords, additional_input_dimension
 
 
-def load_checkpoint_state(model, ckpt_path):
+def load_checkpoint_state(model, ckpt_path, detector_one_hot=False):
     checkpoint = torch.load(ckpt_path, map_location=torch.device("cpu"))
+    validate_one_hot_checkpoint(checkpoint, detector_one_hot)
     state_dict = checkpoint["model"] if "model" in checkpoint else checkpoint
     from collections import OrderedDict
     cleaned_state_dict = OrderedDict()
@@ -560,7 +565,8 @@ def build_model(args, input_dim, output_dimension, ddp=False):
         )
         if args.model_ckpt != "":
             print(f"Loading multi-head model from checkpoint {args.model_ckpt}")
-            model = load_checkpoint_state(model, args.model_ckpt)
+            model = load_checkpoint_state(model, args.model_ckpt,
+                                          getattr(args, 'detector_one_hot', False))
         else:
             print(
                 "Loading GravNetModelMultiHead "
@@ -581,7 +587,8 @@ def build_model(args, input_dim, output_dimension, ddp=False):
         if args.energy_branch:
             model = get_model_branch(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
         else:
-            model = get_model(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension, ddp=ddp)
+            model = get_model(args.model_ckpt, jit=False, input_dim=input_dim, output_dim=output_dimension,
+                              ddp=ddp, detector_one_hot=getattr(args, 'detector_one_hot', False))
     return configure_knn_backend(model, knn_backend, getattr(args, 'knn_block_size', 128))
 
 

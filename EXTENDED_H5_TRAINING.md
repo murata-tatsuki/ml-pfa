@@ -1,5 +1,46 @@
 # 新H5の学習入力とtruth未対応行
 
+## 検出器種別・領域のone-hot（任意）
+
+既存の学習コマンドに `--extended-h5-input --detector-one-hot` を追加すると、
+保存済みの `row_info` と `collections` からone-hotを生成し、既存入力の末尾に11列を追加する。
+H5の変更・再生成は不要。`--detector-one-hot` を省略した場合は従来と同じ入力。
+`--exclude-gap-hits` は独立した従来の選択であり、one-hotだけではgapを除外しない。
+
+固定の列順は以下のとおり。
+
+- 検出器7列: unknown (ID 0), ECAL (1), HCAL (2), LCAL (3), LHCAL (4), MUON (5), track (7)。
+- 領域4列: unspecified, barrel, endcap, endcap_ring。
+
+領域はECAL/HCALのRec collection名とECAL GapHits collection名で識別する。
+MUON/LCAL/LHCAL/trackなど、collection名から領域を特定できない行はunspecifiedとし、
+座標から推測しない。未知の検出器ID（定義済みunknown=0以外）はエラーにする。
+one-hotは座標の正規化後に連結し、既存の行選別・並べ替えと同じ対応を保つ。
+GravNet本体と近傍探索の実装は変更しない。学習された空間での近傍は追加入力の影響を受けうる。
+
+`train.py` の単一device/DDP、sharded/streaming、training/validationに同じ設定を適用し、
+モデルの入力次元を自動的に11増やす。例えば既存11次元なら22次元になる。
+有効/無効とカテゴリ対応表をcheckpointに保存し、再開時の不一致はエラーにする。
+従来checkpointから入力次元だけを変えて再開することはできないため、新規学習で使用する。
+
+指定されたデータでの最小例（他のモデル・loss設定は普段のコマンドを引き継ぐ）:
+
+```bash
+python train.py \
+  -i /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M_nobrems/train \
+  -ii /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M_nobrems/validation \
+  --no-split --extended-h5-input --detector-one-hot \
+  --ilc-streaming --stream-files-per-chunk 1
+```
+
+`save_root_pandora_eval.py` で対応する全group入り評価H5を使用する際も
+`--detector-one-hot` を明示する。`--input-dim` は従来どおり5または7を指定し、
+one-hotの11列は自動加算する。この変更で評価ローダーの対応schemaは拡張しない。
+Python APIでは `model_data(..., detector_one_hot=True)` と
+`get_model(..., jit=False, input_dim=<追加後の総次元>, detector_one_hot=True)` を使用する。
+
+検証: `python -m unittest test_detector_one_hot test_extended_training -v`
+
 最新版 fixed_uds (`pandora-eval-1`) または nnqq2M (`nnqq-2m-eval-1`) を学習する場合、
 既存の `train.py` コマンドに次を追加する。
 

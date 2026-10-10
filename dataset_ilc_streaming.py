@@ -51,6 +51,7 @@ class ILCStreamingDataset(IterableDataset):
         _event_counts=None,
         extended_h5_input=False,
         exclude_gap_hits=False,
+        detector_one_hot=False,
     ):
         super().__init__()
         self.root = path
@@ -69,9 +70,10 @@ class ILCStreamingDataset(IterableDataset):
         self.timingCut = timingCut
         self.extended_h5_input = extended_h5_input
         self.exclude_gap_hits = exclude_gap_hits
+        self.detector_one_hot = detector_one_hot
         from extended_h5 import validate_dataset_options
         validate_dataset_options(extended_h5_input, exclude_gap_hits, timingCut,
-                                 mctpe, pandora, test_mode)
+                                 mctpe, pandora, test_mode, detector_one_hot)
         self.seed = int(seed)
         self.epoch = 0
         self.shuffle = bool(shuffle)
@@ -132,6 +134,7 @@ class ILCStreamingDataset(IterableDataset):
             ddp_world_size=self.ddp_world_size,
             extended_h5_input=self.extended_h5_input,
             exclude_gap_hits=self.exclude_gap_hits,
+            detector_one_hot=self.detector_one_hot,
         )
 
         print(

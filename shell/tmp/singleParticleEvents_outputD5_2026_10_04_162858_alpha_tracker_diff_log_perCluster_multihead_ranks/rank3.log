@@ -1,0 +1,15 @@
+cuda:3
+thetaphi at main: True
+Loading dataset...
+Extended H5: retain valid unknown-truth inputs; supervised loss is masked; exclude_gap_hits=True
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles_nobrems/train, files=396, events~=361681, shuffle_buffer=256, files_per_chunk=32
+Extended H5: retain valid unknown-truth inputs; supervised loss is masked; exclude_gap_hits=True
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/eventCut/tc_singleParticles_nobrems/validation, files=49, events~=44307, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  361681
+Validating dataset size:  44307
+Batch size:  512
+Loading GravNetModelMultiHead (heads=6, reg_heads=5, interaction=none)
+KNN backend=event-parallel GravNet_layers=4
+restart period :  30

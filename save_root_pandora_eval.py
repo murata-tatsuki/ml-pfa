@@ -16,6 +16,7 @@ import ROOT
 import torch
 from model import get_model
 from cluster_energy import pooling_model
+from extended_h5 import add_detector_one_hot_argument, DETECTOR_ONE_HOT_DIM
 from particle_heads import raw_model, checkpoint_config, SPECIES
 from pandora_eval_data import iter_events, model_data, gap_hit_mask
 from pandora_eval_reconstruction import predict, energy_clusters, pandora_clusters, overlap_metrics, configure_regression_output
@@ -55,6 +56,7 @@ def sha256(path):
 
 
 def write(args, model=None):
+    detector_one_hot = getattr(args, 'detector_one_hot', False)
     if not 0 <= args.tbeta <= 1 or not np.isfinite(args.td) or args.td <= 0:
         raise ValueError('Require 0 <= tbeta <= 1 and finite td > 0')
     output = Path(args.output).expanduser().resolve()
@@ -65,7 +67,9 @@ def write(args, model=None):
     torch.set_num_threads(args.threads)
     if model is None and not args.pandora_only:
         model = get_model(args.checkpoint, jit=False,
-            input_dim=args.input_dim + (3 + int(args.momentum_amp) if args.momentum else 0),
+            input_dim=args.input_dim + (3 + int(args.momentum_amp) if args.momentum else 0)
+                      + (DETECTOR_ONE_HOT_DIM if detector_one_hot else 0),
+            detector_one_hot=detector_one_hot,
             output_dim=args.output_dim + 1 + int(args.calo_head),
             energy_regression=True, energy_regression_cluster=args.calo_head,
             model_variant=args.model_variant, cluster_energy_source='predicted',
@@ -119,7 +123,8 @@ def write(args, model=None):
         provenance, count, failures = {}, 0, 0
         for event in iter_events(args.input, args.start, args.stop):
             i = count; count += 1
-            data = model_data(event, args.input_dim, args.momentum, args.momentum_amp, args.exclude_gap_hits)
+            data = model_data(event, args.input_dim, args.momentum, args.momentum_amp,
+                              args.exclude_gap_hits, detector_one_hot=detector_one_hot)
             selected = data.input_row.numpy()
             n = len(event['feature']); ev = event['event_eval']
             n_gap = int(gap_hit_mask(event).sum()) if args.exclude_gap_hits else 0
@@ -234,7 +239,7 @@ def write(args, model=None):
             input_scope=('Finite feature-valid candidates excluding the two ECAL GapHits collections before forward'
                          if args.exclude_gap_hits else 'All finite feature-valid stored candidates')
                         + '; no truth, timing, pT or PFO membership cut',
-            detail=args.detail, exclude_gap_hits=args.exclude_gap_hits,
+            detail=args.detail, exclude_gap_hits=args.exclude_gap_hits, detector_one_hot=detector_one_hot,
             exact_pandora_internal_selection=False,
             checkpoint_sha256=sha256(args.checkpoint) if model is not None else None,
             code_sha256={name:sha256(here/name) for name in ('dataset.py','extended_h5.py','pandora_eval_data.py',
@@ -253,7 +258,8 @@ def write(args, model=None):
             input_dim=args.input_dim, output_dim=args.output_dim, momentum=args.momentum,
             momentum_amp=args.momentum_amp, calo_head=args.calo_head, tbeta=args.tbeta, td=args.td,
             regression_output_activation=args.regression_output_activation,
-            model_variant=args.model_variant, exclude_gap_hits=args.exclude_gap_hits, detail=args.detail, code_sha256=metadata['code_sha256'])
+            model_variant=args.model_variant, exclude_gap_hits=args.exclude_gap_hits,
+            detector_one_hot=detector_one_hot, detail=args.detail, code_sha256=metadata['code_sha256'])
         if particle_config:
             configuration['particle_heads_config'] = particle_config
         ROOT.TObjString(json.dumps(configuration, sort_keys=True)).Write('comparison_configuration')
@@ -277,6 +283,7 @@ def write(args, model=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    add_detector_one_hot_argument(parser)
     parser.add_argument('input', help='New H5 file, directory, or quoted glob')
     parser.add_argument('output', help='New comparison ROOT file')
     parser.add_argument('--checkpoint')

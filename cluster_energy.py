@@ -249,6 +249,11 @@ def checkpoint_payload(model, epoch=None, args=None):
         result['training_input_config'] = dict(schema='pandora-eval-1',
             exclude_gap_hits=args.exclude_gap_hits, unknown_truth='input_only',
             unknown_calo_cluster_loss='skip_incomplete_cluster')
+        from extended_h5 import detector_one_hot_config
+        enabled = bool(getattr(args, 'detector_one_hot', False))
+        result['training_input_config']['detector_one_hot'] = enabled
+        if enabled:
+            result['training_input_config']['detector_one_hot_config'] = detector_one_hot_config()
     pooled = pooling_model(raw)
     if pooled is not None:
         result['cluster_energy_config'] = dict(version=1, source=pooled.cluster_energy_source,

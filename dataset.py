@@ -231,7 +231,7 @@ class ILCDataset(Dataset):
         return visible_energy.copy(), parton_p4.copy()
 
     @staticmethod
-    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds, row_info=None):
+    def featurize_from_numpy(feat, label, pand, eventE, jetE, event_index, ds, row_info=None, collections=None):
         """
         Build a PyG Data object from numpy hit arrays. Shared by ILCDataset.get and ILCDatasetSharded.
         ds must expose: thetaphi, momentum, momentumAmp, max_momentum, mctpe, test_mode,
@@ -283,6 +283,10 @@ class ILCDataset(Dataset):
         x[:, 1] = x[:, 1] / 2000
         x[:, 2] = x[:, 2] / 2000
         x[:, 3] = x[:, 3] / 2000
+
+        if getattr(ds, 'detector_one_hot', False):
+            from extended_h5 import detector_one_hot_features
+            x = np.concatenate((x, detector_one_hot_features(row_info, collections)), axis=1)
 
         mcids = label[:, 1]
         # Truth availability never selects extended-H5 inference inputs.

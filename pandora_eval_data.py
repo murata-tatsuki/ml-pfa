@@ -126,18 +126,20 @@ def gap_hit_mask(event):
     """Identify gap calorimeter hits by collection, independently of MC truth."""
     return gap_mask(event['row_info'], event['collections'])
 
-def model_data(event, input_dim=7, momentum=True, momentum_amp=True, exclude_gap_hits=False):
+def model_data(event, input_dim=7, momentum=True, momentum_amp=True, exclude_gap_hits=False,
+               detector_one_hot=False):
     if input_dim not in (5, 7):
         raise ValueError('Base input_dim must be 5 or 7, before momentum features')
     settings = SimpleNamespace(thetaphi=input_dim == 7, momentum=momentum,
         momentumAmp=momentum_amp, max_momentum=3. if momentum else 1.,
         mctpe=False, test_mode=True, pandora=False, event_energy=False,
-        noise_index=-1)
+        noise_index=-1, detector_one_hot=detector_one_hot)
     # Bind the legacy shaper without constructing/loading a legacy dataset.
     settings.shaper_tanh = lambda x, a, b, c, d: a * np.tanh(b * (x-c)) + d
     rows = np.flatnonzero(~gap_hit_mask(event)) if exclude_gap_hits else np.arange(len(event['feature']))
     data = ILCDataset.featurize_from_numpy(event['feature'][rows].copy(), event['label'][rows].copy(),
-        None, None, None, event['global_index'], settings, row_info=event['row_info'][rows])
+        None, None, None, event['global_index'], settings, row_info=event['row_info'][rows],
+        collections=event['collections'])
     # Remap after the validity mask and truth-label ordering to original H5 rows.
     data.input_row = data.input_row.new_tensor(rows[data.input_row.numpy()])
     return data

@@ -125,6 +125,7 @@ def get_model(
     cluster_energy_source = None,
     cluster_energy_tbeta = None,
     cluster_energy_td = None,
+    detector_one_hot = False,
 ):
     # from torch_cmspepr.gravnet_model import GravnetModel
     from gravnet_model import GravnetModel
@@ -134,11 +135,15 @@ def get_model(
     print(f"Loading model from {ckpt=}")
 
     if jit:
+        if detector_one_hot:
+            raise ValueError('--detector-one-hot requires an eager checkpoint (jit=False)')
         model = torch.jit.load(ckpt, map_location=torch.device('cpu'))
 
     else:
         print(f'{input_dim=}')
         checkpoint = torch.load(ckpt, map_location=torch.device('cpu'))
+        from extended_h5 import validate_one_hot_checkpoint
+        validate_one_hot_checkpoint(checkpoint, detector_one_hot)
         state_dict = _extract_state_dict(checkpoint)
         from particle_heads import validate_checkpoint_config
         particle_config = validate_checkpoint_config(state_dict, checkpoint.get('particle_heads_config'))
