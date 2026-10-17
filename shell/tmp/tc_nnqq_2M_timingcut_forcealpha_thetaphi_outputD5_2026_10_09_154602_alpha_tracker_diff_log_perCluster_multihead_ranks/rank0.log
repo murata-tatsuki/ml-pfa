@@ -20565,3 +20565,4 @@ test   L_V                   = +0.1973 (65.3%)
     N_PID = 1756.1
 Returning 1.588028073310852
 [rank 0] epoch=150 train_batch=2000/15313 loss=1.312049
+[rank 0] epoch=150 train_batch=4000/15313 loss=1.369274
