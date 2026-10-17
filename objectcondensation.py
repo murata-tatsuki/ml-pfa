@@ -779,7 +779,7 @@ def calc_LV_Lbeta(
         q_track = q.clone().detach()
         q_track[~is_trk] = 0
 
-        beta_track = beta.clone().detach()
+        beta_track = beta.clone()
         beta_track[~is_trk] = 0
         
         # Calculate q_alpha, the max q per object, and the indices of said maxima
