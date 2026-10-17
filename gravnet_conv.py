@@ -8,7 +8,7 @@ from torch_scatter import scatter
 from torch_geometric.nn.conv import MessagePassing
 
 try:
-    from torch_cmspepr import knn_graph
+    from knn_event_parallel import knn_graph_legacy as knn_graph
 except ImportError as error:
     knn_graph = None
     _knn_import_error = error
@@ -37,8 +37,10 @@ class GravNetConv(MessagePassing):
         num_workers (int): Number of workers to use for k-NN computation.
             Has no effect in case :obj:`batch` is not :obj:`None`, or the input
             lies on the GPU. (default: :obj:`1`)
-        knn_backend (str): ``legacy`` (default) or the separately built
-            ``event-parallel`` CUDA extension. The latter supports eager execution.
+        knn_backend (str): ``legacy`` (default, installed search kernel) or the
+            separately built ``event-parallel`` CUDA extension. Both use the
+            training convention [query, neighbour] in query-major order.
+            The latter supports eager execution.
         **kwargs (optional): Additional arguments of
             :class:`torch_geometric.nn.conv.MessagePassing`.
     """
