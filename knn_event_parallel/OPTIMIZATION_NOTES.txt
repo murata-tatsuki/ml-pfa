@@ -87,9 +87,9 @@ The default execution sandbox hides GPU devices, but GPU access works outside it
 GPU tests subsequently passed on TITAN RTX: index/distance-bit/edge-order checks,
 stream handling, and output/gradient checks. All 40 unique CPU/GPU tests passed.
 Per-change timings on real nnqq and single batches are available in
-/home/murata/knn_optimization_20261004/GPU_REPORT.txt.
+/home/murata/research/studies/knn_optimization_20261004/GPU_REPORT.txt.
 At block=1024, packed scheduling can slow nnqq; block=128 was faster in these
 measurements. Changes 1 and 5 alone have small/mixed deltas. Do not infer full
 training throughput from KNN-only measurements.
 The per-query candidate-search body is unchanged from the pre-edit snapshot in
-/home/murata/knn_optimization_20261004/before.
+/home/murata/research/studies/knn_optimization_20261004/before.

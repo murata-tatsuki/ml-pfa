@@ -1590,3 +1590,17 @@ restart period :  30
 [rank 1] epoch=224 train_batch=14000/15313 loss=1.464801
 [rank 1] epoch=225 train_batch=2000/15313 loss=1.460395
 [rank 1] epoch=225 train_batch=4000/15313 loss=1.472107
+[rank 1] epoch=225 train_batch=6000/15313 loss=1.511890
+[rank 1] epoch=225 train_batch=8000/15313 loss=1.544525
+[rank 1] epoch=225 train_batch=10000/15313 loss=1.518880
+[rank 1] epoch=225 train_batch=12000/15313 loss=1.490615
+[rank 1] epoch=225 train_batch=14000/15313 loss=1.488905
+[rank 1] epoch=226 train_batch=2000/15313 loss=1.566414
+[rank 1] epoch=226 train_batch=4000/15313 loss=1.469418
+[rank 1] epoch=226 train_batch=6000/15313 loss=1.503517
+[rank 1] epoch=226 train_batch=8000/15313 loss=1.488826
+[rank 1] epoch=226 train_batch=10000/15313 loss=1.471595
+[rank 1] epoch=226 train_batch=12000/15313 loss=1.507530
+[rank 1] epoch=226 train_batch=14000/15313 loss=1.427610
+[rank 1] epoch=227 train_batch=2000/15313 loss=1.486190
+[rank 1] epoch=227 train_batch=4000/15313 loss=1.475992
