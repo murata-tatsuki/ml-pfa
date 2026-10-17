@@ -31115,3 +31115,5 @@ test   L_V                   = +0.9693 (47.5%)
 Returning 3.596998453140259
 [rank 0] epoch=227 train_batch=2000/15313 loss=1.504086
 [rank 0] epoch=227 train_batch=4000/15313 loss=1.516232
+[rank 0] epoch=227 train_batch=6000/15313 loss=1.443387
+[rank 0] epoch=227 train_batch=8000/15313 loss=1.474369

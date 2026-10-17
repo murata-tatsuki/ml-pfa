@@ -1,6 +1,7 @@
 #!/bin/sh
 
-cd ..
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+cd "$script_dir/.." || exit 1
 
 DATE=`date '+%Y_%m_%d_%H%M%S'`
 
@@ -75,7 +76,7 @@ alphbeta=alpha
 ## test
 # python train_energyRegression.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 60 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --restart-period 30 --betaE-alpha ${alphbeta} --momentum --momentum-amp --epochs-noLE -1
 # python train_energyRegression_timemeasurement.py -i /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/train -ii /data/suehara/gravnet_ilc/data/ntau/tc_ntau_10GeV_10/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 60 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --restart-period 30 --betaE-alpha ${alphbeta} --momentum --momentum-amp --epochs-noLE -1 > test/calculationTime_${DATE}.log
-python -m cProfile -o shell/no_cpuusage.prof train_energyRegression.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 2 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --energy-regression-cluster --restart-period 30 --betaE-alpha ${alphbeta} --momentum --momentum-amp
+python -m cProfile -o shell/no_cpuusage.prof modifications/train_energyRegression.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 2 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --energy-regression-cluster --restart-period 30 --betaE-alpha ${alphbeta} --momentum --momentum-amp
 # python -m cProfile -o shell/no_cpuusage.prof train_energyRegression_timemeasurement.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 2 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --restart-period 30 --betaE-alpha ${alphbeta} --momentum --momentum-amp --epochs-noLE -1
 # python train_energyRegression_energybranch.py -i /data/suehara/mldata/pfa/murata/code_test/train -ii /data/suehara/mldata/pfa/murata/code_test/validation --no-split --thetaphi --cuda cuda:${ncuda} --epochs 60 --beta-track --force-track-alpha --batch-size 20 --output-dimension 5 --ckptdir test/checkpoint --energy-regression --betaE-alpha ${alphbeta} --momentum --restart-period 30 --epochs-noLE -1 --momentum-amp --energy-branch > test/model_editing.log
 

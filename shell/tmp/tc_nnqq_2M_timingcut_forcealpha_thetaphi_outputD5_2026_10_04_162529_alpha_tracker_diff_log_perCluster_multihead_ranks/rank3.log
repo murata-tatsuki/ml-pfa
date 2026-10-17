@@ -1604,3 +1604,5 @@ restart period :  30
 [rank 3] epoch=226 train_batch=14000/15313 loss=1.487104
 [rank 3] epoch=227 train_batch=2000/15313 loss=1.471194
 [rank 3] epoch=227 train_batch=4000/15313 loss=1.475736
+[rank 3] epoch=227 train_batch=6000/15313 loss=1.465259
+[rank 3] epoch=227 train_batch=8000/15313 loss=1.510474

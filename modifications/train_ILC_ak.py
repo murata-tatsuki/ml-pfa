@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+# Resolve repository modules from this relocated entry point.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import os, os.path as osp
 from time import strftime
 import tqdm
@@ -19,7 +25,6 @@ from lrscheduler import CyclicLRWithRestarts
 #from sklearn.manifold import TSNE
 
 #from ReadText import ReadText
-import sys
 
 #torch.manual_seed(1009)
 torch.autograd.set_detect_anomaly(True)
