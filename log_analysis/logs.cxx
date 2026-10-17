@@ -51,6 +51,13 @@ vector<double> l_e_w_charged_hadron;
 vector<double> l_e_w_neutral_hadron;
 vector<double> l_e_w_muon;
 vector<double> l_e_w_electron;
+vector<double> l_e_photon;
+vector<double> l_e_charged_hadron;
+vector<double> l_e_neutral_hadron;
+vector<double> l_e_muon;
+vector<double> l_e_electron;
+vector<double> l_pid;
+vector<double> l_pid_accuracy;
 vector<double> returning;
 vector<double> train_loss;
 vector<double> train_l_v;
@@ -68,6 +75,13 @@ vector<double> train_l_e_w_charged_hadron;
 vector<double> train_l_e_w_neutral_hadron;
 vector<double> train_l_e_w_muon;
 vector<double> train_l_e_w_electron;
+vector<double> train_l_e_photon;
+vector<double> train_l_e_charged_hadron;
+vector<double> train_l_e_neutral_hadron;
+vector<double> train_l_e_muon;
+vector<double> train_l_e_electron;
+vector<double> train_l_pid;
+vector<double> train_l_pid_accuracy;
 
 vector<string> split(string str, char del) {
     int first = 0;
@@ -94,45 +108,98 @@ vector<string> split(string str, char del) {
 void getting_edep_weight_loss(string line, bool get_train){
     // getting L_E_w_photon
     if(line.find("L_E_w_photon")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_w_photon.push_back(stod(line));
       else train_l_e_w_photon.push_back(stod(line));
     }
 
     // getting L_E_w_charged_hadron
     if(line.find("L_E_w_charged_hadron")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_w_charged_hadron.push_back(stod(line));
       else train_l_e_w_charged_hadron.push_back(stod(line));
     }
 
     // getting L_E_w_neutral_hadron
     if(line.find("L_E_w_neutral_hadron")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_w_neutral_hadron.push_back(stod(line));
       else train_l_e_w_neutral_hadron.push_back(stod(line));
     }
 
     // getting L_E_w_muon
     if(line.find("L_E_w_muon")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_w_muon.push_back(stod(line));
       else train_l_e_w_muon.push_back(stod(line));
     }
 
     // getting L_E_w_electron
     if(line.find("L_E_w_electron")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_w_electron.push_back(stod(line));
       else train_l_e_w_electron.push_back(stod(line));
     }
 }
 
-void getting_loss(string line, bool get_train){
+void getting_particle_loss(string line, bool get_train){
+    // getting L_E_photon
+    if(line.find("L_E_photon")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_e_photon.push_back(stod(line));
+      else train_l_e_photon.push_back(stod(line));
+    }
+
+    // getting L_E_charged_hadron
+    if(line.find("L_E_charged_hadron")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_e_charged_hadron.push_back(stod(line));
+      else train_l_e_charged_hadron.push_back(stod(line));
+    }
+
+    // getting L_E_neutral_hadron
+    if(line.find("L_E_neutral_hadron")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_e_neutral_hadron.push_back(stod(line));
+      else train_l_e_neutral_hadron.push_back(stod(line));
+    }
+
+    // getting L_E_muon
+    if(line.find("L_E_muon")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_e_muon.push_back(stod(line));
+      else train_l_e_muon.push_back(stod(line));
+    }
+
+    // getting L_E_electron
+    if(line.find("L_E_electron")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_e_electron.push_back(stod(line));
+      else train_l_e_electron.push_back(stod(line));
+    }
+}
+
+void getting_pid_loss(string line, bool get_train){
+    // getting L_PID
+    if(line.find("L_PID ")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_pid.push_back(stod(line));
+      else train_l_pid.push_back(stod(line));
+    }
+
+    // getting PID_accuracy_event_mean
+    if(line.find("PID_accuracy_event_mean")!=string::npos){
+      line.erase(0,line.find("= ")+2);
+      if(!get_train) l_pid_accuracy.push_back(stod(line));
+      else train_l_pid_accuracy.push_back(stod(line));
+    }
+}
+
+void getting_loss(string line, bool get_train, bool particle_loss_tv){
     // getting  l_v
     if(line.find("L_V ")!=string::npos){
       // cout << line << endl;
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       // cout << line << endl;
       // cout << stod(line) << endl;
       if(!get_train) l_v.push_back(stod(line));
@@ -141,62 +208,62 @@ void getting_loss(string line, bool get_train){
 
     // getting  L_V_attractive_charged
     if(line.find("L_V_attractive_charged ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_v_att_charged.push_back(stod(line));
       else train_l_v_att_charged.push_back(stod(line));
     }
 
     // getting  L_V_attractive_neutral
     if(line.find("L_V_attractive_neutral ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_v_att_neutral.push_back(stod(line));
       else train_l_v_att_neutral.push_back(stod(line));
     }
 
     // getting  L_V_attractive_charged
     if(line.find("L_V_repulsive_charged ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_v_rep_charged.push_back(stod(line));
       else train_l_v_rep_charged.push_back(stod(line));
     }
 
     // getting  L_V_attractive_neutral
     if(line.find("L_V_repulsive_neutral ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_v_rep_neutral.push_back(stod(line));
       else train_l_v_rep_neutral.push_back(stod(line));
     }
 
     // getting l_beta
     if(line.find("L_beta ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_beta.push_back(stod(line));
       else train_l_beta.push_back(stod(line));
     }
 
     // getting l_e
     if(line.find("L_E ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e.push_back(stod(line));
       else train_l_e.push_back(stod(line));
     }
 
     // getting L_E_tracker
     if(line.find("L_E_tracker ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_tracker.push_back(stod(line));
       else train_l_e_tracker.push_back(stod(line));
     }
 
     if(line.find("L_E_cond ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_cond.push_back(stod(line));
       else train_l_e_cond.push_back(stod(line));
     }
 
     // getting L_E_cluster
     if(line.find("L_E_cluster ")!=string::npos){
-      line.erase(0,line.find("= ")+3);
+      line.erase(0,line.find("= ")+2);
       if(!get_train) l_e_cluster.push_back(stod(line));
       else train_l_e_cluster.push_back(stod(line));
     }
@@ -205,9 +272,65 @@ void getting_loss(string line, bool get_train){
     if(line.find("L_E_w")!=string::npos){
       getting_edep_weight_loss(line, get_train);
     }
+
+    getting_particle_loss(line, particle_loss_tv);
+
+    getting_pid_loss(line, particle_loss_tv);
 }
 
+void draw_pid_dual_axis(TCanvas *canvas, TGraph *loss, TGraph *accuracy, const char *lossTitle){
+    if (loss->GetN() == 0) return;
 
+    canvas->cd();
+    canvas->SetRightMargin(0.18);  // 右軸のラベル・タイトル用
+    canvas->SetGrid();
+    canvas->SetTicky(0);
+
+    loss->SetMinimum(0);
+    loss->SetLineColor(kBlack);
+    loss->SetLineWidth(2);
+    loss->GetXaxis()->SetTitle("epoch");
+    loss->GetYaxis()->SetTitle(lossTitle);
+    loss->Draw("AL");
+    canvas->Update();  // 描画範囲を確定
+
+    const double ymin = canvas->GetUymin();
+    const double ymax = canvas->GetUymax();
+    const double xmax = canvas->GetUxmax();
+
+    // 元のaccuracy値を保持するため、描画用コピーを変換する
+    auto *accDraw = new TGraph(*accuracy);
+    for (int i = 0; i < accDraw->GetN(); ++i) {
+        double x, a;
+        accDraw->GetPoint(i, x, a);
+        accDraw->SetPoint(i, x, ymin + a * (ymax - ymin));
+    }
+
+    accDraw->SetLineColor(kRed + 1);
+    accDraw->SetLineWidth(2);
+    accDraw->Draw("L SAME");
+
+    // 描画領域の下端〜上端にaccuracyの0〜1を対応させる
+    auto *rightAxis = new TGaxis(xmax, ymin, xmax, ymax, 0., 1., 510, "+L");
+    rightAxis->SetTitle("PID accuracy");
+    rightAxis->SetLineColor(kRed + 1);
+    rightAxis->SetLabelColor(kRed + 1);
+    rightAxis->SetTitleColor(kRed + 1);
+    rightAxis->SetLabelFont(42);
+    rightAxis->SetTitleFont(42);
+    rightAxis->SetLabelSize(0.035);
+    rightAxis->SetTitleSize(0.035);
+    rightAxis->SetTitleOffset(1.3);
+    rightAxis->Draw();
+
+    auto *legend = new TLegend(0.4, 0.63, 0.6, 0.78);
+    legend->AddEntry(loss, "L_PID (left)", "l");
+    legend->AddEntry(accDraw, "PID accuracy (right)", "l");
+    legend->Draw();
+
+    canvas->Modified();
+    canvas->Update();
+}
 
 void logs(){ 
   int nepoch = -1;
@@ -221,6 +344,7 @@ void logs(){
   ifstream file(Form("%s",fileName.c_str()));
   string line;
   bool gradient_check = false;
+  bool particle_loss_tv = false;
 
   while(getline(file, line)){
     if(line.find("[rank 0]") != std::string::npos) continue;
@@ -261,7 +385,8 @@ void logs(){
       returning.push_back(stod(line));
     }
 
-    getting_loss(line, line.find("train")!=string::npos);
+    if (line.find("L_V ") != string::npos) particle_loss_tv = line.find("train") != string::npos;
+    getting_loss(line, line.find("train")!=string::npos, particle_loss_tv);
     // cout << line << endl;
 
     // getting gradient
@@ -332,6 +457,13 @@ void logs(){
   TGraph *g_LE_w_neutral_hadron = new TGraph();
   TGraph *g_LE_w_muon = new TGraph();
   TGraph *g_LE_w_electron = new TGraph();
+  TGraph *g_LE_photon = new TGraph();
+  TGraph *g_LE_charged_hadron = new TGraph();
+  TGraph *g_LE_neutral_hadron = new TGraph();
+  TGraph *g_LE_muon = new TGraph();
+  TGraph *g_LE_electron = new TGraph();
+  TGraph *g_LPID = new TGraph();
+  TGraph *g_LPID_accuracy = new TGraph();
   g_loss->GetXaxis()->SetTitle("epoch"); 
   g_loss->GetYaxis()->SetTitle("validation loss"); 
   // g_loss->SetTitle("beta * E"); 
@@ -355,6 +487,13 @@ void logs(){
   g_LE_w_neutral_hadron->SetLineColor(3); 
   g_LE_w_muon->SetLineColor(4); 
   g_LE_w_electron->SetLineColor(7); 
+  g_LE_photon->SetLineColor(1); 
+  g_LE_charged_hadron->SetLineColor(2); 
+  g_LE_neutral_hadron->SetLineColor(3); 
+  g_LE_muon->SetLineColor(4); 
+  g_LE_electron->SetLineColor(7); 
+  g_LPID->SetLineColor(1); 
+  g_LPID_accuracy->SetLineColor(2); 
 
   TLegend *legend = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend->AddEntry( g_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -382,6 +521,13 @@ void logs(){
   TGraph *g_train_LE_w_neutral_hadron = new TGraph();
   TGraph *g_train_LE_w_muon = new TGraph();
   TGraph *g_train_LE_w_electron = new TGraph();
+  TGraph *g_train_LE_photon = new TGraph();
+  TGraph *g_train_LE_charged_hadron = new TGraph();
+  TGraph *g_train_LE_neutral_hadron = new TGraph();
+  TGraph *g_train_LE_muon = new TGraph();
+  TGraph *g_train_LE_electron = new TGraph();
+  TGraph *g_train_LPID = new TGraph();
+  TGraph *g_train_LPID_accuracy = new TGraph();
   g_train_loss->GetXaxis()->SetTitle("epoch"); 
   g_train_loss->GetYaxis()->SetTitle("train loss"); 
   g_train_loss->SetMinimum(0); 
@@ -402,6 +548,13 @@ void logs(){
   g_train_LE_w_neutral_hadron->SetLineColor(3); 
   g_train_LE_w_muon->SetLineColor(4); 
   g_train_LE_w_electron->SetLineColor(7); 
+  g_train_LE_photon->SetLineColor(1); 
+  g_train_LE_charged_hadron->SetLineColor(2); 
+  g_train_LE_neutral_hadron->SetLineColor(3); 
+  g_train_LE_muon->SetLineColor(4); 
+  g_train_LE_electron->SetLineColor(7); 
+  g_train_LPID->SetLineColor(1); 
+  g_train_LPID_accuracy->SetLineColor(2); 
 
   TLegend *legend_train = new TLegend( 0.4, 0.48, 0.8, 0.78);
   legend_train->AddEntry( g_train_loss, "total loss", "l"); // AddEntry( pointer , "interpretation" , "option" )
@@ -434,6 +587,13 @@ void logs(){
     if(l_e_w_neutral_hadron.size()>0) g_LE_w_neutral_hadron->SetPoint(i,i,l_e_w_neutral_hadron[i]);
     if(l_e_w_muon.size()>0) g_LE_w_muon->SetPoint(i,i,l_e_w_muon[i]);
     if(l_e_w_electron.size()>0) g_LE_w_electron->SetPoint(i,i,l_e_w_electron[i]);
+    if(l_e_photon.size()>0) g_LE_photon->SetPoint(i,i,l_e_photon[i]);
+    if(l_e_charged_hadron.size()>0) g_LE_charged_hadron->SetPoint(i,i,l_e_charged_hadron[i]);
+    if(l_e_neutral_hadron.size()>0) g_LE_neutral_hadron->SetPoint(i,i,l_e_neutral_hadron[i]);
+    if(l_e_muon.size()>0) g_LE_muon->SetPoint(i,i,l_e_muon[i]);
+    if(l_e_electron.size()>0) g_LE_electron->SetPoint(i,i,l_e_electron[i]);
+    if(l_pid.size()>0) g_LPID->SetPoint(i,i,l_pid[i]);
+    if(l_pid_accuracy.size()>0) g_LPID_accuracy->SetPoint(i,i,l_pid_accuracy[i]);
 
     if(i>3 && minimum_loss>returning[i]){
       minimum_loss = returning[i];
@@ -460,6 +620,14 @@ void logs(){
     if(train_l_e_w_neutral_hadron.size()>0) g_train_LE_w_neutral_hadron->SetPoint(i,i,train_l_e_w_neutral_hadron[i]);
     if(train_l_e_w_muon.size()>0) g_train_LE_w_muon->SetPoint(i,i,train_l_e_w_muon[i]);
     if(train_l_e_w_electron.size()>0) g_train_LE_w_electron->SetPoint(i,i,train_l_e_w_electron[i]);
+    if(train_l_e_photon.size()>0) g_train_LE_photon->SetPoint(i,i,train_l_e_photon[i]);
+    if(train_l_e_charged_hadron.size()>0) g_train_LE_charged_hadron->SetPoint(i,i,train_l_e_charged_hadron[i]);
+    if(train_l_e_neutral_hadron.size()>0) g_train_LE_neutral_hadron->SetPoint(i,i,train_l_e_neutral_hadron[i]);
+    if(train_l_e_muon.size()>0) g_train_LE_muon->SetPoint(i,i,train_l_e_muon[i]);
+    if(train_l_e_electron.size()>0) g_train_LE_electron->SetPoint(i,i,train_l_e_electron[i]);
+    if(train_l_pid.size()>0) g_train_LPID->SetPoint(i,i,train_l_pid[i]);
+    if(train_l_pid_accuracy.size()>0) g_train_LPID_accuracy->SetPoint(i,i,train_l_pid_accuracy[i]);
+
   }
   cout << "epoch : " << minimum_loss_epoch << "/" << nepoch << "  minimum loss : " << minimum_loss << endl;
 
@@ -668,4 +836,63 @@ void logs(){
     g_train_LE_w_electron->Draw("same");
     legend_train_LE->Draw("same");
   }
+
+
+
+  TLegend *legend_LE_particle = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_LE_particle->AddEntry( g_LE_photon, "photon", "l");
+  legend_LE_particle->AddEntry( g_LE_charged_hadron, "charged hadron", "l");
+  legend_LE_particle->AddEntry( g_LE_neutral_hadron, "neutral hadron", "l");
+  legend_LE_particle->AddEntry( g_LE_muon, "muon", "l");
+  legend_LE_particle->AddEntry( g_LE_electron, "electron", "l");
+  legend_LE_particle->SetFillColor(0);
+  TCanvas *c_l_e_particle = new TCanvas("c_l_e_particle","c_l_e_particle validation",1);
+  c_l_e_particle->cd();
+  c_l_e_particle->SetGrid();
+  g_LE_photon->SetMinimum(0); 
+  g_LE_photon->SetMaximum(0.5); 
+  g_LE_photon->GetXaxis()->SetTitle("epoch"); 
+  g_LE_photon->GetYaxis()->SetTitle("validation loss"); 
+  if(l_e_photon.size()>0){
+    g_LE_photon->Draw();
+    g_LE_charged_hadron->Draw("same");
+    g_LE_neutral_hadron->Draw("same");
+    g_LE_muon->Draw("same");
+    g_LE_electron->Draw("same");
+    legend_LE_particle->Draw("same");
+  }
+
+  TLegend *legend_train_LE_particle = new TLegend( 0.4, 0.48, 0.8, 0.78);
+  legend_train_LE_particle->AddEntry( g_train_LE_photon, "photon", "l");
+  legend_train_LE_particle->AddEntry( g_train_LE_charged_hadron, "charged hadron", "l");
+  legend_train_LE_particle->AddEntry( g_train_LE_neutral_hadron, "neutral hadron", "l");
+  legend_train_LE_particle->AddEntry( g_train_LE_muon, "muon", "l");
+  legend_train_LE_particle->AddEntry( g_train_LE_electron, "electron", "l");
+  legend_train_LE_particle->SetFillColor(0);
+  TCanvas *c_l_e_particle_train = new TCanvas("c_l_e_particle_train","c_l_e_particle train",1);
+  c_l_e_particle_train->cd();
+  c_l_e_particle_train->SetGrid();
+  g_train_LE_photon->SetMinimum(0); 
+  g_train_LE_photon->SetMaximum(0.5); 
+  g_train_LE_photon->GetXaxis()->SetTitle("epoch"); 
+  g_train_LE_photon->GetYaxis()->SetTitle("train loss"); 
+  if(l_e_photon.size()>0){
+    g_train_LE_photon->Draw();
+    g_train_LE_charged_hadron->Draw("same");
+    g_train_LE_neutral_hadron->Draw("same");
+    g_train_LE_muon->Draw("same");
+    g_train_LE_electron->Draw("same");
+    legend_train_LE_particle->Draw("same");
+  }
+
+
+
+  // validation
+  TCanvas *c_l_pid = new TCanvas("c_l_pid", "PID validation", 800, 600);
+  draw_pid_dual_axis(c_l_pid, g_LPID, g_LPID_accuracy, "validation L_PID");
+
+  // train
+  TCanvas *c_l_pid_train = new TCanvas("c_l_pid_train", "PID train", 800, 600);
+  draw_pid_dual_axis(c_l_pid_train, g_train_LPID, g_train_LPID_accuracy, "train L_PID");
+
 }
