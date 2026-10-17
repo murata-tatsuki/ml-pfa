@@ -18786,3 +18786,5 @@ Returning 2.3996033668518066
 [rank 0] epoch=137 train_batch=2000/15313 loss=1.317574
 [rank 0] epoch=137 train_batch=4000/15313 loss=1.382065
 [rank 0] epoch=137 train_batch=6000/15313 loss=1.402247
+[rank 0] epoch=137 train_batch=8000/15313 loss=1.305506
+[rank 0] epoch=137 train_batch=10000/15313 loss=1.316960

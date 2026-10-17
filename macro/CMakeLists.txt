@@ -40,3 +40,10 @@ macro_root_executable(efficiency_purity_contribution
         mains/main_efficiency_purity_contribution.cxx
         src/efficiency_purity_check_reco_effpur_contiribution.cxx
 )
+
+# PID analysis uses its own process: it shares helper names with the legacy macro.
+macro_root_executable(efficiency_purity_contribution_pid
+    SOURCES
+        mains/main_efficiency_purity_contribution_pid.cxx
+        src/efficiency_purity_check_reco_effpur_contiribution_pid.cxx
+)

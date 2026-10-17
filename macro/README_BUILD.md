@@ -29,6 +29,39 @@ make
 ./build/efficiency_purity_contribution
 ```
 
+## PID版のビルドと実行
+
+対象は `src/efficiency_purity_check_reco_effpur_contiribution_pid.cxx`。
+入口は `mains/main_efficiency_purity_contribution_pid.cxx` です。
+
+```bash
+cd ~/master/macro
+make efficiency_purity_contribution_pid
+
+# ソース内の既定入力リスト・出力先で実行
+./build/efficiency_purity_contribution_pid
+
+# 入力ROOT・Pandora切替・出力先を指定
+./build/efficiency_purity_contribution_pid /path/to/pid.root false figures/pid
+./build/efficiency_purity_contribution_pid /path/to/pandora.root true figures/pandora
+
+# 解析せず引数を確認
+./build/efficiency_purity_contribution_pid --help
+```
+
+引数は `[INPUT_ROOT [PANDORA [OUTPUT_DIRECTORY]]]` の順です。
+`PANDORA` は `false/true/0/1`、省略時は `false`。
+入力と出力先は省略または空文字列ならソース内の既定設定を使用します。
+`qq_energy`・`use_truth_clustering` 等は引き続きPIDソース内の設定で、
+入力パスや出力先から自動判定しません。変更後は再度 `make` してください。
+相対入力パスを使う場合は従来どおり `macro/` から実行します。
+
+通常の `make` でも既存版とPID版の両実行ファイルをビルドします。
+PID版の実行ファイル、オブジェクト、依存関係などはすべて `build/` 内に生成されます。
+PID版は `root ...cxx` やACLiCでは起動せず、上記の実行ファイルを使ってください。
+以前のPID用 `src/*_pid_cxx.so`・依存ファイル・ROOT辞書は不要です。
+他のマクロのビルド・実行方式は変更していません。
+
 **表示について:** 実行ファイルは `main` 内で `gROOT->SetBatch(kTRUE)` しており、**コンパイル版ではキャンバスは開きません**（サーバや SSH でもそのまま走る）。インタプリタで `root ... .x src/....cxx` したときは従来どおり GUI が出ます。画像保存は `saving_canvas` や `SaveAs` がバッチでも有効です。
 
 ### `TClassTable::Add ... already in TClassTable` などの Warning

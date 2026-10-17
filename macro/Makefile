@@ -5,7 +5,7 @@ BUILD_DIR   := build
 BUILD_TYPE  ?= Release
 CMAKE_FLAGS ?= -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
-.PHONY: all clean reconfigure
+.PHONY: all clean reconfigure efficiency_purity_contribution_pid
 
 all:
 	@cmake -S . -B $(BUILD_DIR) $(CMAKE_FLAGS)
@@ -18,3 +18,8 @@ clean:
 reconfigure:
 	$(RM) -r $(BUILD_DIR)
 	@$(MAKE) all
+
+# Build only the PID analysis executable.
+efficiency_purity_contribution_pid:
+	@cmake -S . -B $(BUILD_DIR) $(CMAKE_FLAGS)
+	@cmake --build $(BUILD_DIR) --target $@ --parallel

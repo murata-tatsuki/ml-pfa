@@ -3,9 +3,10 @@
 // 
 // usage
 // Default configuration (change fileName/train_particle_type below):
-//   root -l -b -q src/efficiency_purity_check_reco_effpur_contiribution_pid.cxx
+//   make efficiency_purity_contribution_pid
+//   ./build/efficiency_purity_contribution_pid
 // A single PID ROOT file made by save_root_reco_pid.py --pid-readout representative:
-//   root -l -b -q 'src/efficiency_purity_check_reco_effpur_contiribution_pid.cxx("/path/to/pid.root",false,"figures/pid")'
+//   ./build/efficiency_purity_contribution_pid /path/to/pid.root false figures/pid
 // The same three arguments and the default file-list construction are retained.
 // PID branches are detected per file: energy_pid is authoritative for energy
 // plots and event sums. Without PID branches, the original two-head/Pandora
@@ -45,7 +46,7 @@
 // track-anchored matching for charged particles and relative-majority ownership
 // for neutral particles, then take ratios of global energy sums.
 
-// root -l -b -q 'src/efficiency_purity_check_reco_effpur_contiribution_pid.cxx+O'
+// Native entry point: mains/main_efficiency_purity_contribution_pid.cxx
 
 #include "../root_common_includes.h"
 
@@ -57,6 +58,7 @@
 #include "TLatex.h"
 #include "THStack.h"
 #include "TNamed.h"
+#include "TObjString.h"
 #include "pid_jet_resolution_summary.h"
 #include "pid_clustering_summary.h"
 
@@ -153,7 +155,6 @@ const bool edep_weight_ = true;
 
 const int energyMax = test_particle_type == "ntau_10GeV_10" ? 12 : (test_particle_type == "uds91" ? 50 : 100 );
 const int energyMaximum = test_particle_type == "ntau_10GeV_10" ? 10 : (test_particle_type == "uds91" ? 40 : 100 );
-const string test_particle_types = {"ntau_10GeV_10", "uds"};
 
 // MC truth energy (GeV) bins for per-bin resolution / efficiency / purity vs energy
 static const Double_t kTruthEnergyBinEdges[] = {
@@ -3231,8 +3232,7 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     fileout.Write();
 }
 
-// ROOT's .x filename.cxx(...) uses the function matching the file stem.
-// Keep the original callable above for existing interactive invocations.
+// Public entry point called by the native executable.
 void efficiency_purity_check_reco_effpur_contiribution_pid(
     const char* input_file = nullptr,
     bool pandora_mode = default_pandora,

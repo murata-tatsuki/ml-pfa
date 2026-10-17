@@ -30839,3 +30839,5 @@ test   L_V                   = +0.2098 (55.3%)
     PID_accuracy_event_mean = 0.888508
     N_PID = 1756.1
 Returning 1.6913048028945923
+[rank 0] epoch=225 train_batch=2000/15313 loss=1.435905
+[rank 0] epoch=225 train_batch=4000/15313 loss=1.612153
