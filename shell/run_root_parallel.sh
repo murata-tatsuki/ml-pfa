@@ -1,6 +1,8 @@
 #!/bin/sh
 
-cd ..
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_DIR=$(dirname "$SCRIPT_DIR")
+cd "$PROJECT_DIR" || exit 1
 
 checkpoint_path=/data/murata/master/checkpoint
 output_path=output/energy_regression_1to1
@@ -98,18 +100,17 @@ outdir=${outdirectory}/${base}.root
 
 mkdir -p ${output_path}/${outdirectory}
 
-CUDA_VISIBLE_DEVICES=$GPU python save_root_reco_w_Cedric.py \
+CUDA_VISIBLE_DEVICES=$GPU python save_root.py \
   "$file" \
   "${checkpoint}/ckpt_${epoch}_1.pth.tar" \
   "${output_path}/${outdir}" \
   0 5000000 False ${input_dim} ${outD} \
-  --energy-regression \
+  --energy-heads 2 \
   --momentum \
   --momentum-amp \
   --device cuda:0 \
   --tbeta 0.9 \
   --td 0.5 \
-  --energy-regression-cluster \
   --event-total-energy \
   --model-variant multihead
 

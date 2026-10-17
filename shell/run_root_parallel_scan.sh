@@ -1,6 +1,10 @@
 #!/bin/sh
 
-cd ..
+# Completed outputs with identical input/model/settings are skipped by save_root.py.
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_DIR=$(dirname "$SCRIPT_DIR")
+cd "$PROJECT_DIR" || exit 1
 
 checkpoint_path=/data/murata/master/checkpoint
 output_path=output/energy_regression_1to1
@@ -46,23 +50,21 @@ epoch=27
 base=$(basename "$file" .h5)
 inputEnergy=$(basename $(dirname "$file"))
 
-mkdir -p ${output_path}/${outdirectory}
-
 outdirectory=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/multi-head
+mkdir -p "${output_path}/${outdirectory}"
 
-CUDA_VISIBLE_DEVICES=$GPU python save_root_reco_scan_once.py \
+CUDA_VISIBLE_DEVICES=$GPU python save_root.py \
   "$file" \
   "${checkpoint}/ckpt_${epoch}_1.pth.tar" \
   "${output_path}/${outdirectory}" \
   0 5000 False 7 5 \
-  --energy-regression \
-  --energy-regression-cluster \
+  --energy-heads 2 \
   --momentum \
   --momentum-amp \
   --event-total-energy \
   --model-variant multihead \
   --device cuda:0 \
-  --beta-d-scan
+  --scan --scan-workers "${FAST_SCAN_WORKERS:-1}"
 
 
 

@@ -109,13 +109,13 @@ fi
 # FAST_SCAN_WORKERS controls CPU beta workers; PID_THREADS overrides the
 # inference CPU thread count independently.
 echo "[PID scan] index=$idx GPU=$gpu epoch=57 workers=$scan_workers replace=$replace input=$file output=$output_directory"
-CUDA_VISIBLE_DEVICES="$gpu" "$python_bin" -B "$repo_dir/save_root_reco_pid.py" \
+CUDA_VISIBLE_DEVICES="$gpu" "$python_bin" -B "$repo_dir/save_root.py" \
   "$file" "$checkpoint" "$output_directory" \
   0 "$nend" False 7 5 \
-  --pid-readout representative "${input_options[@]}" \
-  --energy-regression --energy-regression-cluster \
+  --pid "${input_options[@]}" \
+  --energy-heads 5 \
   --momentum --momentum-amp --model-variant multihead \
   --device "$device" --pid-threads "$pid_threads" \
   --root-chunk-events "${ROOT_CHUNK_EVENTS:-10}" \
   --pipeline-depth "${PIPELINE_DEPTH:-40}" \
-  --beta-d-scan --scan-workers "$scan_workers"
+  --scan --scan-workers "$scan_workers"

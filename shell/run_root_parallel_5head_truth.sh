@@ -90,10 +90,7 @@ output_base=${ROOT_OUTPUT_BASE:-$repo_dir/output/energy_regression_1to1}
 # output_directory=$output_base/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/$input_energy/5head_pid/tbeta090td050
 output_directory=$output_base/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/$input_energy/5head_pid/truth_clustering
 output_file=$output_directory/$base.root
-if [[ -e $output_file && $replace != 1 ]]; then
-  echo "Output exists: $output_file (set ROOT_REPLACE=1 to regenerate)" >&2
-  exit 1
-fi
+# Python validates existing outputs for default resume; ROOT_REPLACE=1 regenerates.
 mkdir -p -- "$output_directory"
 
 input_options=(--pid-input-format "$input_format")
@@ -108,11 +105,11 @@ fi
 
 # FAST_SCAN_WORKERS is accepted as a CPU-thread alias here; beta/td are fixed.
 echo "[PID] index=$idx GPU=$gpu epoch=57 input=$file output=$output_file"
-CUDA_VISIBLE_DEVICES="$gpu" "$python_bin" -B "$repo_dir/save_root_reco_pid.py" \
+CUDA_VISIBLE_DEVICES="$gpu" "$python_bin" -B "$repo_dir/save_root.py" \
   "$file" "$checkpoint" "$output_file" \
   0 "$nend" False 7 5 \
-  --pid-readout representative "${input_options[@]}" \
-  --energy-regression --energy-regression-cluster \
+  --pid "${input_options[@]}" \
+  --energy-heads 5 \
   --momentum --momentum-amp --model-variant multihead \
   --device "$device" --pid-threads "$pid_threads" \
   --root-chunk-events "${ROOT_CHUNK_EVENTS:-10}" \

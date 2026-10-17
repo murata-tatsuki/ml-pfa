@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Completed outputs with identical input/model/settings are skipped by save_root.py.
+
 # Fast counterpart of run_root_parallel_scan.sh.
 # Usage (the same xargs input format):
 #   ... | nl -v0 | xargs -n2 -P7 env RUN_GPU=0 \
@@ -50,17 +52,16 @@ inputEnergy=$(basename "$(dirname "$file")")
 outdirectory=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_lr5e-4/${inputEnergy}/multi-head
 mkdir -p "${output_path}/${outdirectory}"
 
-CUDA_VISIBLE_DEVICES=$GPU python save_root_reco_scan_fast.py \
+CUDA_VISIBLE_DEVICES=$GPU python save_root.py \
   "$file" \
   "${checkpoint}/ckpt_${epoch}_1.pth.tar" \
   "${output_path}/${outdirectory}" \
   0 5000 False 7 5 \
-  --energy-regression \
-  --energy-regression-cluster \
+  --energy-heads 2 \
   --momentum \
   --momentum-amp \
   --event-total-energy \
   --model-variant multihead \
   --device cuda:0 \
-  --beta-d-scan \
+  --scan \
   --scan-workers "${SCAN_WORKERS}"

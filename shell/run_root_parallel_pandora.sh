@@ -1,6 +1,8 @@
 #!/bin/sh
 
-cd ..
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_DIR=$(dirname "$SCRIPT_DIR")
+cd "$PROJECT_DIR" || exit 1
 
 checkpoint_path=/data/murata/master/checkpoint
 output_path=output/energy_regression_1to1
@@ -98,7 +100,7 @@ outdir=skimmed/tc_${train_particle}/${outD}D/E_regression/tbeta_td_scan/qmin02_l
 
 mkdir -p ${output_path}/${outdirectory}
 
-CUDA_VISIBLE_DEVICES=$GPU python save_root_reco_w_Cedric.py \
+CUDA_VISIBLE_DEVICES=$GPU python save_root.py \
   "$file" \
   "${checkpoint}/ckpt_${epoch}_1.pth.tar" \
   "${output_path}/${outdir}" \

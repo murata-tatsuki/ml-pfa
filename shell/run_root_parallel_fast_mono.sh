@@ -49,18 +49,17 @@ output_directory=${output_base}/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan
 output_file=${output_directory}/${base}.root
 mkdir -p -- "$output_directory"
 
-exec env CUDA_VISIBLE_DEVICES="$gpu" python "${repo_dir}/save_root_reco_w_Cedric_fast.py" \
+exec env CUDA_VISIBLE_DEVICES="$gpu" python "${repo_dir}/save_root.py" \
   "$file" \
   "$checkpoint" \
   "$output_file" \
   0 5000000 False "$input_dim" "$output_dim" \
-  --energy-regression \
+  --energy-heads 2 \
   --momentum \
   --momentum-amp \
   --device cuda:0 \
   --tbeta 0.9 \
   --td 0.5 \
-  --energy-regression-cluster \
   --event-total-energy \
   --root-chunk-events "${ROOT_CHUNK_EVENTS:-10}" \
   --pipeline-depth "${PIPELINE_DEPTH:-40}"

@@ -1,536 +1,254 @@
-import sys
-import numpy as np
-from distutils.util import strtobool
-#import evaluation_noNoise as ev
-import awkward as ak
-from model import get_model, get_model_branch
-from dataset import ILCDataset
-from test_yielder import TestYielder
-from ROOT import TFile, TTree
+#!/usr/bin/env python3
+"""Export Cedric ROOT trees with optional PID and two/five energy heads.
+
+The positional arguments and physics options of the former Cedric fast, PID
+and resume-scan commands are accepted here. The shared writer always stores
+t/reco/prediction/event/jet, uses C++ chunk filling, and publishes each file
+only after validation. --energy-heads selects a compatible trained checkpoint;
+it does not change the checkpoint's network or invent untrained heads.
+"""
+from __future__ import annotations
+
 import argparse
-import torch
-from sed import minimum_enclosing_sphere
-from matching import matching_1to1
-
-## 1 to 1 match to reco-cluster and true cluster
-## the largest edep_match reco-cluster is chosen
-
-class Data:
-    ''' TTree data for MCParticle
-        to be used for evaluating the efficiency
-    '''
-    event = np.array([0], dtype=np.int32)
-    hitid = np.array([0], dtype=np.int32)
-    mcid = np.array([0], dtype=np.int32)
-    truthid = np.array([0], dtype=np.int32)
-    mcpdg = np.array([0], dtype=np.int32)
-    mccharge = np.array([0], dtype=np.int32)
-    mcmass = np.array([0], dtype=np.float64)
-    mcpx = np.array([0], dtype=np.float64)
-    mcpy = np.array([0], dtype=np.float64)
-    mcpz = np.array([0], dtype=np.float64)
-    mcen = np.array([0], dtype=np.float64)
-    mcstatus = np.array([0], dtype=np.int32)
-    edep = np.array([0], dtype=np.float64)
-    edep_reco = np.array([0], dtype=np.float64)
-    edep_match = np.array([0], dtype=np.float64)
-    ncluster = np.array([0], dtype=np.int32)
-    matched_ncluster = np.array([0], dtype=np.int32)
-    matched_cluster = np.array([0], dtype=np.int32)
-    pred_edep = np.array([0], dtype=np.float64)
-    pred_edep_cluster = np.array([0], dtype=np.float64)
-    cond_beta = np.array([0], dtype=np.float64)
-    cond_track = np.array([0], dtype=np.int32)
-    sed_radius = np.array([0], dtype=np.float64)    # smallest enclosing disk radius
+import copy
+import math
+import os
+from pathlib import Path
 
 
-    def setup_branch(this,t):
-        t.Branch("event",this.event,"event/I")
-        t.Branch("hitid",this.hitid,"hitid/I")
-        t.Branch("mcid",this.mcid,"mcid/I")
-        t.Branch("truthid",this.truthid,"truthid/I")
-        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
-        t.Branch("mccharge",this.mccharge,"mccharge/I")
-        t.Branch("mcmass",this.mcmass,"mcmass/D")
-        t.Branch("mcpx",this.mcpx,"mcpx/D")
-        t.Branch("mcpy",this.mcpy,"mcpy/D")
-        t.Branch("mcpz",this.mcpz,"mcpz/D")
-        t.Branch("mcen",this.mcen,"mcen/D")
-        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
-        t.Branch("edep",this.edep,"edep/D")
-        t.Branch("edep_reco",this.edep_reco,"edep_reco/D")
-        t.Branch("edep_match",this.edep_match,"edep_match/D")
-        t.Branch("ncluster",this.matched_ncluster,"ncluster/I")
-        t.Branch("matched_ncluster",this.matched_ncluster,"matched_ncluster/I")
-        t.Branch("matched_cluster",this.matched_cluster,"matched_cluster/I")
-        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
-        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
-        t.Branch("cond_beta",this.cond_beta,"cond_beta/D")
-        t.Branch("cond_track",this.cond_track,"cond_track/I")
-        t.Branch("sed_radius",this.sed_radius,"sed_radius/D")
-
-#   ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
-#   ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
-
-class RecoData:
-    ''' TTree data for reconstructed cluster
-        to be used for evaluating the purity
-    '''
-    event = np.array([0], dtype=np.int32)
-    cluster = np.array([0], dtype=np.int32)
-    nhits = np.array([0], dtype=np.int32)
-    mcid = np.array([0], dtype=np.int32)
-    mcpdg = np.array([0], dtype=np.int32)
-    mccharge = np.array([0], dtype=np.int32)
-    mcmass = np.array([0], dtype=np.float64)
-    mcpx = np.array([0], dtype=np.float64)
-    mcpy = np.array([0], dtype=np.float64)
-    mcpz = np.array([0], dtype=np.float64)
-    mcen = np.array([0], dtype=np.float64)
-    mcstatus = np.array([0], dtype=np.int32)
-    edep_reco = np.array([0], dtype=np.float64)
-    edep_mc = np.array([0], dtype=np.float64)
-    edep_match = np.array([0], dtype=np.float64)
-    pred_edep = np.array([0], dtype=np.float64)
-    pred_edep_cluster = np.array([0], dtype=np.float64)
-
-    def setup_branch(this,t):
-        t.Branch("event",this.event,"event/I")
-        t.Branch("cluster",this.cluster,"cluster/I")
-        t.Branch("nhits",this.nhits,"nhits/I")
-        t.Branch("mcid",this.mcid,"mcid/I")
-        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
-        t.Branch("mccharge",this.mccharge,"mccharge/I")
-        t.Branch("mcmass",this.mcmass,"mcmass/D")
-        t.Branch("mcpx",this.mcpx,"mcpx/D")
-        t.Branch("mcpy",this.mcpy,"mcpy/D")
-        t.Branch("mcpz",this.mcpz,"mcpz/D")
-        t.Branch("mcen",this.mcen,"mcen/D")
-        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
-        t.Branch("edep_reco",this.edep_reco,"edep_reco/D")
-        t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
-        t.Branch("edep_match",this.edep_match,"edep_match/D")
-        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
-        t.Branch("pred_edep_cluster",this.pred_edep_cluster,"pred_edep_cluster/D")
-
-class PredData:
-    ''' TTree data for predicted (output of GravNet)
-        to be used for evaluating the purity
-    '''
-    event = np.array([0], dtype=np.int32)
-    hitid = np.array([0], dtype=np.int32)
-    mcid = np.array([0], dtype=np.int32)
-    truthid = np.array([0], dtype=np.int32)
-    mcpdg = np.array([0], dtype=np.int32)
-    mccharge = np.array([0], dtype=np.int32)
-    mcmass = np.array([0], dtype=np.float64)
-    mcpx = np.array([0], dtype=np.float64)
-    mcpy = np.array([0], dtype=np.float64)
-    mcpz = np.array([0], dtype=np.float64)
-    mcen = np.array([0], dtype=np.float64)
-    mcstatus = np.array([0], dtype=np.int32)
-    # edep_mc = np.array([0], dtype=np.float64)
-    pred_edep = np.array([0], dtype=np.float64)
-    pred_edep_cluster = np.array([0], dtype=np.float64)
-    pred_beta = np.array([0], dtype=np.float64)
-    pred_alpha = np.array([0], dtype=np.int32)
-    trackness = np.array([0], dtype=np.int32)
-
-    def setup_branch(this,t):
-        t.Branch("event",this.event,"event/I")
-        t.Branch("hitid",this.mcid,"hitid/I")
-        t.Branch("mcid",this.mcid,"mcid/I")
-        t.Branch("truthid",this.mcid,"truthid/I")
-        t.Branch("mcpdg",this.mcpdg,"mcpdg/I")
-        t.Branch("mccharge",this.mccharge,"mccharge/I")
-        t.Branch("mcmass",this.mcmass,"mcmass/D")
-        t.Branch("mcpx",this.mcpx,"mcpx/D")
-        t.Branch("mcpy",this.mcpy,"mcpy/D")
-        t.Branch("mcpz",this.mcpz,"mcpz/D")
-        t.Branch("mcen",this.mcen,"mcen/D")
-        t.Branch("mcstatus",this.mcstatus,"mcstatus/I")
-        # t.Branch("edep_mc",this.edep_mc,"edep_mc/D")
-        t.Branch("pred_edep",this.pred_edep,"pred_edep/D")
-        t.Branch("pred_edep_cluster",this.pred_edep,"pred_edep_cluster/D")
-        t.Branch("pred_beta",this.pred_beta,"pred_beta/D")
-        t.Branch("pred_alpha",this.pred_alpha,"pred_alpha/I")
-        t.Branch("trackness",this.trackness,"trackness/I")
+# Set these before importing NumPy/Torch or starting scan worker processes.
+for _name in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS',
+              'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS'):
+    os.environ.setdefault(_name, '1')
 
 
-# def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, pandora=False, energyRegression=False, momentum=False, momentumAmp=False, mctpe=False):
-def save_root(datapath, ckpt, outfile, nstart=0, nend=-1, timingCut=False, input_dim=5, output_dim=3, args={}):
-    debug = False
-    pandora=args.pandora
-    energyRegression=args.energy_regression
-    energyRegressionCluster=args.energy_regression_cluster
-    momentum=args.momentum
-    momentumAmp=args.momentum_amp
-    mctpe=args.mctpe
-    energy_branch=args.energy_branch
-    device=args.device
-    if 'cuda' in device: torch.cuda.set_device(device)
-    assert(not (args.beta_d_scan and (".root" in outfile)))
-
-    thetaphi = True if input_dim == 7 else False
-    if momentum:
-        input_dim += 3 
-        if momentumAmp:
-            input_dim += 1
-    if energyRegression:
-        output_dim += 1
-        if energyRegressionCluster:
-            output_dim += 1
-    print(f"Loading model from checkpoint {ckpt}")
-    if energy_branch:
-        model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
-    else:
-        model = get_model(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
-    print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
-    dataset = ILCDataset(datapath, timingCut=timingCut, thetaphi=thetaphi, test_mode=True, nstart=nstart, nend=nend, pandora=pandora,momentum=momentum,momentumAmp=momentumAmp, mctpe=mctpe)
-    yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora)
-
-    nmax = None if nend==-1 else nend-nstart+1
-    print("number of entry : ", nmax)
-
-    """
-    ak_feat: edep, x, y, z, time, track, charge, px, py, pz (atcalo)
-        --> save edep, drop others
-    ak_label: hitid, mcid, pdg, charge, mass, px, py, pz (of mcp), status
-        --> save all labels
-    """
-    
-    outfileDir = outfile
-    tbeta_list = [args.tbeta]
-    td_list = [args.td]
-
-    if args.beta_d_scan:
-        tbeta_list = [i/10.0 for i in range(9,0,-1)]
-        td_list = [i/10.0 for i in range(9,0,-1)]
-        # tbeta_list = [i/10.0 for i in range(1,0,-1)]
-        # td_list = [i/10.0 for i in range(9,0,-1)]
-        # # # tbeta_list = [0.9+i/100.0 for i in range(5,3,-1)]
-        # # tbeta_list = [0.91]
-        # # td_list = [i/10.0 for i in range(9,0,-1)]
-
-    print(tbeta_list)
-    print(td_list)
+def _boolean(value):
+    value = str(value).lower()
+    if value in ('true', '1', 'yes', 'on'):
+        return True
+    if value in ('false', '0', 'no', 'off'):
+        return False
+    raise argparse.ArgumentTypeError('Use True or False for timingCut')
 
 
-    for tbeta in tbeta_list:
-        for td in td_list:
-            tbeta_now = round(tbeta * 100)
-            td_now = round(td * 100)
-            # outfile = outfileDir + '/tbeta' + format(tbeta_now, '02') + '0td' + format(td_now, '02') + '0.root'
-            outfile = outfile if not args.beta_d_scan else outfileDir + '/tbeta' + format(tbeta_now, '03') + 'td' + format(td_now, '03') + '.root'
+def build_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('datapath', help='Input H5/directory; use --multi-h5 for multiple glob/list matches')
+    parser.add_argument('ckpt', help='Trained checkpoint (unused with --pandora)')
+    parser.add_argument('outfile', help='ROOT path; directory for scans or --multi-h5')
+    parser.add_argument('nstart', type=int, nargs='?', default=0)
+    parser.add_argument('nend', type=int, nargs='?', default=-1, help='Original positional event count; -1 reads to the end')
+    parser.add_argument('timingCut', type=_boolean, nargs='?', default=False)
+    parser.add_argument('input_dim', type=int, nargs='?', default=7, help='Base input dimension before momentum/one-hot columns')
+    parser.add_argument('output_dim', type=int, nargs='?', default=5, help='Clustering output dimension, including beta')
 
-            print("")
-            print(f"save_root()...  {outfile}")
-            print("")
-            file = TFile(outfile,"recreate")
-            
+    model = parser.add_argument_group('Trained model and energy/PID readout')
+    model.add_argument('--energy-heads', choices=('auto', '2', '5'), default='auto', help='auto detects checkpoint; 2=track/calo, 5=species energy heads')
+    model.add_argument('--pid-readout', choices=('auto', 'legacy', 'none', 'representative'), default='auto', help='auto enables PID when trained; legacy/none disables it')
+    model.add_argument('--pid', dest='pid_readout', action='store_const', const='representative', help='Alias for --pid-readout representative')
+    model.add_argument('--no-pid', dest='pid_readout', action='store_const', const='legacy', help='Alias for --pid-readout legacy (two energy heads only)')
+    model.add_argument('--model-variant', choices=('auto', 'legacy', 'multihead'), default='auto')
+    model.add_argument('--energy-regression', action='store_true', help='Accepted for existing commands; implied by --energy-heads')
+    model.add_argument('--energy-regression-cluster', action='store_true', help='Accepted for existing commands; implied by two/five energy heads')
+    model.add_argument('-eb', '--energy-branch', action='store_true')
+    model.add_argument('--cluster-energy-source', choices=('truth', 'predicted'), default=None, help='Membership used by a trained cluster-pooling energy head')
+    model.add_argument('--energy-regression-weight', action='store_true', help=argparse.SUPPRESS)
 
-            t = TTree("t","tree for MCParticle")
-            d = Data()
-            d.setup_branch(t)
+    inputs = parser.add_argument_group('Inputs and evaluation')
+    inputs.add_argument('-e', '--momentum', action='store_true')
+    inputs.add_argument('-ea', '--momentum-amp', action='store_true')
+    inputs.add_argument('--mctpe', action='store_true')
+    inputs.add_argument('--event-total-energy', action='store_true')
+    inputs.add_argument('--pandora', action='store_true', help='Use the legacy stored Pandora clustering')
+    inputs.add_argument('--truth-clustering', action='store_true')
+    inputs.add_argument('--exclude-gap-hits', action='store_true')
+    inputs.add_argument('--detector-one-hot', action='store_true')
+    inputs.add_argument('--pid-input-format', choices=('auto', 'extended', 'legacy'), default='auto')
+    inputs.add_argument('--pid-detail', choices=('full',), default='full')
+    inputs.add_argument('--multi-h5', action='store_true', help='One ROOT per H5, sharing the model')
+    inputs.add_argument('--1tomany-clustering', action='store_true', help=argparse.SUPPRESS)
 
-            t2 = TTree("reco","tree for reconstructed clusters")
-            d2 = RecoData()
-            d2.setup_branch(t2)
+    scan = parser.add_argument_group('Thresholds and scans')
+    scan.add_argument('--tbeta', type=float, default=0.9)
+    scan.add_argument('--td', type=float, default=0.5)
+    scan.add_argument('--beta-d-scan', '--scan', dest='beta_d_scan', action='store_true', help='Scan both thresholds; default grid is 0.9 through 0.1 on each axis')
+    scan.add_argument('--scan-tbeta', type=float, nargs='+')
+    scan.add_argument('--scan-td', type=float, nargs='+')
+    scan.add_argument('--scan-workers', type=int, default=int(os.environ.get('FAST_SCAN_WORKERS', '4')))
 
-            t3 = TTree("prediction","tree for model output")
-            d3 = PredData()
-            d3.setup_branch(t3)
-
-            # for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=0.6, td=0.5, nmax=nmax, pandora=pandora, energyRegression=energyRegression)):
-            for i, (event, prediction, clustering, matches, condensation_points) in enumerate(yielder.iter_matches(tbeta=tbeta, td=td, nmax=nmax, energyRegression=energyRegression, energyRegressionCluster=energyRegressionCluster)):
-                if i == nmax: break
-                if i < 10 or i%100 == 0:
-                    print("Event", i, "processing...")
-
-                matches12, matches21 = matches
-                # print("matches12", matches12)
-                # print("matches21", matches21)
-                # print(clustering)
-                if (debug):
-                    print(f"=== reco --> mc ===")
-                    for k,v in matches12.items():
-                        print(f"{k}-->{v}")
-                    print(f"=== mc --> reco ===")
-                    for k,v in matches21.items():
-                        print(f"{k}-->{v}")
-
-                all_truth_ids = list(set(np.unique(event.y[:,0])))
-                #all_hitid = list(set(np.unique(event.label[:,0]).astype(np.int32)))
-                all_mcid = list(set(np.unique(event.label[:,1]).astype(np.int32)))
-                all_cluster_ids = list(set(np.unique(clustering)))
-                assert( len(all_truth_ids) == len(all_mcid) )
-                assert( len(event.y[:,0]) == len(event.label[:,1]) )
-                n_hits = len(event.label[:,1])
-
-                if (debug):
-                    print(f"{all_truth_ids=}")
-                    #print(f"{all_mcid=}")
-                    print(f"{all_cluster_ids=}")
-
-                # matched_reco_clusterIds = matching_1to1(event, clustering, matches12)
-                # print(matched_reco_clusterIds)
-
-                # iterate over all mcid
-                for id in all_truth_ids:
-                
-                    ''' Get energy in three different ways.
-                        - edep:       sum the hits that come from the MC particle (Perfect PFA)
-                        - edep_reco:  find the matching cluster and sum all the hits
-                                      (including those that do and do not come from the MC particle)
-                        - edep_match: find the matching cluster and sum those that come from the MC particle
-                    '''
-                    ncluster = 0
-                    matched_ncluster = 0
-                    matched_cluster = -1
-
-                    pattern_mcid = (event.y[:,0]==id)
-                    match_label = event.label[pattern_mcid]
-                    match_feat = event.feat[pattern_mcid]
-                    match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-                    # match_track = match_feat[:,5].detach().numpy().astype(np.int32)
-                    # match_pdg = match_label[:,2].detach().numpy().astype(np.int32)
-                    # print("pdg", match_pdg)
-                    # print("track", match_track)
-                    edep_sum = np.sum(match_edep)
-                    ncluster = len(pattern_mcid)
-                    
-                    edep_reco = 0
-                    edep_match = 0
-                    cluster_match = []
-
-                    if (id in matches12.keys()):
-                        reco_match = matches12[id]
-                        for rid in reco_match:
-                            edep_reco = 0
-                            edep_match = 0
-                            # if (matched_cluster == -1):
-                            matched_cluster = rid
-                            matched_ncluster += 1
-                            pattern_cluster = (clustering==rid)
-                            pattern_cluster_feat = event.feat[pattern_cluster]
-                            pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
-                            edep_reco += np.sum(pattern_cluster_edep)
-                            pattern_mcid_cluster = np.logical_and(pattern_mcid, pattern_cluster)
-                            edep_mcid_cluster = event.feat[pattern_mcid_cluster][:,0].detach().numpy().astype(np.float64)
-                            edep_match += np.sum(edep_mcid_cluster)
-                            cluster_match.append([edep_reco, edep_match, rid])
-                    
-                    cluster_match = np.array(cluster_match)
-                    if cluster_match.shape[0]==0:
-                        continue
-                    cluster_match_ = cluster_match[np.argsort(cluster_match[:, 1])]
-                    # print(cluster_match, cluster_match_)
-                    edep_reco = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,0]
-                    edep_match = np.sum(match_edep) if args.truth_clustering else cluster_match_[-1,1]
-                    pattern_cluster = pattern_mcid if args.truth_clustering else (clustering==cluster_match_[-1,2])
-                    match_track = event.feat[pattern_cluster]
-                    match_track = match_track[:,5].detach().numpy().astype(np.int32)
+    execution = parser.add_argument_group('Fast output and resume')
+    execution.add_argument('--device', default='cpu')
+    execution.add_argument('--pid-threads', type=int, default=4)
+    execution.add_argument('--root-chunk-events', type=int, default=int(os.environ.get('CEDRIC_ROOT_CHUNK_EVENTS', '10')))
+    execution.add_argument('--pipeline-depth', type=int, default=int(os.environ.get('CEDRIC_PIPELINE_DEPTH', '40')))
+    execution.add_argument('--replace', '--no-resume', dest='replace', action='store_true', help='Regenerate outputs; default skips complete identical results')
+    execution.add_argument('--skip-existing', dest='replace', action='store_false', help='Reuse only outputs with matching input/checkpoint/physics identity')
+    parser.set_defaults(replace=False)
+    return parser
 
 
-                    if not pandora:
-                        predicted_beta = prediction.pred_betas[pattern_cluster]
-                        if energyRegression:
-                            predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                            predicted_energy = predicted_energy[np.argsort(-predicted_beta)]
-                            predicted_energy_cluster = prediction.pred_cluster_energy[pattern_cluster] if energyRegressionCluster else -np.ones(1)
-                        else:
-                            predicted_energy = np.zeros(1)
-                            predicted_energy_cluster = np.zeros(1)
-                        cond_tracknesses = match_track[np.argsort(-predicted_beta)]
-                        cond_trackness = cond_tracknesses[0]
-                        predicted_beta = -np.sort(-predicted_beta)
-                        # print(predicted_beta[0], cond_trackness)
-                    else:
-                        predicted_energy = prediction.pred_tracker_energy[pattern_cluster]
-                        cond_trackness = 0
-                        predicted_beta = np.zeros(1)
-
-                    # for MC particle, take any element from the match because they should be the same
-                    my_label = match_label[0]
-                    pred_edep = predicted_energy[0]                                  ## alpha
-                    pred_edep_cluster = np.sum(predicted_energy_cluster) if not pandora else 0
-                    # pred_edep = np.sum(predicted_energy) / np.sum(predicted_beta)      ## betaE
-                    sed_radius=0
-                    # pred_cood = prediction.pred_cluster_spsace_coords[pattern_mcid]
-                    # print(type(pred_cood))
-                    # sed_center, sed_radius = minimum_enclosing_sphere(prediction.pred_cluster_space_coords[pattern_mcid])
-                    # print(prediction.pred_cluster_space_coords[pattern_mcid].shape, sed_center, _sed_radius, type(_sed_radius), _sed_radius.shape)
-
-                    # Set values for TTree and fill
-                    d.event[0] = i
-                    d.hitid[0] = my_label[0]
-                    d.mcid[0] = my_label[1]
-                    d.truthid[0] = id
-                    d.mcpdg[0] = my_label[2]
-                    d.mccharge[0] = my_label[3]
-                    d.mcmass[0] = my_label[4]
-                    d.mcpx[0] = my_label[5]
-                    d.mcpy[0] = my_label[6]
-                    d.mcpz[0] = my_label[7]
-                    d.mcen[0] = np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2)
-                    d.mcstatus[0] = my_label[8]
-                    d.edep[0] = edep_sum
-                    d.edep_reco[0] = edep_reco
-                    d.edep_match[0] = edep_match
-                    d.ncluster[0] = ncluster
-                    d.matched_ncluster[0] = matched_ncluster
-                    d.matched_cluster[0] = matched_cluster
-                    d.pred_edep[0] = pred_edep
-                    d.pred_edep_cluster[0] = pred_edep_cluster
-                    d.cond_beta[0] = predicted_beta[0]
-                    d.cond_track[0] = cond_trackness
-                    d.sed_radius[0] = sed_radius
-
-                    if(sed_radius>3):
-                        print(i,sed_center, sed_radius, my_label[2],my_label[5],my_label[6],my_label[7],np.sqrt(d.mcmass[0]**2 + d.mcpx[0]**2 + d.mcpy[0]**2 + d.mcpz[0]**2))
-
-                    if (not d.mcid[0] == -1): # skip if track does not have hit
-                        t.Fill()
-
-                # Iterate over reconstructed clusters
-                for cl in all_cluster_ids:
-                    break
-                    pattern_cluster = (clustering==cl)
-                    pattern_cluster_feat = event.feat[pattern_cluster]
-                    pattern_cluster_edep = pattern_cluster_feat[:,0].detach().numpy().astype(np.float64)
-                    edep_reco = np.sum(pattern_cluster_edep)
-
-                    # Get MC particle matching the cluster
-                    matched_mcp_found = False
-                    matched_mcp = -1
-                    edep_mcp = -1
-                    for m in matches21:
-                        if (m[0] == cl):
-                            matched_mcp_found = True
-                            matched_mcp = m[0][0]
-
-                    edep_mcp = -1
-                    if (matched_mcp_found):
-                        pattern_mcp = (event.y[:,0]==matched_mcp)
-                        pattern_mcp_feat = event.feat[pattern_mcp]
-                        pattern_mcp_edep = pattern_mcp_feat[:,0].detach().numpy().astype(np.float64)
-                        edep_mcp = np.sum(pattern_mcp_edep)
-
-                        pattern_mcp_match_label = event.label[pattern_mcp].detach().numpy().astype(np.float64)
-                        mcp_label = pattern_mcp_match_label[0]
-
-                    d2.event[0] = i
-                    d2.cluster[0] = cl
-
-                    d2.mcid[0] = -1
-                    d2.mcpdg[0] = -1
-                    d2.mccharge[0] = -1
-                    d2.mcmass[0] = -1
-                    d2.mcpx[0] = -1
-                    d2.mcpy[0] = -1
-                    d2.mcpz[0] = -1
-                    d2.mcen[0] = -1
-                    d2.mcstatus[0] = -1
-                    d2.pred_edep[0] = 0
-                    d2.pred_edep_cluster[0] = 0
-
-                    if (matched_mcp_found):
-                        d2.mcid[0] = matched_mcp
-                        d2.mcpdg[0] = mcp_label[2]
-                        d2.mccharge[0] = mcp_label[3]
-                        d2.mcmass[0] = mcp_label[4]
-                        d2.mcpx[0] = mcp_label[5].astype(np.float64)
-                        d2.mcpy[0] = mcp_label[6]
-                        d2.mcpz[0] = mcp_label[7]
-                        d2.mcen[0] = np.sqrt(d2.mcmass[0]**2 + d2.mcpx[0]**2 + d2.mcpy[0]**2 + d2.mcpz[0]**2)
-                        d2.mcstatus[0] = mcp_label[8]
-                        d2.pred_edep[0] = pred_edep
-                        d2.pred_edep_cluster[0] = pred_edep_cluster
-
-                    d2.edep_reco[0] = edep_reco
-                    d2.edep_mc[0] = edep_mcp
-                    t2.Fill()
-
-
-                # making predicted trees
-                if not pandora:
-                    for ihit in range(n_hits):
-                    
-                        '''
-                        '''
-
-                        # pattern_mcid = (event.y[:,0]==id)
-                        # match_label = event.label[pattern_mcid]
-                        # match_feat = event.feat[pattern_mcid]
-                        # match_edep = match_feat[:,0].detach().numpy().astype(np.float64)
-                        # edep_sum = np.sum(match_edep)
-                        # ncluster = len(match_label)
-
-                        # for MC particle, take any element from the match because they should be the same
-                        my_label = event.label[ihit]
-                        my_feat = event.feat[ihit]
-                        pred_edep = 0
-                        pred_beta = 0
-
-                        # Set values for TTree and fill
-                        d3.event[0] = i
-                        d3.hitid[0] = my_label[0]
-                        d3.mcid[0] = my_label[1]
-                        d3.truthid[0] = id
-                        d3.mcpdg[0] = my_label[2]
-                        d3.mccharge[0] = my_label[3]
-                        d3.mcmass[0] = my_label[4]
-                        d3.mcpx[0] = my_label[5]
-                        d3.mcpy[0] = my_label[6]
-                        d3.mcpz[0] = my_label[7]
-                        d3.mcen[0] = np.sqrt(d3.mcmass[0]**2 + d3.mcpx[0]**2 + d3.mcpy[0]**2 + d3.mcpz[0]**2)
-                        d3.mcstatus[0] = my_label[8]
-                        d3.pred_edep[0] = prediction.pred_tracker_energy[ihit] if energyRegression else -1
-                        d3.pred_edep_cluster[0] = prediction.pred_cluster_energy[ihit] if energyRegression and energyRegressionCluster else -1
-                        d3.pred_beta[0] = prediction.pred_betas[ihit]
-                        d3.pred_alpha[0] = condensation_points[ihit]
-                        d3.trackness[0] = my_feat[5]
-
-                        if (not d3.mcid[0] == -1): # skip if track does not have hit
-                            t3.Fill()
-
-
-            print(f"Saving to {outfile}")
-            file.Write()
-
-def main():
-    print(sys.argv)
-    if (len(sys.argv) < 9):
-        print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
+def _configure_model(args, parser):
+    """Validate explicit selectors against trained weights before any output."""
+    if args.pandora:
+        if args.pid_readout == 'representative' or args.energy_heads == '5':
+            parser.error('Stored Pandora clustering does not use GNN PID/species heads')
+        args.energy_heads, args.pid_readout = 2, 'legacy'
         return
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('datapath')
-    parser.add_argument('ckpt')
-    parser.add_argument('outfile')
-    parser.add_argument('nstart', type=int)
-    parser.add_argument('nend', type=int)
-    parser.add_argument('timingCut')
-    parser.add_argument('input_dim', type=int)
-    parser.add_argument('output_dim', type=int)
-    parser.add_argument('--pandora', action='store_true', help='Use PandoraPFA result')
-    parser.add_argument('--energy-regression', action='store_true', help='Turn on energy regression term on loss function and output')
-    parser.add_argument('--energy-regression-cluster', action='store_true', help='Turn on energy regression term on loss function and output (regression for neutral particle)')
-    parser.add_argument('-e','--momentum', action='store_true', help='Add momentum to GNN input')
-    parser.add_argument('-ea','--momentum-amp', action='store_true', help='Add absoute momentum to GNN input')
-    parser.add_argument('--mctpe', action='store_true', help='Use MC truth momentum and energy for virtual hits')
-    parser.add_argument('-eb','--energy-branch', action='store_true', help='Change GNN model to bypass energy')
-    parser.add_argument('--beta-d-scan', action='store_true', help='Turn on beta and diameter scan')
-    parser.add_argument('--tbeta', type=float, default=0.9)
-    parser.add_argument('--td', type=float, default=0.5)
-    parser.add_argument('--device', type=str, default='cpu', help='Specify calculation device')
-    parser.add_argument('--truth-clustering', action='store_true', help='Turn on MC truth clustering')
-    parser.add_argument('--1tomany-clustering', action='store_true', help='Turn on combining reco-clusters')
+    import torch
+    from model import (_extract_state_dict, _strip_module_prefix,
+                       _is_multihead_state_dict, _infer_multihead_config)
 
-    args = parser.parse_args()
-    
-    save_root(sys.argv[1],sys.argv[2],sys.argv[3],nstart=int(sys.argv[4]),nend=int(sys.argv[5]),timingCut=strtobool(sys.argv[6]),input_dim=int(sys.argv[7]), output_dim=int(sys.argv[8]), args=args)
+    checkpoint = torch.load(str(Path(args.ckpt).expanduser()), map_location='cpu')
+    state = _strip_module_prefix(_extract_state_dict(checkpoint))
+    config = checkpoint.get('particle_heads_config') or {}
+    has_pid = any(name.startswith('pid_output.') for name in state)
+    if config and bool(config.get('pid_head')) != has_pid:
+        parser.error('Checkpoint PID metadata and trained weights disagree')
+    if _is_multihead_state_dict(state):
+        _, clustering_dim, energy_dims, _ = _infer_multihead_config(state)
+        count = len(energy_dims)
+        if any(dim != 1 for dim in energy_dims):
+            parser.error('Each energy regression head must have one output')
+        if clustering_dim != args.output_dim:
+            parser.error(f'Checkpoint clustering output has {clustering_dim} columns, not {args.output_dim}')
+    else:
+        output = state.get('output.4.weight')
+        if output is None:
+            output = state.get('output.weight')
+        if output is None:
+            parser.error('Cannot identify the checkpoint energy heads')
+        count = int(output.shape[0]) - args.output_dim
+    if count not in (2, 5):
+        parser.error(f'This exporter requires two or five trained energy heads; found {count}')
+    if args.energy_heads != 'auto' and int(args.energy_heads) != count:
+        parser.error(f'--energy-heads {args.energy_heads} disagrees with the {count}-head checkpoint')
+    if count == 5 and not config.get('five_particle_energy_heads'):
+        parser.error('Five species energy heads require matching particle_heads_config metadata')
+    if args.pid_readout == 'auto':
+        args.pid_readout = 'representative' if has_pid else 'legacy'
+    elif args.pid_readout == 'none':
+        args.pid_readout = 'legacy'
+    if args.pid_readout == 'representative' and not has_pid:
+        parser.error('Representative PID requires a trained PID head in the checkpoint')
+    if count == 5 and args.pid_readout != 'representative':
+        parser.error('Normal five-head energy readout requires predicted PID; enable --pid')
+    args.energy_heads = count
+    args.energy_regression = True
+    args.energy_regression_cluster = True
+    print(f'[model] {count} energy heads; PID readout: {args.pid_readout}')
 
-if __name__=='__main__':
+
+def _validate_options(args, parser):
+    if args.timingCut:
+        parser.error('Use timingCut=False and pre-cut H5 inputs (timingcut.py)')
+    if args.nstart < 0 or args.nend == 0 or args.nend < -1:
+        parser.error('Require nstart >= 0 and nend > 0 or -1')
+    if args.root_chunk_events < 1 or args.pid_threads < 1 or args.scan_workers < 1:
+        parser.error('Chunk size, PID threads and scan workers must be positive')
+    if args.pipeline_depth < 0:
+        parser.error('--pipeline-depth must be zero or positive')
+    if not math.isfinite(args.tbeta) or not 0 < args.tbeta < 1:
+        parser.error('--tbeta must be finite and between zero and one')
+    if not math.isfinite(args.td) or args.td <= 0:
+        parser.error('--td must be finite and positive')
+    if (args.scan_tbeta or args.scan_td) and not args.beta_d_scan:
+        parser.error('--scan-tbeta/--scan-td require --beta-d-scan')
+    if args.energy_regression_weight or getattr(args, '1tomany_clustering'):
+        parser.error('Legacy weighted-coefficient/1tomany modes are outside this Cedric integration')
+    args.output_schema = 'cedric'
+    args.outfile = str(Path(args.outfile).expanduser())
+    if not args.pandora:
+        args.ckpt = str(Path(args.ckpt).expanduser().resolve())
+
+
+def _normalize_inputs(args, parser):
+    """Give loaders literal paths; keep the old directory-as-one-dataset mode."""
+    from root_export.cedric import _resolve_multi_h5
+
+    paths = _resolve_multi_h5(args.datapath)
+    if args.multi_h5 or args.beta_d_scan:
+        return
+    if len(paths) == 1:
+        args.datapath = str(paths[0].resolve())
+    elif Path(args.datapath).expanduser().is_dir():
+        args.datapath = str(Path(args.datapath).expanduser().resolve())
+    else:
+        parser.error('Multiple glob/list matches require --multi-h5; '
+                     'a literal directory can be combined into one output')
+
+
+def _write_legacy_point(args, output, model=None):
+    from root_export import cedric, runtime
+
+    output = Path(output).expanduser()
+    if not args.replace and runtime.validate_existing(output, args, args.datapath):
+        print(f'[skip] complete identical ROOT: {output}')
+        return model
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temporary = cedric._temporary_output(output)
+    try:
+        model = cedric.save_root(
+            args.datapath, args.ckpt, str(temporary), nstart=args.nstart,
+            nend=args.nend, timingCut=args.timingCut, input_dim=args.input_dim,
+            output_dim=args.output_dim, args=args, model=model)
+        runtime.write_metadata(temporary, args, args.datapath)
+        if not runtime.validate_existing(temporary, args, args.datapath):
+            raise RuntimeError('Generated ROOT failed identity/schema validation: ' + str(temporary))
+        os.replace(temporary, output)
+        print(f'[complete] {output}')
+        return model
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _run_legacy(args, parser):
+    import h5py
+    from root_export import cedric
+
+    if args.exclude_gap_hits or args.detector_one_hot:
+        parser.error('Gap/one-hot input options currently require representative PID input')
+    inputs = cedric._resolve_multi_h5(args.datapath)
+    for path in inputs:
+        with h5py.File(path, 'r') as handle:
+            if handle.attrs.get('schema_version') == 'pandora-eval-1':
+                parser.error('Full pandora-eval-1 comparison is a separate writer; this command uses Cedric output')
+    if args.multi_h5 or args.beta_d_scan:
+        if len({path.stem for path in inputs}) != len(inputs):
+            parser.error('Inputs with identical H5 stems would overwrite each other')
+        jobs = [(str(path), Path(args.outfile) / (path.stem + '.root')) for path in inputs]
+    else:
+        jobs = [(args.datapath, Path(args.outfile))]
+    protected = {path.resolve() for path in inputs}
+    if not args.pandora:
+        protected.add(Path(args.ckpt).expanduser().resolve())
+    model = None
+    for datapath, output in jobs:
+        job = copy.copy(args)
+        job.datapath = datapath
+        if args.beta_d_scan:
+            from root_export.scan import run_scan
+            run_scan(job)
+            continue
+        if output.expanduser().resolve() in protected:
+            parser.error('Output must differ from the input H5 and checkpoint')
+        if output.is_dir():
+            parser.error('ROOT output is a directory: ' + str(output))
+        model = _write_legacy_point(job, output, model)
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    _validate_options(args, parser)
+    _configure_model(args, parser)
+    _normalize_inputs(args, parser)
+    if args.pid_readout == 'representative':
+        from root_export.cedric import _run_representative_pid
+        _run_representative_pid(args, args.timingCut, parser)
+    else:
+        _run_legacy(args, parser)
+
+
+if __name__ == '__main__':
     main()
-    
