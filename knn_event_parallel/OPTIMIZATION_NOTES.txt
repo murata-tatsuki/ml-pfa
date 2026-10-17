@@ -1,5 +1,21 @@
 KNN changes 1 / 3 / 5 (2026-10-04)
 
+Inference graph correction (2026-10-15)
+- Default GravNetConv still uses the installed search kernel, without loading
+  the optional CUDA extension. Its graph now shares training's construction:
+  [query, neighbour] endpoints, query-major order, self column removed, missing
+  neighbours discarded. target_to_source propagation aggregates neighbours
+  into each query, including the existing fast mean/max reshape path.
+- Explicit event row_splits are passed to the installed operator, so batched
+  inference cannot connect hits from different events. CPU fallback accepts
+  both known installed operator namespaces.
+- Installed CUDA kernels that pad missing neighbours with the query ID are
+  normalized to training's -1 sentinel before graph construction.
+- Existing eager checkpoint loaders and ROOT commands pick up the correction
+  without extra options. Already saved ROOT files must be regenerated. Existing
+  serialized TorchScript models embed their old code and need re-exporting.
+- Training's event-parallel CUDA search and checkpoint parameters are unchanged.
+
 Scope
 - Only the event-parallel backend changes. train.py still defaults to legacy.
 - 1: build batch-local launch metadata from CPU Batch.ptr before data.to(device),
@@ -28,16 +44,17 @@ Do not copy the audit's locally built sm_75/PyTorch-1.12 binary to another runti
 Training: retain the existing command and add/use
   --knn-backend event-parallel --knn-block-size 128
 
-Correctness tests (run from the repository root)
+Past correctness checks (test sources deleted on 2026-10-17)
+The command and checks below record validation performed before deletion.
   python -m unittest test_knn_optimizations test_knn_event_parallel test_gravnet_message_flow -v
-GPU tests check index equality, distance bits, edge order, ties, duplicate points,
+GPU tests checked index equality, distance bits, edge order, ties, duplicate points,
 short/empty events, padding, block boundaries, and a non-default stream. Existing
-GravNet tests also compare outputs/gradients with numerical tolerances because
+GravNet tests also compared outputs/gradients with numerical tolerances because
 GPU scatter reductions are not generally bitwise deterministic.
 
 Per-change timing on the saved real nnqq batch
   python benchmark_knn_optimizations.py \
-    --cached-inputs /home/murata/gravnet_performance_audit_20261003/nnqq_inputs_3.pt \
+    --cached-inputs /home/murata/research/studies/gravnet_performance_audit_20261003/nnqq_inputs_3.pt \
     --checkpoint /home/murata/master/checkpoint/energy_regression/ckpts_gravnet_new02_2026_09_29_120252_outputD5_multihead/ckpt_27_1.pth.tar \
     --epoch 27 --repeats 12 --output /tmp/knn_nnqq_135.json
 

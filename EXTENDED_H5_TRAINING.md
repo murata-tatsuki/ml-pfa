@@ -39,7 +39,7 @@ one-hotの11列は自動加算する。この変更で評価ローダーの対�
 Python APIでは `model_data(..., detector_one_hot=True)` と
 `get_model(..., jit=False, input_dim=<追加後の総次元>, detector_one_hot=True)` を使用する。
 
-検証: `python -m unittest test_detector_one_hot test_extended_training -v`
+過去の検証: `python -m unittest test_detector_one_hot test_extended_training -v`（確認用テストソースは2026-10-17に削除済み）。
 
 最新版 fixed_uds (`pandora-eval-1`) または nnqq2M (`nnqq-2m-eval-1`) を学習する場合、
 既存の `train.py` コマンドに次を追加する。
@@ -164,7 +164,9 @@ per-cluster平均は教師値が完全なcalo clusterだけで行う。
 Pandoraは保存された全PFOを使い、GNN入力のgap除外ではPFO energyを変更しない。
 truth未対応入力を含む評価と、既知truthだけの診断を区別する。
 
-## 検証
+## 過去の検証
+
+確認用テストソースは2026-10-17に削除済みです。以下は削除前のコマンドと確認範囲です。
 
 ```bash
 python -m unittest test_extended_training test_cluster_energy test_pandora_eval_analysis -v
@@ -212,4 +214,4 @@ truth未対応やgapという理由で追加の削除はせず、学習時の既
 この軽量H5はPandora比較用評価ファイルには使えない。比較評価には元の全group入りH5を残す。
 GNN評価でも同じtime/pT条件を適用する必要があり、現時点で評価側へcut条件が自動反映されるわけではない。
 
-検証: `python -m unittest test_timingcut -v`
+過去の検証: `python -m unittest test_timingcut -v`（確認用テストソースは2026-10-17に削除済み）。

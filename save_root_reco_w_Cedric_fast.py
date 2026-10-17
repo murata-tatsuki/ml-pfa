@@ -6,6 +6,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
+from contextlib import closing
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import h5py
@@ -23,6 +24,7 @@ import torch
 from sed import minimum_enclosing_sphere
 from clustering import cluster
 from matching import make_matches, matching_1to1
+from particle_heads import SPECIES
 
 ## 1 to 1 match to reco-cluster and true cluster
 ## the largest edep_match reco-cluster is chosen
@@ -663,6 +665,9 @@ def _ordered_prefetch(iterable, capacity: int, device: str):
             yield value
     finally:
         stop.set()
+        # Finish an in-flight forward before a caller closes a file or reuses
+        # the model for another H5. Queue puts notice stop and cannot deadlock.
+        producer.join()
 
 
 def _iter_analysis_inputs(
@@ -1752,12 +1757,7 @@ def save_root(
 
     return model
 
-def main():
-    print(sys.argv)
-    if (len(sys.argv) < 9):
-        print("Usage: save_root.py datapath ckpt outfile nstart nend timingCut input_dim output_dim pandora energyRegression momentum momentumAmp MCTpe")
-        return
-
+def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('datapath')
     parser.add_argument('ckpt')
@@ -1809,8 +1809,503 @@ def main():
     )
 
     add_inference_arguments(parser)
-    args = parser.parse_args()
+    parser.add_argument('--pid-readout', choices=('legacy', 'representative'), default='legacy',
+        help='representative: use current beta/coordinate clustering and a trained '
+             'representative PID head; write particle-baseline-root-1 diagnostics. '
+             'legacy: use the existing five-tree writer (default).')
+    parser.add_argument('--exclude-gap-hits', action='store_true',
+        help='Exclude ECAL GapHits before model input in representative PID mode')
+    from extended_h5 import add_detector_one_hot_argument
+    add_detector_one_hot_argument(parser)
+    parser.add_argument('--pid-detail', choices=('full', 'clusters'), default='full',
+        help='Representative PID output detail; clusters omits per-hit output')
+    parser.add_argument('--pid-input-format', choices=('extended', 'legacy'), default='extended',
+        help='Representative PID input format; legacy preserves the existing known-MC-only '
+             'featurization and cannot identify gap-hit collections')
+    parser.add_argument('--pid-threads', type=int, default=4,
+        help='CPU thread count for representative PID mode (default: 4)')
+    parser.add_argument('--replace', action='store_true',
+        help='Allow replacing an existing representative PID ROOT output')
+    return parser
+
+
+_PID_SCHEMA = 'particle-baseline-root-1'
+_PID_PROBABILITY_FIELDS = tuple('pid_probability_' + s for s in SPECIES)
+
+
+def _pid_arguments(args):
+    """Map existing positional arguments to internal PID writer settings."""
+    return argparse.Namespace(input=args.datapath, output=args.outfile, checkpoint=args.ckpt,
+        pid_readout='representative', input_dim=args.input_dim, output_dim=args.output_dim,
+        momentum=args.momentum, momentum_amp=args.momentum_amp, calo_head=True,
+        model_variant=args.model_variant, regression_output_activation='current', energy_policy='alpha',
+        tbeta=args.tbeta, td=args.td, exclude_gap_hits=args.exclude_gap_hits,
+        detector_one_hot=args.detector_one_hot, start=args.nstart,
+        stop=-1 if args.nend == -1 else args.nstart + args.nend,
+        detail=args.pid_detail, device=args.device, threads=args.pid_threads,
+        root_chunk_events=args.root_chunk_events, pipeline_depth=args.pipeline_depth,
+        replace=args.replace, pid_input_format=args.pid_input_format, cedric_arguments=dict(vars(args)))
+
+
+class _PIDChunkTree(_ChunkTree):
+    """Reuse column buffering with the scalar /L, /D and string PID schema."""
+
+    def __init__(self, name, integers=(), doubles=(), strings=()):
+        _ensure_root_writer_loaded()
+        self.name = str(name)
+        self._integers, self._doubles, self._strings = tuple(integers), tuple(doubles), tuple(strings)
+        self._sources = dict.fromkeys(self._integers + self._doubles + self._strings)
+        self._columns = {key: [] for key in self._sources}
+        self._column_chunks = {key: [] for key in self._sources}
+        self._chunk_entries = 0
+        self.writer = ROOT.CedricScalarTreeWriter(self.name, list(integers), list(doubles), list(strings))
+        # Let the GPU producer run Python while C++ fills a complete chunk.
+        ROOT.CedricScalarTreeWriter.append.__release_gil__ = True
+        self.tree = self.writer.tree()
+
+    def fill(self, values):
+        for key in self._sources:
+            self._columns[key].append(values[key])
+
+    def flush(self):
+        n = self.entries
+        if not n:
+            return
+        integers = self.scalar_matrix(self._integers, np.int64) if self._integers else np.empty((n, 0), np.int64)
+        doubles = self.scalar_matrix(self._doubles, np.float64) if self._doubles else np.empty((n, 0), np.float64)
+        strings = self.scalar_matrix(self._strings, str).reshape(-1).tolist() if self._strings else []
+        self.writer.append(n, *_addresses(integers, doubles), strings)
+        self.clear()
+        self.tree.FlushBaskets()
+
+
+def _read_pid_bundle(path, input_format):
+    import json
+    from extended_h5 import read_training_bundle, validate_training_schema
+
+    with h5py.File(path, 'r') as handle:
+        if input_format == 'extended':
+            schema = validate_training_schema(handle)
+        else:
+            if handle.attrs.get('schema_version') is not None or 'row_info' in handle or 'collections' in handle:
+                raise ValueError(f'{path}: --pid-input-format legacy requires an old H5 without extended builders')
+            schema = 'legacy'
+        provenance = dict(schema=schema,
+            metadata=json.loads(handle.attrs.get('metadata', '{}')),
+            timing_cut=json.loads(handle.attrs['timing_cut']) if 'timing_cut' in handle.attrs else None)
+        if input_format == 'legacy':
+            bundle = {}
+            for name in ('feature', 'label'):
+                group = handle[name]
+                bundle[name] = ak.from_buffers(json.loads(group.attrs['form']), int(group.attrs['length']),
+                                              {key: value[:] for key, value in group.items()})
+            if len(bundle['feature']) != len(bundle['label']):
+                raise ValueError(f'{path}: feature and label event counts differ')
+    if input_format == 'extended':
+        bundle = read_training_bundle(path)
+    return bundle, provenance
+
+
+def _legacy_pid_event(feat, label, ds, event_index):
+    """Keep legacy model inputs unchanged; derive row IDs only for ROOT diagnostics."""
+    from dataset import checked_int64_ids, incremental_cluster_index_np
+
+    if feat.shape != (len(feat), 13) or label.shape != (len(feat), 9):
+        raise ValueError('Legacy PID input requires aligned feature[13] and label[9] rows')
+    identifiers = checked_int64_ids(label[:, :2], 'legacy hit/MC IDs')
+    if np.any(identifiers[:, 1] < -1):
+        raise ValueError('Legacy unknown MC IDs must be -1')
+    known = identifiers[:, 1] != -1
+    if not np.isfinite(feat[known]).all() or not np.isfinite(label[known]).all():
+        raise ValueError('Non-finite known legacy input/teacher')
+    if np.any((feat[known, 5] > .5) != (identifiers[known, 0] < 0)):
+        raise ValueError('Legacy feature/label track identity mismatch')
+    data = ILCDataset.featurize_from_numpy(feat, label, None, None, None, event_index, ds)
+    if not torch.isfinite(data.x).all():
+        raise ValueError('Non-finite featurized legacy input')
+    rows = np.flatnonzero(known)
+    order = incremental_cluster_index_np(identifiers[known, 1], noise_index=ds.noise_index).argsort()
+    # This in-memory table provides only fields used by diagnostics, not a new H5 schema.
+    info = np.zeros((len(feat), 11), dtype=np.float64)
+    info[:, 0] = feat[:, 5] > .5
+    info[:, 5] = known
+    info[:, 9:11] = identifiers
+    data.input_row = torch.from_numpy(rows[order]).long()
+    data.truth_valid = torch.ones(len(data.x), dtype=torch.bool)
+    data.n_stored_inputs = torch.tensor([len(feat)])
+    data.n_excluded_gap_hits = torch.tensor([0])
+    data.n_invalid_inputs = torch.tensor([0])
+    return info, data
+
+
+def _iter_pid_training_events(args, provenance):
+    from types import MethodType, SimpleNamespace
+    from extended_h5 import training_event
+    from pandora_eval_data import input_paths
+
+    ds = SimpleNamespace(thetaphi=args.input_dim == 7, momentum=args.momentum,
+        momentumAmp=args.momentum_amp, max_momentum=3. if args.momentum else 1.,
+        mctpe=False, test_mode=True, pandora=False, event_energy=False, noise_index=-1,
+        exclude_gap_hits=args.exclude_gap_hits, detector_one_hot=args.detector_one_hot)
+    ds.shaper_tanh = MethodType(ILCDataset.shaper_tanh, ds)
+    index = 0
+    for path in input_paths(args.input):
+        if args.stop >= 0 and index >= args.stop:
+            break
+        bundle, provenance[str(path.resolve())] = _read_pid_bundle(path, args.pid_input_format)
+        for local in range(len(bundle['feature'])):
+            if args.stop >= 0 and index >= args.stop:
+                return
+            current = index
+            index += 1
+            if current < args.start:
+                continue
+            if args.pid_input_format == 'legacy':
+                feat = np.asarray(ak.to_numpy(bundle['feature'][local]))
+                label = np.asarray(ak.to_numpy(bundle['label'][local]))
+                if not feat.size: feat = feat.reshape(0, 13)
+                if not label.size: label = label.reshape(0, 9)
+                info, data = _legacy_pid_event(feat, label, ds, f'{path}:{local}')
+                event = dict(feature=feat, label=label, row_info=info)
+            else:
+                event = {name: np.asarray(ak.to_numpy(bundle[name][local])).reshape(-1, width)
+                         for name, width in (('feature', 13), ('label', 9), ('row_info', 11))}
+                data = training_event(bundle, local, ds, f'{path}:{local}')
+            yield current, str(path.resolve()), local, event, data
+
+
+def _iter_pid_predictions(args, model, provenance):
+    from pandora_eval_reconstruction import predict
+
+    for index, path, local, event, data in _iter_pid_training_events(args, provenance):
+        prediction = (predict(model, data, args.device, args.tbeta, args.td, args.calo_head,
+                              defer_clustering=True) if len(data.x) else
+                      dict(assignments=np.empty(0, dtype=np.int64)))
+        # Only the original CPU data and completed CPU prediction arrays enter
+        # the queue; no GPU tensors or ROOT objects are retained here.
+        yield index, path, local, event, data, prediction
+
+
+def _iter_pid_analysis_inputs(args, model, provenance):
+    from pandora_eval_reconstruction import cluster_prediction
+
+    predictions = _iter_pid_predictions(args, model, provenance)
+    if 'cuda' in args.device and args.pipeline_depth > 0:
+        print(f'[PID] GNN/CPU ordered pipeline enabled: {args.pipeline_depth} prefetched event(s)')
+        predictions = _ordered_prefetch(predictions, args.pipeline_depth, args.device)
+    with closing(predictions):
+        for index, path, local, event, data, prediction in predictions:
+            if 'assignments' not in prediction:
+                prediction = cluster_prediction(prediction, args.tbeta, args.td)
+            yield index, path, local, event, data, prediction
+
+
+def _pid_truth_table(event, selected_rows):
+    """Truth objects represented among the known model inputs; never used for inference."""
+    from particle_heads import species_ids
+
+    known = np.zeros(len(event['label']), dtype=bool)
+    known[selected_rows] = True
+    known &= event['row_info'][:, 5] > 0
+    table, classes = [], {}
+    for label_id in np.unique(event['label'][known, 1].astype(np.int64)):
+        rows = np.flatnonzero(known & (event['label'][:, 1] == label_id))
+        labels = event['label'][rows]
+        ids = species_ids(torch.from_numpy(labels[:, 2]), torch.from_numpy(labels[:, 3])).numpy()
+        if np.any(ids != ids[0]):
+            raise ValueError(f'Inconsistent truth PID for label {label_id}')
+        label = labels[0]
+        classes[int(label_id)] = int(ids[0])
+        table.append([label_id, event['row_info'][rows[0], 10], label[2],
+                      np.linalg.norm(label[4:8]), *label[5:8]])
+    event['truth_particles'] = np.asarray(table, dtype=np.float64).reshape(-1, 7)
+    return classes
+
+
+def _representative_pid_probabilities(prediction, data, cluster):
+    logits = prediction.get('pid_logits')
+    if logits is None:
+        return dict.fromkeys(_PID_PROBABILITY_FIELDS, float('nan'))
+    row = cluster['pid_seed_input_row']
+    seed = np.flatnonzero(data.input_row.numpy() == row)[0]
+    scores = np.asarray(logits[seed], dtype=np.float64)
+    probabilities = np.exp(scores - scores.max())
+    probabilities /= probabilities.sum()
+    return dict(zip(_PID_PROBABILITY_FIELDS, map(float, probabilities)))
+
+
+def _write_pid_root(args, model=None):
+    """Write structured representative-PID diagnostics from the selected H5 format."""
+    import json
+    import tempfile
+    from extended_h5 import DETECTOR_ONE_HOT_DIM
+    from pandora_eval_data import input_paths
+    from pandora_eval_reconstruction import (energy_clusters, overlap_metrics,
+                                             configure_regression_output)
+    from particle_heads import raw_model, checkpoint_config, resolve_pid_readout
+    from save_root_pandora_eval import sha256
+
+    if not 0 <= args.tbeta <= 1 or not np.isfinite(args.td) or args.td <= 0:
+        raise ValueError('Require 0 <= tbeta <= 1 and finite td > 0')
+    if args.start < 0 or (args.stop != -1 and args.stop <= args.start):
+        raise ValueError('Require 0 <= start < stop; stop=-1 means all')
+    if args.pid_input_format == 'legacy' and (args.exclude_gap_hits or args.detector_one_hot):
+        raise ValueError('Legacy H5 lacks collections; gap exclusion and detector one-hot are unavailable')
+    if args.root_chunk_events <= 0 or args.pipeline_depth < 0:
+        raise ValueError('Require root-chunk-events > 0 and pipeline-depth >= 0')
+    output = Path(args.output).expanduser().resolve()
+    if output.exists() and not args.replace:
+        raise FileExistsError(f'{output}: choose a new output or pass --replace')
+    paths = input_paths(args.input)
+    if output in [p.resolve() for p in paths]:
+        raise ValueError('Output must differ from input H5')
+    if output == Path(args.checkpoint).expanduser().resolve():
+        raise ValueError('Output must differ from checkpoint')
+    torch.set_num_threads(args.threads)
+    if model is None:
+        model = get_model(args.checkpoint, jit=False,
+            input_dim=args.input_dim + (3 + int(args.momentum_amp) if args.momentum else 0)
+                      + (DETECTOR_ONE_HOT_DIM if args.detector_one_hot else 0),
+            output_dim=args.output_dim + 1 + int(args.calo_head),
+            energy_regression=True, energy_regression_cluster=args.calo_head,
+            detector_one_hot=args.detector_one_hot, model_variant=args.model_variant,
+            cluster_energy_source='predicted', cluster_energy_tbeta=args.tbeta,
+            cluster_energy_td=args.td).to(args.device).eval()
+    configure_regression_output(model, args.regression_output_activation)
+    mode = resolve_pid_readout(model, args.pid_readout)
+    raw = raw_model(model)
+    config = checkpoint_config(model, getattr(raw, 'particle_heads_inference_epoch', None))
+    five = bool(config and config['five_particle_energy_heads'])
+    if five and not args.calo_head:
+        raise ValueError('Five-head readout requires --calo-head')
+    _ensure_root_writer_loaded()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fd, staging = tempfile.mkstemp(prefix='.' + output.name, suffix='.tmp.root', dir=output.parent)
+    os.close(fd)
+    file = ROOT.TFile(staging, 'RECREATE')
+    provenance, count = {}, 0
+    analysis_inputs = None
+    try:
+        if file.IsZombie():
+            raise OSError(f'Cannot create {staging}')
+        file.SetCompressionAlgorithm(ROOT.ROOT.kLZ4)
+        file.SetCompressionLevel(int(os.environ.get('CEDRIC_ROOT_LZ4_LEVEL', '1')))
+        print(f'[PID] C++ ROOT writer enabled: {args.root_chunk_events} event(s) per chunk')
+        events = _PIDChunkTree('eval_events', integers=('event', 'h5_index', 'n_inputs', 'n_model_inputs',
+            'n_excluded_gap_hits', 'n_invalid_inputs', 'n_unknown_truth', 'n_unassigned_gnn',
+            'n_unlabelled_inputs_excluded', 'n_clusters', 'n_truth', 'gnn_valid'), doubles=('gnn_energy', 'known_truth_energy'),
+            strings=('input_path',))
+        clusters = _PIDChunkTree('eval_clusters', integers=('event', 'algorithm', 'cluster', 'n_tracks',
+            'n_inputs', 'seed_input_row', 'pid', 'energy_head', 'energy_fallback', 'pid_seed_input_row'),
+            doubles=('energy', 'energy_alpha', 'energy_any_track') + _PID_PROBABILITY_FIELDS)
+        matches = _PIDChunkTree('eval_matches', integers=('event', 'algorithm', 'truth_label', 'truth_pdg',
+            'truth_pid', 'matched', 'cluster', 'pid', 'pid_correct', 'truth_n_inputs', 'overlap_n_inputs'),
+            doubles=('truth_energy', 'reco_energy', 'overlap_energy', 'truth_deposit',
+                     'reco_known_deposit', 'efficiency', 'purity', 'response'))
+        energies = tuple('energy_' + s for s in SPECIES) if five else ()
+        logits = tuple('pid_logit_' + s for s in SPECIES) if mode == 'representative' else ()
+        hits = _PIDChunkTree('eval_hits', integers=('event', 'input_row', 'kind', 'object_id', 'truth_label',
+            'truth_valid', 'model_input', 'gnn_cluster'),
+            doubles=('beta', 'tracker_energy', 'calo_energy') + energies + logits)
+        confusion = ROOT.TH2D('pid_confusion', 'Matched-truth PID counts;truth PID;predicted PID',
+                             5, -.5, 4.5, 6, -1.5, 4.5)
+        confusion.GetYaxis().SetBinLabel(1, 'unmatched')
+        for j, species in enumerate(SPECIES):
+            confusion.GetXaxis().SetBinLabel(j + 1, species)
+            confusion.GetYaxis().SetBinLabel(j + 2, species)
+        trees = (events, clusters, matches, hits)
+        analysis_inputs = _iter_pid_analysis_inputs(args, model, provenance)
+        for index, path, local, event, data, prediction in analysis_inputs:
+            selected = data.input_row.numpy()
+            cs = energy_clusters(data, prediction, args.energy_policy) if len(data.x) else []
+            truth_classes = _pid_truth_table(event, selected)
+            by_id = {c['cluster']: c for c in cs}
+            events.fill(dict(event=index, h5_index=local, input_path=path,
+                n_inputs=len(event['feature']), n_model_inputs=len(selected),
+                n_excluded_gap_hits=int(data.n_excluded_gap_hits[0]),
+                n_invalid_inputs=int(data.n_invalid_inputs[0]),
+                n_unknown_truth=int((~data.truth_valid).sum()),
+                n_unlabelled_inputs_excluded=int((event['row_info'][:, 5] == 0).sum())
+                    if args.pid_input_format == 'legacy' else 0,
+                n_unassigned_gnn=int((prediction['assignments'] <= 0).sum()),
+                n_clusters=len(cs), n_truth=len(truth_classes), gnn_valid=1,
+                gnn_energy=sum(c['energy'] for c in cs),
+                known_truth_energy=float(event['truth_particles'][:, 3].sum())))
+            for c in cs:
+                values = dict.fromkeys(('pid', 'energy_head', 'energy_fallback', 'pid_seed_input_row'), -1)
+                values.update(c)
+                values.update(_representative_pid_probabilities(prediction, data, c))
+                clusters.fill(dict(event=index, algorithm=1, **values))
+            for match in overlap_metrics(event, cs, selected):
+                truth_pid = truth_classes[match['truth_label']]
+                c = by_id.get(match['cluster'])
+                pid = c.get('pid', -1) if c else -1
+                target = match['truth_energy']
+                matches.fill(dict(event=index, algorithm=1, **match, truth_pid=truth_pid, pid=pid,
+                    pid_correct=int(pid == truth_pid) if pid >= 0 and truth_pid >= 0 else -1,
+                    response=match['reco_energy']/target if target > 0 else float('nan')))
+                if mode == 'representative' and truth_pid >= 0:
+                    confusion.Fill(truth_pid, pid)
+            if args.detail == 'full':
+                assignment = np.full(len(event['feature']), -1, dtype=np.int64)
+                assignment[selected] = prediction['assignments']
+                fields = {k: np.full(len(assignment), np.nan) for k in
+                          ('beta', 'tracker_energy', 'calo_energy') + energies + logits}
+                for names, key in ((('beta',), 'beta'), (('tracker_energy',), 'tracker'),
+                                   (('calo_energy',), 'calo'), (energies, 'species_energies'),
+                                   (logits, 'pid_logits')):
+                    values = prediction.get(key)
+                    if values is not None:
+                        values = np.asarray(values).reshape(len(selected), len(names))
+                        for j, name in enumerate(names):
+                            fields[name][selected] = values[:, j]
+                n = len(assignment)
+                used = np.zeros(n, dtype=np.int64)
+                used[selected] = 1
+                info = event['row_info']
+                hits.extend_columns(dict(event=np.full(n, index, dtype=np.int64),
+                    input_row=np.arange(n, dtype=np.int64), kind=info[:, 0].astype(np.int64),
+                    object_id=info[:, 9].astype(np.int64),
+                    truth_label=event['label'][:, 1].astype(np.int64),
+                    truth_valid=info[:, 5].astype(np.int64), model_input=used,
+                    gnn_cluster=assignment, **fields))
+            count += 1
+            if count % args.root_chunk_events == 0:
+                for tree in trees:
+                    tree.flush()
+            print(f'event={index} input={path}:{local} used={len(selected)} clusters={len(cs)}', flush=True)
+        if not count:
+            raise ValueError('Requested event range is empty')
+        for tree in trees:
+            tree.flush()
+        here = Path(__file__).resolve().parent
+        metadata = dict(schema=_PID_SCHEMA, arguments=vars(args), events=count, inputs=provenance,
+            input_format=args.pid_input_format,
+            input_scope=('Existing legacy known-MC-only featurization; unlabelled rows excluded; '
+                         'no collection-based gap mask available' if args.pid_input_format == 'legacy' else
+                         'Finite feature-valid extended inputs; unknown truth retained; explicit gap mask'),
+            pid_readout=mode, species=list(SPECIES), particle_heads_config=config,
+            clustering='Existing beta/coordinate clustering; PID does not change membership',
+            pid_seed='Highest-beta track if present, otherwise highest-beta node',
+            energy_policy='particle_species_track_alpha_or_calo_sum' if five else args.energy_policy,
+            match_scope='Best deposited-overlap per truth, not bijective; labelled model inputs only; '
+                        'track-only matches use input overlap, energy efficiency/purity are NaN',
+            truth_scope='Only truth objects represented in known model inputs; known_truth_energy '
+                        'is a partial sum, not a full event reference',
+            confusion_scope='Raw counts per supported truth object; unmatched predictions use -1; '
+                            'a reco cluster can match multiple truth objects',
+            checkpoint_sha256=sha256(args.checkpoint),
+            code_sha256={name: sha256(here/name) for name in ('save_root_reco_w_Cedric_fast.py',
+                'particle_heads.py', 'pandora_eval_reconstruction.py', 'extended_h5.py', 'dataset.py',
+                'clustering.py', 'objectcondensation.py', 'model.py', 'gravnet_model.py',
+                'scan_fast_root_writer.cxx')})
+        file.cd()
+        ROOT.TObjString(json.dumps(metadata, sort_keys=True)).Write('particle_eval_metadata')
+        file.Write()
+        file.Close()
+        check = ROOT.TFile.Open(staging)
+        try:
+            if not check or check.IsZombie() or check.Get('eval_events').GetEntries() != count:
+                raise RuntimeError('Output ROOT validation failed')
+        finally:
+            if check:
+                check.Close()
+        if args.replace:
+            os.replace(staging, output)
+        else:
+            os.link(staging, output)
+        return output
+    finally:
+        if analysis_inputs is not None:
+            analysis_inputs.close()
+        if file.IsOpen():
+            file.Close()
+        if os.path.exists(staging):
+            os.unlink(staging)
+
+
+def _run_representative_pid(args, timing_cut, parser):
+    """Route the existing CLI to the structured PID writer before legacy resume checks."""
+    if timing_cut:
+        parser.error('--pid-readout representative uses saved H5 cuts; set timingCut=False '
+                     'and apply timingcut.py beforehand if needed')
+    for flag in ('pandora', 'truth_clustering', '1tomany_clustering', 'beta_d_scan',
+                 'energy_regression_weight', 'mctpe', 'energy_branch'):
+        if getattr(args, flag):
+            parser.error('--pid-readout representative cannot be combined with --'
+                         + flag.replace('_', '-'))
+    if args.cluster_energy_source not in (None, 'predicted'):
+        parser.error('--pid-readout representative requires predicted clustering')
+    if args.nstart < 0 or args.nend == 0 or args.nend < -1:
+        parser.error('Representative PID mode requires nstart >= 0 and nend > 0 or -1')
+    if args.pid_threads <= 0:
+        parser.error('--pid-threads must be positive')
+    if args.root_chunk_events <= 0 or args.pipeline_depth < 0:
+        parser.error('Require --root-chunk-events > 0 and --pipeline-depth >= 0')
+
+    from particle_heads import raw_model, resolve_pid_readout
+    from extended_h5 import DETECTOR_ONE_HOT_DIM, validate_training_schema
+
+    if args.pid_input_format == 'legacy' and (args.exclude_gap_hits or args.detector_one_hot):
+        parser.error('Legacy H5 lacks collections; gap exclusion and detector one-hot are unavailable')
+
+    inputs = _resolve_multi_h5(args.datapath)
+    # Check all input formats before creating any output.
+    for input_path in inputs:
+        with h5py.File(input_path, 'r') as handle:
+            if args.pid_input_format == 'extended':
+                validate_training_schema(handle)
+            elif handle.attrs.get('schema_version') is not None or 'row_info' in handle or 'collections' in handle:
+                parser.error(f'{input_path}: legacy input must not contain extended schema/builders')
+            elif 'feature' not in handle or 'label' not in handle:
+                parser.error(f'{input_path}: legacy input requires feature and label builders')
+    if args.multi_h5:
+        directory = Path(args.outfile).expanduser()
+        if directory.exists() and not directory.is_dir():
+            parser.error(f'--multi-h5 outfile must be a directory: {directory}')
+        jobs = [(str(path), directory / (path.stem + '.root')) for path in inputs]
+        if len({output.resolve() for _, output in jobs}) != len(jobs):
+            parser.error('Multiple inputs have the same H5 stem and would overwrite the same ROOT output')
+    else:
+        jobs = [(args.datapath, Path(args.outfile).expanduser())]
+    protected = {p.resolve() for p in inputs} | {Path(args.ckpt).expanduser().resolve()}
+    for _, output in jobs:
+        if output.resolve() in protected:
+            parser.error('PID ROOT output must differ from the input H5 and checkpoint')
+        if output.exists() and not args.replace:
+            parser.error(f'{output}: choose a new output or pass --replace')
+
+    # Preserve the timingCut=False legacy meaning: nend is a count after nstart.
+    # A directory without --multi-h5 uses a global range; multi-H5 resets per file.
+    particle_args = _pid_arguments(args)
+    input_dim = args.input_dim + (3 + int(args.momentum_amp) if args.momentum else 0)
+    if args.detector_one_hot:
+        input_dim += DETECTOR_ONE_HOT_DIM
+    model = get_model(args.ckpt, jit=False, input_dim=input_dim, output_dim=args.output_dim + 2,
+        energy_regression=True, energy_regression_cluster=True, model_variant=args.model_variant,
+        detector_one_hot=args.detector_one_hot, cluster_energy_source='predicted',
+        cluster_energy_tbeta=args.tbeta, cluster_energy_td=args.td).to(args.device).eval()
+    resolve_pid_readout(model, 'representative')
+    raw = raw_model(model)
+    particle_args.calo_head = bool(raw.five_particle_energy_heads or
+        sum(spec['kind'] == 'regression' for spec in raw.head_specs) >= 2)
+    print('[PID] Current clustering + representative PID; output schema: particle-baseline-root-1')
+    for input_path, output in jobs:
+        particle_args.input = input_path
+        particle_args.output = str(output)
+        _write_pid_root(particle_args, model=model)
+        print(f'[PID] completed -> {output}')
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
     timing_cut = bool(strtobool(args.timingCut))
+    if args.pid_readout == 'representative':
+        _run_representative_pid(args, timing_cut, parser)
+        return
+    if args.exclude_gap_hits or args.detector_one_hot:
+        parser.error('--exclude-gap-hits and --detector-one-hot require --pid-readout representative')
 
     # The old hit-derived Pandora path cannot evaluate the extended schema.
     # Refuse before resume checks, so an old ROOT is never accepted as the new result.

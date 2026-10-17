@@ -38,7 +38,9 @@ def configure_regression_output(model, activation):
             raise ValueError('Unexpected regression head; cannot restore linear output')
 
 
-def predict(model, data, device, tbeta, td, calo_head=True, truth=False):
+def predict(model, data, device, tbeta, td, calo_head=True, truth=False, *,
+            defer_clustering=False):
+    """Predict one event; optionally return CPU arrays for later clustering."""
     configure_inference(model, source='truth' if truth else 'predicted', tbeta=tbeta, td=td)
     data = data.clone().to(device)
     data.batch = torch.zeros(len(data.x), dtype=torch.long, device=device)
@@ -78,18 +80,30 @@ def predict(model, data, device, tbeta, td, calo_head=True, truth=False):
     calo = output[:, 2] if calo_head else None
     coordinates = output[:, 3:] if calo_head else output[:, 2:]
     track = data.x[:, 4].detach().cpu().numpy()
-    if truth:
-        assignments = data.y[:, 0].detach().cpu().numpy().astype(np.int64)
-    elif len(beta) == 1:
-        assignments = np.ones(1, dtype=np.int64)
-    else:
-        prediction = Prediction(beta, coordinates, None, track, tracker, calo)
-        assignments, _ = cluster(SimpleNamespace(), prediction, tbeta, td)
     if energies is not None:
         tracker = np.full(len(beta), np.nan)
         calo = np.full(len(beta), np.nan)
-    return dict(beta=beta, tracker=tracker, calo=calo, assignments=assignments,
-                pid_logits=pid_logits, species_energies=energies)
+    prediction = dict(beta=beta, tracker=tracker, calo=calo,
+                      pid_logits=pid_logits, species_energies=energies)
+    if truth:
+        prediction['assignments'] = data.y[:, 0].detach().cpu().numpy().astype(np.int64)
+        return prediction
+    prediction.update(coordinates=coordinates, track=track)
+    return prediction if defer_clustering else cluster_prediction(prediction, tbeta, td)
+
+
+def cluster_prediction(prediction, tbeta, td):
+    """Cluster a completed CPU prediction without touching the model or CUDA."""
+    result = dict(prediction)
+    coordinates, track = result.pop('coordinates'), result.pop('track')
+    beta = result['beta']
+    if len(beta) <= 1:
+        assignments = np.ones(len(beta), dtype=np.int64)
+    else:
+        inputs = Prediction(beta, coordinates, None, track, result['tracker'], result['calo'])
+        assignments, _ = cluster(SimpleNamespace(), inputs, tbeta, td)
+    result['assignments'] = assignments
+    return result
 
 
 def energy_clusters(data, prediction, policy='alpha'):

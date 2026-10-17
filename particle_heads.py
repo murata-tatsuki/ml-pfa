@@ -7,6 +7,25 @@ from torch_scatter import scatter_add, scatter_max, scatter_min
 SPECIES = ('charged_hadron', 'electron', 'muon', 'photon', 'neutral_hadron')
 
 
+def add_pid_readout_argument(parser):
+    parser.add_argument('--pid-readout', choices=('auto', 'representative'), default='auto',
+        help='representative: require a trained PID head; retain beta/coordinate clustering '
+             'and use the highest-beta track, or highest-beta node without tracks. '
+             'auto uses this readout when the checkpoint has PID.')
+
+
+def resolve_pid_readout(model, requested='auto'):
+    if requested not in ('auto', 'representative'):
+        raise ValueError('Unknown --pid-readout: ' + str(requested))
+    raw = raw_model(model) if model is not None else None
+    pid = bool(getattr(raw, 'pid_head', False))
+    if requested == 'representative' and not pid:
+        raise ValueError('--pid-readout representative requires a checkpoint with a trained PID head')
+    if getattr(raw, 'five_particle_energy_heads', False) and not pid:
+        raise ValueError('Normal five-head inference requires PID; use diagnose_particle_heads.py for truth-PID diagnosis')
+    return 'representative' if pid else 'none'
+
+
 def enabled(args):
     return bool(getattr(args, 'pid_head', False) or getattr(args, 'five_particle_energy_heads', False))
 

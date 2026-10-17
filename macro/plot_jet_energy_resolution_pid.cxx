@@ -4,7 +4,7 @@
 //   root -l -b -q 'plot_jet_energy_resolution_pid.cxx("figures/nnqq2M_fixed_uds_5head_pid","figures/pid_comparison")'
 // Optional third argument: a separate base directory for Pandora summaries.
 // Without that override, missing Pandora summaries use the previously saved
-// H5 reference in /home/murata/pandora_eval_validation/
+// H5 reference in /home/murata/research/studies/pandora_eval_validation/
 // pandora_h5_all_energies_20260925. The optional fourth argument changes that
 // reference directory (tables/resolutions.csv and tables/idr_evaluation.root);
 // an empty fourth argument disables it. Only no-neutrino-correction rows are
@@ -28,9 +28,14 @@
 // efficiency_purity_bar_{original,cedric}_{reco,truth_clustering}.
 // Ratios use visible MC event energy and a Gaussian fit over [0.9,1.1].
 // Bars read clustering_summary.root alongside each single-energy summary.
+// Pandora reference numbers are stored separately in data/pandora_reference_20260925.txt.
+// Missing CSV/energy ROOT files fall back to this text snapshot automatically.
+// The optional fifth argument selects that file; an empty fifth argument disables
+// all use of the snapshot (including saved Pandora efficiency/purity means).
 
 #include "root_common_includes.h"
 #include "src/pid_jet_resolution_summary.h"
+#include "src/pid_pandora_reference.h"
 #include "TLatex.h"
 #include "TNamed.h"
 #include "TParameter.h"
@@ -49,7 +54,16 @@ static const int kColors[5] = {kMagenta+1, kBlue, kGreen+2, kRed, kBlack};
 static const int kMethodColors[3] = {kOrange+7, kGreen+2, kBlue};
 static const char* const kYTitle = "RMS_{90}(E_{j}) / Mean_{90}(E_{j}) [%]";
 static const char* const kPandoraReferenceDirectory =
-    "/home/murata/pandora_eval_validation/pandora_h5_all_energies_20260925";
+    "/home/murata/research/studies/pandora_eval_validation/pandora_h5_all_energies_20260925";
+
+// Resolve once when loading the macro, independently of the plotting CWD.
+inline std::string defaultPandoraSnapshotFile() {
+    std::string directory = gSystem->DirName(__FILE__);
+    if (!gSystem->IsAbsoluteFileName(directory.c_str()))
+        directory = std::string(gSystem->WorkingDirectory()) + "/" + directory;
+    return directory + "/data/pandora_reference_20260925.txt";
+}
+static const std::string kPandoraSnapshotFile = defaultPandoraSnapshotFile();
 
 struct Sample {
     bool present = false;
@@ -60,6 +74,7 @@ struct Sample {
     std::string source_kind = "single_energy_summary";
     std::string histogram_path;
     std::string event_path;
+    std::shared_ptr<const pid_pandora_reference::Snapshot> pandora_snapshot;
     std::array<pid_jer::Point, pid_jer::kBins+2> points;
 };
 using Samples = std::array<std::array<Sample,5>,3>;
@@ -183,10 +198,34 @@ bool load(Sample& sample, const std::string& path, int method, int energy) {
     return true;
 }
 
-bool loadPandoraReference(Sample& sample, const std::string& directory, int energy) {
+// The text file contains saved statistics, not reconstructed/synthetic events.
+bool loadPandoraTextReference(Sample& sample, const std::string& path, int energy) {
+    if (path.empty() || gSystem->AccessPathName(path.c_str())) {
+        std::cerr << "Missing Pandora text reference (skipped): " << path << std::endl;
+        return false;
+    }
+    auto snapshot = std::make_shared<pid_pandora_reference::Snapshot>(
+        pid_pandora_reference::load(path));
+    sample = Sample{};
+    sample.points = snapshot->points[pid_pandora_reference::energyIndex(energy)];
+    sample.path = snapshot->path;
+    sample.source_kind = "pandora_text_reference";
+    sample.has_beta_threshold = false;
+    sample.beta = std::numeric_limits<double>::quiet_NaN();
+    sample.pandora_snapshot = std::move(snapshot);
+    sample.present = true;
+    std::cout << "Using Pandora text snapshot: " << energy << " GeV, " << path << std::endl;
+    return true;
+}
+
+bool loadPandoraReference(Sample& sample, const std::string& directory, int energy,
+                          const char* snapshotFile = nullptr) {
     const std::string csv_path = directory + "/tables/resolutions.csv";
     const std::string root_path = directory + "/tables/idr_evaluation.root";
     if (gSystem->AccessPathName(csv_path.c_str()) || gSystem->AccessPathName(root_path.c_str())) {
+        const std::string snapshot_path = snapshotFile ? snapshotFile : kPandoraSnapshotFile;
+        if (!snapshot_path.empty())
+            return loadPandoraTextReference(sample,snapshot_path,energy);
         std::cerr << "Missing saved Pandora reference (skipped): " << directory << std::endl;
         return false;
     }
@@ -400,7 +439,8 @@ void plot_jet_energy_resolution_pid(
     const char* baseDirectory = "figures/nnqq2M_fixed_uds_5head_pid",
     const char* outputDirectory = "",
     const char* pandoraBaseDirectory = "",
-    const char* pandoraReferenceDirectory = pid_jer_plot::kPandoraReferenceDirectory) {
+    const char* pandoraReferenceDirectory = pid_jer_plot::kPandoraReferenceDirectory,
+    const char* pandoraSnapshotFile = nullptr) {
     using namespace pid_jer_plot;
     Samples samples;
     int loaded = 0;
@@ -412,9 +452,9 @@ void plot_jet_energy_resolution_pid(
         const bool use_reference = m == 2 && !pandoraBaseDirectory[0] &&
             pandoraReferenceDirectory && pandoraReferenceDirectory[0] && gSystem->AccessPathName(path.c_str());
         if (use_reference) {
-            if (!loadPandoraReference(sample,pandoraReferenceDirectory,kEnergies[e])) continue;
+            if (!loadPandoraReference(sample,pandoraReferenceDirectory,kEnergies[e],pandoraSnapshotFile)) continue;
             const std::string event_cache = base + "/" + std::to_string(kEnergies[e])+"GeV/pandora/event_energy_reference.root";
-            if (!gSystem->AccessPathName(event_cache.c_str())) sample.event_path = event_cache;
+            if (sample.source_kind == "pandora_h5_reference" && !gSystem->AccessPathName(event_cache.c_str())) sample.event_path = event_cache;
         } else if (!load(sample,path,m,kEnergies[e])) continue;
         if (sample.has_beta_threshold) {
             if (std::isfinite(beta) && std::fabs(beta-sample.beta) > 1e-12)
@@ -467,9 +507,9 @@ void plot_jet_energy_resolution_pid(
     for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) {
         const std::string base = m == 2 && pandoraBaseDirectory[0] ? pandoraBaseDirectory : baseDirectory;
         const std::string path = base + "/" + std::to_string(kEnergies[e])+"GeV/"+kMethods[m]+"/"+pid_cluster::kSummaryName;
-        if (m == 2 && !pandoraBaseDirectory[0] && gSystem->AccessPathName(path.c_str()))
-            loadSavedPandoraBars(clustering[m][e],e);
-        else if (!loadClustering(clustering[m][e],path,m,kEnergies[e],beta)) continue;
+        if (m == 2 && !pandoraBaseDirectory[0] && gSystem->AccessPathName(path.c_str())) {
+            if (!loadSavedPandoraBars(clustering[m][e],e,pandoraSnapshotFile)) continue;
+        } else if (!loadClustering(clustering[m][e],path,m,kEnergies[e],beta)) continue;
         clustering_method = kMethods[m]; clustering_energy = kEnergies[e]; clustering_path = clustering[m][e].path;
         clustering_source_kind = clustering[m][e].source_kind;
         for (int d=0; d<2; ++d) for (int p=0; p<6; ++p) if (clustering[m][e].found[d][p]) {

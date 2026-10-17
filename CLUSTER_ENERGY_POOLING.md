@@ -110,9 +110,10 @@ Python から直接推論する場合は、`model.get_model(..., jit=False, ...)
 
 ## 確認範囲
 
-単体テストは `python -m unittest test_cluster_energy -v` で実行できます。
+過去の単体テスト: `python -m unittest test_cluster_energy -v`。
+確認用テストソースは2026-10-17に削除済みです。以下は削除前の確認範囲です。
 教師値の split / merge、event 分離、微小・ゼロ deposit、空 calo、勾配、
-既存 checkpoint、新 checkpoint、情報共有の epoch 設定を確認します。
+既存 checkpoint、新 checkpoint、情報共有の epoch 設定を確認しました。
 CPU で truth / predicted の学習・validation・checkpoint 保存、streaming 入力、
 既存方式の学習、実 H5 の ROOT 出力、2 プロセス DDP の勾配同期を確認しました。
 GPU 実行と、実データでの再学習による精度比較は未実施です。

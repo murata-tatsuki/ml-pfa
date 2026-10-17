@@ -17,7 +17,7 @@ import torch
 from model import get_model
 from cluster_energy import pooling_model
 from extended_h5 import add_detector_one_hot_argument, DETECTOR_ONE_HOT_DIM
-from particle_heads import raw_model, checkpoint_config, SPECIES
+from particle_heads import raw_model, checkpoint_config, SPECIES, add_pid_readout_argument, resolve_pid_readout
 from pandora_eval_data import iter_events, model_data, gap_hit_mask
 from pandora_eval_reconstruction import predict, energy_clusters, pandora_clusters, overlap_metrics, configure_regression_output
 
@@ -76,6 +76,7 @@ def write(args, model=None):
             cluster_energy_tbeta=args.tbeta, cluster_energy_td=args.td).to(args.device).eval()
         configure_regression_output(model, args.regression_output_activation)
     particle_config = checkpoint_config(model, getattr(raw_model(model), 'particle_heads_inference_epoch', None)) if model is not None else None
+    pid_readout = resolve_pid_readout(model, getattr(args, 'pid_readout', 'auto'))
     if particle_config and particle_config['five_particle_energy_heads'] and not args.calo_head:
         raise ValueError('Five-head readout requires --calo-head')
     if particle_config and particle_config['five_particle_energy_heads'] and not particle_config['pid_head']:
@@ -231,7 +232,7 @@ def write(args, model=None):
                 if count % 10 == 0:
                     tree.tree.FlushBaskets()
         here = Path(__file__).resolve().parent
-        metadata = dict(schema=SCHEMA, arguments=vars(args), inputs=provenance, events=count,
+        metadata = dict(schema=SCHEMA, arguments=vars(args), inputs=provenance, events=count, pid_readout=pid_readout,
             inference_failures=failures, algorithms={'0':'Pandora','1':'GNN','2':'truth-labelled-inputs'},
             energy_policy=args.energy_policy,
             truth_scope='Only labelled model-input rows; three_way_valid requires complete input truth coverage',
@@ -254,6 +255,7 @@ def write(args, model=None):
         configurations = [dict(analysis_settings=x['metadata']['analysis_settings'],
                                input_inventory=x['metadata']['input_inventory']) for x in provenance.values()]
         configuration = dict(input=configurations[0] if configurations else None,
+            pid_readout=pid_readout,
             checkpoint_sha256=metadata['checkpoint_sha256'], energy_policy=metadata['energy_policy'],
             input_dim=args.input_dim, output_dim=args.output_dim, momentum=args.momentum,
             momentum_amp=args.momentum_amp, calo_head=args.calo_head, tbeta=args.tbeta, td=args.td,
@@ -284,6 +286,7 @@ def write(args, model=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_detector_one_hot_argument(parser)
+    add_pid_readout_argument(parser)
     parser.add_argument('input', help='New H5 file, directory, or quoted glob')
     parser.add_argument('output', help='New comparison ROOT file')
     parser.add_argument('--checkpoint')

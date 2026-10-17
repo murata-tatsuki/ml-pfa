@@ -6,6 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "Compression.h"
 #include "TFile.h"
@@ -438,6 +439,61 @@ private:
 
   std::int32_t jet_event_ = 0, jet_n_jets_ = 0;
   double jet_p4_[2][4] = {};
+};
+
+// Scalar diagnostic trees used by the representative-PID path. The TFile owns
+// the tree; this object keeps branch buffers alive until the file is closed.
+// Numeric input is row-major, with 64-bit IDs (the existing /L PID branches).
+class CedricScalarTreeWriter {
+public:
+  CedricScalarTreeWriter(const std::string &name,
+                        const std::vector<std::string> &integers,
+                        const std::vector<std::string> &doubles,
+                        const std::vector<std::string> &strings)
+      : tree_(new TTree(name.c_str(), name.c_str())),
+        integers_(integers.size()), doubles_(doubles.size()),
+        strings_(strings.size()) {
+    for (std::size_t j = 0; j < integers.size(); ++j)
+      tree_->Branch(integers[j].c_str(), &integers_[j],
+                    (integers[j] + "/L").c_str());
+    for (std::size_t j = 0; j < doubles.size(); ++j)
+      tree_->Branch(doubles[j].c_str(), &doubles_[j],
+                    (doubles[j] + "/D").c_str());
+    for (std::size_t j = 0; j < strings.size(); ++j)
+      tree_->Branch(strings[j].c_str(), &strings_[j]);
+  }
+
+  CedricScalarTreeWriter(const CedricScalarTreeWriter &) = delete;
+  CedricScalarTreeWriter &operator=(const CedricScalarTreeWriter &) = delete;
+
+  void append(long long n, unsigned long long int_address,
+              unsigned long long double_address,
+              const std::vector<std::string> &strings) {
+    if (n < 0 || strings.size() != static_cast<std::size_t>(n) * strings_.size())
+      throw std::runtime_error("Invalid scalar ROOT batch dimensions");
+    const auto *iv = reinterpret_cast<const Long64_t *>(
+        static_cast<std::uintptr_t>(int_address));
+    const auto *dv = reinterpret_cast<const double *>(
+        static_cast<std::uintptr_t>(double_address));
+    for (long long row = 0; row < n; ++row) {
+      if (!integers_.empty())
+        std::copy_n(iv + row * integers_.size(), integers_.size(), integers_.begin());
+      if (!doubles_.empty())
+        std::copy_n(dv + row * doubles_.size(), doubles_.size(), doubles_.begin());
+      for (std::size_t j = 0; j < strings_.size(); ++j)
+        strings_[j] = strings[row * strings_.size() + j];
+      if (tree_->Fill() < 0)
+        throw std::runtime_error("Failed to append scalar ROOT tree");
+    }
+  }
+
+  TTree *tree() const { return tree_; }
+
+private:
+  TTree *tree_;
+  std::vector<Long64_t> integers_;
+  std::vector<double> doubles_;
+  std::vector<std::string> strings_;
 };
 
 #endif

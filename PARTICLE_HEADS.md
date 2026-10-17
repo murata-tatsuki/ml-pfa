@@ -55,6 +55,106 @@ OC/beta lossの設定・開始epochは従来どおり。
 
 ## 推論と出力
 
+### 現在のclustering + 代表点PIDの基準評価
+
+ROOT出力の `--pid-readout representative` で、学習済みPID headを必須にし、
+既存のbeta/座標clusteringの後に代表点PIDを読む。trackがあれば最高betaのtrack、
+なければ最高betaのnodeの5クラスargmaxを使用する。hit間のPID不一致でclusterを
+分割・結合しない。`save_root_pandora_eval.py` の `auto`（既定）は
+PID headがあれば同じ読み出しを使用する。
+head構成はcheckpointから復元するため、推論時の `--pid-head` や
+`--five-particle-energy-heads` の再指定は不要。5 energy headでPIDなしの通常推論は拒否する。
+
+既存の `save_root_reco_w_Cedric_fast.py` に `--pid-readout representative` を指定して
+今回のnnqq学習用H5（`nnqq-2m-eval-1`、training-only）を評価できる。
+`single-particle-eval-1` と `pandora-eval-1` の学習用H5も読める。
+このコマンドの既定値は `--pid-readout legacy` で、従来の5-tree出力を使用する。
+representative指定時は、このファイル内のstructured writerでPID評価ROOTを作成する。
+
+```bash
+python3 -B save_root_reco_w_Cedric_fast.py \
+  /data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M_nobrems/validation/dd_ft0_99.h5 \
+  checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_04_162529_outputD5_multihead/ckpt_65_1.pth.tar \
+  /home/murata/pid_baseline_epoch65.root \
+  0 10 False 7 5 \
+  --pid-readout representative --energy-regression --energy-regression-cluster \
+  --momentum --momentum-amp --exclude-gap-hits \
+  --tbeta 0.9 --td 0.5 --device cpu
+```
+
+位置引数は従来どおり `datapath ckpt outfile nstart nend timingCut input_dim output_dim`。
+representativeモードの `timingCut` は `False` にする。`nstart` は開始index、
+`nend` はそこから読む件数（従来のtimingCut=Falseの意味を維持）、`-1` は末尾まで。
+directoryやglobはソートしたファイル全体で連続したindexを使用する。
+`--multi-h5` はH5ごとに同じ範囲を評価し、出力directoryに `<H5 stem>.root` を作る。
+modelは一度だけロードして再利用する。同名stemの衝突は拒否する。
+既存PID出力は `--replace` で明示的に上書きできる。
+入力H5の保存済みtime/pT cutを
+そのまま使用し、gap除外・feature validity・特徴量変換は学習と共通。
+detector one-hotを使った学習なら `--detector-one-hot` も合わせる。
+2 energy head + PIDにも対応し、その場合は従来のenergy計算を使用する。
+head構成はcheckpointから復元する。`--pandora`、`--truth-clustering`、
+`--1tomany-clustering`、`--beta-d-scan`、`--energy-regression-weight`、
+`--mctpe`、`--energy-branch`、truth poolingとの併用は拒否する。
+`--pid-detail clusters` でhit出力を省略、`--pid-threads` でCPU thread数を指定できる。
+代表点PID経路も既存fast版と同じC++ writerを使用し、hitはNumPy列配列から一括Fillする。
+`--root-chunk-events` は書き込みをまとめるイベント数（既定10）。ROOTはLZ4圧縮を使用する。
+`--pipeline-depth` はGPU推論の先読み件数（既定40、0で無効、CPUでは無効）。
+推論結果をCPU配列として保持し、イベント順を維持してCPU clustering・評価・ROOT書き込みと
+次イベントのGPU推論を並行処理する。PID・energyの計算式とROOT branchは同じ。
+
+### epoch 57の並列shell
+
+`shell/run_root_parallel_5head.sh` は従来と同じ `INDEX INPUT.h5 [GPU]` を受け取る。
+checkpointは `ckpts_gravnet_new02_2026_10_04_162529_outputD5_multihead/ckpt_57_1.pth.tar`。
+渡したH5の形式を確認し、そのファイルを直接、既存writerの代表点PIDモードへ渡す。
+shell内でtime・pT cutを追加しない。一時H5も作成しない。
+
+```bash
+cd /home/murata/master/shell
+partType=ss
+energy=350
+GPU=0
+ls /data/suehara/mldata/pfa/murata/data/raw/fixed_uds_pandoraFixed_nobrems/${partType}/${energy}GeV/*_01?.h5 \
+  | nl -v0 \
+  | xargs -r -n2 -P10 env RUN_GPU="$GPU" FAST_SCAN_WORKERS=3 bash run_root_parallel_5head.sh
+```
+
+出力は `output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/5head_pid/2026_10_04_162529/epoch57/<energy>GeV/tbeta090td050/<H5 stem>.root`。
+tbeta=0.9、td=0.5は固定でscanは実行しない。`FAST_SCAN_WORKERS` はこのshellでは
+PID用CPU thread数の別名（`PID_THREADS` の指定が優先）。GPU指定がなければindexでGPUへ分配する。
+`ROOT_NEND=1` で先頭1イベントの確認、`ROOT_OUTPUT_BASE` で出力root directoryの変更、
+`ROOT_REPLACE=1` で再生成、`PYTHON_BIN` でPython環境の指定ができる。
+`run_root_parallel_fast.sh` と同じく `ROOT_CHUNK_EVENTS=10`、`PIPELINE_DEPTH=40` が既定。
+環境変数で変更でき、`PIPELINE_DEPTH=0` なら先読みを止めて同じ結果を逐次処理で確認できる。
+
+提示の旧H5は `--pid-input-format legacy` で読み、従来のfeaturizationと同じく
+MC未対応行をモデル入力から除外する。collection情報がないためgap除外・detector one-hotは不可。
+新形式H5では `--pid-input-format extended` とgap除外を使用し、MC未対応入力を保持する。
+この差をROOT metadataの `input_format`/`input_scope` に、旧形式の除外行数を
+`eval_events.n_unlabelled_inputs_excluded` に保存する。旧H5を新schemaへ書き換えない。
+
+- `eval_clusters`：`algorithm=1`、予測`pid`、`pid_seed_input_row`、5クラスの
+  `pid_probability_<species>`、`energy`、`energy_head`、`energy_fallback`。
+- `eval_hits`：元H5の各行、入力mask・cluster所属、各PID logit、5 species energy。
+  除外された行の予測値はNaN。`--pid-detail clusters` では省略する。
+- `eval_matches`：truth粒子ごとのbest deposit overlap match、`truth_pid`、予測`pid`、
+  `pid_correct`、`efficiency`、`purity`、`response=E_reco/E_truth`。
+  未マッチは`matched=0`・`pid=-1`、判定不能は`pid_correct=-1`。
+- `pid_confusion`：truth PIDを横軸、予測PIDを縦軸にした生カウント。
+  未マッチは専用bin。truth不明・未対応PDGは集計しない。
+- `particle_eval_metadata`：読み出し方式、入力cut情報、head構成、checkpoint/code hash。
+
+truth matchは既知モデル入力に対する粒子単位の診断で、一対一対応ではない。
+同じreco clusterが複数truth粒子に対応することがあり、confusionもtruth粒子単位。
+track-only truthはinput overlapでmatchし、depositの分母が0ならefficiency/purityはNaN。
+`eval_events.known_truth_energy` は既知入力に現れたtruth粒子の部分和で、全event energyの
+教師ではない。このwriterのschemaは `particle-baseline-root-1` で、Pandora比較マクロや
+旧5-treeマクロに渡す形式ではない。
+
+全group入りのPandora評価H5を使う従来の `save_root_pandora_eval.py` にも
+`--pid-readout representative` を追加した。そちらのROOT schemaは従来どおり。
+
 `save_root_pandora_eval.py` のstructured readoutを使う。checkpointからhead構成を復元する。
 入力形式はこのwriterが従来対応するPandora評価H5。通常の学習H5を直接渡すwriterではない。
 PIDは予測clusterのtrack優先alphaで**常に5クラス全部**からargmaxする。
@@ -98,5 +198,6 @@ CSVではtruth headのenergyを読み、trackなし荷電truthなどは `energy_
 
 単一processとDDPに対応。`--jit`、`--dp`、`--energy-branch`、
 `--energy-regression-weight`、`--cluster-energy-pooling`との併用は未対応として拒否する。
-検証コマンド: `python -m unittest test_particle_heads test_cluster_energy test_extended_training test_pandora_eval_analysis -v`。
+過去の検証コマンド: `python -m unittest test_particle_heads test_cluster_energy test_extended_training test_pandora_eval_analysis -v`。
+確認用テストソースは2026-10-17に削除済みで、このコマンドは削除前の記録です。
 回帰精度やjet energy resolutionの改善は、この実装だけでは保証されないため比較学習で評価する。

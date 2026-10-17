@@ -132,7 +132,9 @@ labelled efficiency/purity、範囲を自動拡張する粒子エネルギー残
 3/4/5=完全truth共通のPandora/GNN/truth、6=partial truth診断。
 `angle_bin=-1`は中央領域、それ以外は角度区間番号。
 
-## 検証
+## 過去の検証
+
+確認用テストソースは2026-10-17に削除済みです。以下のコマンドと確認範囲は削除前の記録です。
 
 ```bash
 python -B -m unittest test_pandora_eval_analysis test_pandora_eval_reference -v
@@ -141,7 +143,7 @@ python -B -m unittest test_pandora_eval_analysis test_pandora_eval_reference -v
 実H5の16イベント・77,502行・872PFOの整合性、未知truth入力1,203行の保持、
 旧形式の前処理一致、track-only PFO、大きいID、空/1行イベント、無効特徴量、
 未知truthをクラスタ化しないこと、明示したenergy policyを確認する。
-単独テストは実H5がなくても実行でき、実H5依存の項目のみskipする。
+当時の単独テストは、実H5がない場合には実H5依存の項目のみskipする構成だった。
 
 独立照合テストは180イベントの人工fixtureを作り、元のLCPandoraAnalysisの
 AnalysePerformanceを別の実行ファイルとしてビルドする。14分布の全binと、

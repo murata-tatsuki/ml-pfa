@@ -9,6 +9,18 @@ Derived wrappers: cms-pepr/pytorch_cmspepr e94c49b; see LICENSE (BSD-3-Clause).
 from pathlib import Path
 from typing import Optional, Tuple
 import torch
+import torch_cmspepr  # Register the installed CPU/CUDA search operators.
+
+# Installed releases use either a shared or separate CPU/CUDA namespace.
+# Call the operator with explicit event boundaries: some installed Python
+# wrappers compute row_splits but accidentally pass a single-event tensor.
+if hasattr(torch.ops.torch_cmspepr, 'select_knn'):
+    _legacy_cpu_search = torch.ops.torch_cmspepr.select_knn
+    _legacy_cuda_search = _legacy_cpu_search
+else:
+    _legacy_cpu_search = torch.ops.select_knn_cpu.select_knn_cpu
+    _legacy_cuda_search = getattr(torch.ops.select_knn_cuda, 'select_knn_cuda',
+                                  _legacy_cpu_search)
 
 _loaded = False
 
@@ -28,39 +40,13 @@ def load_extension():
         _loaded = True
 
 
-def select_knn_baseline(
+@torch.jit.script
+def _search_inputs(
     x: torch.Tensor,
-    k: int,
     batch_x: Optional[torch.Tensor] = None,
     inmask: Optional[torch.Tensor] = None,
-    max_radius: float = 1e9,
-    mask_mode: int = 1,
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    r"""Finds for each element in :obj:`x` the :obj:`k` nearest points in
-    :obj:`x`.
-
-    Args:
-        x (Tensor): Node feature matrix
-            :math:`\mathbf{X} \in \mathbb{R}^{N \times F}`.
-        k (int): The number of neighbors.
-        batch_x (LongTensor, optional): Batch vector
-            :math:`\mathbf{b} \in {\{ 0, \ldots, B-1\}}^N`, which assigns each
-            node to a specific example. :obj:`batch_x` needs to be sorted.
-            (default: :obj:`None`)
-        max_radius (float): Maximum distance to nearest neighbours. (default: :obj:`1e9`)
-        mask_mode (int): ??? (default: :obj:`1`)
-
-    :rtype: :class:`Tuple`[`LongTensor`,`FloatTensor`]
-
-    .. code-block:: python
-
-        import torch
-        from torch_cmspepr import select_knn
-
-        x = torch.Tensor([[-1, -1], [-1, 1], [1, -1], [1, 1]])
-        batch_x = torch.tensor([0, 0, 0, 0])
-        assign_index = select_knn(x, 2, batch_x)
-    """
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Inputs shared by the installed search and the CUDA baseline."""
     x = x.view(-1, 1) if x.dim() == 1 else x
     x = x.contiguous()
 
@@ -75,7 +61,7 @@ def select_knn_baseline(
         )
     else:
         assert x.size(0) == batch_x.size(0)
-        batch_size = int(batch_x.max()) + 1
+        batch_size = int(batch_x.max()) + 1 if batch_x.numel() else 1
 
         # Get number of hits per event
         counts = torch.zeros(batch_size, dtype=torch.int32, device=x.device)
@@ -88,26 +74,85 @@ def select_knn_baseline(
         row_splits = torch.zeros(batch_size + 1, dtype=torch.int32, device=x.device)
         torch.cumsum(counts, 0, out=row_splits[1:])
 
-    if x.device == torch.device('cpu'):
-        import torch_cmspepr  # Register the unchanged CPU operator lazily.
-        return torch.ops.select_knn_cpu.select_knn_cpu(
-            x,
-            row_splits,
-            mask,
-            k,
-            max_radius,
-            mask_mode,
-        )
+    return x, row_splits, mask
+
+
+@torch.jit.script
+def select_knn_legacy(
+    x: torch.Tensor,
+    k: int,
+    batch_x: Optional[torch.Tensor] = None,
+    inmask: Optional[torch.Tensor] = None,
+    max_radius: float = 1e9,
+    mask_mode: int = 1,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Installed search kernel with the same event boundaries as training."""
+    x, row_splits, mask = _search_inputs(x, batch_x, inmask)
+    if x.device.type == 'cpu':
+        neighbours, distances = _legacy_cpu_search(x, row_splits, mask, k, max_radius, mask_mode)
     else:
-        load_extension()
-        return torch.ops.pfa_knn_event_parallel.select_knn_cuda(
-            x,
-            row_splits,
-            mask,
-            k,
-            max_radius,
-            mask_mode,
-        )
+        neighbours, distances = _legacy_cuda_search(x, row_splits, mask, k, max_radius, mask_mode)
+    # Some installed CUDA releases pad missing neighbours with the query ID,
+    # whereas training uses -1. Only column zero is a genuine self neighbour.
+    query = torch.arange(x.size(0), device=x.device).unsqueeze(1)
+    neighbours[:, 1:].masked_fill_(neighbours[:, 1:] == query, -1)
+    return neighbours, distances
+
+
+def select_knn_baseline(
+    x: torch.Tensor,
+    k: int,
+    batch_x: Optional[torch.Tensor] = None,
+    inmask: Optional[torch.Tensor] = None,
+    max_radius: float = 1e9,
+    mask_mode: int = 1,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Original event-parallel search, with the installed kernel on CPU."""
+    x, row_splits, mask = _search_inputs(x, batch_x, inmask)
+    if x.device.type == 'cpu':
+        return _legacy_cpu_search(x, row_splits, mask, k, max_radius, mask_mode)
+    load_extension()
+    return torch.ops.pfa_knn_event_parallel.select_knn_cuda(
+        x, row_splits, mask, k, max_radius, mask_mode)
+
+
+@torch.jit.script
+def _edges_from_neighbours(neighbours: torch.Tensor, k: int,
+                           loop: bool, flow: str) -> torch.Tensor:
+    """Training's query-major edge convention, shared by both search backends.
+
+    The historical source_to_target spelling here means [query, neighbour].
+    GravNetConv uses target_to_source propagation, so messages reach queries.
+    """
+    assert flow in ['source_to_target', 'target_to_source']
+    targets = neighbours.flatten() if loop else neighbours[:, 1:].flatten()
+    sources = torch.repeat_interleave(
+        torch.arange(neighbours.size(0), device=neighbours.device), k)
+    if flow == 'source_to_target':
+        edge_index = torch.stack((sources, targets))
+    else:
+        edge_index = torch.stack((targets, sources))
+    return edge_index[:, targets >= 0]
+
+
+@torch.jit.script
+def knn_graph_legacy(
+    x: torch.Tensor,
+    k: int,
+    batch: Optional[torch.Tensor] = None,
+    loop: bool = False,
+    flow: str = 'source_to_target',
+    cosine: bool = False,
+    num_workers: int = 1,
+    max_radius: float = 1e9,
+) -> torch.Tensor:
+    """Training-compatible edges using the installed, TorchScriptable search.
+
+    Does not load the optional event-parallel CUDA extension.
+    """
+    neighbours, _ = select_knn_legacy(
+        x, k if loop else k + 1, batch, max_radius=max_radius)
+    return _edges_from_neighbours(neighbours, k, loop, flow)
 
 
 # rows, packed (event, first-query) tasks, block size, rectangular width, N.
@@ -259,7 +304,7 @@ def knn_graph(
         edge_index = knn_graph(x, k=2, batch=batch, loop=False)
     """
     assert flow in ['source_to_target', 'target_to_source']
-    # Ask for k+1 neighbors if loop=True, since select_knn will always contain the self-loop
+    # Without self loops, request k+1 and drop the first (self) neighbour.
     K = k if loop else k + 1
     if baseline:
         neighbours, edge_dists = select_knn_baseline(x, K, batch, max_radius=max_radius)
@@ -267,28 +312,4 @@ def knn_graph(
         neighbours, edge_dists = select_knn(x, K, batch, max_radius=max_radius,
                                           plan=plan, packed=packed, zero_init=zero_init)
 
-    # neighbours has the following (n_neigh x k) structure:
-    # [[0,  1,  3, ...],  <-- node 0 connected with 0, 1, 3, ...
-    #  [1,  0,  -1, ...]   <-- node 1 connected with 1 and 0
-    #  [2, -1, -1, ...]   <-- node 2 connected with 2 and nothing else
-    #  ...]
-    # Flatten it to a 1-dim tensor; Drop first column if not doing the self loop
-    if loop:
-        targets = neighbours.flatten()
-    else:
-        targets = neighbours[:, 1:].flatten()
-
-    # Create sources:
-    #   <--k--> <--k-->
-    # [ 0 0 0 0 1 1 1 1 ... n_nodes n_nodes n_nodes n_nodes]
-    sources = torch.repeat_interleave(torch.arange(x.size(0), device=x.device), k)
-
-    if flow == 'source_to_target':
-        edge_index = torch.stack((sources, targets))
-    else:
-        edge_index = torch.stack((targets, sources))
-
-    # Filter out non-edges (target is -1)
-    edge_index = edge_index[:, (targets >= 0)]
-
-    return edge_index
+    return _edges_from_neighbours(neighbours, k, loop, flow)
