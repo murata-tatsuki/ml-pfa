@@ -66,7 +66,7 @@ using namespace std;
 
 const int qq_energy = 500;
 const double c_event_clean_threshold = 0.1;
-const bool use_truth_clustering = false;
+const bool use_truth_clustering = true;
 const int cedric_n_min = 2;
 const double cedric_e_min = 0.0;
 const int master_unclustered_cluster_id = 0;
@@ -1142,16 +1142,10 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
 
 
     // PID diagnostics count each reco cluster once after the existing beta cut.
-    TH2F *pid_confusion_reco = new TH2F("pid_confusion_reco",
-        "Representative PID vs dominant truth;dominant truth species;predicted PID;clusters",
-        6, 0, 6, kNPidSpecies, 0, kNPidSpecies);
-    TH2F *pid_energy_head_vs_prediction = new TH2F("pid_energy_head_vs_prediction",
-        "Saved energy head vs PID;predicted PID;selected energy head;clusters",
-        kNPidSpecies, 0, kNPidSpecies, 6, 0, 6);
-    TH1F *pid_prediction_counts = new TH1F("pid_prediction_counts",
-        "Representative PID;predicted PID;clusters", kNPidSpecies, 0, kNPidSpecies);
-    TH1F *pid_energy_fallback_counts = new TH1F("pid_energy_fallback_counts",
-        "Saved energy fallback;energy readout;clusters", 2, 0, 2);
+    TH2F *pid_confusion_reco = new TH2F("pid_confusion_reco", "Representative PID vs dominant truth;dominant truth species;predicted PID;clusters", 6, 0, 6, kNPidSpecies, 0, kNPidSpecies);
+    TH2F *pid_energy_head_vs_prediction = new TH2F("pid_energy_head_vs_prediction", "Saved energy head vs PID;predicted PID;selected energy head;clusters", kNPidSpecies, 0, kNPidSpecies, 6, 0, 6);
+    TH1F *pid_prediction_counts = new TH1F("pid_prediction_counts", "Representative PID;predicted PID;clusters", kNPidSpecies, 0, kNPidSpecies);
+    TH1F *pid_energy_fallback_counts = new TH1F("pid_energy_fallback_counts", "Saved energy fallback;energy readout;clusters", 2, 0, 2);
     for(int ip=0; ip<kNPidSpecies; ++ip){
         pid_confusion_reco->GetXaxis()->SetBinLabel(ip+1, kPidSpecies[ip]);
         pid_confusion_reco->GetYaxis()->SetBinLabel(ip+1, kPidSpecies[ip]);
@@ -1400,28 +1394,20 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
             source_metadata ? source_metadata->GetString().Data() : "");
         if(truth_pid.enabled) ++pid_input_files;
         else ++legacy_input_files;
-        cout << "  energy readout: " << (truth_pid.enabled ? "energy_pid (saved representative PID)" : "legacy track/calo heads") << endl;
+        // cout << "  energy readout: " << (truth_pid.enabled ? "energy_pid (saved representative PID)" : "legacy track/calo heads") << endl;
 
-        const char* cedric_required_branches[] = {
-            "event", "truthid", "cluster", "mcpdg", "mccharge",
-            "mcen", "edep_mc", "trackness"
-        };
+        const char* cedric_required_branches[] = {"event", "truthid", "cluster", "mcpdg", "mccharge", "mcen", "edep_mc", "trackness"};
         if(!tree_pred[irawfile]){
-            cerr << "ERROR: prediction tree is required for Cedric metrics: "
-                 << fileNames_raw[irawfile] << endl;
+            cerr << "ERROR: prediction tree is required for Cedric metrics: " << fileNames_raw[irawfile] << endl;
             return;
         }
         if(tree_pred[irawfile]->GetEntries() == 0){
-            cerr << "ERROR: prediction tree is empty in "
-                 << fileNames_raw[irawfile] << endl
-                 << "Regenerate this ROOT file with save_root_reco_pid.py (full prediction tree)." << endl;
+            cerr << "ERROR: prediction tree is empty in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py (full prediction tree)." << endl;
             return;
         }
         for(const char* branch_name : cedric_required_branches){
             if(!tree_pred[irawfile]->GetBranch(branch_name)){
-                cerr << "ERROR: missing prediction/" << branch_name << " in "
-                     << fileNames_raw[irawfile] << endl
-                     << "Regenerate this ROOT file with save_root_reco_pid.py." << endl;
+                cerr << "ERROR: missing prediction/" << branch_name << " in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py." << endl;
                 return;
             }
         }
@@ -1537,16 +1523,14 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
             }
             tree_event[irawfile]->ResetBranchAddresses();
         }else{
-            cout << "   warning: event tree with event/MC_dijet_energy is missing; "
-                 << "skipping truth-dependent plots for this file" << endl;
+            cout << "   warning: event tree with event/MC_dijet_energy is missing; " << "skipping truth-dependent plots for this file" << endl;
         }
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             if(rawfilenum==1 && entry_max[irawfile]>10000 && ientry%100000==0) cout << "t event " << ientry << "/" << entry_max[irawfile] << endl;
             tree[irawfile]->GetEntry(ientry);
             if(truth_pid.enabled){
                 pred_edep = pred_edep_cluster = truth_pid.select(pred_edep);
-                pid_clustering_diagnostics.matchTruth(event, truthid, matched_cluster, truth_pid.pid,
-                    cond_beta, edep, edep_reco, edep_match);
+                pid_clustering_diagnostics.matchTruth(event, truthid, matched_cluster, truth_pid.pid, cond_beta, edep, edep_reco, edep_match);
             }
             // Legacy Pandora stores one PFO energy in pred_edep for both
             // charged and neutral clusters; pred_edep_cluster is a zero

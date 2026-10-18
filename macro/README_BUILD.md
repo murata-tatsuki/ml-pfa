@@ -64,6 +64,22 @@ PID版は `root ...cxx` やACLiCでは起動せず、上記の実行ファイル
 
 **表示について:** 実行ファイルは `main` 内で `gROOT->SetBatch(kTRUE)` しており、**コンパイル版ではキャンバスは開きません**（サーバや SSH でもそのまま走る）。インタプリタで `root ... .x src/....cxx` したときは従来どおり GUI が出ます。画像保存は `saving_canvas` や `SaveAs` がバッチでも有効です。
 
+### 保存後に `double free or corruption (!prev)` で終了する場合
+
+ビルド時と実行時で異なるROOTを混在させると、同じROOTライブラリが二重にロードされ、保存後の終了処理で二重解放が発生します。確認したケースでは、CMake cacheの `/work/root/build` と、実行環境の `/usr/local` の `libRIO.so` が両方読み込まれていました。
+
+`make` は現在の `root-config --prefix` にある `cmake/ROOTConfig.cmake` を毎回指定し、古い `ROOT_DIR` cacheを更新します。ROOT環境を設定したシェルで、PID版を再ビルドしてください。
+
+```bash
+cd ~/master/macro
+make efficiency_purity_contribution_pid
+./build/efficiency_purity_contribution_pid
+```
+
+検証（2026-10-18）：旧実行ファイルで保存後のSIGABRTと `libRIO.so` の二重読込を再現しました。修正後は6イベントで終了コード0、23図のPNG/PDF/EPSと3つのROOTを保存し、全ROOTの再読込も成功しました。event別の保存エネルギーは入力の `energy_pid` 和と厳密一致し、jet分解能・clustering集計値も同じ入力の修正前結果と一致しています。
+
+別のROOTを明示する場合は、対応する環境を読み込んだうえで `make ROOT_CONFIG=/path/to/root/bin/root-config efficiency_purity_contribution_pid` を使います。CMake packageの場所が異なる環境では `ROOT_DIR=/path/to/cmake-directory` を指定できます。`CMAKE_FLAGS` の `-DROOT_DIR=...` 指定も優先されます。CMakeを直接使う場合も、同じROOTの `-DROOT_DIR=...` を指定してください。
+
 ### `TClassTable::Add ... already in TClassTable` などの Warning
 
 **原因:** 実行時に **別々のパスから同じ ROOT の `.so` が二重に読み込まれている**ことが多いです（例: `LD_LIBRARY_PATH` に `/home/local/lib` とビルドツリーの `lib` が混在）。

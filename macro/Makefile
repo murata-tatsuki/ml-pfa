@@ -3,12 +3,15 @@
 
 BUILD_DIR   := build
 BUILD_TYPE  ?= Release
+ROOT_CONFIG ?= root-config
+# Match the active ROOT environment, even if build/ cached another ROOT.
+ROOT_DIR    ?= $(shell $(ROOT_CONFIG) --prefix)/cmake
 CMAKE_FLAGS ?= -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
 
 .PHONY: all clean reconfigure efficiency_purity_contribution_pid
 
 all:
-	@cmake -S . -B $(BUILD_DIR) $(CMAKE_FLAGS)
+	@cmake -S . -B $(BUILD_DIR) -DROOT_DIR="$(ROOT_DIR)" $(CMAKE_FLAGS)
 	@cmake --build $(BUILD_DIR) --parallel
 
 clean:
@@ -21,5 +24,5 @@ reconfigure:
 
 # Build only the PID analysis executable.
 efficiency_purity_contribution_pid:
-	@cmake -S . -B $(BUILD_DIR) $(CMAKE_FLAGS)
+	@cmake -S . -B $(BUILD_DIR) -DROOT_DIR="$(ROOT_DIR)" $(CMAKE_FLAGS)
 	@cmake --build $(BUILD_DIR) --target $@ --parallel

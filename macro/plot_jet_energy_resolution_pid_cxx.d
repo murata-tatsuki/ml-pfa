@@ -122,10 +122,11 @@
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/TObjString.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/TParameter.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/Riostream.h
+./plot_jet_energy_resolution_pid_cxx.so: src/pid_pandora_reference.h
+./plot_jet_energy_resolution_pid_cxx.so: src/pid_jet_resolution_summary.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/TLatex.h
 ./plot_jet_energy_resolution_pid_cxx.so: src/pid_comparison_distributions.h
 ./plot_jet_energy_resolution_pid_cxx.so: src/pid_clustering_summary.h
-./plot_jet_energy_resolution_pid_cxx.so: src/pid_jet_resolution_summary.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/TFitResult.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/Fit/FitResult.h
 ./plot_jet_energy_resolution_pid_cxx.so: /home/local/include/Math/IFunctionfwd.h

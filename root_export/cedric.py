@@ -7,6 +7,9 @@ selection and energy policies are retained so existing analysis macros see the
 same values. C++ chunk writing and ordered inference prefetch are shared by
 single-point and cached-prediction scans.
 
+Representative PID uses the highest-beta track when present, otherwise the
+highest-beta node, for both reconstructed and truth-defined membership.
+
 PID-specific resume metadata remains compatible with the former PID writer.
 CLI parsing and the legacy job planner live outside this module.
 """
@@ -979,8 +982,8 @@ class _EventNumpyCache:
     def beta_order(self, cluster_id):
         if cluster_id not in self._beta_orders:
             beta = self.pred_betas[self.cluster_mask(cluster_id)]
-            # In truth PID mode, ties follow the first-node rule of np.argmax
-            # used for pid_seed and pred_alpha. Preserve legacy ordering otherwise.
+            # Preserve the legacy all-hit ordering for truth-mode tree fields.
+            # PID representatives are selected separately by decode_clusters.
             kind = 'stable' if self.pid_truth_clustering else 'quicksort'
             self._beta_orders[cluster_id] = np.argsort(-beta, kind=kind)
         return self._beta_orders[cluster_id]
@@ -2085,7 +2088,7 @@ class _PIDYielder:
 
 
 def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
-    """Select predicted PID per cluster; truth mode uses its highest-beta node."""
+    """Read predicted PID from the highest-beta track, or node without tracks."""
     prediction.pid_truth_clustering = truth_clustering
     beta = prediction.pred_betas
     track = event.x[:, 4] > .5
@@ -2113,23 +2116,11 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
     prediction.pid_clusters = {}
     for readout in readouts:
         ci, seed = readout['cluster'], readout['seed']
-        # Charged regression is trained/read at a track. Truth-mode PID may
-        # instead come from a calo node, so keep the two selections separate.
+        # PID and charged regression share the track-prioritized representative
+        # for both reconstructed and truth-defined cluster membership.
         energy_seed = seed
         members = np.flatnonzero(assignments == ci)
         calos = members[~track[members]]
-        if truth_clustering:
-            seed = int(members[np.argmax(beta[members])])
-            seed_logits = np.asarray(logits[seed], dtype=np.float64)
-            if seed_logits.shape != (5,) or not np.isfinite(seed_logits).all():
-                raise ValueError('PID logits must have five finite values')
-            probabilities = np.exp(seed_logits - seed_logits.max())
-            probabilities /= probabilities.sum()
-            pid = int(probabilities.argmax())
-            fallback = int(pid < 3 and not np.any(track[members]))
-            used = 3 + int(probabilities[3:].argmax()) if fallback else pid
-            readout.update(seed=seed, pid=pid, probabilities=probabilities,
-                           energy_head=used, energy_fallback=fallback)
         candidates = np.full(5, np.nan)
         if values is not None:
             if np.any(track[members]):
@@ -2137,7 +2128,7 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
             for j in (3, 4):
                 candidates[j] = values[calos, j].sum(dtype=np.float64)
             used = readout['energy_head']
-            energy = float(candidates[used]) if truth_clustering else readout['energy']
+            energy = readout['energy']
             prediction.pred_tracker_energy[members] = values[members, used]
             if used < 3:
                 contributions[energy_seed] = energy
@@ -2146,7 +2137,8 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
         else:
             # PID-only checkpoints retain the original two-head energy policy.
             readout['energy_head'], readout['energy_fallback'] = -1, 0
-            alpha = seed if truth_clustering else members[np.argsort(-beta[members])[0]]
+            alpha = (members[np.argmax(beta[members])] if truth_clustering else
+                     members[np.argsort(-beta[members])[0]])
             calo = prediction.pred_cluster_energy
             energy = float(prediction.pred_tracker_energy[alpha]) if track[alpha] or calo is None else float(np.sum(calo[members]))
             if track[alpha] or calo is None:
@@ -2299,8 +2291,7 @@ def _write_pid_metadata(path, args, model, provenance, cached=None):
         species=list(SPECIES), particle_heads_config=config,
         clustering=('Positive truth IDs define membership; unknown truth ID 0 remains unassigned; tbeta/td are unused'
                     if args.truth_clustering else 'Existing beta/coordinate/track clustering; PID never changes membership'),
-        pid_seed=('Highest-beta node within each truth cluster, without track priority; ties use first input node'
-                  if args.truth_clustering else 'Highest-beta track if present, otherwise highest-beta node'),
+        pid_seed='Highest-beta track if present, otherwise highest-beta node; ties use first candidate input node',
         cluster_energy_heads='Charged heads at highest-beta track (NaN without track); neutral heads summed over calo nodes',
         energy_policy='Representative PID selects one of five heads; trackless charged prediction uses best neutral probability'
                       if config['five_particle_energy_heads'] else 'Original two-head energy; PID is diagnostic',
@@ -2567,7 +2558,7 @@ def _run_representative_pid(args, timing_cut, parser):
         _run_pid_scan(args, model, jobs, checkpoint_sha256)
         return
     if args.truth_clustering:
-        print('[PID] Truth clustering; predicted PID from the highest-beta node in each cluster; tbeta/td unused')
+        print('[PID] Truth clustering; predicted PID from the highest-beta track if present, otherwise highest-beta node; tbeta/td unused')
     for input_path, output in jobs:
         output.parent.mkdir(parents=True, exist_ok=True)
         staging = _temporary_output(output)
