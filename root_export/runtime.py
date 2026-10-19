@@ -23,6 +23,7 @@ PHYSICS_OPTIONS = (
     'pid_readout', 'exclude_gap_hits', 'detector_one_hot', 'pid_detail',
     'pid_input_format', 'cluster_energy_source', 'cluster_energy_tbeta',
     'cluster_energy_td', 'energy_heads', 'output_schema',
+    'particle_cluster_score_threshold',
 )
 
 
@@ -67,7 +68,7 @@ def output_signature(args, input_path):
         'gravnet_model.py', 'gravnet_conv.py', 'dataset.py', 'event.py',
         'prediction.py', 'test_yielder_edit.py', 'clustering.py',
         'matching.py', 'objectcondensation.py', 'particle_heads.py',
-        'cluster_energy.py', 'extended_h5.py', 'pandora_eval_data.py',
+        'cluster_energy.py', 'particle_cluster.py', 'extended_h5.py', 'pandora_eval_data.py',
         'pandora_eval_reconstruction.py', 'sed.py', 'tools/load_awkward.py',
         'scan_fast_root_writer.cxx',
     )

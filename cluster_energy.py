@@ -35,14 +35,42 @@ def cluster_membership(clustering, batch, track_mask, source, truth_ids=None,
             raise ValueError('truth_cluster_index and batch must have identical shapes')
         return truth_ids.detach().long().clamp_min(0)
 
+    if clustering.is_cuda:
+        # Keep predicted membership on the device: no NumPy clustering or
+        # hit/assignment transfers through the host in the CUDA training path.
+        from clustering_torch import cluster_membership_torch
+        beta = clustering[:, 0].detach().float().sigmoid()
+        coords = clustering[:, coordinate_start:].detach().float()
+        if not (torch.isfinite(beta).all() & torch.isfinite(coords).all()):
+            raise ValueError('Non-finite beta or coordinates in predicted pooling')
+        return cluster_membership_torch(beta, coords, batch, track_mask,
+                                        tbeta=tbeta, td=td)
+
     # This is the same membership implementation used by clustering.cluster.
     # Import lazily to avoid a circular import through gravnet_model.
     from objectcondensation import get_clustering_np_new
-    out = torch.zeros_like(batch, dtype=torch.long)
-    beta = clustering[:, 0].detach().float().sigmoid().cpu().numpy()
-    coords = clustering[:, coordinate_start:].detach().float().cpu().numpy()
-    tracks = track_mask.detach().cpu().numpy()
-    batches = batch.detach().cpu().numpy()
+    # Transfer the floating-point clustering inputs together. Keep the sigmoid
+    # on the original device, as before, so threshold/tie decisions are identical.
+    inputs = torch.cat((clustering[:, :1].detach().float().sigmoid(),
+                        clustering[:, coordinate_start:].detach().float()), dim=1)
+    inputs = inputs.cpu().numpy()
+    beta, coords = inputs[:, 0], inputs[:, 1:]
+    integer_types = (torch.bool, torch.uint8, torch.int8, torch.int16,
+                     torch.int32, torch.int64)
+    if (batch.dtype in integer_types and track_mask.dtype in integer_types
+            and batch.device == track_mask.device):
+        # Preserve integer event IDs (including large/noncontiguous IDs) rather
+        # than packing them into the float32 coordinate buffer.
+        event_tracks = torch.stack((batch.detach().long(),
+                                    track_mask.detach().long()), dim=1).cpu().numpy()
+        batches, tracks = event_tracks[:, 0], event_tracks[:, 1]
+    else:
+        # Retain the historical behavior for nonstandard input dtypes too.
+        batches = batch.detach().cpu().numpy()
+        tracks = track_mask.detach().cpu().numpy()
+    # Build every event on the CPU and return the full assignment in one copy;
+    # copying positions and labels back separately per event serializes CUDA.
+    out = np.zeros(batches.shape, dtype=np.int64)
     if not np.isfinite(beta).all() or not np.isfinite(coords).all():
         raise ValueError('Non-finite beta or coordinates in predicted pooling')
     for event_id in np.unique(batches):
@@ -54,9 +82,8 @@ def cluster_membership(clustering, batch, track_mask, source, truth_ids=None,
             labels, _ = get_clustering_np_new(
                 event=None, betas=beta[positions], X=coords[positions],
                 charged_hits=tracks[positions], tbeta=tbeta, td=td)
-        out[torch.as_tensor(positions, device=batch.device)] = torch.as_tensor(
-            labels + 1, device=batch.device, dtype=torch.long)
-    return out
+        out[positions] = labels + 1
+    return torch.as_tensor(out, device=batch.device, dtype=torch.long)
 
 
 class ClusterEnergyHead(nn.Module):
@@ -207,6 +234,11 @@ def training_forward(model, data, args, epoch=None):
         kwargs = dict(epoch=epoch, return_dict=True, **knn_kwargs)
         if getattr(args, 'cluster_energy_pooling', False):
             kwargs.update(truth_cluster_index=data.y[:, 0], detected_energy=data.feat[:, 0])
+        if (getattr(args, 'particle_cluster_energy', False) or
+                getattr(args, 'particle_cluster_score', False)):
+            info = getattr(data, 'row_info', None)
+            kwargs.update(truth_cluster_index=data.y[:, 0], particle_raw_features=data.feat,
+                          particle_detector_ids=None if info is None else info[:, 3])
         return model(data.x, data.batch, **kwargs)
     return model(data.x, data.batch, **knn_kwargs)
 
@@ -244,6 +276,8 @@ def checkpoint_payload(model, epoch=None, args=None):
         if args is not None:
             config.update(pid_loss_weight=getattr(args, 'pid_loss_weight', 1.),
                           epochs_noPID=getattr(args, 'epochs_noPID', -1))
+        if args is not None and config.get('particle_cluster_config'):
+            config['particle_cluster_config']['score_loss_weight'] = getattr(args, 'particle_cluster_score_weight', 1.)
         result['particle_heads_config'] = config
     if args is not None and getattr(args, 'extended_h5_input', False):
         result['training_input_config'] = dict(schema='pandora-eval-1',

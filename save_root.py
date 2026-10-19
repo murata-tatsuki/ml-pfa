@@ -53,6 +53,9 @@ def build_parser():
     model.add_argument('-eb', '--energy-branch', action='store_true')
     model.add_argument('--cluster-energy-source', choices=('truth', 'predicted'), default=None, help='Membership used by a trained cluster-pooling energy head')
     model.add_argument('--energy-regression-weight', action='store_true', help=argparse.SUPPRESS)
+    model.add_argument('--particle-cluster-score-threshold', type=float, default=None,
+                       help='Reject trackless candidates below this trained additional-particle score; '
+                            'default 0.5 for score checkpoints, inactive for legacy checkpoints')
 
     inputs = parser.add_argument_group('Inputs and evaluation')
     inputs.add_argument('-e', '--momentum', action='store_true')
@@ -90,6 +93,8 @@ def build_parser():
 def _configure_model(args, parser):
     """Validate explicit selectors against trained weights before any output."""
     if args.pandora:
+        if args.particle_cluster_score_threshold is not None:
+            parser.error('Stored Pandora clustering has no trained additional-particle score')
         if args.pid_readout == 'representative' or args.energy_heads == '5':
             parser.error('Stored Pandora clustering does not use GNN PID/species heads')
         args.energy_heads, args.pid_readout = 2, 'legacy'
@@ -102,6 +107,12 @@ def _configure_model(args, parser):
     checkpoint = torch.load(str(Path(args.ckpt).expanduser()), map_location='cpu')
     state = _strip_module_prefix(_extract_state_dict(checkpoint))
     config = checkpoint.get('particle_heads_config') or {}
+    cluster_config = config.get('particle_cluster_config') or {}
+    has_particle_cluster = any(name.startswith('particle_cluster_head.') for name in state)
+    if has_particle_cluster and args.pid_readout in ('legacy', 'none'):
+        parser.error('Particle-cluster checkpoints require representative PID readout')
+    if args.particle_cluster_score_threshold is not None and not cluster_config.get('score', False):
+        parser.error('--particle-cluster-score-threshold requires a trained particle-cluster score head')
     has_pid = any(name.startswith('pid_output.') for name in state)
     if config and bool(config.get('pid_head')) != has_pid:
         parser.error('Checkpoint PID metadata and trained weights disagree')
@@ -152,6 +163,10 @@ def _validate_options(args, parser):
         parser.error('--tbeta must be finite and between zero and one')
     if not math.isfinite(args.td) or args.td <= 0:
         parser.error('--td must be finite and positive')
+    if args.particle_cluster_score_threshold is not None and (
+            not math.isfinite(args.particle_cluster_score_threshold)
+            or not 0 <= args.particle_cluster_score_threshold <= 1):
+        parser.error('--particle-cluster-score-threshold must be finite and in [0, 1]')
     if (args.scan_tbeta or args.scan_td) and not args.beta_d_scan:
         parser.error('--scan-tbeta/--scan-td require --beta-d-scan')
     if args.energy_regression_weight or getattr(args, '1tomany_clustering'):

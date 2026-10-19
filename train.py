@@ -179,6 +179,36 @@ def clip_gradients(model, args):
     )
 
 
+
+def parameter_gradient_norms(model):
+    """Read identical per-parameter norms with one CUDA-to-host transfer."""
+    parameters = tuple(model.parameters())
+    first_grad = next((p.grad for p in parameters if p.grad is not None), None)
+    if first_grad is None:
+        return np.zeros(len(parameters), dtype=np.float64)
+    if first_grad.device.type != 'cuda':
+        return [
+            p.grad.norm().item() if p.grad is not None else 0.0
+            for p in parameters
+        ]
+    zero = first_grad.new_zeros(())
+    norms = torch.stack([
+        p.grad.detach().norm() if p.grad is not None else zero
+        for p in parameters
+    ])
+    # Python float values previously passed through NumPy float64 at epoch end.
+    return norms.to(dtype=torch.float64).cpu().numpy()
+
+
+def update_progress_loss(pbar, loss):
+    """Copy loss to the host only at the configured progress refresh interval."""
+    now = pbar._time()
+    last = getattr(pbar, '_loss_postfix_time', pbar.start_t)
+    if now - last >= pbar.mininterval:
+        pbar.set_postfix({'loss': float(loss.detach())}, refresh=False)
+        pbar._loss_postfix_time = now
+
+
 def progress_output_enabled():
     return bool(getattr(sys.stdout, "isatty", lambda: False)())
 
@@ -364,10 +394,10 @@ def get_energy_heads(out, regression_heads, args):
     return tracker, cluster
 
 
-def collect_pretraining_responses(out, regression_heads, data, args):
-    """Build one predicted/true response entry per truth particle."""
+def collect_pretraining_responses(out, regression_heads, data, args, particle_clusters=None):
+    """Build legacy particle responses or optional pooled-calorimeter responses."""
     if getattr(args, 'five_particle_energy_heads', False):
-        return ph.pretraining_responses(out, regression_heads, data)
+        return ph.pretraining_responses(out, regression_heads, data, particle_clusters=particle_clusters)
     tracker_energy, cluster_energy = get_energy_heads(
         out, regression_heads, args
     )
@@ -562,6 +592,11 @@ def build_model(args, input_dim, output_dimension, ddp=False):
             cluster_energy_tbeta=getattr(args, 'cluster_energy_tbeta', 0.7),
             cluster_energy_td=getattr(args, 'cluster_energy_td', 0.5),
             cluster_energy_coordinate_start=2 if args.use_charged_cluster_loss else 1,
+            particle_cluster_energy=getattr(args, 'particle_cluster_energy', False),
+            particle_cluster_score=getattr(args, 'particle_cluster_score', False),
+            particle_cluster_source=getattr(args, 'particle_cluster_source', 'truth'),
+            particle_cluster_tbeta=getattr(args, 'particle_cluster_tbeta', 0.9),
+            particle_cluster_td=getattr(args, 'particle_cluster_td', 0.5),
         )
         if args.model_ckpt != "":
             print(f"Loading multi-head model from checkpoint {args.model_ckpt}")
@@ -784,6 +819,8 @@ def run_ddp_training(rank, world_size, args):
                 test_loss += loss_components["L_beta"]
             if epoch > args.epochs_noLE:
                 test_loss += loss_components["L_E"]
+        if getattr(args, 'particle_cluster_score', False):
+            test_loss = test_loss + loss_components.get('L_particle_score', 0.)
         return test_loss + loss_components.get('L_PID', 0.)
 
     def check_coords(out,data) :
@@ -803,10 +840,11 @@ def run_ddp_training(rank, world_size, args):
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None, particle_clusters=None, particle_cluster_augmented=None):
         if getattr(args, 'five_particle_energy_heads', False):
             return ph.five_head_training_loss(out, regression_heads, pid_logits, data, args,
-                i_epoch, qmin, return_components, loss_offset)
+                i_epoch, qmin, return_components, loss_offset,
+                particle_clusters=particle_clusters, particle_cluster_augmented=particle_cluster_augmented)
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -1011,7 +1049,7 @@ def run_ddp_training(rank, world_size, args):
                         if args.jit:
                             raise
                         else:
-                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
+                            loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None, particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None, particle_cluster_augmented=result.get('particle_cluster_augmented') if isinstance(result, dict) else None)
                             update(components)
                     if scaler is not None:
                         scaler.scale(loss).backward()
@@ -1028,13 +1066,10 @@ def run_ddp_training(rank, world_size, args):
                     if not args.settings_Sep01: 
                         if not args.ReduceLROnPlateau: scheduler.batch_step()
                     if show_progress:
-                        pbar.set_postfix({'loss': float(loss)})
+                        update_progress_loss(pbar, loss)
                     # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                     # data_y_list.append(learning_para["data.y.long"].tolist())
-                    gradients.append([
-                        p.grad.norm().item() if p.grad is not None else 0.0
-                        for p in model.parameters()
-                    ])
+                    gradients.append(parameter_gradient_norms(model))
                     batch_count += 1
                     last_loss = loss
                     if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
@@ -1075,6 +1110,8 @@ def run_ddp_training(rank, world_size, args):
                         return_loss += loss_components["L_beta"]
                     if i_epoch > args.epochs_noLE:
                         return_loss += loss_components["L_E"]
+                if getattr(args, 'particle_cluster_score', False):
+                    return_loss = return_loss + loss_components.get('L_particle_score', 0.)
                 return_loss = return_loss + loss_components.get('L_PID', 0.)
             train_loss = return_loss.item() if rank == 0 else last_loss.item()
             # return train_loss,cluster_space_coords_list,data_y_list,data,first_para
@@ -1127,13 +1164,14 @@ def run_ddp_training(rank, world_size, args):
                     if args.pretraining:
                         pretraining_batches.append(
                             collect_pretraining_responses(
-                                out, regression_heads, data, args
+                                out, regression_heads, data, args,
+                                particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None
                             )
                         )
                     if args.jit:
                         raise
                     else:
-                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None))
+                        update(loss_fn(out, data, i_epoch=epoch, return_components=True, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None, particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None, particle_cluster_augmented=result.get('particle_cluster_augmented') if isinstance(result, dict) else None))
                 batch_count += 1
                 if args.rank_log_interval > 0 and batch_count % args.rank_log_interval == 0:
                     total_label = pbar_total if pbar_total is not None else "?"
@@ -1547,6 +1585,8 @@ def main():
                 test_loss += loss_components["L_beta"]
             if epoch > args.epochs_noLE:
                 test_loss += loss_components["L_E"]
+        if getattr(args, 'particle_cluster_score', False):
+            test_loss = test_loss + loss_components.get('L_particle_score', 0.)
         return test_loss + loss_components.get('L_PID', 0.)
 
     train_accu=[]
@@ -1569,10 +1609,11 @@ def main():
         data_para["data.x"]=data.x
         return data_para
 
-    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None):
+    def loss_fn(out, data, i_epoch=None, return_components=False, use_charge_track_likeness=False, regression_heads=None, cluster_energy=None, pid_logits=None, particle_clusters=None, particle_cluster_augmented=None):
         if getattr(args, 'five_particle_energy_heads', False):
             return ph.five_head_training_loss(out, regression_heads, pid_logits, data, args,
-                i_epoch, qmin, return_components, loss_offset)
+                i_epoch, qmin, return_components, loss_offset,
+                particle_clusters=particle_clusters, particle_cluster_augmented=particle_cluster_augmented)
         device = out.device
 
         pred_betas = torch.sigmoid(out[:,0])
@@ -1852,7 +1893,7 @@ def main():
                         # loss = loss_fn_jit(result, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss)
                         raise
                     else:
-                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None)
+                        loss, components = loss_fn(out, data, i_epoch=epoch, use_charge_track_likeness=args.use_charged_cluster_loss, regression_heads=regression_heads, pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None, particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None, particle_cluster_augmented=result.get('particle_cluster_augmented') if isinstance(result, dict) else None)
                         update(components)
                 if scaler is not None:
                     scaler.scale(loss).backward()
@@ -1869,13 +1910,10 @@ def main():
                 if not args.settings_Sep01: 
                     if not args.ReduceLROnPlateau: scheduler.batch_step()
                 if show_progress:
-                    pbar.set_postfix({'loss': float(loss)})
+                    update_progress_loss(pbar, loss)
                 # cluster_space_coords_list.append(learning_para["pred_cluster_space_coords"].tolist())
                 # data_y_list.append(learning_para["data.y.long"].tolist())
-                gradients.append([
-                    p.grad.norm().item() if p.grad is not None else 0.0
-                    for p in model.parameters()
-                ])
+                gradients.append(parameter_gradient_norms(model))
                 batch_count += 1
                 # if i == 2: raise Exception
             if batch_count == 0:
@@ -1927,7 +1965,8 @@ def main():
                     if args.pretraining:
                         pretraining_batches.append(
                             collect_pretraining_responses(
-                                out, regression_heads, data, args
+                                out, regression_heads, data, args,
+                                particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None
                             )
                         )
                     if args.jit:
@@ -1942,7 +1981,7 @@ def main():
                                 return_components=True,
                                 use_charge_track_likeness=args.use_charged_cluster_loss,
                                 regression_heads=regression_heads,
-                                pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None,
+                                pid_logits=result.get('pid_logits') if isinstance(result, dict) else None, cluster_energy=result.get('cluster_energy') if isinstance(result, dict) else None, particle_clusters=result.get('particle_clusters') if isinstance(result, dict) else None, particle_cluster_augmented=result.get('particle_cluster_augmented') if isinstance(result, dict) else None,
                             )
                         )
                 batch_count += 1

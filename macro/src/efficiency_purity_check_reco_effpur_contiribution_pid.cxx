@@ -64,9 +64,10 @@
 
 using namespace std;
 
-const int qq_energy = 500;
+const string model_condition = "5head_pid_onehot";       // 5head_pid 5head_pid_onehot
+const int qq_energy = 350;
 const double c_event_clean_threshold = 0.1;
-const bool use_truth_clustering = true;
+const bool use_truth_clustering = false;
 const int cedric_n_min = 2;
 const double cedric_e_min = 0.0;
 const int master_unclustered_cluster_id = 0;
@@ -837,7 +838,7 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     int entry_max[rawfilenum];
     int total_entry_max=0;
     string path_to_file = pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco");
-    string picDirectory = Form("figures/nnqq2M_fixed_uds_5head_pid/%dGeV/%s",qq_energy, path_to_file.c_str());
+    string picDirectory = Form("figures/nnqq2M_fixed_uds_%s/%dGeV/%s", model_condition.c_str(), qq_energy, path_to_file.c_str());
     if(output_directory && output_directory[0] != '\0') picDirectory = output_directory;
 
     if(has_input_override) fileNames_raw[0] = input_file;
@@ -853,7 +854,7 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                 if(pandora_mode)
                     fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/pandora/%s_%03d.root", qq_energy, qqNames[qq].c_str(), i);
                 else
-                    fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/5head_pid/%s/%s_%03d.root", qq_energy, path_to_file.c_str(), qqNames[qq].c_str(), i);
+                    fileNames[qq][i] = Form("../output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/%dGeV/%s/%s/%s_%03d.root", qq_energy, model_condition.c_str(), path_to_file.c_str(), qqNames[qq].c_str(), i);
                 fileNames_raw[irawfilenum] = Form("%s",fileNames[qq][i].c_str());
                 irawfilenum++;
             }

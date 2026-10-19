@@ -1,5 +1,6 @@
 """Reconstruction and labelled-overlap diagnostics for the common H5 inputs."""
 from types import SimpleNamespace
+import copy
 import numpy as np
 import torch
 from cluster_energy import inference_forward, configure_inference, pooling_model
@@ -38,8 +39,74 @@ def configure_regression_output(model, activation):
             raise ValueError('Unexpected regression head; cannot restore linear output')
 
 
+def _particle_cluster_cpu_head(model):
+    """Cache only the trained small readout on CPU, outside registered weights."""
+    head = getattr(model, 'particle_cluster_head', None)
+    if head is None:
+        return None
+    cached = model.__dict__.get('_particle_cluster_inference_head')
+    if cached is None:
+        cached = copy.deepcopy(head).cpu().eval()
+        for parameter in cached.parameters():
+            parameter.requires_grad_(False)
+        # A normal nn.Module assignment would register the cache in state_dict.
+        model.__dict__['_particle_cluster_inference_head'] = cached
+    return cached
+
+
+def apply_particle_cluster_readout(readouts, prediction, raw_features, track,
+                                   detector_ids=None):
+    """Re-pool trained features on FINAL membership; never use MC at inference.
+
+    Cached node features and one CPU readout suffice for every tbeta/td point.
+    The score selects trackless candidates; it never rescales their energy.
+    """
+    head = prediction.get('particle_cluster_head')
+    if head is None:
+        return readouts, None
+    features = prediction.get('particle_cluster_features')
+    if features is None:
+        raise ValueError('Particle-cluster readout requires cached node features')
+    assignments = torch.as_tensor(prediction['assignments'], dtype=torch.long, device='cpu')
+    features = torch.as_tensor(features, device='cpu').detach().float()
+    raw_features = torch.as_tensor(raw_features, device='cpu').detach().float()
+    detector_ids = (None if detector_ids is None else
+                    torch.as_tensor(detector_ids, device='cpu').detach().long())
+    with torch.no_grad():
+        pooled = head(features, torch.zeros_like(assignments), assignments,
+                      raw_features, detector_ids)
+    ids = pooled['cluster_ids'].detach().cpu().numpy()
+    by_id = {int(ci): i for i, ci in enumerate(ids)}
+    energies = pooled.get('energy')
+    scores = pooled.get('score_logits')
+    energies = None if energies is None else energies.detach().cpu().numpy()
+    scores = None if scores is None else scores.detach().float().sigmoid().cpu().numpy()
+    if any(v is not None and not np.isfinite(v).all() for v in (energies, scores)):
+        raise ValueError('Non-finite particle-cluster energy or score')
+    threshold = prediction.get('particle_cluster_score_threshold')
+    if threshold is None:
+        threshold = .5
+    if not np.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError('Particle-cluster score threshold must be in [0, 1]')
+    assignments_np = assignments.numpy()
+    track = np.asarray(track, dtype=bool)
+    for readout in readouts:
+        ci = readout['cluster']
+        index = by_id.get(ci)
+        has_track = bool(np.any(track[assignments_np == ci]))
+        if energies is not None and readout['energy_head'] >= 3:
+            # Track-only clusters have no calorimeter energy to pool.
+            readout['energy'] = 0. if index is None else float(energies[index])
+        score = float('nan') if scores is None or index is None else float(scores[index])
+        accepted = has_track or scores is None or (np.isfinite(score) and score >= threshold)
+        readout.update(cluster_score=score, cluster_accepted=int(accepted))
+        if not accepted and readout['energy'] is not None:
+            readout['energy'] = 0.
+    return readouts, pooled
+
+
 def predict(model, data, device, tbeta, td, calo_head=True, truth=False, *,
-            defer_clustering=False):
+            defer_clustering=False, particle_cluster_score_threshold=None):
     """Predict one event; optionally return CPU arrays for later clustering."""
     configure_inference(model, source='truth' if truth else 'predicted', tbeta=tbeta, td=td)
     data = data.clone().to(device)
@@ -47,11 +114,17 @@ def predict(model, data, device, tbeta, td, calo_head=True, truth=False, *,
     raw = raw_model(model)
     particle_mode = getattr(raw, 'pid_head', False) or getattr(raw, 'five_particle_energy_heads', False)
     pid_logits = energies = None
+    particle_features = particle_head = None
+    if particle_cluster_score_threshold is not None and not getattr(raw, 'particle_cluster_score', False):
+        raise ValueError('A score threshold requires a trained --particle-cluster-score head')
     with torch.no_grad():
         if particle_mode:
             result = model(data.x, data.batch, return_dict=True,
                            epoch=getattr(raw, 'particle_heads_inference_epoch', raw.interaction_start_epoch))
             pid_logits = result.get('pid_logits')
+            if getattr(raw, 'particle_cluster_head', None) is not None:
+                particle_features = result['particle_cluster_features'].detach().cpu()
+                particle_head = _particle_cluster_cpu_head(raw)
             coords = result['clustering'][:, raw.cluster_energy_coordinate_start:]
             if pid_logits is not None:
                 pid_logits = pid_logits.detach().cpu().numpy()
@@ -85,6 +158,10 @@ def predict(model, data, device, tbeta, td, calo_head=True, truth=False, *,
         calo = np.full(len(beta), np.nan)
     prediction = dict(beta=beta, tracker=tracker, calo=calo,
                       pid_logits=pid_logits, species_energies=energies)
+    if particle_head is not None:
+        prediction.update(particle_cluster_features=particle_features,
+                          particle_cluster_head=particle_head,
+                          particle_cluster_score_threshold=particle_cluster_score_threshold)
     if truth:
         prediction['assignments'] = data.y[:, 0].detach().cpu().numpy().astype(np.int64)
         return prediction
@@ -112,6 +189,8 @@ def energy_clusters(data, prediction, policy='alpha'):
     alpha: original event writer's highest-beta seed rule.
     any-track: highest-beta track's regressed energy if any track is present.
     Both values are saved so the distinction cannot silently vary by plot.
+    Five-head models use the shared PID readout for both policies: a charged
+    prediction with exactly one track uses its measured momentum and PID mass.
     """
     assignments = prediction['assignments']
     track = data.x[:, 4].numpy() > .5
@@ -119,7 +198,13 @@ def energy_clusters(data, prediction, policy='alpha'):
     particle_readout = {}
     if prediction.get('pid_logits') is not None or prediction.get('species_energies') is not None:
         particle_readout = {c['cluster']: c for c in decode_clusters(assignments, prediction['beta'], track,
-            energies=prediction.get('species_energies'), pid_logits=prediction.get('pid_logits'))}
+            energies=prediction.get('species_energies'), pid_logits=prediction.get('pid_logits'),
+            track_momenta=data.feat[:, 7:10].detach().cpu().numpy()
+            if prediction.get('species_energies') is not None else None)}
+        readouts, _ = apply_particle_cluster_readout(
+            list(particle_readout.values()), prediction, data.feat, track,
+            data.row_info[:, 3] if getattr(data, 'row_info', None) is not None else None)
+        particle_readout = {c['cluster']: c for c in readouts}
     for ci in np.unique(assignments):
         if ci <= 0:
             continue
@@ -137,6 +222,9 @@ def energy_clusters(data, prediction, policy='alpha'):
             readout = particle_readout[int(ci)]
             extra = dict(pid=readout['pid'], energy_head=readout['energy_head'], energy_fallback=readout['energy_fallback'],
                          pid_seed_input_row=int(data.input_row[readout['seed']]))
+            if 'cluster_accepted' in readout:
+                extra.update(cluster_score=readout['cluster_score'],
+                             cluster_accepted=readout['cluster_accepted'])
             if prediction.get('species_energies') is not None:
                 alpha = any_track = readout['energy']
                 seed = readout['seed']

@@ -1792,3 +1792,77 @@ restart period :  30
 [rank 3] epoch=253 train_batch=12000/15313 loss=1.435456
 [rank 3] epoch=253 train_batch=14000/15313 loss=1.506406
 [rank 3] epoch=254 train_batch=2000/15313 loss=1.450367
+[rank 3] epoch=254 train_batch=4000/15313 loss=1.531680
+[rank 3] epoch=254 train_batch=6000/15313 loss=1.463346
+[rank 3] epoch=254 train_batch=8000/15313 loss=1.447537
+[rank 3] epoch=254 train_batch=10000/15313 loss=1.528142
+[rank 3] epoch=254 train_batch=12000/15313 loss=1.473282
+[rank 3] epoch=254 train_batch=14000/15313 loss=1.521211
+[rank 3] epoch=255 train_batch=2000/15313 loss=1.533767
+[rank 3] epoch=255 train_batch=4000/15313 loss=1.419016
+[rank 3] epoch=255 train_batch=6000/15313 loss=1.573542
+[rank 3] epoch=255 train_batch=8000/15313 loss=1.484551
+[rank 3] epoch=255 train_batch=10000/15313 loss=1.529183
+[rank 3] epoch=255 train_batch=12000/15313 loss=1.521053
+[rank 3] epoch=255 train_batch=14000/15313 loss=1.444765
+[rank 3] epoch=256 train_batch=2000/15313 loss=1.542955
+[rank 3] epoch=256 train_batch=4000/15313 loss=1.415718
+[rank 3] epoch=256 train_batch=6000/15313 loss=1.632178
+[rank 3] epoch=256 train_batch=8000/15313 loss=1.464134
+[rank 3] epoch=256 train_batch=10000/15313 loss=1.432430
+[rank 3] epoch=256 train_batch=12000/15313 loss=1.493217
+[rank 3] epoch=256 train_batch=14000/15313 loss=1.453843
+[rank 3] epoch=257 train_batch=2000/15313 loss=1.459003
+[rank 3] epoch=257 train_batch=4000/15313 loss=1.470879
+[rank 3] epoch=257 train_batch=6000/15313 loss=1.541146
+[rank 3] epoch=257 train_batch=8000/15313 loss=1.509706
+[rank 3] epoch=257 train_batch=10000/15313 loss=1.481150
+[rank 3] epoch=257 train_batch=12000/15313 loss=1.481357
+[rank 3] epoch=257 train_batch=14000/15313 loss=1.462182
+[rank 3] epoch=258 train_batch=2000/15313 loss=1.495187
+[rank 3] epoch=258 train_batch=4000/15313 loss=1.502745
+[rank 3] epoch=258 train_batch=6000/15313 loss=1.508511
+[rank 3] epoch=258 train_batch=8000/15313 loss=1.438210
+[rank 3] epoch=258 train_batch=10000/15313 loss=1.532575
+[rank 3] epoch=258 train_batch=12000/15313 loss=1.575894
+[rank 3] epoch=258 train_batch=14000/15313 loss=1.544933
+[rank 3] epoch=259 train_batch=2000/15313 loss=1.550935
+[rank 3] epoch=259 train_batch=4000/15313 loss=1.519403
+[rank 3] epoch=259 train_batch=6000/15313 loss=1.492966
+[rank 3] epoch=259 train_batch=8000/15313 loss=1.501742
+[rank 3] epoch=259 train_batch=10000/15313 loss=1.478229
+[rank 3] epoch=259 train_batch=12000/15313 loss=1.571979
+Exception in thread Thread-520:
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/threading.py", line 980, in _bootstrap_inner
+    self.run()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/threading.py", line 917, in run
+    self._target(*self._args, **self._kwargs)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/_utils/pin_memory.py", line 53, in _pin_memory_loop
+    do_one_step()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/_utils/pin_memory.py", line 30, in do_one_step
+    r = in_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/queues.py", line 122, in get
+    return _ForkingPickler.loads(res)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/multiprocessing/reductions.py", line 495, in rebuild_storage_fd
+    fd = df.detach()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/resource_sharer.py", line 57, in detach
+    with _resource_sharer.get_connection(self._id) as conn:
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/resource_sharer.py", line 86, in get_connection
+    c = Client(address, authkey=process.current_process().authkey)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/connection.py", line 502, in Client
+    c = SocketClient(address)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/connection.py", line 630, in SocketClient
+    s.connect(address)
+FileNotFoundError: [Errno 2] No such file or directory
+Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x7c3d787bc670>
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1425, in _shutdown_workers
+    self._pin_memory_thread.join()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/threading.py", line 1060, in join
+    self._wait_for_tstate_lock()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/threading.py", line 1080, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt: 

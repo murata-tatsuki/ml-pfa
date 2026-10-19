@@ -1,0 +1,20 @@
+# pid-jet-resolution-1 beam_energy_GeV=350 method=truth_clustering
+# Pandora upstream thrust: sum_q E_q*abs(pz_q)/|p_q| / sum_q E_q; float32
+# sqrt(2)*RMS90(Ereco_event)/Mean90(Ereco_event)*100; upstream minimum-RMS 90-percent histogram interval
+# no neutrino correction; invalid points are not zero-resolution measurements
+angle_bin low high entries invalid_entries underflow overflow Mean90 RMS90 resolution_percent error_percent valid
+0 0 0.1 11263 0 0 0 342.983398438 7.79723501205 3.21501135826 0.0302939191461 1
+1 0.1 0.2 11380 0 0 0 343.224304199 7.06277656555 2.91013026237 0.0272798072547 1
+2 0.2 0.3 11986 0 0 2 nan nan nan nan 0
+3 0.3 0.4 12606 0 0 1 nan nan nan nan 0
+4 0.4 0.5 13555 0 0 4 nan nan nan nan 0
+5 0.5 0.6 14771 0 0 0 342.453521729 7.58699560165 3.13316464424 0.0257797241211 1
+6 0.6 0.7 15870 0 0 0 342.632598877 8.29674243927 3.42447447777 0.0271835066378 1
+7 0.7 0.8 17766 0 0 3 nan nan nan nan 0
+8 0.8 0.9 19284 0 0 1 nan nan nan nan 0
+9 0.9 0.925 5100 0 0 2 nan nan nan nan 0
+10 0.925 0.95 5396 0 0 1 nan nan nan nan 0
+11 0.95 0.97 4351 0 0 1 nan nan nan nan 0
+12 0.97 0.98 2179 0 0 0 347.442718506 14.4997310638 5.90189838409 0.126433774829 1
+-1 0 0.7 91431 0 0 7 nan nan nan nan 0
+-2 0.7 0.98 54076 0 0 8 nan nan nan nan 0

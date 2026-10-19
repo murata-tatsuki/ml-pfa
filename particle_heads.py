@@ -5,6 +5,7 @@ from torch.nn import functional as F
 from torch_scatter import scatter_add, scatter_max, scatter_min
 
 SPECIES = ('charged_hadron', 'electron', 'muon', 'photon', 'neutral_hadron')
+CHARGED_MASSES_GEV = (0.13957039, 0.00051099895, 0.1056583755)
 
 
 def add_pid_readout_argument(parser):
@@ -35,9 +36,13 @@ def add_arguments(parser):
     parser.add_argument('--five-particle-energy-heads', action='store_true', help='Use five species regressors: charged track alpha / neutral calo sum; log1p absolute error')
     parser.add_argument('--pid-loss-weight', type=float, default=1., help='Multiplier for event-averaged PID cross entropy')
     parser.add_argument('--epochs-noPID', type=int, default=-1, help='Enable PID loss after this epoch (default: epoch 0)')
+    from particle_cluster import add_arguments as add_cluster_arguments
+    add_cluster_arguments(parser)
 
 
 def validate_arguments(args):
+    from particle_cluster import validate_arguments as validate_cluster_arguments
+    validate_cluster_arguments(args)
     if not enabled(args):
         return
     if not args.use_multihead_model:
@@ -106,11 +111,16 @@ def truth_objects(data, beta):
                 track=track, track_count=track_count, calo_count=calo_count, n_events=n_events)
 
 
-def object_energies(regression_heads, objects):
+def object_energies(regression_heads, objects, *, charged_only=False):
     if len(regression_heads) != 5:
         raise ValueError('Expected exactly five energy heads')
-    energies = torch.cat(regression_heads, dim=1).float()
     o = objects
+    if charged_only:
+        # Pooled energy replaces the neutral node sums. Gather only the small
+        # representative table needed by the retained three charged losses.
+        alpha_values = torch.cat([head[o['alpha']] for head in regression_heads[:3]], dim=1).float()
+        return alpha_values.gather(1, o['species'].clamp(0, 2)[:, None]).flatten()
+    energies = torch.cat(regression_heads, dim=1).float()
     node_calo = o['nodes'][~o['track']]
     sums = scatter_add(energies[node_calo], o['inverse'][~o['track']], dim=0, dim_size=len(o['alpha']))
     alpha_values = energies[o['alpha']]
@@ -118,7 +128,8 @@ def object_energies(regression_heads, objects):
     return values.gather(1, o['species'].clamp_min(0)[:, None]).flatten()
 
 
-def auxiliary_losses(out, regression_heads, pid_logits, data, args, epoch, coefficient):
+def auxiliary_losses(out, regression_heads, pid_logits, data, args, epoch, coefficient,
+                     particle_clusters=None, particle_cluster_augmented=None):
     o = truth_objects(data, torch.sigmoid(out[:, 0].float()))
     # Empty sums connect all outputs without evaluating unavailable rows.
     zero = out.reshape(-1)[:0].sum()
@@ -128,12 +139,21 @@ def auxiliary_losses(out, regression_heads, pid_logits, data, args, epoch, coeff
         zero = zero + pid_logits.reshape(-1)[:0].sum()
     energy_loss, pid_loss = zero, zero
     metrics = {}
+    pool_energy = bool(getattr(args, 'particle_cluster_energy', False))
+    pool_score = bool(getattr(args, 'particle_cluster_score', False))
     if getattr(args, 'five_particle_energy_heads', False):
-        pred = object_energies(regression_heads, o)
+        pred = object_energies(regression_heads, o, charged_only=pool_energy)
         valid = o['energy_valid']
         losses = torch.log1p((pred[valid] - o['target'][valid]).abs())
+        if pool_energy:
+            # Keep ALL eligible objects in the denominator, as before, while
+            # avoiding the discarded neutral scatter and regression errors.
+            losses = losses.masked_fill(o['species'][valid] >= 3, 0.)
         energy_loss = event_average(losses, o['batch'][valid], o['n_events']) * coefficient + zero
         for i, name in enumerate(SPECIES):
+            if pool_energy and i >= 3:
+                metrics['L_E_' + name] = zero.detach()
+                continue
             chosen = o['species'][valid] == i
             # Contributions sum to L_E; denominator is all eligible objects, not five class means.
             contribution = event_average(losses * chosen, o['batch'][valid], o['n_events']) * coefficient
@@ -142,6 +162,52 @@ def auxiliary_losses(out, regression_heads, pid_logits, data, args, epoch, coeff
         metrics['L_E'] = energy_loss.detach()
         metrics['L_E_cond'] = sum(metrics['L_E_' + s] for s in SPECIES[:3])
         metrics['L_E_cluster'] = sum(metrics['L_E_' + s] for s in SPECIES[3:])
+    if pool_energy or pool_score:
+        from particle_cluster import cluster_targets
+        if particle_clusters is None:
+            raise ValueError('Particle cluster options require pooled outputs from training_forward')
+        targets = cluster_targets(particle_clusters, data, need_score=pool_score)
+        if pool_energy:
+            # Retain the original charged-head term and its object normalization;
+            # replace the two node-summed calorimeter terms with the pooled head.
+            charged_loss = energy_loss
+            pv = targets['valid']
+            pooled_losses = (particle_clusters['energy'][pv].float() - targets['energy'][pv]).abs().log1p()
+            pooled_loss = event_average(pooled_losses, particle_clusters['cluster_batch'][pv], o['n_events']) * coefficient
+            pooled_loss = pooled_loss + particle_clusters['energy'].sum() * 0
+            energy_loss = charged_loss + pooled_loss + zero
+            for name in SPECIES[3:]:
+                metrics['L_E_' + name] = zero.detach()
+            metrics.update(L_E=energy_loss.detach(), L_E_cond=charged_loss.detach(),
+                           L_E_cluster=pooled_loss.detach(), L_E_particle_cluster=pooled_loss.detach(),
+                           N_E_particle_cluster=pv.sum().float())
+        if pool_score:
+            score_values, score_batch = [], []
+            pools = [(particle_clusters, targets)]
+            if particle_cluster_augmented is not None:
+                pools.append((particle_cluster_augmented, cluster_targets(particle_cluster_augmented, data)))
+            score_zero = zero
+            for pool, teacher in pools:
+                sv = teacher['score_valid']
+                # Augmentation preserves real trackless clusters. Supervise those
+                # once, and use the augmented view only for newly split fragments.
+                if pool is particle_cluster_augmented:
+                    original = torch.stack((particle_clusters['cluster_batch'], particle_clusters['cluster_ids']), 1)
+                    augmented = torch.stack((pool['cluster_batch'], pool['cluster_ids']), 1)
+                    combined, inverse = torch.unique(torch.cat((original, augmented), 0), dim=0, return_inverse=True)
+                    seen = torch.zeros(len(combined), dtype=torch.bool, device=out.device)
+                    seen[inverse[:len(original)]] = True
+                    sv = sv & (~seen[inverse[len(original):]])
+                score_values.append(F.binary_cross_entropy_with_logits(pool['score_logits'][sv].float(), teacher['score'][sv], reduction='none'))
+                score_batch.append(pool['cluster_batch'][sv])
+                score_zero = score_zero + pool['score_logits'].sum() * 0
+            values, batches = torch.cat(score_values), torch.cat(score_batch)
+            raw_score = event_average(values, batches, o['n_events']) + score_zero
+            # Keep this tensor differentiable: compose_loss adds this independent
+            # term from epoch zero, even while the energy ramp is disabled.
+            metrics['L_particle_score'] = raw_score * args.particle_cluster_score_weight
+            metrics['L_particle_score_unweighted'] = raw_score.detach()
+            metrics['N_particle_score'] = values.new_tensor(values.numel())
     if getattr(args, 'pid_head', False):
         if pid_logits is None or pid_logits.shape != (len(out), 5):
             raise ValueError('PID enabled but five node logits are missing')
@@ -164,11 +230,14 @@ def compose_loss(components, args, epoch, offset=1.):
         result = result + components['L_beta']
     if epoch > args.epochs_noLE:
         result = result + components['L_E']
+    if getattr(args, 'particle_cluster_score', False):
+        result = result + components['L_particle_score']
     return result + components.get('L_PID', 0.)
 
 
 def five_head_training_loss(out, regressions, pid_logits, data, args, epoch, qmin,
-                            return_components=False, offset=1.):
+                            return_components=False, offset=1., *,
+                            particle_clusters=None, particle_cluster_augmented=None):
     from supervised_loss import calc_supervised_loss
     coord_start = 2 if args.use_charged_cluster_loss else 1
     target = data.label[:, 4:8].float().square().sum(1).sqrt()
@@ -185,7 +254,8 @@ def five_head_training_loss(out, regressions, pid_logits, data, args, epoch, qmi
         truth_metadata=getattr(data, 'truth_metadata', None))
     ramp = min(1., max(0., (epoch - args.epochs_noLE) / 10.) ** 2)
     coefficient = args.regression_coefficinet * (ramp if args.LE_gradually else 1.)
-    le, lp, extra = auxiliary_losses(out, regressions, pid_logits, data, args, epoch, coefficient)
+    le, lp, extra = auxiliary_losses(out, regressions, pid_logits, data, args, epoch, coefficient,
+        particle_clusters=particle_clusters, particle_cluster_augmented=particle_cluster_augmented)
     components = dict(components, **extra)
     if return_components:
         return components
@@ -193,17 +263,30 @@ def five_head_training_loss(out, regressions, pid_logits, data, args, epoch, qmi
     return compose_loss(active, args, epoch, offset), components
 
 
-def pretraining_responses(out, regressions, data):
+def pretraining_responses(out, regressions, data, particle_clusters=None):
     o = truth_objects(data, out[:, 0].sigmoid())
-    pred = object_energies(regressions, o)
+    pooled_energy = particle_clusters is not None and 'energy' in particle_clusters
+    pred = object_energies(regressions, o, charged_only=pooled_energy)
     v = o['energy_valid'] & torch.isfinite(pred)
+    if pooled_energy:
+        from particle_cluster import cluster_targets
+        targets = cluster_targets(particle_clusters, data, need_score=False)
+        v = v & (o['species'] < 3)
+        pv = targets['valid'] & (targets['energy'] > 0) & torch.isfinite(particle_clusters['energy'])
+        energy = torch.cat((o['target'][v], targets['energy'][pv]))
+        predicted = torch.cat((pred[v], particle_clusters['energy'][pv]))
+        # Mixed predicted clusters have no single PDG. Zero labels this response
+        # as a pooled calorimeter candidate in the optional pretraining report.
+        pdg = torch.cat((data.label[o['first'][v], 2].long(), torch.zeros_like(targets['energy'][pv], dtype=torch.long)))
+        return dict(ratio=(predicted / energy).detach().cpu().numpy(),
+                    energy=energy.detach().cpu().numpy(), pdg=pdg.detach().cpu().numpy())
     return dict(ratio=(pred[v] / o['target'][v]).detach().cpu().numpy(),
                 energy=o['target'][v].detach().cpu().numpy(),
                 pdg=data.label[o['first'][v], 2].detach().long().cpu().numpy())
 
 
 def format_metrics(components):
-    keys = [k for k in components if k.startswith(('L_PID', 'PID_', 'N_PID', 'N_E_')) or k in ['L_E_' + s for s in SPECIES]]
+    keys = [k for k in components if k.startswith(('L_PID', 'PID_', 'N_PID', 'N_E_', 'L_particle_', 'N_particle_')) or k in ['L_E_' + s for s in SPECIES] + ['L_E_particle_cluster']]
     return ''.join('\n    {} = {:.6g}'.format(k, float(components[k])) for k in keys)
 
 
@@ -217,20 +300,29 @@ def checkpoint_config(model, epoch):
     m = raw_model(model)
     if not (getattr(m, 'pid_head', False) or getattr(m, 'five_particle_energy_heads', False)):
         return None
-    return dict(version=1, species=list(SPECIES), pid_head=m.pid_head,
+    config = dict(version=1, species=list(SPECIES), pid_head=m.pid_head,
                 five_particle_energy_heads=m.five_particle_energy_heads,
                 pid_alpha='track_if_present_else_max_beta', neutral_energy='calo_sum',
                 energy_loss='log1p_absolute_GeV', interaction_start_epoch=m.interaction_start_epoch,
                 coordinate_start=m.cluster_energy_coordinate_start,
                 inference_pid='all_five', trackless_charged='best_neutral_probability_fallback',
                 inference_epoch=epoch if epoch is not None else m.interaction_start_epoch)
+    if getattr(m, 'particle_cluster_energy', False) or getattr(m, 'particle_cluster_score', False):
+        from particle_cluster import PC_FEATURE_SCHEMA
+        if m.particle_cluster_energy:
+            config['neutral_energy'] = 'particle_cluster_pooled_scalar'
+        config['particle_cluster_config'] = dict(version=1, feature_schema=PC_FEATURE_SCHEMA,
+            energy=m.particle_cluster_energy, score=m.particle_cluster_score,
+            source=m.particle_cluster_source, tbeta=m.particle_cluster_tbeta, td=m.particle_cluster_td)
+    return config
 
 
 def validate_checkpoint_config(state, config):
     pid = any(k.startswith('pid_output.') for k in state)
     five = '_particle_energy_version' in state
+    pc_weights = any(k.startswith('particle_cluster_head.') for k in state)
     if config is None:
-        if pid or five:
+        if pid or five or pc_weights:
             raise ValueError('Particle head checkpoint is missing particle_heads_config')
         return {}
     if config.get('version') != 1 or config.get('species') != list(SPECIES):
@@ -239,6 +331,19 @@ def validate_checkpoint_config(state, config):
         raise ValueError('Particle head checkpoint metadata disagrees with its weights')
     if five and int(state['_particle_energy_version']) != 1:
         raise ValueError('Unsupported five-head weights version')
+    pc = config.get('particle_cluster_config')
+    if bool(pc) != pc_weights:
+        raise ValueError('Particle cluster checkpoint metadata disagrees with its weights')
+    if pc:
+        from particle_cluster import PC_FEATURE_SCHEMA
+        from cluster_energy import validate_settings
+        if not (pid and five) or pc.get('version') != 1 or pc.get('feature_schema') != PC_FEATURE_SCHEMA:
+            raise ValueError('Unsupported particle cluster checkpoint version or feature schema')
+        energy = any(k.startswith('particle_cluster_head.energy_output.') for k in state)
+        score = any(k.startswith('particle_cluster_head.score_output.') for k in state)
+        if (energy, score) != (pc.get('energy'), pc.get('score')) or not (energy or score):
+            raise ValueError('Particle cluster output metadata disagrees with its weights')
+        validate_settings(pc.get('source'), pc.get('tbeta'), pc.get('td'))
     return config
 
 
@@ -251,8 +356,22 @@ def load_training_checkpoint(model, state, config):
         raise ValueError('Checkpoint requires --five-particle-energy-heads')
     if old_pid and not getattr(model, 'pid_head', False):
         raise ValueError('Checkpoint requires --pid-head')
+    old_pc = config.get('particle_cluster_config', {})
+    new_energy = bool(getattr(model, 'particle_cluster_energy', False))
+    new_score = bool(getattr(model, 'particle_cluster_score', False))
+    if old_pc.get('energy') and not new_energy:
+        raise ValueError('Checkpoint requires --particle-cluster-energy')
+    if old_pc.get('score') and not new_score:
+        raise ValueError('Checkpoint requires --particle-cluster-score')
     mapped = dict(state)
     allowed_missing = []
+    if (new_energy or new_score) and not old_pc:
+        allowed_missing.append('particle_cluster_head.')
+    else:
+        if new_energy and not old_pc.get('energy'):
+            allowed_missing.append('particle_cluster_head.energy_output.')
+        if new_score and not old_pc.get('score'):
+            allowed_missing.append('particle_cluster_head.score_output.')
     if model.pid_head and not old_pid:
         allowed_missing += ['pid_postgn_dense.', 'pid_output.']
     if model.five_particle_energy_heads and not old_five:
@@ -287,9 +406,14 @@ def load_training_checkpoint(model, state, config):
 
 
 def decode_clusters(assignments, beta, track, energies=None, pid_logits=None,
-                    truth_species=None):
+                    truth_species=None, *, track_momenta=None):
     """CPU readout, one class per cluster. Truth PID is an explicit diagnostic only.
 
+Five-head energy readout requires measured track momenta at the calorimeter
+entry, in GeV (raw feature columns 7:10). A charged prediction with exactly
+one track uses sqrt(p^2 + m_PID^2), with pion/electron/muon mass hypotheses.
+Multiple-track charged predictions retain the highest-beta track's regressed
+energy; neutral sums and trackless charged fallback are unchanged.
 The returned PID is never replaced by the fallback energy-head choice.
 No unknown-truth filtering is applied to predicted cluster membership.
 """
@@ -297,6 +421,13 @@ No unknown-truth filtering is applied to predicted cluster membership.
     assignments, beta, track = np.asarray(assignments), np.asarray(beta), np.asarray(track, dtype=bool)
     if truth_species is None and pid_logits is None:
         raise ValueError('Normal five-head inference requires a PID head; use explicit truth-PID diagnostics')
+    momenta = None
+    if energies is not None:
+        if track_momenta is None:
+            raise ValueError('Five-head cluster energy readout requires measured track_momenta')
+        momenta = np.asarray(track_momenta, dtype=np.float64)
+        if momenta.shape != (len(assignments), 3):
+            raise ValueError('Measured track_momenta must have shape (number of nodes, 3)')
     result = []
     for ci in np.unique(assignments):
         if ci <= 0:
@@ -330,7 +461,13 @@ No unknown-truth filtering is applied to predicted cluster membership.
             if values.shape != (len(assignments), 5):
                 raise ValueError('Five energy values per node are required')
             if used < 3:
-                energy = float(values[seed, used])
+                if len(tracks) == 1:
+                    momentum = momenta[seed]
+                    if not np.isfinite(momentum).all():
+                        raise ValueError('Single-track charged energy requires finite measured momentum')
+                    energy = float(np.sqrt(np.sum(momentum ** 2) + CHARGED_MASSES_GEV[pid] ** 2))
+                else:
+                    energy = float(values[seed, used])
             else:
                 energy = float(values[members[~track[members]], used].sum(dtype=np.float64))
         result.append(dict(cluster=int(ci), seed=int(seed), pid=pid, energy_head=used,

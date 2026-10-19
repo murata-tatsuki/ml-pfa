@@ -187,6 +187,103 @@ python diagnose_particle_heads.py INPUT_H5_OR_DIR new_response.csv \
 CSVではtruth headのenergyを読み、trackなし荷電truthなどは `energy_valid=0`、energy/responseはNaN。
 新しい出力名が必要。`--pretraining` の応答指標もtruth grouping + truth headを使用する。
 
+## Cluster energy集約・追加粒子score（独立したopt-in）
+
+既存の5-head + PID学習に、次をそれぞれ追加できる。両方とも省略すると、上記の
+モデル構成・初期化・出力・loss・checkpoint形式を維持する。
+
+| 目的 | 追加するオプション |
+| --- | --- |
+| cluster全体からcalo energyを直接回帰 | `--particle-cluster-energy` |
+| trackで数えた粒子の断片と追加粒子を区別 | `--particle-cluster-score` |
+| 両方を同時学習 | `--particle-cluster-energy --particle-cluster-score` |
+
+別networkの事前学習・backbone固定は行わない。同じGNNのhit embeddingをclusterごとに
+sum/mean/max集約し、測定ECAL/HCAL/その他/不明collectionのenergy和、hit数、energy分散、
+位置・形状、近傍trackとの距離・運動量を加えたMLPからenergyとscoreを出す。
+GNNと追加headは初回から同時に学習する。collection情報がない旧H5は不明channelを使用する。
+モデル入力にMC energy・PID・truth所属は追加しない。truth所属は教師用の集約とtarget作成にのみ使う。
+
+既存の入力・学習率などの指定に、例えば次を追加する。
+
+```bash
+--use-multihead-model \
+--energy-regression --energy-regression-cluster \
+--LE-track alpha_tracker_diff_log_perCluster --LE-cluster sum_log_perCluster \
+--pid-head --five-particle-energy-heads \
+--particle-cluster-energy --particle-cluster-score \
+--particle-cluster-source truth --particle-cluster-score-weight 1.0
+```
+
+`--particle-cluster-source truth`（既定）は正のtruth IDで集約する。
+`predicted` は既存のbeta/virtual coordinate clusteringで集約し、欠損・混入を含む候補を学習する。
+その場合の閾値は `--particle-cluster-tbeta 0.9 --particle-cluster-td 0.5`（既定）で指定する。
+所属決定は離散処理なので微分しないが、集約とenergy/score lossから共通GNNへの勾配は流れる。
+高β点への最近傍割当、低β点のβ優先順割当、単独trackの追加結合の規則を保つ。
+CUDA上の`predicted`集約はTorch版を自動使用し、β・virtual coordinate・所属をCPUへ転送しない。
+距離計算は一時領域約64 MiBを目安に分割する。CPU実行時は従来のNumPy版を使用する。
+GPU版のβ完全同値時は入力hit番号順に固定するため、旧NumPyの不安定sortとは順序が
+異なる場合がある。また、`td`付近ではCPU/CUDA間の距離の丸め差があり得る。
+追加optionは不要で、truth集約と集約option無効時の学習は従来どおり。
+
+### Energyの教師と採用値
+
+energy出力はcluster当たり1つの非負calo energy。photonとneutral hadronで共有する。
+予測clusterには、各truth粒子のMC energyを**その粒子のcalo deposit割合**で配分する。
+分母には未cluster hitも含め、分割されたneutralでMC energyを重複計上しない。
+対応する入力trackが別clusterにある荷電粒子のcalo断片はenergy教師0とする。
+入力trackがない荷電粒子のdepositは残す。対応trackを含むclusterでは荷電粒子のcalo energyも
+補助教師として学習する。truth不明hitを含むclusterは、完全な教師を作れないため補助lossから除く。
+MC親子関係は現行入力にないので、異なるMC ID間の親子の重複判定には使わない。
+
+`--particle-cluster-energy` 有効時は、従来の荷電3 headのlossを保ち、中性2 headのnode和lossを
+集約energyの `log1p(abs(E_pred - E_target))` に置き換える。
+荷電項の分母は従来どおり全有効truth object数、集約項の分母は有効calo cluster数とし、
+それぞれevent平均して足す。従って、option間でtotal lossの数値を直接性能比較しない。
+energy係数・開始epoch・rampは既存の `--regression-coefficinet`、`--epochs-noLE`、
+`--LE-gradually` に従う。`L_E_cond` は荷電項、`L_E_cluster` / `L_E_particle_cluster` は集約項。
+このoptionでは `L_E_photon` / `L_E_neutral_hadron` は0で、5 species寄与だけを足してもtotalにはならない。
+`--pretraining` の集約候補のresponseはPDG=0で記録する。
+
+推論では、truth/reco/scanで**最終所属が決まった後**に同じheadで集約し直す。
+荷電PIDかつ1 trackなら測定運動量とPID質量からenergyを計算し、複数trackの荷電PIDは従来のhead値を保つ。
+neutral PID、またはtrackなし荷電PIDのneutral fallbackには集約energyを採用する。
+5 speciesのraw head値は診断用に保持するが、このoptionの中性raw headは採用energyではなく、
+そのnode和の回帰lossも学習しない。
+
+### 追加粒子scoreの教師と選別
+
+scoreは、trackなし候補のdepositのうち「入力trackで既に数えられる荷電粒子の断片ではない」
+割合を0〜1で学習する。neutralと入力trackなし荷電は1、入力trackを持つ荷電の断片は0、
+混入候補はdeposit割合のsoft targetとし、BCEWithLogitsをevent平均する。
+truth所属では断片の負例が現れないため、track付きtruth粒子のcalo hitを物理座標の最大幅方向で
+2群に分け、trackを外した候補も作る。元のneutralを重複して数えず、これらの負例をepoch 0から学習する。
+追加項は `L_particle_score`、係数は `--particle-cluster-score-weight`（既定1）。
+energyの開始epochとは独立にepoch 0から有効。PID・OC/betaのlossは維持する。
+
+推論時はscore付きcheckpointからheadを自動復元する。統合writerの例：
+
+```bash
+python3 -B save_root.py INPUT.h5 NEW_CHECKPOINT.pth.tar OUTPUT.root \
+  0 -1 False 7 5 \
+  --momentum --momentum-amp --pid-readout representative \
+  --tbeta 0.9 --td 0.5 --particle-cluster-score-threshold 0.5
+```
+
+入力特徴量の指定は学習に合わせる。`--truth-clustering` とbeta/distance scanにも同じ読出しを適用する。
+`--particle-cluster-score-threshold` の省略時は、score付きcheckpointに限り0.5。
+scoreを学習していないcheckpointへの閾値指定はエラーにする。
+閾値未満の**trackなしclusterだけ**採用energyを0にし、track付き候補は保持する。
+scoreをenergyへ掛けたり、hitを他clusterへ移したりはしない。
+新headのROOTには `cluster_score` / `cluster_accepted` を追加し、棄却候補も所属・raw出力を診断用に残す。
+`energy_pid`、採用hit寄与、event energyは選別後の値を使用する。energyのみの場合score列はNaN、採用は1。
+閾値はvalidationでJERと平均energy、neutralの採否を合わせて比較する。
+
+通常推論に追加の学習flag指定は不要。旧checkpointから `--model-ckpt` で開始すれば追加headだけ新規初期化し、
+共通GNNなどを引き継ぐ。新head付きcheckpointをそのheadの学習flagなしで読み込むことは拒否する。
+energyのみ/scoreのみから両方への追加も可能。単一processとDDPに対応し、既存の
+`--cluster-energy-pooling`（2-head用）とは別機能で併用しない。
+
 ## Checkpointと対応範囲
 
 新構成は `particle_heads_config` をcheckpointに保存し、粒子種順の欠落・不一致を拒否する。

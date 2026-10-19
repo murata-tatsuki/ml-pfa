@@ -67,7 +67,8 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
         self.energy_regression_cluster = energy_regression_cluster
 
     def forward(self, x, batch, epoch=None, return_dict=False,
-                truth_cluster_index=None, detected_energy=None, knn_plan=None, event_counts=None):
+                truth_cluster_index=None, detected_energy=None, knn_plan=None, event_counts=None,
+                particle_raw_features=None, particle_detector_ids=None):
         kwargs = {}
         if event_counts is not None:
             kwargs['event_counts'] = event_counts
@@ -79,6 +80,11 @@ class LegacyCompatibleMultiHeadAdapter(nn.Module):
             if epoch is None:
                 epoch = getattr(self.model, 'cluster_energy_inference_epoch',
                                 self.model.interaction_start_epoch)
+        if (getattr(self.model, 'particle_cluster_energy', False) or
+                getattr(self.model, 'particle_cluster_score', False)):
+            kwargs.update(truth_cluster_index=truth_cluster_index,
+                          particle_raw_features=particle_raw_features,
+                          particle_detector_ids=particle_detector_ids)
         if epoch is None and hasattr(self.model, 'particle_heads_inference_epoch'):
             epoch = self.model.particle_heads_inference_epoch
         result = self.model(x, batch, epoch=epoch, return_dict=True, **kwargs)
@@ -202,6 +208,7 @@ def get_model(
                     cluster_energy_tbeta=tbeta, cluster_energy_td=td,
                     cluster_energy_coordinate_start=config.get('coordinate_start', 2 if use_charge_track_likeness else 1),
                     interaction_start_epoch=config.get('interaction_start_epoch', 0))
+            particle_cluster_config = particle_config.get("particle_cluster_config", {})
             model = GravNetModelMultiHead(
                 input_dim=input_dim,
                 output_dim=clustering_output_dim,
@@ -210,6 +217,11 @@ def get_model(
                 interaction_mode=interaction_mode,
                 pid_head=particle_config.get('pid_head', False),
                 five_particle_energy_heads=particle_config.get('five_particle_energy_heads', False),
+                particle_cluster_energy=particle_cluster_config.get('energy', False),
+                particle_cluster_score=particle_cluster_config.get('score', False),
+                particle_cluster_source=particle_cluster_config.get('source', 'truth'),
+                particle_cluster_tbeta=particle_cluster_config.get('tbeta', 0.9),
+                particle_cluster_td=particle_cluster_config.get('td', 0.5),
                 **pooling_kwargs,
             )
             if pooled_checkpoint:

@@ -1792,3 +1792,82 @@ restart period :  30
 [rank 2] epoch=253 train_batch=12000/15313 loss=1.466267
 [rank 2] epoch=253 train_batch=14000/15313 loss=1.513462
 [rank 2] epoch=254 train_batch=2000/15313 loss=1.474422
+[rank 2] epoch=254 train_batch=4000/15313 loss=1.486113
+[rank 2] epoch=254 train_batch=6000/15313 loss=1.512842
+[rank 2] epoch=254 train_batch=8000/15313 loss=1.430245
+[rank 2] epoch=254 train_batch=10000/15313 loss=1.470519
+[rank 2] epoch=254 train_batch=12000/15313 loss=1.459761
+[rank 2] epoch=254 train_batch=14000/15313 loss=1.511312
+[rank 2] epoch=255 train_batch=2000/15313 loss=1.506434
+[rank 2] epoch=255 train_batch=4000/15313 loss=1.417741
+[rank 2] epoch=255 train_batch=6000/15313 loss=1.452927
+[rank 2] epoch=255 train_batch=8000/15313 loss=1.532313
+[rank 2] epoch=255 train_batch=10000/15313 loss=1.463212
+[rank 2] epoch=255 train_batch=12000/15313 loss=1.370876
+[rank 2] epoch=255 train_batch=14000/15313 loss=1.473097
+[rank 2] epoch=256 train_batch=2000/15313 loss=1.429793
+[rank 2] epoch=256 train_batch=4000/15313 loss=1.499526
+[rank 2] epoch=256 train_batch=6000/15313 loss=1.506131
+[rank 2] epoch=256 train_batch=8000/15313 loss=1.461775
+[rank 2] epoch=256 train_batch=10000/15313 loss=1.444648
+[rank 2] epoch=256 train_batch=12000/15313 loss=1.455895
+[rank 2] epoch=256 train_batch=14000/15313 loss=1.498856
+[rank 2] epoch=257 train_batch=2000/15313 loss=1.449851
+[rank 2] epoch=257 train_batch=4000/15313 loss=1.518750
+[rank 2] epoch=257 train_batch=6000/15313 loss=1.517810
+[rank 2] epoch=257 train_batch=8000/15313 loss=1.532436
+[rank 2] epoch=257 train_batch=10000/15313 loss=1.489296
+[rank 2] epoch=257 train_batch=12000/15313 loss=1.468920
+[rank 2] epoch=257 train_batch=14000/15313 loss=1.494528
+[rank 2] epoch=258 train_batch=2000/15313 loss=1.475233
+[rank 2] epoch=258 train_batch=4000/15313 loss=1.498192
+[rank 2] epoch=258 train_batch=6000/15313 loss=1.440820
+[rank 2] epoch=258 train_batch=8000/15313 loss=1.423891
+[rank 2] epoch=258 train_batch=10000/15313 loss=1.484372
+[rank 2] epoch=258 train_batch=12000/15313 loss=1.475789
+[rank 2] epoch=258 train_batch=14000/15313 loss=1.561548
+[rank 2] epoch=259 train_batch=2000/15313 loss=1.490126
+[rank 2] epoch=259 train_batch=4000/15313 loss=1.466645
+[rank 2] epoch=259 train_batch=6000/15313 loss=1.573530
+[rank 2] epoch=259 train_batch=8000/15313 loss=1.469378
+[rank 2] epoch=259 train_batch=10000/15313 loss=1.510782
+[rank 2] epoch=259 train_batch=12000/15313 loss=1.557119
+Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x78ae50cfb670>
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1443, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 40, in wait
+    if not wait([self.sentinel], timeout):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt: 
+Process SpawnProcess-3:
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 315, in _bootstrap
+    self.run()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/site-packages/torch/multiprocessing/spawn.py", line 70, in _wrap
+    pass  # SIGINT; Killed by parent, do nothing
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 318, in _bootstrap
+    util._exit_function()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/util.py", line 357, in _exit_function
+    p.join()
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 43, in wait
+    return self.poll(os.WNOHANG if timeout == 0.0 else 0)
+  File "/opt/pyenv/versions/3.9.18/lib/python3.9/multiprocessing/popen_fork.py", line 27, in poll
+    pid, sts = os.waitpid(self.pid, flag)
+KeyboardInterrupt

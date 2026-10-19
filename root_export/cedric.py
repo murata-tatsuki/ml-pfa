@@ -2,13 +2,14 @@
 
 This is the shared implementation behind ``save_root.py``. Both the charged/
 neutral and five-species energy models use the same truth/reco matching and
-Cedric tree definitions. The original calculations, entry order, 50-node event
-selection and energy policies are retained so existing analysis macros see the
-same values. C++ chunk writing and ordered inference prefetch are shared by
+Cedric tree definitions. Entry order and the 50-node event selection are
+retained. C++ chunk writing and ordered inference prefetch are shared by
 single-point and cached-prediction scans.
 
 Representative PID uses the highest-beta track when present, otherwise the
 highest-beta node, for both reconstructed and truth-defined membership.
+Five-head charged predictions with exactly one track use measured track
+momentum and the predicted species mass; other energy readouts are retained.
 
 PID-specific resume metadata remains compatible with the former PID writer.
 CLI parsing and the legacy job planner live outside this module.
@@ -38,7 +39,8 @@ import torch
 from sed import minimum_enclosing_sphere
 from clustering import cluster
 from matching import make_matches
-from particle_heads import SPECIES, raw_model, decode_clusters, checkpoint_config
+from particle_heads import (SPECIES, CHARGED_MASSES_GEV, raw_model,
+                            decode_clusters, checkpoint_config)
 
 ## 1 to 1 match to reco-cluster and true cluster
 ## the largest edep_match reco-cluster is chosen
@@ -137,18 +139,21 @@ void CedricPIDBatchFill(TTree *tree, Long64_t rows,
     _PID_WRITER_LOADED = True
 
 
-def _pid_branch_specs(hit=False):
+def _pid_branch_specs(hit=False, particle_cluster=False):
     integers, identifiers, doubles = ((_PID_HIT_INTS, _PID_HIT_IDS, _PID_HIT_DOUBLES)
                                     if hit else
                                     (_PID_CLUSTER_INTS, _PID_CLUSTER_IDS, _PID_CLUSTER_DOUBLES))
-    return ([(name, np.int32, 'I') for name in integers]
-            + [(name, np.int64, 'L') for name in identifiers]
-            + [(name, np.float64, 'D') for name in doubles])
+    result = ([(name, np.int32, 'I') for name in integers]
+              + [(name, np.int64, 'L') for name in identifiers]
+              + [(name, np.float64, 'D') for name in doubles])
+    if particle_cluster:
+        result += [('cluster_score', np.float64, 'D'), ('cluster_accepted', np.int32, 'I')]
+    return result
 
 
-def _book_pid_branches(tree, hit=False):
+def _book_pid_branches(tree, hit=False, particle_cluster=False):
     buffers = {}
-    for name, dtype, leaf in _pid_branch_specs(hit):
+    for name, dtype, leaf in _pid_branch_specs(hit, particle_cluster):
         buffers[name] = np.zeros(1, dtype=dtype)
         tree.Branch(name, buffers[name], f'{name}/{leaf}')
     return buffers
@@ -626,6 +631,9 @@ def _validate_root(
                     False, f"missing TTree {tree_name}", (-1, -1, -1)
                 )
 
+            if pid and tree_name in ('t', 'reco', 'prediction') and (
+                    tree.GetBranch('cluster_score') or tree.GetBranch('cluster_accepted')):
+                schema = tuple(schema) + (('cluster_score', 'Double_t'), ('cluster_accepted', 'Int_t'))
             expected_names = [name for name, _ in schema]
             actual_names = [
                 branch.GetName() for branch in tree.GetListOfBranches()
@@ -1399,6 +1407,9 @@ def save_root(
             yielder = TestYielder(model=model, dataset=dataset, device=device, pandora=pandora, event_energy=event_energy)
         # ILCDataset already starts at nstart and slices nend events.
         nmax = None if nend == -1 else nend
+    particle_cluster_mode = pid_mode and (
+        getattr(raw_model(model), 'particle_cluster_head', None) is not None
+        or bool(pid_metadata and pid_metadata.get('particle_cluster_config')))
     print("number of entry : ", nmax)
 
     """
@@ -1444,18 +1455,18 @@ def save_root(
                 t = TTree("t","tree for MCParticle")
                 d = Data()
                 d.setup_branch(t)
-                pid_t = _book_pid_branches(t) if pid_mode else {}
+                pid_t = _book_pid_branches(t, particle_cluster=particle_cluster_mode) if pid_mode else {}
 
                 t2 = TTree("reco","tree for reconstructed clusters")
                 d2 = RecoData()
                 d2.setup_branch(t2)
-                pid_reco = _book_pid_branches(t2) if pid_mode else {}
+                pid_reco = _book_pid_branches(t2, particle_cluster=particle_cluster_mode) if pid_mode else {}
 
                 t3 = TTree("prediction","tree for model output")
                 d3 = PredData()
                 d3.setup_branch(t3)
                 if pid_mode:
-                    _book_pid_branches(t3, hit=True)
+                    _book_pid_branches(t3, hit=True, particle_cluster=particle_cluster_mode)
 
                 t4 = TTree("event","tree for event")
                 d4 = EventData()
@@ -1921,7 +1932,8 @@ _PID_SCHEMA = 'cedric-pid-root-1'
 _PID_RESUME_VERSION = 1
 _PID_RESUME_FIELDS = ('nstart', 'nend', 'input_dim', 'output_dim', 'pid_readout',
                       'truth_clustering', 'momentum', 'momentum_amp', 'model_variant',
-                      'exclude_gap_hits', 'detector_one_hot', 'pid_detail')
+                      'exclude_gap_hits', 'detector_one_hot', 'pid_detail',
+                      'particle_cluster_score_threshold')
 
 
 def _pid_arguments(args):
@@ -1931,6 +1943,7 @@ def _pid_arguments(args):
         momentum=args.momentum, momentum_amp=args.momentum_amp, calo_head=True,
         model_variant=args.model_variant, regression_output_activation='current', energy_policy='alpha',
         tbeta=args.tbeta, td=args.td, exclude_gap_hits=args.exclude_gap_hits,
+        particle_cluster_score_threshold=getattr(args, 'particle_cluster_score_threshold', None),
         detector_one_hot=args.detector_one_hot, start=args.nstart,
         stop=-1 if args.nend == -1 else args.nstart + args.nend,
         detail=args.pid_detail, device=args.device, threads=args.pid_threads,
@@ -2069,11 +2082,14 @@ class _PIDYielder:
             if len(data.x) < 50:
                 continue
             result = predict(self.model, data, self.args.device, self.args.tbeta,
-                             self.args.td, self.args.calo_head, defer_clustering=True)
+                             self.args.td, self.args.calo_head, defer_clustering=True,
+                             particle_cluster_score_threshold=self.args.particle_cluster_score_threshold)
             data.batch = torch.zeros(len(data.x), dtype=torch.long)
             event = Event(data, event_energy='event' in data)
             event.input_row = data.input_row.numpy()
             event.truth_valid = data.truth_valid.numpy()
+            event.detector_ids = (data.row_info[:, 3].numpy()
+                                  if getattr(data, 'row_info', None) is not None else None)
             # Unknown teachers in extended inputs are not valid MC particles.
             # Keep their detector inputs and truthid=0; give ROOT finite sentinels.
             event.label = to_numpy(event.label).copy()
@@ -2083,22 +2099,38 @@ class _PIDYielder:
             prediction.pid_logits = result['pid_logits']
             prediction.species_energies = result['species_energies']
             prediction.pid_five = result['species_energies'] is not None
+            for key in ('particle_cluster_features', 'particle_cluster_head',
+                        'particle_cluster_score_threshold'):
+                if key in result:
+                    setattr(prediction, key, result[key])
             count += 1
             yield event, prediction
 
 
 def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
-    """Read predicted PID from the highest-beta track, or node without tracks."""
+    """Attach shared PID/energy readout for reconstructed or truth membership."""
     prediction.pid_truth_clustering = truth_clustering
     beta = prediction.pred_betas
     track = event.x[:, 4] > .5
     values = prediction.species_energies
     logits = prediction.pid_logits
-    readouts = decode_clusters(assignments, beta, track, energies=values, pid_logits=logits)
+    readouts = decode_clusters(assignments, beta, track, energies=values, pid_logits=logits,
+                               track_momenta=to_numpy(event.momentumVector) if values is not None else None)
+    particle_cluster_mode = getattr(prediction, 'particle_cluster_head', None) is not None
+    pooled = None
+    if particle_cluster_mode:
+        from pandora_eval_reconstruction import apply_particle_cluster_readout
+        pooled_prediction = dict(assignments=assignments,
+            particle_cluster_head=prediction.particle_cluster_head,
+            particle_cluster_features=prediction.particle_cluster_features,
+            particle_cluster_score_threshold=getattr(prediction, 'particle_cluster_score_threshold', None))
+        readouts, pooled = apply_particle_cluster_readout(
+            readouts, pooled_prediction, event.feat, track,
+            getattr(event, 'detector_ids', None))
     n = len(beta)
     columns = {name: np.full(n, -1, dtype=dtype) if leaf != 'D' else
                np.full(n, np.nan, dtype=dtype)
-               for name, dtype, leaf in _pid_branch_specs(hit=True)}
+               for name, dtype, leaf in _pid_branch_specs(hit=True, particle_cluster=particle_cluster_mode)}
     columns['pid'] = np.asarray(logits).argmax(axis=1).astype(np.int32)
     columns['is_pid_seed'].fill(0)
     columns['energy_fallback'].fill(0)
@@ -2116,8 +2148,8 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
     prediction.pid_clusters = {}
     for readout in readouts:
         ci, seed = readout['cluster'], readout['seed']
-        # PID and charged regression share the track-prioritized representative
-        # for both reconstructed and truth-defined cluster membership.
+        # PID, charged head diagnostics and measured single-track energy share
+        # the representative for reconstructed and truth-defined membership.
         energy_seed = seed
         members = np.flatnonzero(assignments == ci)
         calos = members[~track[members]]
@@ -2131,9 +2163,16 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
             energy = readout['energy']
             prediction.pred_tracker_energy[members] = values[members, used]
             if used < 3:
+                prediction.pred_tracker_energy[energy_seed] = energy
                 contributions[energy_seed] = energy
             else:
-                contributions[calos] = values[calos, used]
+                contributions[calos] = (to_numpy(pooled['hit_energy'])[calos]
+                    if pooled is not None and 'energy' in pooled else values[calos, used])
+                if pooled is not None and 'energy' in pooled:
+                    prediction.pred_tracker_energy[members] = to_numpy(pooled['hit_energy'])[members]
+            if not readout.get('cluster_accepted', 1):
+                prediction.pred_tracker_energy[members] = 0.
+                contributions[members] = 0.
         else:
             # PID-only checkpoints retain the original two-head energy policy.
             readout['energy_head'], readout['energy_fallback'] = -1, 0
@@ -2152,6 +2191,11 @@ def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
         entry.update(('energy_' + species, float(candidates[j])) for j, species in enumerate(SPECIES))
         entry.update(('pid_probability_' + species, float(readout['probabilities'][j]))
                      for j, species in enumerate(SPECIES))
+        if particle_cluster_mode:
+            entry.update(cluster_score=readout['cluster_score'],
+                         cluster_accepted=readout['cluster_accepted'])
+            columns['cluster_score'][members] = readout['cluster_score']
+            columns['cluster_accepted'][members] = readout['cluster_accepted']
         prediction.pid_clusters[ci] = entry
         columns['cluster_pid'][members] = readout['pid']
         columns['energy_head'][members] = readout['energy_head']
@@ -2203,7 +2247,7 @@ def _validate_pid_resume(path, args, checkpoint_sha256, expected_counts=None):
             return invalid('checkpoint differs')
         saved_args = metadata.get('arguments', {})
         for name in _PID_RESUME_FIELDS:
-            if saved_args.get(name) != getattr(args, name):
+            if saved_args.get(name) != getattr(args, name, None):
                 return invalid(f'option differs: {name}')
         if not args.truth_clustering:
             for name in ('tbeta', 'td'):
@@ -2281,6 +2325,20 @@ def _pending_pid_jobs(args, jobs, checkpoint_sha256):
     return result
 
 
+def _particle_cluster_metadata(model):
+    raw = raw_model(model)
+    head = getattr(raw, 'particle_cluster_head', None)
+    if head is None:
+        return None
+    from particle_cluster import PC_FEATURE_SCHEMA
+    return dict(version=1, energy=head.energy_enabled, score=head.score_enabled,
+                source=raw.particle_cluster_source, tbeta=raw.particle_cluster_tbeta,
+                td=raw.particle_cluster_td, feature_schema=PC_FEATURE_SCHEMA,
+                inference_membership='Final truth/reconstructed membership, re-pooled per scan point',
+                score_selection='Only trackless candidates below threshold are rejected; membership retained',
+                default_score_threshold=.5)
+
+
 def _write_pid_metadata(path, args, model, provenance, cached=None):
     import json
     from root_export.runtime import sha256
@@ -2292,11 +2350,18 @@ def _write_pid_metadata(path, args, model, provenance, cached=None):
         clustering=('Positive truth IDs define membership; unknown truth ID 0 remains unassigned; tbeta/td are unused'
                     if args.truth_clustering else 'Existing beta/coordinate/track clustering; PID never changes membership'),
         pid_seed='Highest-beta track if present, otherwise highest-beta node; ties use first candidate input node',
-        cluster_energy_heads='Charged heads at highest-beta track (NaN without track); neutral heads summed over calo nodes',
-        energy_policy='Representative PID selects one of five heads; trackless charged prediction uses best neutral probability'
+        cluster_energy_heads='Raw GNN diagnostics: charged heads at highest-beta track (NaN without track); neutral heads summed over calo nodes',
+        energy_policy='Predicted charged PID with exactly one track uses sqrt(p_measured^2+m_PID^2); '
+                      'multiple-track charged prediction uses highest-beta track head; neutral prediction uses calo head sum; '
+                      'trackless charged prediction uses best neutral probability'
                       if config['five_particle_energy_heads'] else 'Original two-head energy; PID is diagnostic',
+        single_track_energy=(dict(momentum='Measured track at calorimeter entry, raw feature columns 7:10, GeV',
+                                  masses_GeV=dict(zip(SPECIES[:3], CHARGED_MASSES_GEV)))
+                             if config['five_particle_energy_heads'] else None),
         compatibility_energy='In t/reco, pred_edep and pred_edep_cluster both store energy_pid for five-head checkpoints',
-        prediction_energy='pred_edep: selected head per node; pred_edep_cluster/energy_contribution: cluster-energy contributions'
+        prediction_energy='pred_edep: selected GNN head per node with adopted charged energy at PID seed; '
+                          'pred_edep_cluster/energy_contribution: cluster-energy contributions; '
+                          'energy_<species>: raw GNN head output per node'
                           if config['five_particle_energy_heads'] else 'Original tracker/calo head outputs',
         prediction_pid='pid is the node argmax; cluster_pid is the representative PID; is_pid_seed marks the readout node',
         event_selection='Same as TestYielder: at least 50 model-input nodes; no additional time/pT cut',
@@ -2305,6 +2370,33 @@ def _write_pid_metadata(path, args, model, provenance, cached=None):
                      '; extended unknown inputs use truthid=0, mcid=-1, truth_valid=0',
         checkpoint_sha256=cached['checkpoint_sha256'] if cached is not None else sha256(args.ckpt),
         code_sha256=cached['code_sha256'] if cached is not None else sha256(Path(__file__).resolve()))
+    particle_cluster_config = (cached.get('particle_cluster_config') if cached is not None
+                               else _particle_cluster_metadata(model))
+    if particle_cluster_config is not None:
+        metadata['particle_cluster_config'] = particle_cluster_config
+        energy_enabled = particle_cluster_config['energy']
+        score_enabled = particle_cluster_config['score']
+        metadata['particle_cluster_readout'] = dict(
+            energy=('Trained pooled scalar replaces calo-side energy only; charged track readouts retained'
+                    if energy_enabled else 'Original five-head energy policy retained'),
+            score_threshold=((.5 if getattr(args, 'particle_cluster_score_threshold', None) is None
+                              else args.particle_cluster_score_threshold) if score_enabled else None),
+            rejected=('cluster_accepted=0: energy_pid and adopted hit contributions are zero; raw heads retained'
+                      if score_enabled else 'Score disabled: all reconstructed candidates retained'),
+            branches='cluster_score and cluster_accepted on t/reco/prediction')
+        if energy_enabled:
+            metadata['energy_policy'] = (
+                'Predicted charged PID with exactly one track uses sqrt(p_measured^2+m_PID^2); '
+                'multiple-track charged prediction uses highest-beta track head; '
+                'neutral and trackless charged predictions use the trained pooled calorimeter energy')
+            metadata['prediction_energy'] = (
+                'pred_edep: adopted charged energy at PID seed or pooled calo contributions; '
+                'pred_edep_cluster/energy_contribution: adopted cluster-energy contributions; '
+                'energy_<species>: unchanged raw GNN head output per node')
+        if score_enabled:
+            metadata['energy_policy'] += (
+                '; trackless candidates below the additional-particle score threshold contribute zero energy; '
+                'track-containing candidates are always retained; cluster membership is unchanged')
     if cached is not None:
         metadata['arguments'] = dict(vars(args), beta_d_scan=True,
                                      device=cached['inference_device'])
@@ -2441,6 +2533,7 @@ def _run_pid_scan(args, model, jobs, checkpoint_sha256=None):
                          'one-inference scan; use a node-wise energy checkpoint')
     metadata = dict(config=checkpoint_config(model,
         getattr(raw_model(model), 'particle_heads_inference_epoch', None)),
+        particle_cluster_config=_particle_cluster_metadata(model),
         checkpoint_sha256=checkpoint_sha256 or sha256(args.ckpt),
         code_sha256=sha256(Path(__file__).resolve()),
         inference_device=args.device)

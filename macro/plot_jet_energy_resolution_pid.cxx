@@ -45,6 +45,9 @@
 #include <sstream>
 #include <stdexcept>
 
+static const string model_condition = "5head_pid_onehot";  // 5head_pid 5head_pid_onehot
+
+
 namespace pid_jer_plot {
 static const int kEnergies[5] = {40, 91, 200, 350, 500};
 static const char* const kMethods[3] = {"reco", "truth_clustering", "pandora"};
@@ -436,7 +439,7 @@ void drawRegion(const Samples& samples, int region, TFile& output, const std::st
 #include "src/pid_comparison_distributions.h"
 
 void plot_jet_energy_resolution_pid(
-    const char* baseDirectory = "figures/nnqq2M_fixed_uds_5head_pid",
+    const char* baseDirectory = Form("figures/nnqq2M_fixed_uds_%s",model_condition.c_str()),
     const char* outputDirectory = "",
     const char* pandoraBaseDirectory = "",
     const char* pandoraReferenceDirectory = pid_jer_plot::kPandoraReferenceDirectory,

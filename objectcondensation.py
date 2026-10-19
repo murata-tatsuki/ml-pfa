@@ -1509,19 +1509,21 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     unassigned = np.array([], dtype=np.int32)
     clustering = -1 * np.ones(n_points, dtype=np.int32)
 
-    if any(select_condpoints):
-        for i in np.arange(n_points):
-            x = X[i]
-            d = np.linalg.norm(x - X[indices_condpoints], axis=-1)
-            argmin = np.argmin(d, axis=-1)
-            index_condpoint = indices_condpoints[argmin]
-            if (d[argmin] < td):
-                clustering[i] = index_condpoint
-                if debug:
-                    print(f"Assign {i} --> {index_condpoint} [d={d[argmin]}] [beta={betas[index_condpoint]}]")
-            else:
-                unassigned = np.append(unassigned,i)
-    else: 
+    if np.any(select_condpoints):
+        centers = X[indices_condpoints]
+        # Batch the same coordinate differences and norm as the per-hit loop.
+        # Bound temporary coordinate arrays to roughly 1M elements per chunk;
+        # argmin keeps the existing beta-sorted order for equal distances.
+        chunk_size = max(1, (1 << 20) // max(1, centers.size))
+        for begin in range(0, n_points, chunk_size):
+            end = min(begin + chunk_size, n_points)
+            d = np.linalg.norm(X[begin:end, None, :] - centers[None, :, :], axis=-1)
+            nearest = np.argmin(d, axis=1)
+            accepted = d[np.arange(end - begin), nearest] < td
+            positions = np.flatnonzero(accepted) + begin
+            clustering[positions] = indices_condpoints[nearest[accepted]]
+        unassigned = np.flatnonzero(clustering == -1)
+    else:
         unassigned = np.arange(n_points)
 
     # Now merge the rest of the points, highest beta first
@@ -1529,6 +1531,8 @@ def get_clustering_np_new(event, betas: np.array, X: np.array, charged_hits: np.
     # Points unassigned at the end are bkg (-1)
 
     for index_condpoint in indices_condpoints2:
+        if not unassigned.size:
+            break
         # condensation_points[index_condpoint] = 1
         d = np.linalg.norm(X[unassigned] - X[index_condpoint], axis=-1)
         assigned_to_this_cluster = unassigned[d < td]

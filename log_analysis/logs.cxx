@@ -24,8 +24,8 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174838_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_05_092726_alpha_diff_log_perCluster_multihead_ranks/rank0.log";
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_29_120252_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
-// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_04_162529_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
-const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_09_154602_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_04_162529_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_09_154602_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
 
 
 //// single particle pre training 

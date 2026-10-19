@@ -312,6 +312,11 @@ class GravNetModelMultiHead(nn.Module):
         cluster_energy_coordinate_start: int = 1,
         pid_head: bool = False,
         five_particle_energy_heads: bool = False,
+        particle_cluster_energy: bool = False,
+        particle_cluster_score: bool = False,
+        particle_cluster_source: str = "truth",
+        particle_cluster_tbeta: float = 0.9,
+        particle_cluster_td: float = 0.5,
     ):
         super(GravNetModelMultiHead, self).__init__()
         if n_heads < 1:
@@ -329,6 +334,16 @@ class GravNetModelMultiHead(nn.Module):
         self.interaction_mode = interaction_mode
         self.pid_head = pid_head
         self.five_particle_energy_heads = five_particle_energy_heads
+        self.particle_cluster_energy = particle_cluster_energy
+        self.particle_cluster_score = particle_cluster_score
+        self.particle_cluster_source = particle_cluster_source
+        self.particle_cluster_tbeta = particle_cluster_tbeta
+        self.particle_cluster_td = particle_cluster_td
+        if particle_cluster_energy or particle_cluster_score:
+            if not (five_particle_energy_heads and pid_head):
+                raise ValueError("Particle cluster heads require five species energy heads and PID")
+            from cluster_energy import validate_settings
+            validate_settings(particle_cluster_source, particle_cluster_tbeta, particle_cluster_td)
         if five_particle_energy_heads:
             if n_heads != 6 or cluster_energy_pooling:
                 raise ValueError('Five species heads require n_heads=6 and no cluster pooling')
@@ -395,6 +410,13 @@ class GravNetModelMultiHead(nn.Module):
             # Retain old keys for loading legacy multihead checkpoints, but do
             # not optimize the replaced, unused per-hit output MLP.
             self.head_output[2].requires_grad_(False)
+        # Optional heads are constructed last: disabled models retain the exact
+        # parameter initialization and random-number sequence of existing jobs.
+        if self.particle_cluster_energy or self.particle_cluster_score:
+            from particle_cluster import ParticleClusterHead
+            self.particle_cluster_head = ParticleClusterHead(
+                feature_dim=self.dense_nord, energy=self.particle_cluster_energy,
+                score=self.particle_cluster_score)
 
     @staticmethod
     def _default_head_names(n_heads: int) -> List[str]:
@@ -519,6 +541,8 @@ class GravNetModelMultiHead(nn.Module):
         detected_energy: Optional[Tensor] = None,
         knn_plan: Optional[Tuple[Tensor, Tensor, int, int, int]] = None,
         event_counts: Optional[Tensor] = None,
+        particle_raw_features: Optional[Tensor] = None,
+        particle_detector_ids: Optional[Tensor] = None,
     ):
         if not torch.jit.is_scripting():
             knn_plan = resolve_knn_plan(self.gravnet_blocks, x, batch, knn_plan)
@@ -585,6 +609,21 @@ class GravNetModelMultiHead(nn.Module):
             result['pid_logits'] = self.pid_output(self.pid_postgn_dense(x))
         if pooled_energy is not None:
             result['cluster_energy'] = pooled_energy
+        if self.particle_cluster_energy or self.particle_cluster_score:
+            # Inference can cache hit embeddings and pool them for the final
+            # truth/reco membership, including each point of a threshold scan.
+            result['particle_cluster_features'] = clustering_feature
+            if particle_raw_features is not None and (
+                    self.particle_cluster_source == 'predicted' or truth_cluster_index is not None):
+                from particle_cluster import training_readout
+                particle_clusters = training_readout(
+                    self.particle_cluster_head, clustering_feature, outputs[0], batch,
+                    raw_x[:, 4] > 0.5, particle_raw_features,
+                    detector_ids=particle_detector_ids, truth_ids=truth_cluster_index,
+                    source=self.particle_cluster_source, tbeta=self.particle_cluster_tbeta,
+                    td=self.particle_cluster_td, coordinate_start=self.cluster_energy_coordinate_start)
+                result['particle_clusters'] = particle_clusters
+                result['particle_cluster_augmented'] = particle_clusters.get('score_augmented')
         return result
 
 
