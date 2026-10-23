@@ -23,7 +23,7 @@ PHYSICS_OPTIONS = (
     'pid_readout', 'exclude_gap_hits', 'detector_one_hot', 'pid_detail',
     'pid_input_format', 'cluster_energy_source', 'cluster_energy_tbeta',
     'cluster_energy_td', 'energy_heads', 'output_schema',
-    'particle_cluster_score_threshold',
+    'particle_cluster_score_threshold', 'clustering_bn_eps',
 )
 
 
@@ -58,6 +58,10 @@ def _input_identity(input_path):
 def output_signature(args, input_path):
     """Describe result-affecting settings; deliberately omit execution tuning."""
     settings = {name: getattr(args, name, None) for name in PHYSICS_OPTIONS}
+    # An omitted override keeps the previous definition. Preserve the old
+    # settings identity when this optional field was not recorded at all.
+    if settings['clustering_bn_eps'] is None:
+        settings.pop('clustering_bn_eps')
     timing_cut = settings['timingCut']
     if isinstance(timing_cut, str):
         timing_cut = timing_cut.lower() in ('1', 'true', 'yes', 'on')

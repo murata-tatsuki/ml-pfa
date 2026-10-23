@@ -859,10 +859,10 @@ def _iter_analysis_inputs(
         )
         predictions = _ordered_prefetch(predictions, pipeline_depth, device)
 
-    pid_truth_clustering = truth_clustering and getattr(yielder, 'pid_mode', False)
+    truth_membership = truth_clustering and getattr(yielder, 'training_inputs', False)
     for event_index, (event, prediction) in enumerate(predictions):
-        if pid_truth_clustering:
-            # Select membership before PID/energy readout and matching. ID 0
+        if truth_membership:
+            # Select membership before energy/PID readout and matching. ID 0
             # denotes unknown truth, not a reconstructed truth cluster.
             clustering = np.asarray(to_numpy(event.y[:, 0]), dtype=np.int64)
         elif not pandora:
@@ -877,15 +877,24 @@ def _iter_analysis_inputs(
                 np.array(event.pand[:, 0], dtype=int).flatten() + 1
             )
             condensation_points = None
+        prediction.truth_clustering = truth_membership
         if getattr(yielder, 'pid_mode', False):
             _attach_pid_readout(event, prediction, clustering,
-                                truth_clustering=pid_truth_clustering)
-        if pid_truth_clustering:
-            condensation_points = prediction.pid_hit_columns['is_pid_seed'].copy()
+                                truth_clustering=truth_membership)
+        if truth_membership:
+            truth_ids = np.unique(clustering[clustering > 0])
+            if getattr(yielder, 'pid_mode', False):
+                condensation_points = prediction.pid_hit_columns['is_pid_seed'].copy()
+            else:
+                # Retain the original two-head highest-beta node policy.
+                condensation_points = np.zeros(len(clustering), dtype=np.int32)
+                for ci in truth_ids:
+                    members = np.flatnonzero(clustering == ci)
+                    condensation_points[members[np.argmax(prediction.pred_betas[members])]] = 1
             # Truth membership gives exact identity matches, including
             # track-only objects with zero deposited calorimeter energy.
-            matches = ({ci: [ci] for ci in prediction.pid_clusters},
-                       {ci: [ci] for ci in prediction.pid_clusters})
+            matches = ({ci: [ci] for ci in truth_ids},
+                       {ci: [ci] for ci in truth_ids})
         else:
             matches = make_matches(event, prediction, clustering=clustering)
         yield event, prediction, clustering, matches, condensation_points
@@ -916,8 +925,8 @@ class _EventNumpyCache:
         self.truth_ids = list(set(np.unique(self.truth)))
         self.mcids = list(set(np.unique(self.mcid)))
         self.cluster_ids = list(set(np.unique(self.clustering)))
-        self.pid_truth_clustering = getattr(prediction, 'pid_truth_clustering', False)
-        if self.pid_truth_clustering:
+        self.truth_clustering = getattr(prediction, 'truth_clustering', False)
+        if self.truth_clustering:
             self.cluster_ids = [ci for ci in self.cluster_ids if ci > 0]
         self.truth_masks = {
             truth_id: self.truth == truth_id
@@ -992,7 +1001,7 @@ class _EventNumpyCache:
             beta = self.pred_betas[self.cluster_mask(cluster_id)]
             # Preserve the legacy all-hit ordering for truth-mode tree fields.
             # PID representatives are selected separately by decode_clusters.
-            kind = 'stable' if self.pid_truth_clustering else 'quicksort'
+            kind = 'stable' if self.truth_clustering else 'quicksort'
             self._beta_orders[cluster_id] = np.argsort(-beta, kind=kind)
         return self._beta_orders[cluster_id]
 
@@ -1322,6 +1331,17 @@ def calc_pred_jet_energy(energies: np.array, nearest_indices: np.array):    # ca
     assert(not (energies.shape != nearest_indices.shape))
     return np.array([np.sum(energies[nearest_indices==0]), np.sum(energies[nearest_indices==1])])
 
+def _uses_training_inputs(args):
+    """Use current input/truth processing independently of trained PID heads.
+
+    Legacy/Pandora inputs keep their existing path. Explicit extended-H5
+    options also support the original charged/neutral model without PID.
+    """
+    return (getattr(args, 'pid_readout', 'legacy') == 'representative' or
+            (not args.pandora and (args.exclude_gap_hits or args.detector_one_hot
+                                  or args.pid_input_format == 'extended')))
+
+
 def save_root(
     datapath,
     ckpt,
@@ -1340,6 +1360,7 @@ def save_root(
     debug = False
     pandora=args.pandora
     pid_mode = getattr(args, 'pid_readout', 'legacy') == 'representative'
+    training_input_mode = _uses_training_inputs(args)
     # Direction metadata is useful independently of the clustering choice.
     # Load it automatically when present, so --pandora only selects Pandora
     # clustering and does not control availability of the theta plot.
@@ -1391,9 +1412,9 @@ def save_root(
             if energy_branch:
                 model = get_model_branch(ckpt, jit=False, input_dim=input_dim,output_dim=output_dim).to(device)
             else:
-                model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant, **inference_loader_kwargs(args)).to(device)
+                model = get_model(ckpt, jit=False, input_dim=input_dim, output_dim=output_dim, energy_regression=energyRegression, energy_regression_cluster=energyRegressionCluster, energy_regression_weight=energyRegressionWeight, model_variant=args.model_variant, clustering_bn_eps=getattr(args, 'clustering_bn_eps', None), **inference_loader_kwargs(args)).to(device)
     print(f"Loading data from {datapath} with {nstart=}, {nend=}, {timingCut=}")
-    if pid_mode:
+    if training_input_mode:
         yielder = (prediction_yielder if prediction_yielder is not None else
                    _PIDYielder(model, args, datapath, nstart, nend))
         nmax = None if nend == -1 else nend
@@ -1496,7 +1517,7 @@ def save_root(
                             print("Event", i, "processing...")
 
                         matches12, matches21 = matches
-                        if args.truth_clustering and not pid_mode:
+                        if args.truth_clustering and not training_input_mode:
                             clustering = event.y[:,0]
                         cache = _EventNumpyCache(event, prediction, clustering)
                         if (debug):
@@ -1683,7 +1704,7 @@ def save_root(
                             d.edep_match[0] = edep_match
                             d.ncluster[0] = ncluster
                             d.matched_ncluster[0] = matched_ncluster
-                            d.matched_cluster[0] = int(selected_cluster) if pid_mode else matched_cluster
+                            d.matched_cluster[0] = int(selected_cluster) if training_input_mode else matched_cluster
                             d.pred_edep[0] = pred_edep
                             d.pred_edep_cluster[0] = pred_edep_cluster
                             d.pred_edep_weight[0] = predicted_energy_weight
@@ -1933,15 +1954,16 @@ _PID_RESUME_VERSION = 1
 _PID_RESUME_FIELDS = ('nstart', 'nend', 'input_dim', 'output_dim', 'pid_readout',
                       'truth_clustering', 'momentum', 'momentum_amp', 'model_variant',
                       'exclude_gap_hits', 'detector_one_hot', 'pid_detail',
-                      'particle_cluster_score_threshold')
+                      'particle_cluster_score_threshold', 'clustering_bn_eps')
 
 
 def _pid_arguments(args):
     """Map existing positional arguments to internal PID writer settings."""
     return argparse.Namespace(input=args.datapath, output=args.outfile, checkpoint=args.ckpt,
-        pid_readout='representative', input_dim=args.input_dim, output_dim=args.output_dim,
+        pid_readout=args.pid_readout, input_dim=args.input_dim, output_dim=args.output_dim,
         momentum=args.momentum, momentum_amp=args.momentum_amp, calo_head=True,
         model_variant=args.model_variant, regression_output_activation='current', energy_policy='alpha',
+        clustering_bn_eps=getattr(args, 'clustering_bn_eps', None),
         tbeta=args.tbeta, td=args.td, exclude_gap_hits=args.exclude_gap_hits,
         particle_cluster_score_threshold=getattr(args, 'particle_cluster_score_threshold', None),
         detector_one_hot=args.detector_one_hot, start=args.nstart,
@@ -2057,11 +2079,12 @@ def _iter_pid_training_events(args, provenance):
 
 
 class _PIDYielder:
-    """Provide structured particle predictions to the original five-tree filler."""
-    pid_mode = True
+    """Shared current inputs; only trained/enabled PID adds particle readout."""
+    training_inputs = True
 
     def __init__(self, model, args, datapath, nstart, nend):
         self.model = model
+        self.pid_mode = args.pid_readout == 'representative'
         self.args = _pid_arguments(args)
         self.args.input = datapath
         self.args.start = nstart
@@ -2109,7 +2132,7 @@ class _PIDYielder:
 
 def _attach_pid_readout(event, prediction, assignments, truth_clustering=False):
     """Attach shared PID/energy readout for reconstructed or truth membership."""
-    prediction.pid_truth_clustering = truth_clustering
+    prediction.truth_clustering = truth_clustering
     beta = prediction.pred_betas
     track = event.x[:, 4] > .5
     values = prediction.species_energies
@@ -2218,7 +2241,8 @@ def _validate_pid_resume(path, args, checkpoint_sha256, expected_counts=None):
     """Require both a complete five-tree file and matching computation inputs."""
     import json
 
-    validation = _validate_root(path, expected_counts, pid=True)
+    pid_mode = args.pid_readout == 'representative'
+    validation = _validate_root(path, expected_counts, pid=pid_mode)
     if not validation.valid:
         return validation
 
@@ -2229,8 +2253,10 @@ def _validate_pid_resume(path, args, checkpoint_sha256, expected_counts=None):
     # the result to every input, physics option and current implementation.
     # This check happens before model loading, just like legacy PID resume.
     from root_export.runtime import validate_existing
-    if not validate_existing(path, args, args.datapath, expected_counts, pid=True):
+    if not validate_existing(path, args, args.datapath, expected_counts, pid=pid_mode):
         return invalid('unified output identity is missing or differs')
+    if not pid_mode:
+        return validation
 
     root_file = None
     try:
@@ -2286,7 +2312,7 @@ def _validate_pid_resume(path, args, checkpoint_sha256, expected_counts=None):
 def _pending_pid_jobs(args, jobs, checkpoint_sha256):
     """Filter finished points before model loading or any event inference."""
     if args.replace:
-        print('[PID resume] --replace: regenerate all requested ROOT files')
+        print('[ROOT resume] --replace: regenerate all requested ROOT files')
         return jobs
     skipped = 0
 
@@ -2295,9 +2321,9 @@ def _pending_pid_jobs(args, jobs, checkpoint_sha256):
         validation = _validate_pid_resume(output, point_args, checkpoint_sha256)
         if validation.valid:
             skipped += 1
-            print(f'[PID resume] skip completed {output} (entries={validation.counts})')
+            print(f'[ROOT resume] skip completed {output} (entries={validation.counts})')
             return False
-        print(f'[PID resume] generate {output}: {validation.reason}')
+        print(f'[ROOT resume] generate {output}: {validation.reason}')
         return True
 
     result = []
@@ -2320,7 +2346,7 @@ def _pending_pid_jobs(args, jobs, checkpoint_sha256):
         elif pending(output_or_groups, point_args):
             result.append((input_path, output_or_groups))
     if not result:
-        print(f'[PID resume] All {skipped} requested ROOT files are complete; '
+        print(f'[ROOT resume] All {skipped} requested ROOT files are complete; '
               'skipping model loading and GNN inference.')
     return result
 
@@ -2418,13 +2444,14 @@ _PID_SCAN_CONTEXT = None
 
 
 class _CachedPIDYielder:
-    """Read-only node predictions, with a fresh PID/energy readout per point."""
-    pid_mode = True
+    """Read-only predictions with fresh membership/readout per scan point."""
+    training_inputs = True
 
-    def __init__(self, cache, provenance, tbeta):
+    def __init__(self, cache, provenance, tbeta, pid_mode=True):
         # Reuse only the clustering accelerator, never the legacy scan writer.
         from root_export.clustering import _BetaClusterEngine
         self.cache = cache
+        self.pid_mode = pid_mode
         self.provenance = provenance
         self.engine = _BetaClusterEngine(cache, tbeta)
 
@@ -2446,7 +2473,7 @@ def _pid_scan_plan(args, inputs, parser):
     if args.scan_workers < 1:
         parser.error('--scan-workers must be at least 1')
     if not args.multi_h5 and len(inputs) != 1:
-        parser.error('PID scan requires one input H5, or --multi-h5 for multiple inputs')
+        parser.error('Scan requires one input H5, or --multi-h5 for multiple inputs')
     directory = Path(args.outfile).expanduser()
     if directory.suffix == '.root' or (directory.exists() and not directory.is_dir()):
         parser.error('--beta-d-scan outfile must be an output directory')
@@ -2482,12 +2509,13 @@ def _pid_scan_plan(args, inputs, parser):
 
 
 def _run_pid_beta_group(group):
-    """CPU-only worker; use the current PID five-tree writer for every td."""
+    """CPU-only worker; use the shared five-tree writer for every td."""
     from root_export.runtime import write_metadata
 
     tbeta, points = group
     args, cache, provenance, metadata, expected_counts = _PID_SCAN_CONTEXT
-    yielder = _CachedPIDYielder(cache, provenance, tbeta)
+    yielder = _CachedPIDYielder(cache, provenance, tbeta,
+                                args.pid_readout == 'representative')
     job_args = copy.copy(args)
     job_args.beta_d_scan = False  # the outer scan owns the grid, not save_root
     job_args.device = 'cpu'      # never access CUDA in a forked worker
@@ -2497,7 +2525,7 @@ def _run_pid_beta_group(group):
         job_args.td, job_args.outfile = td, str(output)
         if not args.replace and _validate_pid_resume(
                 output, job_args, metadata['checkpoint_sha256'], expected_counts).valid:
-            print(f'[PID resume] skip completed {output}', flush=True)
+            print(f'[ROOT resume] skip completed {output}', flush=True)
             continue
         output.parent.mkdir(parents=True, exist_ok=True)
         staging = _temporary_output(output)
@@ -2508,13 +2536,14 @@ def _run_pid_beta_group(group):
                       model=_PandoraNoopModel(), prediction_yielder=yielder,
                       pid_metadata=metadata)
             write_metadata(staging, job_args, args.datapath)
-            validation = _validate_root(staging, expected_counts, pid=True)
+            validation = _validate_root(staging, expected_counts,
+                                        pid=args.pid_readout == 'representative')
             if not validation.valid:
-                raise RuntimeError(f'PID scan ROOT validation failed: {validation.reason}')
+                raise RuntimeError(f'Scan ROOT validation failed: {validation.reason}')
             os.replace(staging, output)
-            print(f'[PID scan] completed -> {output}', flush=True)
+            print(f'[ROOT scan] completed -> {output}', flush=True)
         finally:
-            if _ACTIVE_CHUNK_FILE is not None and _ACTIVE_CHUNK_FILE.pid_mode:
+            if _ACTIVE_CHUNK_FILE is not None:
                 _ACTIVE_CHUNK_FILE.abort()
             if staging.exists():
                 staging.unlink()
@@ -2537,7 +2566,10 @@ def _run_pid_scan(args, model, jobs, checkpoint_sha256=None):
         checkpoint_sha256=checkpoint_sha256 or sha256(args.ckpt),
         code_sha256=sha256(Path(__file__).resolve()),
         inference_device=args.device)
-    _ensure_pid_writer_loaded()
+    if args.pid_readout == 'representative':
+        _ensure_pid_writer_loaded()
+    else:
+        _ensure_root_writer_loaded()
     for input_path, groups in jobs:
         job_args = copy.copy(args)
         job_args.datapath = input_path
@@ -2550,7 +2582,7 @@ def _run_pid_scan(args, model, jobs, checkpoint_sha256=None):
         expected_counts = (len(cache), sum(len(event.x) for event, _ in cache),
                            sum(event.jet is not None for event, _ in cache))
         workers = min(args.scan_workers, len(groups))
-        print(f'[PID scan] cached {len(cache)} events from {input_path}; '
+        print(f'[ROOT scan] cached {len(cache)} events from {input_path}; '
               f'{sum(len(points) for _, points in groups)} points, {workers} CPU workers', flush=True)
         # Fork shares the CPU cache without serializing/copying it per point.
         # No producer thread or open ROOT file remains active here. Limit torch
@@ -2571,23 +2603,24 @@ def _run_pid_scan(args, model, jobs, checkpoint_sha256=None):
         del cache
 
 
-def _run_representative_pid(args, timing_cut, parser):
-    """Use the original five-tree filler with representative-PID energy readout."""
+def _run_training_input_model(args, timing_cut, parser):
+    """Current input selection and truth assignment for two/five-head models."""
     from extended_h5 import DETECTOR_ONE_HOT_DIM, validate_training_schema
     from particle_heads import resolve_pid_readout
     from root_export.runtime import write_metadata
 
+    pid_mode = args.pid_readout == 'representative'
     if timing_cut:
-        parser.error('Representative PID mode reads the supplied H5 directly; use timingCut=False')
+        parser.error('Read pre-cut H5 directly with timingCut=False')
     for flag in ('pandora', '1tomany_clustering',
                  'energy_regression_weight', 'mctpe', 'energy_branch'):
         if getattr(args, flag):
-            parser.error('--pid-readout representative cannot be combined with --' + flag.replace('_', '-'))
-    if args.pid_detail != 'full':
+            parser.error('Shared training-input export cannot be combined with --' + flag.replace('_', '-'))
+    if pid_mode and args.pid_detail != 'full':
         parser.error('Five-tree PID output requires --pid-detail full for the Cedric macro')
     if args.cluster_energy_source not in (None, 'predicted'):
         parser.error('--cluster-energy-source controls pooled energy heads; '
-                     'use --truth-clustering to select truth membership for representative PID')
+                     'use --truth-clustering to select truth membership')
     if args.nstart < 0 or args.nend == 0 or args.nend < -1:
         parser.error('Require nstart >= 0 and nend > 0 or -1')
     if args.pid_threads <= 0 or args.root_chunk_events <= 0 or args.pipeline_depth < 0:
@@ -2640,18 +2673,21 @@ def _run_representative_pid(args, timing_cut, parser):
     model = get_model(args.ckpt, jit=False, input_dim=input_dim, output_dim=args.output_dim + 2,
         energy_regression=True, energy_regression_cluster=True, model_variant=args.model_variant,
         detector_one_hot=args.detector_one_hot, cluster_energy_source='predicted',
-        cluster_energy_tbeta=args.tbeta, cluster_energy_td=args.td).to(args.device).eval()
-    resolve_pid_readout(model, 'representative')
-    raw = raw_model(model)
+        cluster_energy_tbeta=args.tbeta, cluster_energy_td=args.td,
+        clustering_bn_eps=getattr(args, 'clustering_bn_eps', None)).to(args.device).eval()
+    if pid_mode:
+        resolve_pid_readout(model, 'representative')
     args.energy_regression = True
-    args.energy_regression_cluster = bool(raw.five_particle_energy_heads or
-        sum(spec['kind'] == 'regression' for spec in raw.head_specs) >= 2)
-    print('[PID] Original five trees + representative PID and species energy branches')
+    # The CLI already checked the trained head count, including flat legacy
+    # checkpoints that have no multi-head-specific attributes.
+    args.energy_regression_cluster = args.energy_heads in (2, 5)
+    print('[ROOT] Shared input/truth processing; ' +
+          ('representative PID readout' if pid_mode else 'original charged/neutral energy readout (no PID)'))
     if args.beta_d_scan:
         _run_pid_scan(args, model, jobs, checkpoint_sha256)
         return
     if args.truth_clustering:
-        print('[PID] Truth clustering; predicted PID from the highest-beta track if present, otherwise highest-beta node; tbeta/td unused')
+        print('[ROOT] Positive truth membership before matching; unknown truth remains unassigned; tbeta/td unused')
     for input_path, output in jobs:
         output.parent.mkdir(parents=True, exist_ok=True)
         staging = _temporary_output(output)
@@ -2662,13 +2698,13 @@ def _run_representative_pid(args, timing_cut, parser):
                       timingCut=False, input_dim=args.input_dim, output_dim=args.output_dim,
                       args=job_args, model=model)
             write_metadata(staging, job_args, input_path)
-            validation = _validate_root(staging, pid=True)
+            validation = _validate_root(staging, pid=pid_mode)
             if not validation.valid:
-                raise RuntimeError(f'PID ROOT validation failed: {validation.reason}')
+                raise RuntimeError(f'ROOT validation failed: {validation.reason}')
             os.replace(staging, output)
-            print(f'[PID] completed -> {output}')
+            print(f'[ROOT] completed -> {output}')
         finally:
-            if _ACTIVE_CHUNK_FILE is not None and _ACTIVE_CHUNK_FILE.pid_mode:
+            if _ACTIVE_CHUNK_FILE is not None:
                 _ACTIVE_CHUNK_FILE.abort()
             if staging.exists():
                 staging.unlink()

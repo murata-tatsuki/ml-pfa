@@ -137,6 +137,7 @@ def _build_prediction_cache(args):
                 energy_regression_cluster=args.energy_regression_cluster,
                 energy_regression_weight=args.energy_regression_weight,
                 model_variant=args.model_variant,
+                clustering_bn_eps=getattr(args, 'clustering_bn_eps', None),
                 **inference_loader_kwargs(args)).to(device)
         if pooling_model(model) is not None:
             raise ValueError("A pooled energy head depends on clustering thresholds "

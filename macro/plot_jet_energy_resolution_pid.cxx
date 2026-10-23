@@ -3,14 +3,15 @@
 //   root -l -b -q 'plot_jet_energy_resolution_pid.cxx()'
 //   root -l -b -q 'plot_jet_energy_resolution_pid.cxx("figures/nnqq2M_fixed_uds_5head_pid","figures/pid_comparison")'
 // Optional third argument: a separate base directory for Pandora summaries.
-// Without that override, missing Pandora summaries use the previously saved
-// H5 reference in /home/murata/research/studies/pandora_eval_validation/
-// pandora_h5_all_energies_20260925. The optional fourth argument changes that
-// reference directory (tables/resolutions.csv and tables/idr_evaluation.root);
+// Without that override, Pandora always uses the model-independent reference in
+// /home/murata/research/studies/pandora_reference_20260925. The optional fourth
+// argument changes that directory (tables/resolutions.csv, idr_evaluation.root,
+// event_energy_ENERGYGeV.root, and the default text snapshot);
 // an empty fourth argument disables it. Only no-neutrino-correction rows are
 // used, after checking their bins and values against the saved histograms.
-// Inputs: BASE/{40,91,200,350,500}GeV/{reco,truth_clustering,pandora}/
-//         jet_energy_resolution_summary.root
+// GNN input: BASE/{40,91,200,350,500}GeV/{reco,truth_clustering}/
+// jet_energy_resolution_summary.root, containing raw_head/ and track_replaced/.
+// Legacy METHOD/READOUT and METHOD/summary/READOUT files remain supported.
 // Outputs: angle_all_energies, angle_energy_panels, central_vs_jet_energy,
 //          forward_vs_jet_energy in png/pdf/eps, plus a comparison ROOT file.
 // GNN summaries come from efficiency_purity_check_reco_effpur_contiribution_pid
@@ -20,18 +21,32 @@
 // Pandora reference requires no rerun of the efficiency macro or inference.
 // Axis/energy/RMS90 definitions are checked before plotting. Missing input
 // files and statistically invalid points are explicitly skipped, never zeroed.
+// Overflow alone does not invalidate a point: RMS90 uses in-range entries as in
+// Pandora. Older overflow-invalidated rows are recalculated from saved histograms.
 // Angular bins match the existing Pandora H5 comparison, ending at
 // 0.95-0.97 and 0.97-0.98. Older summaries ending at 0.975 and 1.0 are
 // regrouped from their saved events in memory; source ROOTs and the stored
 // central/forward results are retained. No inference or hit-level read is needed.
 // Also saves event_energy_ratio_ENERGYGeV_{central,forward,inclusive} and
 // efficiency_purity_bar_{original,cedric}_{reco,truth_clustering}.
+// event_energy_ratio_energy_panels_{central,forward,inclusive} shows all five
+// beam energies in the same 3-by-2 layout as angle_energy_panels.
 // Ratios use visible MC event energy and a Gaussian fit over [0.9,1.1].
-// Bars read clustering_summary.root alongside each single-energy summary.
-// Pandora reference numbers are stored separately in data/pandora_reference_20260925.txt.
+// Bars read the same container's clustering/ directory. Legacy separate
+// clustering_summary.root files remain supported.
+// Pandora reference numbers also reside in the shared directory's
+// pandora_reference_20260925.txt, including the saved efficiency/purity means.
 // Missing CSV/energy ROOT files fall back to this text snapshot automatically.
 // The optional fifth argument selects that file; an empty fifth argument disables
 // all use of the snapshot (including saved Pandora efficiency/purity means).
+// The sixth argument selects "both" (default), "raw_head", "track_replaced", or
+// "saved". Named readouts require matching summaries. Images are saved in
+// OUTPUT/{png,pdf,eps}/READOUT and ROOT data grouped inside a single
+// OUTPUT/jet_energy_resolution_comparison.root;
+// OUTPUT defaults to BASE/comparison. "saved" reads the original METHOD
+// summaries and preserves its old output layout. Existing summaries are retained.
+// Clustering bars are saved directly in OUTPUT/{png,pdf,eps}; their common data
+// is stored once at the comparison ROOT's top level.
 
 #include "root_common_includes.h"
 #include "src/pid_jet_resolution_summary.h"
@@ -45,10 +60,15 @@
 #include <sstream>
 #include <stdexcept>
 
-static const string model_condition = "5head_pid_onehot";  // 5head_pid 5head_pid_onehot
+static const string model_condition = "5head_pid_onehot_preicted_gather";  // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
 
 
 namespace pid_jer_plot {
+// Use a non-inline helper to avoid Cling's cleanup bug for default string arguments.
+const std::string& defaultBaseDirectory() {
+    static const std::string directory = std::string("figures/nnqq2M_fixed_uds_") + model_condition;
+    return directory;
+}
 static const int kEnergies[5] = {40, 91, 200, 350, 500};
 static const char* const kMethods[3] = {"reco", "truth_clustering", "pandora"};
 static const char* const kLabels[3] = {"GNN (PID)", "GNN truth clustering (PID)", "Pandora"};
@@ -57,14 +77,13 @@ static const int kColors[5] = {kMagenta+1, kBlue, kGreen+2, kRed, kBlack};
 static const int kMethodColors[3] = {kOrange+7, kGreen+2, kBlue};
 static const char* const kYTitle = "RMS_{90}(E_{j}) / Mean_{90}(E_{j}) [%]";
 static const char* const kPandoraReferenceDirectory =
-    "/home/murata/research/studies/pandora_eval_validation/pandora_h5_all_energies_20260925";
+    "/home/murata/research/studies/pandora_reference_20260925";
+static const char* const kPandoraSnapshotName = "pandora_reference_20260925.txt";
+static const char* const kAnalysisSchema = "pid-analysis-summary-2";
 
-// Resolve once when loading the macro, independently of the plotting CWD.
+// Shared input is independent of both model_condition and the plotting CWD.
 inline std::string defaultPandoraSnapshotFile() {
-    std::string directory = gSystem->DirName(__FILE__);
-    if (!gSystem->IsAbsoluteFileName(directory.c_str()))
-        directory = std::string(gSystem->WorkingDirectory()) + "/" + directory;
-    return directory + "/data/pandora_reference_20260925.txt";
+    return std::string(kPandoraReferenceDirectory) + "/" + kPandoraSnapshotName;
 }
 static const std::string kPandoraSnapshotFile = defaultPandoraSnapshotFile();
 
@@ -75,6 +94,8 @@ struct Sample {
     double beta = 0.;
     std::string path;
     std::string source_kind = "single_energy_summary";
+    std::string energy_readout = "saved";
+    std::string summary_directory;
     std::string histogram_path;
     std::string event_path;
     std::shared_ptr<const pid_pandora_reference::Snapshot> pandora_snapshot;
@@ -82,10 +103,19 @@ struct Sample {
 };
 using Samples = std::array<std::array<Sample,5>,3>;
 
-inline std::string named(TFile& file, const char* key) {
+inline std::string named(TDirectory& file, const char* key) {
     auto* value = dynamic_cast<TNamed*>(file.Get(key));
     if (!value) throw std::runtime_error(std::string("Missing summary metadata: ") + key);
     return value->GetTitle();
+}
+
+TDirectory& readoutDirectory(TFile& file, const std::string& readout, const std::string& path) {
+    if (named(file,"schema") != kAnalysisSchema) return file;
+    if (readout != "raw_head" && readout != "track_replaced")
+        throw std::runtime_error("The combined summary has no saved/adopted readout; choose raw_head, track_replaced, or both: " + path);
+    auto* directory = file.GetDirectory(readout.c_str());
+    if (!directory) throw std::runtime_error("Missing " + readout + " directory in combined summary: " + path);
+    return *directory;
 }
 
 bool hasAngularEdges(const Sample& sample, const double* edges) {
@@ -97,7 +127,7 @@ bool hasAngularEdges(const Sample& sample, const double* edges) {
     return true;
 }
 
-void recomputeAngularPoints(Sample& sample, TFile& file, const std::string& path) {
+void recomputeAngularPoints(Sample& sample, TDirectory& file, const std::string& path) {
     auto* events = dynamic_cast<TTree*>(file.Get("events"));
     double thrust = 0., energy = 0.;
     if (!events || !events->GetBranch("thrust") || !events->GetBranch("reco_energy") ||
@@ -132,7 +162,8 @@ void recomputeAngularPoints(Sample& sample, TFile& file, const std::string& path
               << path << std::endl;
 }
 
-bool load(Sample& sample, const std::string& path, int method, int energy) {
+bool load(Sample& sample, const std::string& path, int method, int energy,
+          const char* expectedReadout = "") {
     sample.path = path;
     if (gSystem->AccessPathName(path.c_str())) {
         std::cerr << "Missing summary (skipped): " << path << std::endl;
@@ -141,22 +172,32 @@ bool load(Sample& sample, const std::string& path, int method, int energy) {
     TDirectory::TContext context;
     TFile file(path.c_str(), "READ");
     if (file.IsZombie()) throw std::runtime_error("Cannot read " + path);
-    if (named(file,"schema") != pid_jer::kSchema ||
-        named(file,"angle_definition") != pid_jer::kAngleDefinition ||
-        named(file,"metric_definition") != pid_jer::kMetricDefinition)
+    TDirectory& summary = readoutDirectory(file,expectedReadout,path);
+    if (&summary != &file) {
+        sample.summary_directory = expectedReadout;
+        sample.source_kind = "analysis_summary_container";
+    }
+    if (named(summary,"schema") != pid_jer::kSchema ||
+        named(summary,"angle_definition") != pid_jer::kAngleDefinition ||
+        named(summary,"metric_definition") != pid_jer::kMetricDefinition)
         throw std::runtime_error("Incompatible angle/metric summary: " + path);
-    const std::string energy_definition = named(file,"energy_definition");
+    const std::string energy_definition = named(summary,"energy_definition");
     if (energy_definition.find("no neutrino correction") == std::string::npos ||
         energy_definition.find("not Ereco/Etruth") == std::string::npos)
         throw std::runtime_error("Incompatible energy/correction definition: " + path);
-    if (named(file,"method") != kMethods[method])
+    if (named(summary,"method") != kMethods[method])
         throw std::runtime_error("Summary method disagrees with its directory: " + path);
-    auto* beam = dynamic_cast<TParameter<int>*>(file.Get("beam_energy_GeV"));
-    auto* beta = dynamic_cast<TParameter<double>*>(file.Get("beta_threshold"));
+    auto* readout = dynamic_cast<TNamed*>(summary.Get("energy_readout"));
+    sample.energy_readout = readout ? readout->GetTitle() : "saved";
+    if (expectedReadout[0] && sample.energy_readout != expectedReadout)
+        throw std::runtime_error("Expected energy_readout=" + std::string(expectedReadout) +
+                                 " in " + path + "; found " + sample.energy_readout);
+    auto* beam = dynamic_cast<TParameter<int>*>(summary.Get("beam_energy_GeV"));
+    auto* beta = dynamic_cast<TParameter<double>*>(summary.Get("beta_threshold"));
     if (!beam || beam->GetVal() != energy || !beta || !std::isfinite(beta->GetVal()))
         throw std::runtime_error("Summary beam energy/configuration mismatch: " + path);
     sample.beta = beta->GetVal();
-    auto* tree = dynamic_cast<TTree*>(file.Get("resolution"));
+    auto* tree = dynamic_cast<TTree*>(summary.Get("resolution"));
     if (!tree || tree->GetEntries() != pid_jer::kBins+2)
         throw std::runtime_error("Missing/incomplete resolution table: " + path);
     pid_jer::Point p;
@@ -171,6 +212,7 @@ bool load(Sample& sample, const std::string& path, int method, int energy) {
     bind("resolution_percent", &p.resolution_percent); bind("error_percent", &p.error_percent);
     bind("valid", &p.valid);
     std::array<bool,pid_jer::kBins+2> found{};
+    int overflow_recomputed = 0;
     for (Long64_t i = 0; i < tree->GetEntries(); ++i) {
         if (tree->GetEntry(i) <= 0) throw std::runtime_error("Unreadable summary row: " + path);
         const int index = p.angle_bin >= 0 ? p.angle_bin :
@@ -181,21 +223,40 @@ bool load(Sample& sample, const std::string& path, int method, int energy) {
             (std::fabs(p.low-(p.angle_bin == -1 ? 0. : .7)) > 1e-9 ||
              std::fabs(p.high-(p.angle_bin == -1 ? .7 : .98)) > 1e-9);
         if (!std::isfinite(p.low) || !std::isfinite(p.high) || wrong_region ||
-            (p.valid && (p.entries < 5 || p.invalid_entries || p.underflow || p.overflow ||
+            (p.valid && (p.entries-p.overflow < 5 || p.invalid_entries || p.underflow ||
                         !std::isfinite(p.resolution_percent) || !std::isfinite(p.error_percent) ||
                         !(p.mean90 > 0.) || p.resolution_percent < 0. || p.error_percent < 0.)))
             throw std::runtime_error("Invalid summary statistics/boundaries: " + path);
+        if (p.overflow > 0. && !p.valid && !p.invalid_entries && !p.underflow) {
+            const std::string histogram = index < pid_jer::kBins
+                ? "energy_angle_" + std::to_string(index)
+                : (index == pid_jer::kBins ? "energy_central" : "energy_forward");
+            auto* hist = dynamic_cast<TH1F*>(summary.Get(histogram.c_str()));
+            if (!hist)
+                throw std::runtime_error("Missing histogram for overflow recalculation: " + histogram + " in " + path);
+            auto recalculated = pid_jer::statistics(*hist, p.invalid_entries);
+            if (recalculated.entries != p.entries || recalculated.underflow != p.underflow ||
+                recalculated.overflow != p.overflow)
+                throw std::runtime_error("Summary and overflow histogram disagree: " + path);
+            recalculated.angle_bin = p.angle_bin;
+            recalculated.low = p.low; recalculated.high = p.high;
+            p = recalculated;
+            ++overflow_recomputed;
+        }
         found[index] = true;
         sample.points[index] = p;
     }
     tree->ResetBranchAddresses();
+    if (overflow_recomputed)
+        std::cout << "Recalculated " << overflow_recomputed
+                  << " overflow points from saved histograms: " << path << std::endl;
     if (!hasAngularEdges(sample, pid_jer::kEdges)) {
         static const double old_edges[pid_jer::kBins+1] = {
             0., .1, .2, .3, .4, .5, .6, .7, .8, .9, .925, .950, .975, 1.
         };
         if (!hasAngularEdges(sample, old_edges))
             throw std::runtime_error("Unsupported summary angular boundaries: " + path);
-        recomputeAngularPoints(sample, file, path);
+        recomputeAngularPoints(sample, summary, path);
     }
     sample.present = true;
     return true;
@@ -226,7 +287,8 @@ bool loadPandoraReference(Sample& sample, const std::string& directory, int ener
     const std::string csv_path = directory + "/tables/resolutions.csv";
     const std::string root_path = directory + "/tables/idr_evaluation.root";
     if (gSystem->AccessPathName(csv_path.c_str()) || gSystem->AccessPathName(root_path.c_str())) {
-        const std::string snapshot_path = snapshotFile ? snapshotFile : kPandoraSnapshotFile;
+        const std::string snapshot_path = snapshotFile ? snapshotFile
+            : directory + "/" + kPandoraSnapshotName;
         if (!snapshot_path.empty())
             return loadPandoraTextReference(sample,snapshot_path,energy);
         std::cerr << "Missing saved Pandora reference (skipped): " << directory << std::endl;
@@ -343,13 +405,23 @@ void footer() {
     text.SetNDC(); text.SetTextFont(42); text.SetTextSize(.025);
     text.DrawLatex(.15,.015,"Pandora upstream thrust definition; no neutrino correction");
 }
-void finish(TCanvas& canvas, TFile& output, const std::string& directory, const char* name) {
+void finish(TCanvas& canvas, TDirectory& output, const std::string& directory, const char* name) {
+    auto* readout = dynamic_cast<TNamed*>(output.Get("energy_readout"));
+    const std::string mode = readout ? readout->GetTitle() : "";
+    const bool separate_mode = mode == "raw_head" || mode == "track_replaced";
+    if (separate_mode) {
+        canvas.cd();
+        TLatex label;
+        label.SetNDC(); label.SetTextFont(42); label.SetTextSize(.018); label.SetTextAlign(31);
+        label.DrawLatex(.985,.006,mode == "raw_head"
+            ? "Energy readout: raw GNN head" : "Energy readout: single-track momentum replacement");
+    }
     canvas.Modified(); canvas.Update();
-    pid_jer::saveCanvas(&canvas, directory, name);
+    pid_jer::saveCanvas(&canvas, directory, name, separate_mode ? mode : "");
     output.cd(); canvas.Write(name);
 }
 
-void drawAll(const Samples& samples, TFile& output, const std::string& directory) {
+void drawAll(const Samples& samples, TDirectory& output, const std::string& directory) {
     std::vector<std::unique_ptr<TGraphErrors>> graphs;
     TCanvas canvas("pid_angle_all_energies", "All jet energies and reconstruction methods", 1500, 1200);
     stylePad(&canvas, .25);
@@ -374,7 +446,7 @@ void drawAll(const Samples& samples, TFile& output, const std::string& directory
     finish(canvas,output,directory,"angle_all_energies");
 }
 
-void drawPanels(const Samples& samples, TFile& output, const std::string& directory) {
+void drawPanels(const Samples& samples, TDirectory& output, const std::string& directory) {
     std::vector<std::unique_ptr<TGraphErrors>> graphs;
     TCanvas canvas("pid_angle_energy_panels", "Angular resolution by jet energy", 1800, 1100);
     canvas.Divide(3,2,.002,.002);
@@ -403,7 +475,7 @@ void drawPanels(const Samples& samples, TFile& output, const std::string& direct
     finish(canvas,output,directory,"angle_energy_panels");
 }
 
-void drawRegion(const Samples& samples, int region, TFile& output, const std::string& directory) {
+void drawRegion(const Samples& samples, int region, TDirectory& output, const std::string& directory) {
     std::vector<std::unique_ptr<TGraphErrors>> graphs;
     const char* name = region == pid_jer::kBins ? "central_vs_jet_energy" : "forward_vs_jet_energy";
     TCanvas canvas(Form("pid_%s",name), "Jet resolution versus energy", 1100, 900);
@@ -438,83 +510,95 @@ void drawRegion(const Samples& samples, int region, TFile& output, const std::st
 
 #include "src/pid_comparison_distributions.h"
 
-void plot_jet_energy_resolution_pid(
-    const char* baseDirectory = Form("figures/nnqq2M_fixed_uds_%s",model_condition.c_str()),
-    const char* outputDirectory = "",
-    const char* pandoraBaseDirectory = "",
-    const char* pandoraReferenceDirectory = pid_jer_plot::kPandoraReferenceDirectory,
-    const char* pandoraSnapshotFile = nullptr) {
-    using namespace pid_jer_plot;
-    Samples samples;
-    int loaded = 0;
-    double beta = std::numeric_limits<double>::quiet_NaN();
-    for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) {
-        const std::string base = m == 2 && pandoraBaseDirectory[0] ? pandoraBaseDirectory : baseDirectory;
-        const std::string path = base + "/" + std::to_string(kEnergies[e]) + "GeV/" + kMethods[m] + "/" + pid_jer::kSummaryName;
-        auto& sample = samples[m][e];
-        const bool use_reference = m == 2 && !pandoraBaseDirectory[0] &&
-            pandoraReferenceDirectory && pandoraReferenceDirectory[0] && gSystem->AccessPathName(path.c_str());
-        if (use_reference) {
-            if (!loadPandoraReference(sample,pandoraReferenceDirectory,kEnergies[e],pandoraSnapshotFile)) continue;
-            const std::string event_cache = base + "/" + std::to_string(kEnergies[e])+"GeV/pandora/event_energy_reference.root";
-            if (sample.source_kind == "pandora_h5_reference" && !gSystem->AccessPathName(event_cache.c_str())) sample.event_path = event_cache;
-        } else if (!load(sample,path,m,kEnergies[e])) continue;
-        if (sample.has_beta_threshold) {
-            if (std::isfinite(beta) && std::fabs(beta-sample.beta) > 1e-12)
-                throw std::runtime_error("Cannot compare summaries with different beta cuts: " + path);
-            beta = sample.beta;
-        }
-        ++loaded;
-    }
-    if (!loaded) throw std::runtime_error("No jet_energy_resolution_summary.root inputs found");
-    const std::string directory = outputDirectory[0] ? outputDirectory : std::string(baseDirectory)+"/comparison";
-    gSystem->mkdir(directory.c_str(),true);
+namespace pid_jer_plot {
+bool isAnalysisSummary(const std::string& path) {
+    if (gSystem->AccessPathName(path.c_str())) return false;
     TDirectory::TContext context;
-    TFile output((directory+"/jet_energy_resolution_comparison.root").c_str(),"RECREATE");
-    if (output.IsZombie()) throw std::runtime_error("Cannot create comparison ROOT");
-    TNamed("schema",pid_jer::kSchema).Write();
-    TNamed("angle_definition",pid_jer::kAngleDefinition).Write();
-    TNamed("metric_definition",pid_jer::kMetricDefinition).Write();
-    TNamed("angular_bin_definition","Pandora H5 bins; final bins [0.95,0.97) and [0.97,0.98)").Write();
-    TNamed("neutrino_correction","none").Write();
-    TTree inputs("inputs","Source summaries and saved Pandora reference used in this comparison");
-    std::string path, method, source_kind, histogram_path, event_path;
-    int energy = 0;
-    bool angular_recomputed = false;
-    inputs.Branch("path",&path); inputs.Branch("method",&method); inputs.Branch("beam_energy_GeV",&energy,"beam_energy_GeV/I");
-    inputs.Branch("angular_recomputed_from_events",&angular_recomputed,"angular_recomputed_from_events/O");
-    inputs.Branch("source_kind",&source_kind); inputs.Branch("histogram_path",&histogram_path);
-    inputs.Branch("event_path",&event_path);
-    for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) if (samples[m][e].present) {
-        path = samples[m][e].path; method = kMethods[m]; energy = kEnergies[e];
-        source_kind = samples[m][e].source_kind; histogram_path = samples[m][e].histogram_path;
-        event_path = samples[m][e].event_path.empty() ? path : samples[m][e].event_path;
-        angular_recomputed = samples[m][e].angular_recomputed; inputs.Fill();
-        auto graph = angleGraph(samples[m][e],m,e,true); graph->Write();
+    TFile file(path.c_str(),"READ");
+    if (file.IsZombie()) throw std::runtime_error("Cannot read " + path);
+    const std::string schema = named(file,"schema");
+    if (schema != kAnalysisSchema && schema != pid_jer::kSchema)
+        throw std::runtime_error("Unsupported canonical jet-energy-summary schema: " + path);
+    return schema == kAnalysisSchema;
+}
+
+std::string summaryPath(const std::string& base, int method, int energy,
+                        const std::string& readout) {
+    const std::string directory = base + "/" + std::to_string(energy) + "GeV/" + kMethods[method];
+    const std::string canonical = directory + "/" + pid_jer::kSummaryName;
+    if (method < 2 && readout != "saved") {
+        if (isAnalysisSummary(canonical)) return canonical;
+        const std::string preferred = directory + "/" + readout + "/" + pid_jer::kSummaryName;
+        if (!gSystem->AccessPathName(preferred.c_str())) return preferred;
+        const std::string alternate = directory + "/summary/" + readout + "/" + pid_jer::kSummaryName;
+        if (!gSystem->AccessPathName(alternate.c_str())) return alternate;
+        return preferred;
     }
-    inputs.Write();
-    gStyle->SetOptStat(0);
-    drawAll(samples,output,directory); drawPanels(samples,output,directory);
-    drawRegion(samples,pid_jer::kBins,output,directory);
-    drawRegion(samples,pid_jer::kBins+1,output,directory);
-    drawRatios(samples,output,directory);
+    return canonical;
+}
+
+void requireReadoutSummaries(const std::string& base, const std::string& readout) {
+    for (int m=0; m<2; ++m) for (int e=0; e<5; ++e) {
+        const std::string path = summaryPath(base,m,kEnergies[e],readout);
+        if (gSystem->AccessPathName(path.c_str())) {
+            std::string recovery_summary = summaryPath(base,m,kEnergies[e],"saved");
+            if (gSystem->AccessPathName(recovery_summary.c_str())) {
+                for (const char* candidate : {"raw_head", "track_replaced"}) {
+                    const std::string paired = summaryPath(base,m,kEnergies[e],candidate);
+                    if (!gSystem->AccessPathName(paired.c_str())) {
+                        recovery_summary = paired;
+                        break;
+                    }
+                }
+            }
+            throw std::runtime_error("Missing " + readout + " summary: " + path +
+                "\nCreate both readouts from an existing summary, from macro/:\n"
+                "python3 -B save_pid_energy_readouts.py --summary \"" +
+                recovery_summary + "\"");
+        }
+        TDirectory::TContext context;
+        TFile file(path.c_str(), "READ");
+        if (file.IsZombie()) throw std::runtime_error("Cannot read " + path);
+        TDirectory& summary = readoutDirectory(file,readout,path);
+        auto* tag = dynamic_cast<TNamed*>(summary.Get("energy_readout"));
+        if (!tag || tag->GetTitle() != readout)
+            throw std::runtime_error("Expected energy_readout=" + readout + " in " + path);
+    }
+}
+
+void writeClusteringComparison(const std::string& baseDirectory, const std::string& directory,
+                               const char* pandoraBaseDirectory, const std::string& snapshot_path,
+                               double beta, TDirectory& output) {
+    output.cd();
     ClusteringSamples clustering;
     TTree clustering_table("clustering_comparison","Original and Cedric metrics used in the bar plots");
     pid_cluster::Row row;
     std::string clustering_method, clustering_path, clustering_source_kind;
+    std::string clustering_directory;
     int clustering_energy = 0;
     clustering_table.Branch("method",&clustering_method); clustering_table.Branch("source",&clustering_path);
     clustering_table.Branch("source_kind",&clustering_source_kind);
+    clustering_table.Branch("source_directory",&clustering_directory);
     clustering_table.Branch("beam_energy_GeV",&clustering_energy,"beam_energy_GeV/I");
     pid_cluster::bind(clustering_table,row,true);
     for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) {
         const std::string base = m == 2 && pandoraBaseDirectory[0] ? pandoraBaseDirectory : baseDirectory;
-        const std::string path = base + "/" + std::to_string(kEnergies[e])+"GeV/"+kMethods[m]+"/"+pid_cluster::kSummaryName;
-        if (m == 2 && !pandoraBaseDirectory[0] && gSystem->AccessPathName(path.c_str())) {
-            if (!loadSavedPandoraBars(clustering[m][e],e,pandoraSnapshotFile)) continue;
-        } else if (!loadClustering(clustering[m][e],path,m,kEnergies[e],beta)) continue;
+        const std::string method_directory = base + "/" + std::to_string(kEnergies[e])+"GeV/"+kMethods[m];
+        const std::string preferred = method_directory + "/" + pid_cluster::kSummaryName;
+        const std::string alternate = method_directory + "/summary/" + pid_cluster::kSummaryName;
+        const std::string path = m < 2 && gSystem->AccessPathName(preferred.c_str()) &&
+            !gSystem->AccessPathName(alternate.c_str()) ? alternate : preferred;
+        if (m == 2 && !pandoraBaseDirectory[0]) {
+            if (!loadSavedPandoraBars(clustering[m][e],e,snapshot_path.c_str())) continue;
+        } else {
+            const std::string canonical = method_directory + "/" + pid_jer::kSummaryName;
+            const bool from_container = m < 2 && isAnalysisSummary(canonical) &&
+                loadClustering(clustering[m][e],canonical,m,kEnergies[e],beta);
+            if (!from_container && !loadClustering(clustering[m][e],path,m,kEnergies[e],beta)) continue;
+        }
         clustering_method = kMethods[m]; clustering_energy = kEnergies[e]; clustering_path = clustering[m][e].path;
         clustering_source_kind = clustering[m][e].source_kind;
+        clustering_directory = clustering[m][e].summary_directory;
         for (int d=0; d<2; ++d) for (int p=0; p<6; ++p) if (clustering[m][e].found[d][p]) {
             row = clustering[m][e].rows[d][p]; clustering_table.Fill();
         }
@@ -525,5 +609,132 @@ void plot_jet_energy_resolution_pid(
     TNamed("clustering_pandora_marker","Black points and horizontal marker guides; no statistical error bars").Write();
     TNamed("clustering_saved_plot_means","saved_plot_means_no_counts: numerator/denominator=published mean/1; entries=0 means unavailable, not zero events; original definition only").Write();
     for (int d=0; d<2; ++d) for (int m=0; m<2; ++m) drawClustering(clustering,m,d,output,directory);
-    std::cout << "Read " << loaded << "/15 energy/method results; saved comparison figures to " << directory << std::endl;
+}
+
+struct PreparedReadout {
+    Samples samples;
+    int loaded = 0;
+    double beta = std::numeric_limits<double>::quiet_NaN();
+};
+
+PreparedReadout prepareReadoutComparison(const std::string& baseDirectory,
+                                       const char* pandoraBaseDirectory, const char* pandoraReferenceDirectory,
+                                       const std::string& snapshot_path, const std::string& readout) {
+    PreparedReadout result;
+    for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) {
+        const std::string base = m == 2 && pandoraBaseDirectory[0] ? pandoraBaseDirectory : baseDirectory;
+        const std::string path = summaryPath(base,m,kEnergies[e],readout);
+        auto& sample = result.samples[m][e];
+        const bool use_reference = m == 2 && !pandoraBaseDirectory[0];
+        if (use_reference) {
+            if (!pandoraReferenceDirectory || !pandoraReferenceDirectory[0]) continue;
+            if (!loadPandoraReference(sample,pandoraReferenceDirectory,kEnergies[e],snapshot_path.c_str())) continue;
+        } else if (!load(sample,path,m,kEnergies[e],m < 2 && readout != "saved" ? readout.c_str() : "")) continue;
+        if (m == 2) sample.energy_readout = "shared";
+        if (sample.has_beta_threshold) {
+            if (std::isfinite(result.beta) && std::fabs(result.beta-sample.beta) > 1e-12)
+                throw std::runtime_error("Cannot compare summaries with different beta cuts: " + path);
+            result.beta = sample.beta;
+        }
+        ++result.loaded;
+    }
+    if (!result.loaded) throw std::runtime_error("No jet_energy_resolution_summary.root inputs found");
+    return result;
+}
+
+void plotReadoutComparison(const PreparedReadout& prepared, const std::string& baseDirectory,
+                           const std::string& directory, const char* pandoraBaseDirectory,
+                           const std::string& snapshot_path, const std::string& readout, TDirectory& output) {
+    const auto& samples = prepared.samples;
+    output.cd();
+    TNamed("schema",pid_jer::kSchema).Write();
+    TNamed("angle_definition",pid_jer::kAngleDefinition).Write();
+    TNamed("metric_definition",pid_jer::kMetricDefinition).Write();
+    TNamed("energy_readout",readout.c_str()).Write();
+    TNamed("energy_readout_definition",pid_jer::readoutDefinition(readout)).Write();
+    TNamed("overflow_policy",pid_jer::kOverflowPolicy).Write();
+    TNamed("angular_bin_definition","Pandora H5 bins; final bins [0.95,0.97) and [0.97,0.98)").Write();
+    TNamed("neutrino_correction","none").Write();
+    TTree inputs("inputs","Source summaries and saved Pandora reference used in this comparison");
+    std::string path, method, source_kind, histogram_path, event_path, input_readout, summary_directory;
+    int energy = 0;
+    bool angular_recomputed = false;
+    inputs.Branch("path",&path); inputs.Branch("method",&method); inputs.Branch("beam_energy_GeV",&energy,"beam_energy_GeV/I");
+    inputs.Branch("angular_recomputed_from_events",&angular_recomputed,"angular_recomputed_from_events/O");
+    inputs.Branch("source_kind",&source_kind); inputs.Branch("histogram_path",&histogram_path);
+    inputs.Branch("event_path",&event_path);
+    inputs.Branch("energy_readout",&input_readout);
+    inputs.Branch("summary_directory",&summary_directory);
+    for (int m=0; m<3; ++m) for (int e=0; e<5; ++e) if (samples[m][e].present) {
+        path = samples[m][e].path; method = kMethods[m]; energy = kEnergies[e];
+        source_kind = samples[m][e].source_kind; histogram_path = samples[m][e].histogram_path;
+        event_path = samples[m][e].event_path.empty() ? path : samples[m][e].event_path;
+        input_readout = samples[m][e].energy_readout;
+        summary_directory = samples[m][e].summary_directory;
+        angular_recomputed = samples[m][e].angular_recomputed; inputs.Fill();
+        auto graph = angleGraph(samples[m][e],m,e,true); graph->Write();
+    }
+    inputs.Write();
+    gStyle->SetOptStat(0);
+    drawAll(samples,output,directory); drawPanels(samples,output,directory);
+    drawRegion(samples,pid_jer::kBins,output,directory);
+    drawRegion(samples,pid_jer::kBins+1,output,directory);
+    drawRatios(samples,output,directory);
+    if (readout == "saved")
+        writeClusteringComparison(baseDirectory,directory,pandoraBaseDirectory,snapshot_path,prepared.beta,output);
+    std::cout << "Read " << prepared.loaded << "/15 energy/method results (" << readout
+              << "); saved comparison figures to " << directory << std::endl;
+}
+} // namespace pid_jer_plot
+
+void plot_jet_energy_resolution_pid(
+    const std::string& baseDirectory = pid_jer_plot::defaultBaseDirectory(),
+    const char* outputDirectory = "",
+    const char* pandoraBaseDirectory = "",
+    const char* pandoraReferenceDirectory = pid_jer_plot::kPandoraReferenceDirectory,
+    const char* pandoraSnapshotFile = nullptr,
+    const char* energyReadout = "both") {
+    using namespace pid_jer_plot;
+    const std::string selection = energyReadout ? energyReadout : "both";
+    std::vector<std::string> readouts;
+    if (selection == "both") readouts = {"raw_head", "track_replaced"};
+    else if (selection == "raw_head" || selection == "track_replaced" || selection == "saved")
+        readouts.push_back(selection);
+    else throw std::runtime_error("Unknown energyReadout: " + selection +
+        "; choose both, raw_head, track_replaced, or saved");
+    // Validate every requested GNN input before writing either comparison set.
+    for (const auto& readout : readouts)
+        if (readout != "saved") requireReadoutSummaries(baseDirectory,readout);
+    const std::string snapshot_path = pandoraSnapshotFile ? pandoraSnapshotFile
+        : (pandoraReferenceDirectory && pandoraReferenceDirectory[0]
+            ? std::string(pandoraReferenceDirectory) + "/" + kPandoraSnapshotName
+            : kPandoraSnapshotFile);
+    const std::string output = outputDirectory[0] ? outputDirectory : baseDirectory + "/comparison";
+    double beta = std::numeric_limits<double>::quiet_NaN();
+    std::vector<PreparedReadout> prepared;
+    for (const auto& readout : readouts) {
+        prepared.push_back(prepareReadoutComparison(baseDirectory,pandoraBaseDirectory,
+                                                   pandoraReferenceDirectory,snapshot_path,readout));
+        const double current_beta = prepared.back().beta;
+        if (std::isfinite(beta) && std::isfinite(current_beta) && std::fabs(beta-current_beta) > 1e-12)
+            throw std::runtime_error("Cannot share clustering bars across different readout beta cuts");
+        beta = current_beta;
+    }
+    gSystem->mkdir(output.c_str(),true);
+    TDirectory::TContext context;
+    TFile comparison((output+"/jet_energy_resolution_comparison.root").c_str(),"RECREATE");
+    if (comparison.IsZombie()) throw std::runtime_error("Cannot create comparison ROOT");
+    if (selection != "saved") {
+        TNamed("schema","pid-jet-resolution-comparison-2").Write();
+        TNamed("comparison_readouts",selection.c_str()).Write();
+    }
+    for (std::size_t i=0; i<readouts.size(); ++i) {
+        TDirectory* target = readouts[i] == "saved" ? &comparison : comparison.mkdir(readouts[i].c_str());
+        if (!target) throw std::runtime_error("Cannot create comparison readout directory: " + readouts[i]);
+        plotReadoutComparison(prepared[i],baseDirectory,output,pandoraBaseDirectory,snapshot_path,readouts[i],*target);
+    }
+    if (selection != "saved") {
+        writeClusteringComparison(baseDirectory,output,pandoraBaseDirectory,snapshot_path,beta,comparison);
+        std::cout << "Saved common clustering data in " << output << "/jet_energy_resolution_comparison.root" << std::endl;
+    }
 }

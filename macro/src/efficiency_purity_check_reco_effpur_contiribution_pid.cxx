@@ -8,11 +8,17 @@
 // A single PID ROOT file made by save_root_reco_pid.py --pid-readout representative:
 //   ./build/efficiency_purity_contribution_pid /path/to/pid.root false figures/pid
 // The same three arguments and the default file-list construction are retained.
-// PID branches are detected per file: energy_pid is authoritative for energy
-// plots and event sums. Without PID branches, the original two-head/Pandora
-// readout is used. Existing track-based plot names remain for compatibility;
-// their energies coincide for PID inputs. MC categories and Cedric W(P,C)
-// always use truth labels and deposited energy, independently of predicted PID.
+// PID branches are detected per file. Common clustering/PID diagnostics and
+// all five raw energy-head candidate grids are saved in the parent directory.
+// Selected-energy images use {png,pdf,eps}/{raw_head,track_replaced}/;
+// all ROOT data are consolidated in jet_energy_resolution_summary.root,
+// with readout directories and a common clustering/ directory.
+// Both modes keep frozen memberships and predicted PID, with
+// only single-track charged energy changed. Without PID branches, the original
+// two-head/Pandora readout and layout are retained. Existing track-based plot
+// names remain for compatibility; their energies coincide within each PID mode.
+// MC categories and Cedric W(P,C) always use truth labels and deposited energy,
+// independently of predicted PID and the selected energy readout.
 // PID confusion counts below are per reco cluster, against the stored dominant
 // truth (largest hit fraction, then deposited energy), not a bijective match.
 // The third argument is optional.  If omitted, figures are saved under the
@@ -32,15 +38,24 @@
 // input truth object, including unmatched and undefined cases), and a limited
 // set of truth_reco_overlap_original_file*_event* matrices. "original" uses
 // saved t overlap definitions, independently of Cedric plots and regression.
-// Each energy/method directory also receives jet_energy_resolution_summary.root
-// and .txt for plot_jet_energy_resolution_pid.cxx. The summary uses Pandora's
+// Each PID energy/method directory receives one jet_energy_resolution_summary.root
+// and .txt. Its raw_head/ and track_replaced/ directories retain complete JER
+// summaries and diagnostics/ ROOT objects. Non-PID inputs keep the original
+// single-readout summary. The JER metric uses Pandora's
 // upstream thrust reconstructed from both saved q/qbar four-vectors, raw event
 // reco energy (no neutrino correction), and upstream minimum-RMS RMS90/Mean90.
 // qq_energy/use_truth_clustering and the existing input arguments remain the
 // configuration for beam energy/method; central/forward spectra are pooled
 // directly from events, never averaged from angular-bin resolutions.
-// clustering_summary.root/.txt in the same directory retain original means
+// The consolidated ROOT's common clustering/ directory retains original means
 // and Cedric energy sums for the multi-energy efficiency/purity bar plots.
+// save_pid_energy_readouts.py validates frozen source predictions and recovers
+// measured track momentum from the identified original H5 when older ROOTs
+// lack a saved measured-track policy. A temporary per-cluster energy cache
+// drives two native subprocesses, which fill all dependent plots and ROOT
+// histograms. Their data are assembled in one ROOT/text pair after both passes
+// succeed. Temporary common/energy ROOTs, summaries and cache are removed. Deposit-based
+// efficiency/purity and raw energy-head diagnostics remain common.
 // 
 // Cedric definition: build W(P,C) from the hit-level prediction tree, use
 // track-anchored matching for charged particles and relative-majority ownership
@@ -54,6 +69,11 @@
 #include <limits>
 #include <unordered_map>
 #include <stdexcept>
+#include <memory>
+#include <cstdlib>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include "TLine.h"
 #include "TLatex.h"
 #include "THStack.h"
@@ -61,13 +81,14 @@
 #include "TObjString.h"
 #include "pid_jet_resolution_summary.h"
 #include "pid_clustering_summary.h"
+#include "pid_single_pass_energy.h"
 
 using namespace std;
 
-const string model_condition = "5head_pid_onehot";       // 5head_pid 5head_pid_onehot
-const int qq_energy = 350;
+const string model_condition = "5head_pid_onehot_preicted_gather";       // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
+const int qq_energy = 500;
 const double c_event_clean_threshold = 0.1;
-const bool use_truth_clustering = false;
+const bool use_truth_clustering = true;
 const int cedric_n_min = 2;
 const double cedric_e_min = 0.0;
 const int master_unclustered_cluster_id = 0;
@@ -397,6 +418,7 @@ struct PidHeadEnergyReadout {
             throw std::runtime_error(string("Incomplete energy head branches in ") + tree->GetName());
         for(int ih=0; ih<kNPidSpecies; ++ih){
             energy[ih] = std::numeric_limits<double>::quiet_NaN();
+            tree->SetBranchStatus(Form("energy_%s", kPidSpecies[ih]), 1);
             if(tree->SetBranchAddress(Form("energy_%s", kPidSpecies[ih]), &energy[ih]) < 0)
                 throw std::runtime_error(string("Energy head branch type mismatch in ") + tree->GetName());
         }
@@ -429,6 +451,7 @@ struct PidEnergyReadout {
             if(!tree->GetBranch(field))
                 throw std::runtime_error(string("Incomplete PID ROOT: ") + tree->GetName() + "/" + field);
         }
+        for(const char* field : fields) tree->SetBranchStatus(field, 1);
         if(tree->SetBranchAddress("energy_pid", &energy_pid) < 0 ||
            tree->SetBranchAddress("pid", &pid) < 0 ||
            tree->SetBranchAddress("energy_head", &energy_head) < 0 ||
@@ -445,6 +468,160 @@ struct PidEnergyReadout {
         return energy_pid;
     }
 };
+
+static std::string pidShellQuote(const std::string& value) {
+    std::string quoted = "'";
+    for (char c : value) quoted += c == '\'' ? "'\\''" : std::string(1, c);
+    return quoted + "'";
+}
+
+static void savePairedPidEnergyReadouts(const std::string& summary_directory,
+                                      const std::string& output_directory, bool draw) {
+    const std::string helper = std::string(gSystem->DirName(__FILE__)) + "/../save_pid_energy_readouts.py";
+    if (gSystem->AccessPathName(helper.c_str()))
+        throw std::runtime_error("Missing paired PID readout helper: " + helper);
+    const char* configured_python = gSystem->Getenv("PID_READOUT_PYTHON");
+    const std::string python = configured_python && configured_python[0] ? configured_python : "python3";
+    const std::string command = pidShellQuote(python) + " -B " + pidShellQuote(helper)
+        + " --compact-only --staged-directory " + pidShellQuote(summary_directory)
+        + " --output-directory " + pidShellQuote(output_directory)
+        + " --common-directory " + pidShellQuote(summary_directory + "/common");
+    if (gSystem->Exec(command.c_str()) != 0)
+        throw std::runtime_error("Failed to save raw_head and track_replaced PID results in " + output_directory);
+}
+
+static void recoverMeasuredPidEnergy(const std::string& bridge, const std::string& output) {
+    const std::string helper = std::string(gSystem->DirName(__FILE__)) + "/../save_pid_energy_readouts.py";
+    const char* configured_python = gSystem->Getenv("PID_READOUT_PYTHON");
+    const std::string python = configured_python && configured_python[0] ? configured_python : "python3";
+    const std::string command = pidShellQuote(python) + " -B " + pidShellQuote(helper)
+        + " --recover-measured " + pidShellQuote(bridge)
+        + " --recovery-output " + pidShellQuote(output);
+    if (gSystem->Exec(command.c_str()) != 0)
+        throw std::runtime_error("Cannot recover original measured PID track momentum");
+}
+
+// The helper owns this short-lived cache. Each subprocess loads only the
+// current input's cluster energies; the large hit-level prediction is not read.
+class PidEnergyReadoutCache {
+public:
+    struct Input { int file_index; std::string path, metadata; };
+    struct Energy { double saved, selected; };
+    std::unique_ptr<TFile> file;
+    std::vector<Input> inputs;
+    std::map<std::pair<int, int>, Energy> clusters;
+    std::string mode, method;
+    double beta = 0.;
+
+    PidEnergyReadoutCache(const char* path, const char* readout) : mode(readout ? readout : "") {
+        if (mode != "raw_head" && mode != "track_replaced")
+            throw std::runtime_error("Energy readout must be raw_head or track_replaced");
+        TDirectory::TContext context;
+        file.reset(TFile::Open(path, "READ"));
+        if (!file || file->IsZombie()) throw std::runtime_error("Cannot read paired PID energy cache");
+        auto* schema = dynamic_cast<TNamed*>(file->Get("energy_readout_cache_schema"));
+        auto* energy = dynamic_cast<TParameter<int>*>(file->Get("beam_energy_GeV"));
+        auto* threshold = dynamic_cast<TParameter<double>*>(file->Get("beta_threshold"));
+        auto* method_named = dynamic_cast<TNamed*>(file->Get("method"));
+        if (!schema || std::string(schema->GetTitle()) != "pid-energy-readout-cache-1" ||
+            !energy || energy->GetVal() != qq_energy || !threshold ||
+            !std::isfinite(threshold->GetVal()) || !method_named)
+            throw std::runtime_error("Paired PID cache schema/energy/method does not match the configured analysis");
+        method = method_named->GetTitle();
+        if (method != "reco" && method != "truth_clustering")
+            throw std::runtime_error("Paired PID cache has an unsupported clustering method");
+        beta = threshold->GetVal();
+        auto* rows = dynamic_cast<TTree*>(file->Get("inputs"));
+        if (!rows) throw std::runtime_error("Paired PID cache has no input list");
+        int index = -1;
+        std::string* source = nullptr;
+        std::string* metadata = nullptr;
+        if (rows->SetBranchAddress("file_index", &index) < 0 ||
+            rows->SetBranchAddress("path", &source) < 0 ||
+            rows->SetBranchAddress("metadata", &metadata) < 0)
+            throw std::runtime_error("Invalid paired PID cache input branch types");
+        std::map<int, bool> seen;
+        for (Long64_t entry = 0; entry < rows->GetEntries(); ++entry) {
+            rows->GetEntry(entry);
+            if (!source || !metadata || index < 0 || seen[index])
+                throw std::runtime_error("Invalid or duplicate paired PID cache input");
+            seen[index] = true;
+            inputs.push_back({index, *source, *metadata});
+        }
+        rows->ResetBranchAddresses();
+        if (inputs.empty()) throw std::runtime_error("Paired PID cache has no source files");
+    }
+
+    void load(int index, const std::string& metadata) {
+        TDirectory::TContext context;
+        const Input& input = inputs.at(index);
+        if (input.metadata != metadata)
+            throw std::runtime_error("Source PID metadata changed after preparing readout cache: " + input.path);
+        auto* rows = dynamic_cast<TTree*>(file->Get(Form("readouts_file_%d", input.file_index)));
+        if (!rows) throw std::runtime_error("Missing cluster rows in paired PID cache: " + input.path);
+        int event = -1, cluster = -1;
+        double saved = 0., selected = 0.;
+        if (rows->SetBranchAddress("event", &event) < 0 || rows->SetBranchAddress("cluster", &cluster) < 0 ||
+            rows->SetBranchAddress("saved", &saved) < 0 || rows->SetBranchAddress(mode.c_str(), &selected) < 0)
+            throw std::runtime_error("Invalid cluster branches in paired PID cache");
+        clusters.clear();
+        for (Long64_t entry = 0; entry < rows->GetEntries(); ++entry) {
+            rows->GetEntry(entry);
+            if (cluster <= 0 || !std::isfinite(saved) || !std::isfinite(selected) ||
+                !clusters.emplace(std::make_pair(event, cluster), Energy{saved, selected}).second)
+                throw std::runtime_error("Invalid or duplicate cluster in paired PID cache");
+        }
+        rows->ResetBranchAddresses();
+    }
+
+    double select(int event, int cluster, double saved) const {
+        if (cluster <= 0) {
+            if (saved != 0.) throw std::runtime_error("Unmatched truth row has nonzero saved PID energy");
+            return saved;
+        }
+        const auto found = clusters.find(std::make_pair(event, cluster));
+        if (found == clusters.end() || found->second.saved != saved)
+            throw std::runtime_error("PID energy cache does not match source event/cluster energy");
+        return found->second.selected;
+    }
+};
+
+struct PidSummaryStaging {
+    std::string path;
+    PidSummaryStaging() {
+        char pattern[] = "/tmp/pid-analysis-readouts-XXXXXX";
+        char* created = mkdtemp(pattern);
+        if (!created) throw std::runtime_error("Cannot create temporary PID summary directory");
+        path = created;
+    }
+    ~PidSummaryStaging() {
+        removeTree(path);
+    }
+    static void removeTree(const std::string& path) {
+        struct stat info;
+        if (::lstat(path.c_str(), &info) != 0) return;
+        if (!S_ISDIR(info.st_mode)) { ::unlink(path.c_str()); return; }
+        DIR* directory = ::opendir(path.c_str());
+        if (!directory) return;
+        while (auto* item = ::readdir(directory)) {
+            const std::string name = item->d_name;
+            if (name != "." && name != "..") removeTree(path + "/" + name);
+        }
+        ::closedir(directory);
+        ::rmdir(path.c_str());
+    }
+};
+
+static bool pidReadoutDependentHistogram(const std::string& name) {
+    // All fills that use the selected energy are covered here. MC truth,
+    // deposited-energy overlaps, efficiency/purity and raw five-head grids
+    // are independent of replacing a reconstructed single-track energy.
+    for (const char* prefix : {"energy_", "energy2d_", "clusterenergy2d_", "event_energy",
+                              "event_pred_energy_", "event_residual_", "eff_vs_Ediff",
+                              "pur_vs_Ediff", "condbeta_vs_Ediff", "hframe_rms90_"})
+        if (name.compare(0, std::char_traits<char>::length(prefix), prefix) == 0) return true;
+    return false;
+}
 
 struct CedricHitRecord {
     int truthid = 0;
@@ -803,12 +980,14 @@ struct CedricRecoCluster {
     map<int, bool> track_truth_ids;
 };
 
-void saveCanvas(TCanvas* canvas, const std::string& directory, const std::string& name){
+void saveCanvas(TCanvas* canvas, const std::string& directory, const std::string& name,
+                const std::string& readout = ""){
     if (!canvas) return;
     canvas->Update();
     const char* formats[] = {"png", "pdf", "eps"};
     for (const char* format : formats) {
-        const std::string subdirectory = directory + "/" + format;
+        const std::string subdirectory = directory + "/" + format
+            + (readout.empty() ? "" : "/" + readout);
         gSystem->mkdir(subdirectory.c_str(), true);
 
         const std::string filename = subdirectory + "/" + name + "." + format;
@@ -819,9 +998,17 @@ void saveCanvas(TCanvas* canvas, const std::string& directory, const std::string
 void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     const char* input_file = nullptr,
     bool pandora_mode = default_pandora,
-    const char* output_directory = nullptr){
+    const char* output_directory = nullptr,
+    PidEnergyReadoutCache* readout_cache = nullptr,
+    const char* image_directory = nullptr){
+    const bool energy_only = readout_cache != nullptr;
+    if (energy_only) beta_threshold = readout_cache->beta;
+    const std::string analysis_method = energy_only ? readout_cache->method :
+        (pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco"));
     const bool has_input_override = input_file && input_file[0] != '\0';
-    int rawfilenum = has_input_override ? 1 : num_file;
+    int rawfilenum = energy_only ? readout_cache->inputs.size() : (has_input_override ? 1 : num_file);
+    if (rawfilenum > num_file)
+        throw std::runtime_error("Readout cache has more source files than the configured analysis capacity");
     int irawfilenum = 0;
 
     // if(hyper_parameter && fine_tuning){ // condition check
@@ -840,8 +1027,13 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     string path_to_file = pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco");
     string picDirectory = Form("figures/nnqq2M_fixed_uds_%s/%dGeV/%s", model_condition.c_str(), qq_energy, path_to_file.c_str());
     if(output_directory && output_directory[0] != '\0') picDirectory = output_directory;
+    std::string imageDirectory = energy_only && image_directory && image_directory[0]
+        ? image_directory : picDirectory;
 
-    if(has_input_override) fileNames_raw[0] = input_file;
+    if (energy_only) {
+        for (int i=0; i<rawfilenum; ++i) fileNames_raw[i] = readout_cache->inputs[i].path;
+    }
+    else if(has_input_override) fileNames_raw[0] = input_file;
     else if(rawfilenum == 1) fileNames_raw[0] = Form("%s",fileName.c_str());
     else {
         for(int qq=0; qq<3; qq++){
@@ -893,18 +1085,50 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     struct EventTrackCategoryEnergySummary {
         double pred_energy_sum[6] = {0,0,0,0,0,0};
     };
+    struct CachedRecoRow {
+        int event, cluster, mcid, pdg, charge, tracks, cond_track, matched_pdg, npdg;
+        double beta, prediction, cluster_prediction, deposit, matched_fraction;
+        std::array<int, 64> composition;
+        PidEnergyReadout pid;
+    };
 
 
 
     // TFile fileout("result_test_pandora.root","RECREATE");
     gSystem->mkdir(picDirectory.c_str(), true);
-    const string output_path = output_directory && output_directory[0] != '\0'
-        ? Form("%s/efficiency_purity_result.root", picDirectory.c_str())
+    bool expected_pid_input = energy_only;
+    std::unique_ptr<TFile> first_input;
+    if (rawfilenum > 0) {
+        TDirectory::TContext context;
+        first_input.reset(TFile::Open(fileNames_raw[0].c_str(), "READ"));
+        if (!first_input || first_input->IsZombie())
+            throw std::runtime_error("Cannot open input ROOT: " + fileNames_raw[0]);
+        if (!pandora_mode && !expected_pid_input) {
+            auto* reco = dynamic_cast<TTree*>(first_input->Get("reco"));
+            expected_pid_input = reco && reco->GetBranch("energy_pid");
+        }
+    }
+    const bool paired_pid = expected_pid_input && !energy_only;
+    std::unique_ptr<PidSummaryStaging> common_staging;
+    if (paired_pid) {
+        common_staging.reset(new PidSummaryStaging());
+        imageDirectory = common_staging->path;
+    }
+    const std::string result_directory = common_staging ? common_staging->path + "/common" : picDirectory;
+    gSystem->mkdir(result_directory.c_str(), true);
+    const char* result_name = energy_only ? "energy_regression_result.root" : "efficiency_purity_result.root";
+    const string output_path = expected_pid_input || (output_directory && output_directory[0] != '\0')
+        ? Form("%s/%s", result_directory.c_str(), result_name)
         : Form("../output/energy_regression_1to1/skimmed/results/tc_fixed_uds_brems/5D/%dGeV/%s.root", qq_energy, path_to_file.c_str());
     TFile fileout(output_path.c_str(),"RECREATE");
-    pid_jer::Summary jet_resolution_summary(qq_energy,
-        pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco"),
-        beta_threshold);
+    pid_jer::Summary jet_resolution_summary(qq_energy, analysis_method,
+        beta_threshold, energy_only ? readout_cache->mode : "saved");
+    const char* paired_modes[2] = {"raw_head", "track_replaced"};
+    std::unique_ptr<pid_jer::Summary> paired_jer[2];
+    if (paired_pid) for (int mode=0; mode<2; ++mode)
+        paired_jer[mode].reset(new pid_jer::Summary(qq_energy, analysis_method, beta_threshold, paired_modes[mode]));
+    pid_singlepass::HistogramBanks energy_histograms;
+    Long64_t paired_eligible = 0, paired_recovered = 0;
 
 
     const int nParticle = kaon_neutron ? 6 : 4;
@@ -1166,7 +1390,7 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     // more than once; these are not exclusive one-to-one matches.
     TH2F *head_regression_pid[kNPidSpecies][kNHeadRegressionColumns];
     TH2F *head_regression_truth[kNPidSpecies][kNHeadRegressionColumns];
-    for(int ih=0; ih<kNPidSpecies; ++ih){
+    if (!energy_only) for(int ih=0; ih<kNPidSpecies; ++ih){
         for(int ic=0; ic<kNHeadRegressionColumns; ++ic){
             head_regression_pid[ih][ic] = new TH2F(
                 Form("head_regression_pid_%s_%d", kPidSpecies[ih], ic),
@@ -1184,6 +1408,56 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     Long64_t head_regression_matched_pairs = 0;
     Long64_t head_regression_unavailable[kNPidSpecies] = {};
     PidClusteringDiagnostics pid_clustering_diagnostics;
+
+    if (paired_pid) {
+        for (int ip=0; ip<nParticle; ++ip) {
+            energy_histograms.add(energy[ip]);
+            energy_histograms.add(energy_diff[ip]);
+            energy_histograms.add(energy2d[ip]);
+            energy_histograms.add(clusterenergy2d[ip]);
+            energy_histograms.add(energy_resolution[ip]);
+            energy_histograms.add(eff_vs_Ediff[ip]);
+            energy_histograms.add(pur_vs_Ediff[ip]);
+            energy_histograms.add(condbeta_vs_Ediff[ip]);
+            energy_histograms.add(condbeta_vs_Ediff_track[ip]);
+            energy_histograms.add(condbeta_vs_Ediff_nottrack[ip]);
+            for (int ie=0; ie<nEnergy; ++ie) {
+                energy_histograms.add(energy_diff_per_energy[ip][ie]);
+                energy_histograms.add(energy_resolution_per_energy[ip][ie]);
+                energy_histograms.add(energy_resolution_per_energy_cluster[ip][ie]);
+            }
+            for (int ib=0; ib<kNAbsCosThetaBins; ++ib)
+                energy_histograms.add(energy_res_vs_abs_costheta[ip][ib]);
+        }
+        for (int ip=0; ip<kNTruthPhysCat; ++ip) {
+            energy_histograms.add(energy2d_truth_phys[ip]);
+            for (int ie=0; ie<nEnergy; ++ie)
+                energy_histograms.add(energy_resolution_per_energy_truth_phys[ip][ie]);
+        }
+        energy_histograms.add(event_energy2d_reco_track);
+        energy_histograms.add(event_energy2d_cond_track);
+        energy_histograms.add(event_energy_sum_reco_track_distribution);
+        energy_histograms.add(event_energy_sum_cond_track_distribution);
+        energy_histograms.add(event_residual_all_reco_track);
+        energy_histograms.add(event_residual_clean_reco_track);
+        energy_histograms.add(event_residual_all_cond_track);
+        energy_histograms.add(event_residual_clean_cond_track);
+        for (int ib=0; ib<n_beta_thresholds; ++ib) {
+            energy_histograms.add(event_energy_sum_reco_track_distribution_beta[ib]);
+            energy_histograms.add(event_energy_sum_cond_track_distribution_beta[ib]);
+        }
+        for (int ie=0; ie<nEnergy_jet; ++ie) {
+            energy_histograms.add(jet_energy_resolution_per_energy[ie]);
+            energy_histograms.add(event_energy_diff_per_energy_reco_track[ie]);
+            energy_histograms.add(event_energy_diff_per_energy_cond_track[ie]);
+        }
+        for (int category=0; category<6; ++category)
+            energy_histograms.add(event_pred_energy_sum_by_track_category[category]);
+        TIter remaining(fileout.GetList());
+        while (auto* object = remaining())
+            if (dynamic_cast<TH1*>(object) && pidReadoutDependentHistogram(object->GetName()))
+                throw std::runtime_error(std::string("Unregistered paired energy histogram: ") + object->GetName());
+    }
 
     // data をとってきてる
     int clustering_total_by_particle[nParticle] = {0};
@@ -1363,11 +1637,15 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
 
     for(int irawfile=0; irawfile<rawfilenum; irawfile++){
         if(rawfilenum>1) cout << irawfile << "/" << rawfilenum << "  ";// << endl;
-        pid_clustering_diagnostics.beginFile();
+        if (!energy_only) pid_clustering_diagnostics.beginFile();
         map<int, double> event_builder_mc_energy;
 
         cout << fileNames_raw[irawfile] << endl;
-        filein[irawfile] = new TFile(Form("%s",fileNames_raw[irawfile].c_str()));
+        std::unique_ptr<TFile> current_input(irawfile == 0 ? first_input.release() :
+            TFile::Open(fileNames_raw[irawfile].c_str(), "READ"));
+        filein[irawfile] = current_input.get();
+        if (!filein[irawfile] || filein[irawfile]->IsZombie())
+            throw std::runtime_error("Cannot open input ROOT: " + fileNames_raw[irawfile]);
         tree[irawfile] = (TTree*) filein[irawfile]->Get("t");
         if(!tree[irawfile]){
             cout << "   error in root file conversion!!!!!" << endl;
@@ -1379,11 +1657,14 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         tree_event[irawfile] = (TTree*) filein[irawfile]->Get("event");
         if(jet_regression) tree_jet[irawfile] = (TTree*) filein[irawfile]->Get("jet");
 
+        // Activate only fields consumed below; PID/head binders add their fields.
+        tree[irawfile]->SetBranchStatus("*", 0);
+        if(tree_reco[irawfile]) tree_reco[irawfile]->SetBranchStatus("*", 0);
         PidEnergyReadout truth_pid, reco_pid;
         truth_pid.bind(tree[irawfile]);
         reco_pid.bind(tree_reco[irawfile]);
         PidHeadEnergyReadout truth_heads;
-        if(truth_pid.enabled){
+        if(truth_pid.enabled && !energy_only){
             truth_heads.bind(tree[irawfile]);
             if(!truth_heads.enabled)
                 cout << "  no saved energy_<species> branches: skipping five-head regression grids" << endl;
@@ -1391,79 +1672,34 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         if(truth_pid.enabled != reco_pid.enabled)
             throw std::runtime_error("PID ROOT requires matching PID branches in t and reco: " + fileNames_raw[irawfile]);
         auto* source_metadata = dynamic_cast<TObjString*>(filein[irawfile]->Get("particle_eval_metadata"));
-        jet_resolution_summary.addInput(irawfile, fileNames_raw[irawfile], reco_pid.enabled,
+        const int summary_file_index = energy_only ? readout_cache->inputs[irawfile].file_index : irawfile;
+        if (energy_only) {
+            if (!reco_pid.enabled) throw std::runtime_error("Paired energy pass requires representative PID inputs");
+            readout_cache->load(irawfile, source_metadata ? source_metadata->GetString().Data() : "");
+        }
+        jet_resolution_summary.addInput(summary_file_index, fileNames_raw[irawfile], reco_pid.enabled,
             source_metadata ? source_metadata->GetString().Data() : "");
+        if (paired_pid) {
+            if (!reco_pid.enabled || !source_metadata)
+                throw std::runtime_error("Single-pass paired analysis requires uniform PID inputs with particle metadata");
+            std::unique_ptr<char, decltype(&std::free)> canonical_path(
+                ::realpath(fileNames_raw[irawfile].c_str(), nullptr), &std::free);
+            if (!canonical_path) throw std::runtime_error("Cannot resolve paired source ROOT path");
+            for (int mode=0; mode<2; ++mode)
+                paired_jer[mode]->addInput(summary_file_index, canonical_path.get(), true,
+                    source_metadata->GetString().Data());
+        }
         if(truth_pid.enabled) ++pid_input_files;
         else ++legacy_input_files;
         // cout << "  energy readout: " << (truth_pid.enabled ? "energy_pid (saved representative PID)" : "legacy track/calo heads") << endl;
 
-        const char* cedric_required_branches[] = {"event", "truthid", "cluster", "mcpdg", "mccharge", "mcen", "edep_mc", "trackness"};
-        if(!tree_pred[irawfile]){
-            cerr << "ERROR: prediction tree is required for Cedric metrics: " << fileNames_raw[irawfile] << endl;
-            return;
-        }
-        if(tree_pred[irawfile]->GetEntries() == 0){
-            cerr << "ERROR: prediction tree is empty in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py (full prediction tree)." << endl;
-            return;
-        }
-        for(const char* branch_name : cedric_required_branches){
-            if(!tree_pred[irawfile]->GetBranch(branch_name)){
-                cerr << "ERROR: missing prediction/" << branch_name << " in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py." << endl;
-                return;
-            }
-        }
 
-        int cedric_event = -1;
-        int cedric_truthid = 0;
-        int cedric_cluster = master_unclustered_cluster_id;
-        int cedric_pdg = 0;
-        int cedric_charge = 0;
-        int cedric_track = 0;
-        int diagnostic_truth_valid = 1;
-        double cedric_mcen = 0.0;
-        double cedric_edep = 0.0;
-        tree_pred[irawfile]->SetBranchAddress("event", &cedric_event);
-        tree_pred[irawfile]->SetBranchAddress("truthid", &cedric_truthid);
-        tree_pred[irawfile]->SetBranchAddress("cluster", &cedric_cluster);
-        tree_pred[irawfile]->SetBranchAddress("mcpdg", &cedric_pdg);
-        tree_pred[irawfile]->SetBranchAddress("mccharge", &cedric_charge);
-        tree_pred[irawfile]->SetBranchAddress("mcen", &cedric_mcen);
-        tree_pred[irawfile]->SetBranchAddress("edep_mc", &cedric_edep);
-        tree_pred[irawfile]->SetBranchAddress("trackness", &cedric_track);
-        if(tree_pred[irawfile]->GetBranch("truth_valid"))
-            tree_pred[irawfile]->SetBranchAddress("truth_valid", &diagnostic_truth_valid);
-
-        vector<CedricHitRecord> cedric_hits;
-        int current_cedric_event = -1;
-        for(Long64_t ientry=0; ientry<tree_pred[irawfile]->GetEntries(); ++ientry){
-            tree_pred[irawfile]->GetEntry(ientry);
-            if(current_cedric_event >= 0 && cedric_event != current_cedric_event){
-                processCedricEvent(cedric_hits);
-                if(truth_pid.enabled)
-                    pid_clustering_diagnostics.observeEvent(irawfile, current_cedric_event, cedric_hits);
-                cedric_hits.clear();
-            }
-            current_cedric_event = cedric_event;
-            CedricHitRecord hit;
-            hit.truthid = cedric_truthid;
-            hit.cluster = cedric_cluster;
-            hit.pdg = cedric_pdg;
-            hit.charge = cedric_charge;
-            hit.is_track = cedric_track;
-            hit.mcen = cedric_mcen;
-            hit.edep = cedric_edep;
-            hit.truth_valid = diagnostic_truth_valid != 0;
-            cedric_hits.push_back(hit);
-        }
-        if(!cedric_hits.empty()){
-            processCedricEvent(cedric_hits);
-            if(truth_pid.enabled)
-                pid_clustering_diagnostics.observeEvent(irawfile, current_cedric_event, cedric_hits);
-        }
-        tree_pred[irawfile]->ResetBranchAddresses();
-
+        const char* truth_branches[] = {"event", "mcid", "mcpdg", "mccharge", "mcen",
+            "edep", "edep_reco", "edep_match", "pred_edep", "pred_edep_cluster",
+            "cond_beta", "cond_track"};
+        for(const char* branch_name : truth_branches)
+            tree[irawfile]->SetBranchStatus(branch_name, 1);
         tree[irawfile]->SetBranchAddress("event", &event);
-        tree[irawfile]->SetBranchAddress("hitid", &hitid);
         tree[irawfile]->SetBranchAddress("mcid", &mcid);
         tree[irawfile]->SetBranchAddress("mcpdg", &mcpdg);
         tree[irawfile]->SetBranchAddress("mccharge", &mccharge);
@@ -1478,6 +1714,8 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         if(truth_pid.enabled){
             if(!tree[irawfile]->GetBranch("truthid") || !tree[irawfile]->GetBranch("matched_cluster"))
                 throw std::runtime_error("PID diagnostics require t/truthid and t/matched_cluster: " + fileNames_raw[irawfile]);
+            tree[irawfile]->SetBranchStatus("truthid", 1);
+            tree[irawfile]->SetBranchStatus("matched_cluster", 1);
             tree[irawfile]->SetBranchAddress("truthid", &truthid);
             tree[irawfile]->SetBranchAddress("matched_cluster", &matched_cluster);
         }
@@ -1485,6 +1723,9 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         unordered_map<int, double> jet_cos_theta_by_event;
         unordered_map<int, double> jet_thrust_by_event;
         if(jet_regression && tree_jet[irawfile]){
+            tree_jet[irawfile]->SetBranchStatus("*", 0);
+            for(const char* branch_name : {"event", "n_jets", "jet_p4"})
+                tree_jet[irawfile]->SetBranchStatus(branch_name, 1);
             tree_jet[irawfile]->SetBranchAddress("event", &jet_event);
             tree_jet[irawfile]->SetBranchAddress("n_jets", &n_jets);
             tree_jet[irawfile]->SetBranchAddress("jet_p4", &jet_p4);
@@ -1512,13 +1753,19 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
             tree_event[irawfile]->GetBranch("event") &&
             tree_event[irawfile]->GetBranch("MC_dijet_energy");
         if(has_builder_mc_energy){
+            tree_event[irawfile]->SetBranchStatus("*", 0);
+            tree_event[irawfile]->SetBranchStatus("event", 1);
+            tree_event[irawfile]->SetBranchStatus("MC_dijet_energy", 1);
             int builder_event = -1;
             double builder_mc_event_energy = 0.0;
+            std::set<int> builder_event_ids;
             if(tree_event[irawfile]->SetBranchAddress("event", &builder_event) < 0 ||
                tree_event[irawfile]->SetBranchAddress("MC_dijet_energy", &builder_mc_event_energy) < 0)
                 throw std::runtime_error("Event truth branch type mismatch in " + fileNames_raw[irawfile]);
             for(Long64_t ientry=0; ientry<tree_event[irawfile]->GetEntries(); ++ientry){
                 tree_event[irawfile]->GetEntry(ientry);
+                if (paired_pid && !builder_event_ids.insert(builder_event).second)
+                    throw std::runtime_error("Duplicate source event ID in PID event builder");
                 if(builder_mc_event_energy > 0.0 && std::isfinite(builder_mc_event_energy))
                     event_builder_mc_energy[builder_event] = builder_mc_event_energy;
             }
@@ -1526,12 +1773,185 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         }else{
             cout << "   warning: event tree with event/MC_dijet_energy is missing; " << "skipping truth-dependent plots for this file" << endl;
         }
+        std::vector<CachedRecoRow> cached_reco_rows;
+        std::unique_ptr<pid_singlepass::FileReadouts> paired_readouts;
+        if (tree_reco[irawfile]) {
+            const char* reco_branches[] = {"event", "cluster", "mcid", "mcpdg", "mccharge",
+                "edep_reco", "pred_edep", "pred_edep_cluster", "ntrack_hits", "cond_beta",
+                "cond_is_track", "matched_truth_pdgid", "matched_truth_edep_frac",
+                "npdg_comp", "pdg_comp_ids"};
+            for(const char* branch_name : reco_branches)
+                tree_reco[irawfile]->SetBranchStatus(branch_name, 1);
+            tree_reco[irawfile]->SetBranchAddress("event", &reco_event);
+            tree_reco[irawfile]->SetBranchAddress("cluster", &reco_cluster);
+            tree_reco[irawfile]->SetBranchAddress("mcid", &reco_mcid);
+            tree_reco[irawfile]->SetBranchAddress("mcpdg", &reco_mcpdg);
+            tree_reco[irawfile]->SetBranchAddress("mccharge", &reco_mccharge);
+            tree_reco[irawfile]->SetBranchAddress("edep_reco", &reco_edep_reco);
+            tree_reco[irawfile]->SetBranchAddress("pred_edep", &reco_pred_edep);
+            tree_reco[irawfile]->SetBranchAddress("pred_edep_cluster", &reco_pred_edep_cluster);
+            tree_reco[irawfile]->SetBranchAddress("ntrack_hits", &reco_ntrack_hits);
+            tree_reco[irawfile]->SetBranchAddress("cond_beta", &reco_cond_beta);
+            tree_reco[irawfile]->SetBranchAddress("cond_is_track", &reco_cond_is_track);
+            tree_reco[irawfile]->SetBranchAddress("matched_truth_pdgid", &reco_matched_truth_pdgid);
+            tree_reco[irawfile]->SetBranchAddress("matched_truth_edep_frac", &reco_matched_truth_edep_frac);
+            tree_reco[irawfile]->SetBranchAddress("npdg_comp", &reco_npdg_comp);
+            tree_reco[irawfile]->SetBranchAddress("pdg_comp_ids", reco_pdg_comp_ids);
+        }
+        if (paired_pid) {
+            if (!has_builder_mc_energy)
+                throw std::runtime_error("Single-pass PID readout requires event/MC_dijet_energy");
+            if (tree_reco[irawfile]->SetBranchAddress("event", &reco_event) < 0 ||
+                tree_reco[irawfile]->SetBranchAddress("cluster", &reco_cluster) < 0 ||
+                tree_reco[irawfile]->SetBranchAddress("ntrack_hits", &reco_ntrack_hits) < 0 ||
+                tree_reco[irawfile]->SetBranchAddress("cond_beta", &reco_cond_beta) < 0)
+                throw std::runtime_error("Invalid paired reco event/cluster/track-count/beta branch type");
+            auto* unified_metadata = dynamic_cast<TObjString*>(filein[irawfile]->Get("save_root_metadata"));
+            paired_readouts.reset(new pid_singlepass::FileReadouts(source_metadata->GetString().Data(),
+                unified_metadata ? unified_metadata->GetString().Data() : "",
+                common_staging->path, summary_file_index));
+            PidHeadEnergyReadout reco_heads;
+            reco_heads.bind(tree_reco[irawfile]);
+            if (!reco_heads.enabled) throw std::runtime_error("Paired PID energies require all five saved raw heads");
+            int accepted = 1;
+            Long64_t seed = -1;
+            if (tree_reco[irawfile]->GetBranch("cluster_accepted")) {
+                tree_reco[irawfile]->SetBranchStatus("cluster_accepted", 1);
+                if (tree_reco[irawfile]->SetBranchAddress("cluster_accepted", &accepted) < 0)
+                    throw std::runtime_error("Invalid reco/cluster_accepted type");
+            }
+            if (tree_reco[irawfile]->GetBranch("pid_seed_input_row")) {
+                tree_reco[irawfile]->SetBranchStatus("pid_seed_input_row", 1);
+                if (tree_reco[irawfile]->SetBranchAddress("pid_seed_input_row", &seed) < 0)
+                    throw std::runtime_error("Invalid reco/pid_seed_input_row type");
+            }
+            cached_reco_rows.reserve(tree_reco[irawfile]->GetEntries());
+            for (Long64_t entry=0; entry<tree_reco[irawfile]->GetEntries(); ++entry) {
+                tree_reco[irawfile]->GetEntry(entry);
+                CachedRecoRow row;
+                row.event=reco_event; row.cluster=reco_cluster; row.mcid=reco_mcid;
+                row.pdg=reco_mcpdg; row.charge=reco_mccharge; row.tracks=reco_ntrack_hits;
+                row.cond_track=reco_cond_is_track; row.matched_pdg=reco_matched_truth_pdgid;
+                row.npdg=reco_npdg_comp; row.beta=reco_cond_beta;
+                row.prediction=reco_pred_edep; row.cluster_prediction=reco_pred_edep_cluster;
+                row.deposit=reco_edep_reco; row.matched_fraction=reco_matched_truth_edep_frac;
+                row.composition.fill(0);
+                const int components = std::max(0, std::min(64, reco_npdg_comp));
+                std::copy(reco_pdg_comp_ids, reco_pdg_comp_ids+components, row.composition.begin());
+                row.pid=reco_pid;
+                cached_reco_rows.push_back(row);
+                paired_readouts->add(reco_event, reco_cluster, reco_pid.select(0.), reco_pid.pid,
+                    reco_pid.energy_head, reco_ntrack_hits, accepted != 0, seed, reco_heads.energy,
+                    event_builder_mc_energy.count(reco_event) != 0);
+            }
+            tree_reco[irawfile]->ResetBranchAddresses();
+            paired_readouts->prepareBridge(event_builder_mc_energy, jet_thrust_by_event);
+        }
+        if (!energy_only) {
+        const char* cedric_required_branches[] = {"event", "truthid", "cluster", "mcpdg", "mccharge", "mcen", "edep_mc", "trackness"};
+        if(!tree_pred[irawfile]){
+            cerr << "ERROR: prediction tree is required for Cedric metrics: " << fileNames_raw[irawfile] << endl;
+            return;
+        }
+        if(tree_pred[irawfile]->GetEntries() == 0){
+            cerr << "ERROR: prediction tree is empty in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py (full prediction tree)." << endl;
+            return;
+        }
+        for(const char* branch_name : cedric_required_branches){
+            if(!tree_pred[irawfile]->GetBranch(branch_name)){
+                cerr << "ERROR: missing prediction/" << branch_name << " in " << fileNames_raw[irawfile] << endl << "Regenerate this ROOT file with save_root_reco_pid.py." << endl;
+                return;
+            }
+        }
+
+        // Read only the hit fields used by Cedric and common PID diagnostics.
+        tree_pred[irawfile]->SetBranchStatus("*", 0);
+        for(const char* branch_name : cedric_required_branches)
+            tree_pred[irawfile]->SetBranchStatus(branch_name, 1);
+
+        int cedric_event = -1;
+        int cedric_truthid = 0;
+        int cedric_cluster = master_unclustered_cluster_id;
+        int cedric_pdg = 0;
+        int cedric_charge = 0;
+        int cedric_track = 0;
+        int diagnostic_truth_valid = 1;
+        double cedric_mcen = 0.0;
+        double cedric_edep = 0.0;
+        tree_pred[irawfile]->SetBranchAddress("event", &cedric_event);
+        tree_pred[irawfile]->SetBranchAddress("truthid", &cedric_truthid);
+        tree_pred[irawfile]->SetBranchAddress("cluster", &cedric_cluster);
+        tree_pred[irawfile]->SetBranchAddress("mcpdg", &cedric_pdg);
+        tree_pred[irawfile]->SetBranchAddress("mccharge", &cedric_charge);
+        tree_pred[irawfile]->SetBranchAddress("mcen", &cedric_mcen);
+        tree_pred[irawfile]->SetBranchAddress("edep_mc", &cedric_edep);
+        tree_pred[irawfile]->SetBranchAddress("trackness", &cedric_track);
+        if(tree_pred[irawfile]->GetBranch("truth_valid")){
+            tree_pred[irawfile]->SetBranchStatus("truth_valid", 1);
+            tree_pred[irawfile]->SetBranchAddress("truth_valid", &diagnostic_truth_valid);
+        }
+
+        vector<CedricHitRecord> cedric_hits;
+        int current_cedric_event = -1;
+        Long64_t recovery_input_row = -1;
+        int recovery_hitid = -1;
+        if (paired_readouts && paired_readouts->needsRecovery()) {
+            if (!tree_pred[irawfile]->GetBranch("input_row") || !tree_pred[irawfile]->GetBranch("hitid"))
+                throw std::runtime_error("Old PID ROOT needs prediction/input_row and hitid for original-H5 recovery");
+            tree_pred[irawfile]->SetBranchStatus("input_row", 1);
+            tree_pred[irawfile]->SetBranchStatus("hitid", 1);
+            if (tree_pred[irawfile]->SetBranchAddress("input_row", &recovery_input_row) < 0 ||
+                tree_pred[irawfile]->SetBranchAddress("hitid", &recovery_hitid) < 0)
+                throw std::runtime_error("Old PID ROOT needs prediction/input_row and hitid for original-H5 recovery");
+        }
+        for(Long64_t ientry=0; ientry<tree_pred[irawfile]->GetEntries(); ++ientry){
+            tree_pred[irawfile]->GetEntry(ientry);
+            if (paired_readouts)
+                paired_readouts->prediction(cedric_event, cedric_cluster, recovery_input_row,
+                    recovery_hitid, cedric_track);
+            if(current_cedric_event >= 0 && cedric_event != current_cedric_event){
+                processCedricEvent(cedric_hits);
+                if(truth_pid.enabled)
+                    pid_clustering_diagnostics.observeEvent(irawfile, current_cedric_event, cedric_hits);
+                cedric_hits.clear();
+            }
+            current_cedric_event = cedric_event;
+            CedricHitRecord hit;
+            hit.truthid = cedric_truthid;
+            hit.cluster = cedric_cluster;
+            hit.pdg = cedric_pdg;
+            hit.charge = cedric_charge;
+            hit.is_track = cedric_track;
+            hit.mcen = cedric_mcen;
+            hit.edep = cedric_edep;
+            hit.truth_valid = diagnostic_truth_valid != 0;
+            cedric_hits.push_back(hit);
+        }
+        if(!cedric_hits.empty()){
+            processCedricEvent(cedric_hits);
+            if(truth_pid.enabled)
+                pid_clustering_diagnostics.observeEvent(irawfile, current_cedric_event, cedric_hits);
+        }
+        tree_pred[irawfile]->ResetBranchAddresses();
+        tree_pred[irawfile]->SetBranchStatus("*", 1);
+        }
+
+        if (paired_readouts) {
+            paired_readouts->recover(recoverMeasuredPidEnergy);
+            paired_eligible += paired_readouts->eligible;
+            paired_recovered += paired_readouts->recovered;
+        }
         for(int ientry=0; ientry<entry_max[irawfile]; ientry++){
             if(rawfilenum==1 && entry_max[irawfile]>10000 && ientry%100000==0) cout << "t event " << ientry << "/" << entry_max[irawfile] << endl;
             tree[irawfile]->GetEntry(ientry);
             if(truth_pid.enabled){
                 pred_edep = pred_edep_cluster = truth_pid.select(pred_edep);
-                pid_clustering_diagnostics.matchTruth(event, truthid, matched_cluster, truth_pid.pid, cond_beta, edep, edep_reco, edep_match);
+                if (paired_readouts)
+                    paired_readouts->select(event, matched_cluster, pred_edep, 0);
+                if (energy_only)
+                    pred_edep = pred_edep_cluster = readout_cache->select(event, matched_cluster, pred_edep);
+                else
+                    pid_clustering_diagnostics.matchTruth(event, truthid, matched_cluster, truth_pid.pid, cond_beta, edep, edep_reco, edep_match);
             }
             // Legacy Pandora stores one PFO energy in pred_edep for both
             // charged and neutral clusters; pred_edep_cluster is a zero
@@ -1579,46 +1999,56 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
 
             int energy_itr = truthEnergyBinFromMcen(mcen);
 
-            energy[itr]->Fill(pred_edep);
             MCtruth_energy[itr]->Fill(mcen);
-            energy_diff[itr]->Fill(pred_edep - mcen);
-            energy2d[itr]->Fill(mcen,pred_edep);
-            clusterenergy2d[itr]->Fill(mcen,pred_edep_cluster);
-            energy_resolution[itr]->Fill( (pred_edep - mcen) / mcen );
-
-            const int ipc = truthPhysicsCategoryFromMc(mcpdg, mccharge);
-            const double ipc_energy = ipc == 0 ? pred_edep : pred_edep_cluster;
-            energy2d_truth_phys[ipc]->Fill(mcen, ipc_energy);
-
-            // cout << itr_energy << ", " << mcen << endl;
-            if(energy_itr >= 0 && pred_edep>0.1){
-                energy_diff_per_energy[itr][energy_itr]->Fill(pred_edep - mcen);
-                energy_resolution_per_energy[itr][energy_itr]->Fill( (pred_edep - mcen) / mcen );
-            }
-            if(jet_regression && energy_itr == kRms90VsAbsCosThetaTruthEnergyBin && pred_edep > 0.1){
-                const auto jct = jet_cos_theta_by_event.find(event);
-                if(jct != jet_cos_theta_by_event.end()){
-                    const double abs_ct = fabs(jct->second);
-                    if(abs_ct <= 1.0 + 1e-6){
-                        const int ib_ct = absCosThetaBinIndex(abs_ct);
-                        if(ib_ct >= 0)
-                            energy_res_vs_abs_costheta[itr][ib_ct]->Fill((pred_edep - mcen) / mcen);
-                    }
-                }
-            }
-            if(energy_itr >= 0 && pred_edep_cluster>0.1){
-                energy_resolution_per_energy_cluster[itr][energy_itr]->Fill( (pred_edep_cluster - mcen) / mcen );
-            }
-            if(energy_itr >= 0){
-                energy_resolution_per_energy_truth_phys[ipc][energy_itr]->Fill((ipc_energy - mcen) / mcen);
-            }
-
-            condbeta_vs_Ediff[itr]->Fill(cond_beta,pred_edep-mcen);
-            if(cond_track==1) condbeta_vs_Ediff_track[itr]->Fill(cond_beta,pred_edep-mcen);
-            else condbeta_vs_Ediff_nottrack[itr]->Fill(cond_beta,pred_edep-mcen);
             condbeta_vs_mcen[itr]->Fill(cond_beta,mcen);
             if(cond_track==1) condbeta_vs_mcen_track[itr]->Fill(cond_beta,mcen);
             else condbeta_vs_mcen_nottrack[itr]->Fill(cond_beta,mcen);
+            auto fill_truth_energy = [&](int mode, double pred_edep, double pred_edep_cluster) {
+                energy_histograms.at(energy[itr], mode)->Fill(pred_edep);
+
+                energy_histograms.at(energy_diff[itr], mode)->Fill(pred_edep - mcen);
+                energy_histograms.at(energy2d[itr], mode)->Fill(mcen,pred_edep);
+                energy_histograms.at(clusterenergy2d[itr], mode)->Fill(mcen,pred_edep_cluster);
+                energy_histograms.at(energy_resolution[itr], mode)->Fill( (pred_edep - mcen) / mcen );
+
+                const int ipc = truthPhysicsCategoryFromMc(mcpdg, mccharge);
+                const double ipc_energy = ipc == 0 ? pred_edep : pred_edep_cluster;
+                energy_histograms.at(energy2d_truth_phys[ipc], mode)->Fill(mcen, ipc_energy);
+
+                // cout << itr_energy << ", " << mcen << endl;
+                if(energy_itr >= 0 && pred_edep>0.1){
+                    energy_histograms.at(energy_diff_per_energy[itr][energy_itr], mode)->Fill(pred_edep - mcen);
+                    energy_histograms.at(energy_resolution_per_energy[itr][energy_itr], mode)->Fill( (pred_edep - mcen) / mcen );
+                }
+                if(jet_regression && energy_itr == kRms90VsAbsCosThetaTruthEnergyBin && pred_edep > 0.1){
+                    const auto jct = jet_cos_theta_by_event.find(event);
+                    if(jct != jet_cos_theta_by_event.end()){
+                        const double abs_ct = fabs(jct->second);
+                        if(abs_ct <= 1.0 + 1e-6){
+                            const int ib_ct = absCosThetaBinIndex(abs_ct);
+                            if(ib_ct >= 0)
+                                energy_histograms.at(energy_res_vs_abs_costheta[itr][ib_ct], mode)->Fill((pred_edep - mcen) / mcen);
+                        }
+                    }
+                }
+                if(energy_itr >= 0 && pred_edep_cluster>0.1){
+                    energy_histograms.at(energy_resolution_per_energy_cluster[itr][energy_itr], mode)->Fill( (pred_edep_cluster - mcen) / mcen );
+                }
+                if(energy_itr >= 0){
+                    energy_histograms.at(energy_resolution_per_energy_truth_phys[ipc][energy_itr], mode)->Fill((ipc_energy - mcen) / mcen);
+                }
+
+                energy_histograms.at(condbeta_vs_Ediff[itr], mode)->Fill(cond_beta,pred_edep-mcen);
+                if(cond_track==1) energy_histograms.at(condbeta_vs_Ediff_track[itr], mode)->Fill(cond_beta,pred_edep-mcen);
+                else energy_histograms.at(condbeta_vs_Ediff_nottrack[itr], mode)->Fill(cond_beta,pred_edep-mcen);
+            };
+            if (paired_pid) {
+                for (int mode=0; mode<2; ++mode) {
+                    const double selected = paired_readouts->select(event, matched_cluster, pred_edep, mode);
+                    fill_truth_energy(mode, selected, selected);
+                }
+            } else fill_truth_energy(-1, pred_edep, pred_edep_cluster);
+
         }
 
         
@@ -1646,37 +2076,29 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         }
 
         if(tree_reco[irawfile]){
-            map<int, EventRecoEnergySummary> event_energy_summary;
+            std::array<map<int, EventRecoEnergySummary>, 2> event_energy_summaries;
             map<int, EventConfusionSummary> event_confusion_summary;
-            map<int, EventTrackCategoryEnergySummary> event_track_category_energy_summary;
-            tree_reco[irawfile]->SetBranchAddress("event", &reco_event);
-            tree_reco[irawfile]->SetBranchAddress("cluster", &reco_cluster);
-            tree_reco[irawfile]->SetBranchAddress("nhits", &reco_nhits);
-            tree_reco[irawfile]->SetBranchAddress("mcid", &reco_mcid);
-            tree_reco[irawfile]->SetBranchAddress("mcpdg", &reco_mcpdg);
-            tree_reco[irawfile]->SetBranchAddress("mccharge", &reco_mccharge);
-            tree_reco[irawfile]->SetBranchAddress("mcmass", &reco_mcmass);
-            tree_reco[irawfile]->SetBranchAddress("mcpx", &reco_mcpx);
-            tree_reco[irawfile]->SetBranchAddress("mcpy", &reco_mcpy);
-            tree_reco[irawfile]->SetBranchAddress("mcpz", &reco_mcpz);
-            tree_reco[irawfile]->SetBranchAddress("mcen", &reco_mcen);
-            tree_reco[irawfile]->SetBranchAddress("mcstatus", &reco_mcstatus);
-            tree_reco[irawfile]->SetBranchAddress("edep_reco", &reco_edep_reco);
-            tree_reco[irawfile]->SetBranchAddress("edep_mc", &reco_edep_mc);
-            tree_reco[irawfile]->SetBranchAddress("edep_match", &reco_edep_match);
-            tree_reco[irawfile]->SetBranchAddress("pred_edep", &reco_pred_edep);
-            tree_reco[irawfile]->SetBranchAddress("pred_edep_cluster", &reco_pred_edep_cluster);
-            tree_reco[irawfile]->SetBranchAddress("ntrack_hits", &reco_ntrack_hits);
-            tree_reco[irawfile]->SetBranchAddress("cond_beta", &reco_cond_beta);
-            tree_reco[irawfile]->SetBranchAddress("cond_is_track", &reco_cond_is_track);
-            tree_reco[irawfile]->SetBranchAddress("matched_truth_pdgid", &reco_matched_truth_pdgid);
-            tree_reco[irawfile]->SetBranchAddress("matched_truth_edep_frac", &reco_matched_truth_edep_frac);
-            tree_reco[irawfile]->SetBranchAddress("npdg_comp", &reco_npdg_comp);
-            tree_reco[irawfile]->SetBranchAddress("pdg_comp_ids", reco_pdg_comp_ids);
+            std::array<map<int, EventTrackCategoryEnergySummary>, 2> event_category_summaries;
+            const int energy_modes = paired_pid ? 2 : 1;
+            for (int mode=0; mode<energy_modes; ++mode) for (const auto& truth : event_builder_mc_energy) {
+                event_energy_summaries[mode][truth.first];
+                event_category_summaries[mode][truth.first];
+            }
+
 
             for(int ientry=0; ientry<tree_reco[irawfile]->GetEntries(); ientry++){
                 if(rawfilenum==1 && tree_reco[irawfile]->GetEntries()>1000 && ientry%100000==0) cout << "reco event  " << ientry << "/" << tree_reco[irawfile]->GetEntries() << endl;
-                tree_reco[irawfile]->GetEntry(ientry);
+                if (paired_pid) {
+                    const auto& row = cached_reco_rows.at(ientry);
+                    reco_event=row.event; reco_cluster=row.cluster; reco_mcid=row.mcid;
+                    reco_mcpdg=row.pdg; reco_mccharge=row.charge; reco_ntrack_hits=row.tracks;
+                    reco_cond_is_track=row.cond_track; reco_matched_truth_pdgid=row.matched_pdg;
+                    reco_npdg_comp=row.npdg; reco_cond_beta=row.beta;
+                    reco_pred_edep=row.prediction; reco_pred_edep_cluster=row.cluster_prediction;
+                    reco_edep_reco=row.deposit; reco_matched_truth_edep_frac=row.matched_fraction;
+                    std::copy(row.composition.begin(), row.composition.end(), reco_pdg_comp_ids);
+                    reco_pid=row.pid;
+                } else tree_reco[irawfile]->GetEntry(ientry);
                 if(reco_cond_beta<beta_threshold) continue;
                 if(reco_pid.enabled){
                     if(reco_pid.pid < 0 || reco_pid.pid >= kNPidSpecies ||
@@ -1693,20 +2115,10 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                 }
                 if(event_builder_mc_energy.find(reco_event) == event_builder_mc_energy.end()) continue;
 
-                auto &sum = event_energy_summary[reco_event];
-                const double pred_reco = reco_pid.select(pandora_mode ? reco_pred_edep :
+                const double saved_reco = reco_pid.select(pandora_mode ? reco_pred_edep :
                     (reco_ntrack_hits>0 ? reco_pred_edep : reco_pred_edep_cluster));
-                const double pred_cond = reco_pid.select(pandora_mode ? reco_pred_edep :
+                const double saved_cond = reco_pid.select(pandora_mode ? reco_pred_edep :
                     (reco_cond_is_track!=0 ? reco_pred_edep : reco_pred_edep_cluster));
-                sum.pred_energy_reco_track += pred_reco;
-                sum.pred_energy_cond_track += pred_cond;
-                for(int ib=0; ib<n_beta_thresholds; ib++){
-                    double beta_min = 0.1 * ib;
-                    if(reco_cond_beta >= beta_min){
-                        sum.pred_energy_reco_track_beta[ib] += pred_reco;
-                        sum.pred_energy_cond_track_beta[ib] += pred_cond;
-                    }
-                }
                 auto &conf_sum = event_confusion_summary[reco_event];
                 const double f_main = reco_matched_truth_edep_frac < 0 ? 0.0 : (reco_matched_truth_edep_frac > 1.0 ? 1.0 : reco_matched_truth_edep_frac);
                 conf_sum.reco_energy_sum += reco_edep_reco;
@@ -1742,8 +2154,21 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                     track_charge_category = 6;
                 }
                 track_pdg_charge_vs_condbeta->Fill(track_charge_category - 0.5, reco_cond_beta);
-                const double pred_energy_for_category = pred_reco;
-                event_track_category_energy_summary[reco_event].pred_energy_sum[track_charge_category-1] += pred_energy_for_category;
+                for (int mode=0; mode<energy_modes; ++mode) {
+                auto &sum = event_energy_summaries[mode][reco_event];
+                const double pred_reco = paired_pid ? paired_readouts->select(reco_event, reco_cluster, saved_reco, mode) : energy_only ? readout_cache->select(reco_event, reco_cluster, saved_reco) : saved_reco;
+                const double pred_cond = paired_pid ? paired_readouts->select(reco_event, reco_cluster, saved_cond, mode) : energy_only ? readout_cache->select(reco_event, reco_cluster, saved_cond) : saved_cond;
+                sum.pred_energy_reco_track += pred_reco;
+                sum.pred_energy_cond_track += pred_cond;
+                for(int ib=0; ib<n_beta_thresholds; ib++){
+                    double beta_min = 0.1 * ib;
+                    if(reco_cond_beta >= beta_min){
+                        sum.pred_energy_reco_track_beta[ib] += pred_reco;
+                        sum.pred_energy_cond_track_beta[ib] += pred_cond;
+                    }
+                }
+                    event_category_summaries[mode][reco_event].pred_energy_sum[track_charge_category-1] += pred_reco;
+                }
 
                 auto true_itr = find(particledgValues.begin(), particledgValues.end(), reco_matched_truth_pdgid);
                 if(true_itr != particledgValues.end()){
@@ -1763,6 +2188,10 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                 }
             }
 
+            for (int mode=0; mode<energy_modes; ++mode) {
+                if (paired_pid) energy_histograms.activate(mode);
+                const auto& event_energy_summary = event_energy_summaries[mode];
+                const auto& event_track_category_energy_summary = event_category_summaries[mode];
             for(const auto &entry : event_energy_summary){
                 const EventRecoEnergySummary &sum = entry.second;
                 event_energy_sum_reco_track_distribution->Fill(sum.pred_energy_reco_track);
@@ -1776,14 +2205,14 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                 auto conf_it = event_confusion_summary.find(entry.first);
                 if(conf_it != event_confusion_summary.end() && conf_it->second.reco_energy_sum>0){
                     c_event = conf_it->second.confusion_weighted_sum / conf_it->second.reco_energy_sum;
-                    c_event_distribution->Fill(c_event);
+                    if (mode == 0) c_event_distribution->Fill(c_event);
                 }
 
                 auto truth_it = event_builder_mc_energy.find(entry.first);
                 if(truth_it == event_builder_mc_energy.end()) continue;
                 const double truth_energy = truth_it->second;
                 if(c_event>=0){
-                    c_event_vs_truth_energy->Fill(truth_energy, c_event);
+                    if (mode == 0) c_event_vs_truth_energy->Fill(truth_energy, c_event);
                 }
                 if(truth_energy<=0) continue;
                 const double residual_reco_track = (sum.pred_energy_reco_track - truth_energy) / truth_energy;
@@ -1808,7 +2237,8 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
             for(const auto& truth : event_builder_mc_energy){
                 const auto angle = jet_thrust_by_event.find(truth.first);
                 const auto reco = event_energy_summary.find(truth.first);
-                jet_resolution_summary.observe(irawfile, truth.first,
+                auto& summary = paired_pid ? *paired_jer[mode] : jet_resolution_summary;
+                summary.observe(summary_file_index, truth.first,
                     angle == jet_thrust_by_event.end() ? std::numeric_limits<double>::quiet_NaN() : angle->second,
                     reco == event_energy_summary.end() ? 0. : reco->second.pred_energy_reco_track,
                     truth.second);
@@ -1820,9 +2250,10 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                     event_pred_energy_sum_by_track_category[ic]->Fill(cat_sum.pred_energy_sum[ic]);
                 }
             }
+            }
         }
 
-        if(truth_pid.enabled) pid_clustering_diagnostics.finishFile();
+        if(truth_pid.enabled && !energy_only) pid_clustering_diagnostics.finishFile();
         filein[irawfile]->Close();
     }
 
@@ -1833,21 +2264,9 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
              << ", trackless charged fallback = " << pid_energy_fallback_counts->GetBinContent(2) << endl;
         for(int ip=0; ip<kNPidSpecies; ++ip)
             cout << "  predicted " << kPidSpecies[ip] << " = " << pid_prediction_counts->GetBinContent(ip+1) << endl;
-        if(legacy_input_files == 0){
-            // Both old panels now display the same saved PID-selected energy.
-            // Retain histogram names so existing plotting workflows still work.
-            event_energy_sum_reco_track_distribution->SetTitle("Event energy sum (representative PID);reconstructed event energy sum;entries");
-            event_energy_sum_cond_track_distribution->SetTitle("Event energy sum (representative PID);reconstructed event energy sum;entries");
-            event_energy2d_reco_track->SetTitle("Event energy (representative PID);truth event energy;reconstructed event energy");
-            event_energy2d_cond_track->SetTitle("Event energy (representative PID);truth event energy;reconstructed event energy");
-            for(int ib=0; ib<n_beta_thresholds; ++ib){
-                const string title = Form("Event energy sum (representative PID, #beta>=%.1f);reconstructed event energy sum;entries", 0.1*ib);
-                event_energy_sum_reco_track_distribution_beta[ib]->SetTitle(title.c_str());
-                event_energy_sum_cond_track_distribution_beta[ib]->SetTitle(title.c_str());
-            }
-        }
     }
 
+    const int initial_opt_fit = gStyle->GetOptFit();
     auto cedricRatio = [](double numerator, double denominator) {
         return denominator > 0.0 ? numerator / denominator : -1.0;
     };
@@ -2037,6 +2456,195 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     legend_comp_per_e->Draw("same");
 
     
+    gStyle->SetOptFit(1111);
+    TCanvas *canvas_clustering_quality = new TCanvas("canvas_clustering_quality","canvas_clustering_quality",1800,1800);
+    canvas_clustering_quality->Divide(2,2);
+    canvas_clustering_quality->cd(1);
+    clustering_correct_ratio_by_particle->SetMinimum(0);
+    clustering_correct_ratio_by_particle->SetMaximum(1.05);
+    clustering_correct_ratio_by_particle->SetStats(0);
+    clustering_correct_ratio_by_particle->Draw("E1");
+    canvas_clustering_quality->cd(2);
+    clustering_composition_matrix->SetStats(0);
+    gPad->SetLogz();
+    clustering_composition_matrix->SetMarkerSize(2);
+    clustering_composition_matrix->Draw("colz text");
+    canvas_clustering_quality->cd(3);
+    track_pdg_charge_relation_ratio->SetStats(0);
+    track_pdg_charge_relation_ratio->SetMinimum(0);
+    track_pdg_charge_relation_ratio->SetMaximum(1.05);
+    track_pdg_charge_relation_ratio->Draw("HIST");
+    canvas_clustering_quality->cd(4);
+    track_pdg_charge_vs_condbeta->SetStats(0);
+    track_pdg_charge_vs_condbeta->Draw("colz");
+
+    TCanvas *canvas_track_charge_vs_truth_particle = new TCanvas("canvas_track_charge_vs_truth_particle","canvas_track_charge_vs_truth_particle",1200,800);
+    canvas_track_charge_vs_truth_particle->cd();
+    track_charge_vs_truth_particle->SetStats(0);
+    gPad->SetLogz();
+    track_charge_vs_truth_particle->SetMarkerSize(2);
+    track_charge_vs_truth_particle->Draw("colz text");
+
+    TCanvas *canvas_c_event = new TCanvas("canvas_c_event","canvas_c_event",1400,500);
+    canvas_c_event->Divide(2,1);
+    canvas_c_event->cd(1);
+    c_event_distribution->SetStats(1);
+    c_event_distribution->Draw("HIST");
+    canvas_c_event->cd(2);
+    c_event_vs_truth_energy->SetStats(0);
+    c_event_vs_truth_energy->Draw("colz");
+
+    TCanvas *canvas_pid = nullptr;
+    if(pid_input_files > 0){
+        canvas_pid = new TCanvas("canvas_pid", "Representative PID diagnostics", 1800, 1200);
+        canvas_pid->Divide(2,2);
+        canvas_pid->cd(1);
+        pid_confusion_reco->SetStats(0);
+        pid_confusion_reco->Draw("COLZ TEXT");
+        canvas_pid->cd(2);
+        pid_energy_head_vs_prediction->SetStats(0);
+        pid_energy_head_vs_prediction->Draw("COLZ TEXT");
+        canvas_pid->cd(3);
+        pid_prediction_counts->Draw("HIST");
+        canvas_pid->cd(4);
+        pid_energy_fallback_counts->Draw("HIST");
+    }
+
+    TCanvas *canvas_head_regression_pid = nullptr;
+    TCanvas *canvas_head_regression_truth = nullptr;
+    if(has_five_head_regression){
+        cout << "Five-head regression grids: " << head_regression_matched_pairs
+             << " matched truth/cluster pairs (same t matching and cuts as regression_cond_cluster)" << endl;
+        for(int ih=0; ih<kNPidSpecies; ++ih)
+            cout << "  " << kPidSpecies[ih] << ": " << head_regression_unavailable[ih]
+                 << " unavailable candidate energies skipped" << endl;
+        auto draw_head_grid = [&](const char* name, const char* title,
+                                  TH2F* histograms[kNPidSpecies][kNHeadRegressionColumns]) {
+            TCanvas* canvas = new TCanvas(name, title, 3000, 2250);
+            canvas->Divide(kNHeadRegressionColumns, kNPidSpecies, 0.002, 0.002);
+            for(int ih=0; ih<kNPidSpecies; ++ih){
+                for(int ic=0; ic<kNHeadRegressionColumns; ++ic){
+                    canvas->cd(ih*kNHeadRegressionColumns + ic + 1);
+                    gPad->SetLeftMargin(0.15);
+                    gPad->SetRightMargin(0.15);
+                    gPad->SetBottomMargin(0.14);
+                    gPad->SetTopMargin(0.10);
+                    TH2F* histogram = histograms[ih][ic];
+                    histogram->SetStats(0);
+                    histogram->GetXaxis()->SetTitleSize(0.045);
+                    histogram->GetYaxis()->SetTitleSize(0.045);
+                    histogram->GetXaxis()->SetLabelSize(0.04);
+                    histogram->GetYaxis()->SetLabelSize(0.04);
+                    histogram->GetYaxis()->SetTitleOffset(1.5);
+                    histogram->Draw("COLZ");
+                    TLine diagonal(0, 0, energyMax, energyMax);
+                    diagonal.SetLineStyle(2);
+                    diagonal.SetLineColor(kGray+2);
+                    diagonal.DrawClone();
+                    TLatex label;
+                    label.SetNDC();
+                    label.SetTextSize(0.035);
+                    label.DrawLatex(0.18, 0.83, Form("N = %.0f", histogram->GetEntries()));
+                }
+            }
+            return canvas;
+        };
+        canvas_head_regression_pid = draw_head_grid("canvas_head_regression_pid",
+            "Five energy heads by predicted PID", head_regression_pid);
+        canvas_head_regression_truth = draw_head_grid("canvas_head_regression_truth",
+            "Five energy heads by matched truth particle", head_regression_truth);
+    }
+
+    const bool split_pid = pid_input_files > 0;
+    if (split_pid && legacy_input_files > 0)
+        throw std::runtime_error("Paired PID energy analysis requires a uniform representative-PID input list");
+    vector<pair<string, TCanvas*>> common_canvases = {
+        {"efficiency_purity_cedric", compare_cedric},
+        {"efficiency_purity", compare},
+        {"category", canvas_clustering_quality}
+    };
+    if (canvas_pid) common_canvases.push_back({"pid_diagnostics", canvas_pid});
+    if (canvas_head_regression_pid) common_canvases.push_back({"regression_heads_pid", canvas_head_regression_pid});
+    if (canvas_head_regression_truth) common_canvases.push_back({"regression_heads_truth", canvas_head_regression_truth});
+    if (split_pid && !energy_only) {
+        const auto diagnostics = pid_clustering_diagnostics.draw(pid_confusion_reco);
+        common_canvases.insert(common_canvases.end(), diagnostics.begin(), diagnostics.end());
+    }
+    if (saving_canvas && !energy_only)
+        for (const auto& item : common_canvases)
+            saveCanvas(item.second, imageDirectory, item.first);
+
+    auto write_metadata = [&](const char* mode, bool selected) {
+        TNamed("result_scope", selected ? "Selected-energy dependent histograms and plots" :
+            (split_pid ? "Common clustering, PID and raw energy-head candidate diagnostics" : "Legacy analysis")).Write();
+        TNamed("energy_readout", mode).Write();
+        TNamed("method", analysis_method.c_str()).Write();
+        TParameter<int>("beam_energy_GeV", qq_energy).Write();
+        TParameter<double>("beta_threshold", beta_threshold).Write();
+    };
+    fileout.cd();
+    write_metadata(energy_only ? readout_cache->mode.c_str() : (split_pid ? "common" : "saved"), energy_only);
+    if (!energy_only) {
+        for (const auto& item : common_canvases) item.second->Write(item.first.c_str());
+        if (split_pid) {
+            pid_clustering_diagnostics.writeOverlapHistograms();
+            TNamed definitions("pid_clustering_diagnostics_definitions",
+                Form("PID matrix: per reco cluster, dominant saved truth, unknown truth retained. "
+                     "Success: per known input truth object in five PID classes from prediction; "
+                     "saved t match after beta >= %g; efficiency=edep_match/edep, purity=edep_match/edep_reco. "
+                     "Cluster OK requires efficiency >= %g and purity >= %g. "
+                     "Unmatched and undefined overlap/PID remain in the denominator. "
+                     "Overlap matrices: deposited input energy, including unknown/unclustered, Other bins aggregate omitted IDs; "
+                     "sample limit %d across files. Clustering diagnostics use original definitions, not Cedric.",
+                     beta_threshold, pid_cluster_success_efficiency, pid_cluster_success_purity, pid_overlap_event_limit));
+            definitions.Write();
+        }
+    }
+    if (!energy_only) {
+        vector<pid_cluster::Row> clustering_rows;
+        for (int ip=0; ip<nParticle; ++ip) {
+            const int particle = !kaon_neutron && ip == 3 ? 5 : ip;
+            pid_cluster::Row original;
+            original.particle = particle;
+            original.efficiency = pid_cluster::histogramMetric(*efficiency[ip]);
+            original.purity = pid_cluster::histogramMetric(*purity[ip]);
+            clustering_rows.push_back(original);
+            pid_cluster::Row cedric;
+            cedric.definition = 1; cedric.particle = particle;
+            cedric.efficiency.numerator = cedric_eff_num[ip];
+            cedric.efficiency.denominator = cedric_eff_den[ip];
+            cedric.efficiency.entries = efficiency_cedric[ip]->GetEntries();
+            cedric.purity.numerator = cedric_pur_num[ip];
+            cedric.purity.denominator = cedric_pur_den[ip];
+            cedric.purity.entries = purity_cedric[ip]->GetEntries();
+            clustering_rows.push_back(cedric);
+        }
+        const std::string common_source = common_staging
+            ? picDirectory + "/" + pid_jer::kSummaryName + ":/clustering/diagnostics" : output_path;
+        pid_cluster::write(result_directory, qq_energy,
+            pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco"),
+            beta_threshold, clustering_rows, common_source);
+    }
+
+    auto render_energy = [&](const std::string& mode) {
+        // Each bank is drawn/rebinned once with the same starting ROOT style.
+        gStyle->SetOptFit(initial_opt_fit);
+        gStyle->SetOptStat("rme");
+        gStyle->SetStatX(0.55); gStyle->SetStatY(0.9);
+        gStyle->SetStatH(0.3); gStyle->SetStatW(0.4);
+        if(pid_input_files > 0 && legacy_input_files == 0){
+            // Both panels display the same selected PID energy for this mode.
+            // Retain histogram names so existing plotting workflows still work.
+            event_energy_sum_reco_track_distribution->SetTitle("Event energy sum (representative PID);reconstructed event energy sum;entries");
+            event_energy_sum_cond_track_distribution->SetTitle("Event energy sum (representative PID);reconstructed event energy sum;entries");
+            event_energy2d_reco_track->SetTitle("Event energy (representative PID);truth event energy;reconstructed event energy");
+            event_energy2d_cond_track->SetTitle("Event energy (representative PID);truth event energy;reconstructed event energy");
+            for(int ib=0; ib<n_beta_thresholds; ++ib){
+                const string title = Form("Event energy sum (representative PID, #beta>=%.1f);reconstructed event energy sum;entries", 0.1*ib);
+                event_energy_sum_reco_track_distribution_beta[ib]->SetTitle(title.c_str());
+                event_energy_sum_cond_track_distribution_beta[ib]->SetTitle(title.c_str());
+            }
+        }
     TCanvas *canvas_energy = new TCanvas("canvas_energy","canvas_energy",2560,1440);
     canvas_energy->Divide(nParticle,2);
     canvas_energy->cd();
@@ -2764,6 +3372,7 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
                     10,
                     0.0,
                     1.0);
+                hframe->SetDirectory(nullptr);
                 hframe->SetStats(0);
                 hframe->Draw();
             }
@@ -2922,43 +3531,6 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
     event_energy2d_cond_track->SetAxisRange(0,histo_energy_range_max_y, "Y");
     event_energy2d_cond_track->Draw("colz");
 
-    TCanvas *canvas_clustering_quality = new TCanvas("canvas_clustering_quality","canvas_clustering_quality",1800,1800);
-    canvas_clustering_quality->Divide(2,2);
-    canvas_clustering_quality->cd(1);
-    clustering_correct_ratio_by_particle->SetMinimum(0);
-    clustering_correct_ratio_by_particle->SetMaximum(1.05);
-    clustering_correct_ratio_by_particle->SetStats(0);
-    clustering_correct_ratio_by_particle->Draw("E1");
-    canvas_clustering_quality->cd(2);
-    clustering_composition_matrix->SetStats(0);
-    gPad->SetLogz();
-    clustering_composition_matrix->SetMarkerSize(2);
-    clustering_composition_matrix->Draw("colz text");
-    canvas_clustering_quality->cd(3);
-    track_pdg_charge_relation_ratio->SetStats(0);
-    track_pdg_charge_relation_ratio->SetMinimum(0);
-    track_pdg_charge_relation_ratio->SetMaximum(1.05);
-    track_pdg_charge_relation_ratio->Draw("HIST");
-    canvas_clustering_quality->cd(4);
-    track_pdg_charge_vs_condbeta->SetStats(0);
-    track_pdg_charge_vs_condbeta->Draw("colz");
-
-    TCanvas *canvas_track_charge_vs_truth_particle = new TCanvas("canvas_track_charge_vs_truth_particle","canvas_track_charge_vs_truth_particle",1200,800);
-    canvas_track_charge_vs_truth_particle->cd();
-    track_charge_vs_truth_particle->SetStats(0);
-    gPad->SetLogz();
-    track_charge_vs_truth_particle->SetMarkerSize(2);
-    track_charge_vs_truth_particle->Draw("colz text");
-
-    TCanvas *canvas_c_event = new TCanvas("canvas_c_event","canvas_c_event",1400,500);
-    canvas_c_event->Divide(2,1);
-    canvas_c_event->cd(1);
-    c_event_distribution->SetStats(1);
-    c_event_distribution->Draw("HIST");
-    canvas_c_event->cd(2);
-    c_event_vs_truth_energy->SetStats(0);
-    c_event_vs_truth_energy->Draw("colz");
-
     TCanvas *canvas_event_pred_energy_by_track_category = new TCanvas("canvas_event_pred_energy_by_track_category","canvas_event_pred_energy_by_track_category",1800,900);
     canvas_event_pred_energy_by_track_category->Divide(3,2);
     for(int ic=0; ic<6; ic++){
@@ -3045,176 +3617,75 @@ void efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
 
 
     
-    TCanvas *canvas_pid = nullptr;
-    if(pid_input_files > 0){
-        canvas_pid = new TCanvas("canvas_pid", "Representative PID diagnostics", 1800, 1200);
-        canvas_pid->Divide(2,2);
-        canvas_pid->cd(1);
-        pid_confusion_reco->SetStats(0);
-        pid_confusion_reco->Draw("COLZ TEXT");
-        canvas_pid->cd(2);
-        pid_energy_head_vs_prediction->SetStats(0);
-        pid_energy_head_vs_prediction->Draw("COLZ TEXT");
-        canvas_pid->cd(3);
-        pid_prediction_counts->Draw("HIST");
-        canvas_pid->cd(4);
-        pid_energy_fallback_counts->Draw("HIST");
-    }
+    vector<pair<string, TCanvas*>> energy_canvases = {
+        {"regression_cond_cluster", canvas_energy},
+        {"energy_scan", canvas_energy_scan},
+        {"energy_resolution_scan", canvas_energy_resolution_scan},
+        {"pfa_category_energy_regression", canvas_truth_phys_energy_regression},
+        {"energy_regression", canvas_energy_regression_result},
+        {"dijet_energy_resolution", canvas_event_energy_resolution},
+        {"dijet_energy_resolution_beta", canvas_event_energy_sum_by_beta},
+        {"dijet_scatter", canvas_event_energy_2d},
+        {"category_energy", canvas_event_pred_energy_by_track_category}
+    };
+    if (cv_rms90_abscostheta)
+        energy_canvases.push_back({Form("rms90_vs_abs_costheta_truthBin%d_%.0f-%.0fGeV",
+            kRms90VsAbsCosThetaTruthEnergyBin,
+            kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin],
+            kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin + 1]), cv_rms90_abscostheta});
 
-    TCanvas *canvas_head_regression_pid = nullptr;
-    TCanvas *canvas_head_regression_truth = nullptr;
-    if(has_five_head_regression){
-        cout << "Five-head regression grids: " << head_regression_matched_pairs
-             << " matched truth/cluster pairs (same t matching and cuts as regression_cond_cluster)" << endl;
-        for(int ih=0; ih<kNPidSpecies; ++ih)
-            cout << "  " << kPidSpecies[ih] << ": " << head_regression_unavailable[ih]
-                 << " unavailable candidate energies skipped" << endl;
-        auto draw_head_grid = [&](const char* name, const char* title,
-                                  TH2F* histograms[kNPidSpecies][kNHeadRegressionColumns]) {
-            TCanvas* canvas = new TCanvas(name, title, 3000, 2250);
-            canvas->Divide(kNHeadRegressionColumns, kNPidSpecies, 0.002, 0.002);
-            for(int ih=0; ih<kNPidSpecies; ++ih){
-                for(int ic=0; ic<kNHeadRegressionColumns; ++ic){
-                    canvas->cd(ih*kNHeadRegressionColumns + ic + 1);
-                    gPad->SetLeftMargin(0.15);
-                    gPad->SetRightMargin(0.15);
-                    gPad->SetBottomMargin(0.14);
-                    gPad->SetTopMargin(0.10);
-                    TH2F* histogram = histograms[ih][ic];
-                    histogram->SetStats(0);
-                    histogram->GetXaxis()->SetTitleSize(0.045);
-                    histogram->GetYaxis()->SetTitleSize(0.045);
-                    histogram->GetXaxis()->SetLabelSize(0.04);
-                    histogram->GetYaxis()->SetLabelSize(0.04);
-                    histogram->GetYaxis()->SetTitleOffset(1.5);
-                    histogram->Draw("COLZ");
-                    TLine diagonal(0, 0, energyMax, energyMax);
-                    diagonal.SetLineStyle(2);
-                    diagonal.SetLineColor(kGray+2);
-                    diagonal.DrawClone();
-                    TLatex label;
-                    label.SetNDC();
-                    label.SetTextSize(0.035);
-                    label.DrawLatex(0.18, 0.83, Form("N = %.0f", histogram->GetEntries()));
-                }
+        if (saving_canvas)
+            for (const auto& item : energy_canvases)
+                saveCanvas(item.second, imageDirectory, item.first, mode);
+        for (const auto& item : energy_canvases) item.second->Write(item.first.c_str());
+        canvas_confusion_eval->Write("confusion_term_evaluation");
+        canvas_cluster_energy_resolution_scan->Write("cluster_energy_resolution_scan");
+    };
+
+    if (paired_pid) {
+        for (int mode=0; mode<2; ++mode) {
+            energy_histograms.activate(mode);
+            const std::string mode_directory = common_staging->path + "/" + paired_modes[mode];
+            gSystem->mkdir(mode_directory.c_str(), true);
+            {
+                TFile selected((mode_directory + "/energy_regression_result.root").c_str(), "RECREATE");
+                if (selected.IsZombie()) throw std::runtime_error("Cannot stage paired energy diagnostics");
+                write_metadata(paired_modes[mode], true);
+                render_energy(paired_modes[mode]);
+                energy_histograms.write(selected, mode);
+                selected.Close();
             }
-            return canvas;
-        };
-        canvas_head_regression_pid = draw_head_grid("canvas_head_regression_pid",
-            "Five energy heads by predicted PID", head_regression_pid);
-        canvas_head_regression_truth = draw_head_grid("canvas_head_regression_truth",
-            "Five energy heads by matched truth particle", head_regression_truth);
-    }
-
-    vector<pair<string, TCanvas*>> pid_clustering_canvases;
-    if(pid_input_files > 0)
-        pid_clustering_canvases = pid_clustering_diagnostics.draw(pid_confusion_reco);
-
-    if(saving_canvas){  // saving canvases
-        gSystem->mkdir(picDirectory.c_str(), true);
-        for(const auto& item : pid_clustering_canvases)
-            saveCanvas(item.second, picDirectory, item.first);
-
-        if(canvas_pid) saveCanvas(canvas_pid, picDirectory, "pid_diagnostics");
-        saveCanvas(compare_cedric, picDirectory, "efficiency_purity_cedric");
-        saveCanvas(compare, picDirectory, "efficiency_purity");
-        // saveCanvas(compare2d, picDirectory, Form("efficiency_purity_vs_energy%s", suffix.c_str()));
-        // saveCanvas(compare_energy, picDirectory, Form("per_energy%s", suffix.c_str()));
-        // saveCanvas(compare_energy_normalized, picDirectory, Form("per_energy_norm%s", suffix.c_str()));
-        saveCanvas(canvas_energy, picDirectory, "regression_cond_cluster");
-        if(canvas_head_regression_pid) saveCanvas(canvas_head_regression_pid, picDirectory, "regression_heads_pid");
-        if(canvas_head_regression_truth) saveCanvas(canvas_head_regression_truth, picDirectory, "regression_heads_truth");
-        saveCanvas(canvas_energy_scan, picDirectory, "energy_scan");
-        saveCanvas(canvas_energy_resolution_scan, picDirectory, "energy_resolution_scan");
-        // saveCanvas(canvas_beta_energy, picDirectory, "beta_vs_energy");
-        // saveCanvas(canvas_beta_ediff, picDirectory, "beta_vs_energy_ediff");
-        // saveCanvas(canvas_beta_mcen, picDirectory, "beta_vs_energy_mcen");
-        saveCanvas(canvas_truth_phys_energy_regression, picDirectory, "pfa_category_energy_regression");
-        saveCanvas(canvas_energy_regression_result, picDirectory, "energy_regression");
-        if(cv_rms90_abscostheta){
-            saveCanvas(cv_rms90_abscostheta, picDirectory, Form(
-                "rms90_vs_abs_costheta_truthBin%d_%.0f-%.0fGeV",
-                kRms90VsAbsCosThetaTruthEnergyBin,
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin],
-                kTruthEnergyBinEdges[kRms90VsAbsCosThetaTruthEnergyBin + 1]));
+            paired_jer[mode]->write(mode_directory, saving_canvas, imageDirectory, paired_modes[mode]);
+            TFile summary((mode_directory + "/" + pid_jer::kSummaryName).c_str(), "UPDATE");
+            if (summary.IsZombie()) throw std::runtime_error("Cannot stage paired readout metadata");
+            nlohmann::json recovery = {
+                {"source_summary", picDirectory + "/" + pid_jer::kSummaryName + ":/" + paired_modes[mode]},
+                {"energy_readout", paired_modes[mode]},
+                {"single_track_charged_clusters", paired_eligible},
+                {"h5_recovered_clusters", paired_recovered},
+                {"recovery", "For h5_recovered_clusters: original H5 measured feature columns 7:10; input identity, float32 event truth/angle and all saved input rows validated. Other eligible clusters use the explicitly recorded measured-track policy and mass hypotheses."}
+            };
+            TObjString(recovery.dump().c_str()).Write("readout_recovery");
+            summary.Close();
         }
-        saveCanvas(canvas_event_energy_resolution, picDirectory, "dijet_energy_resolution");
-        saveCanvas(canvas_event_energy_sum_by_beta, picDirectory, "dijet_energy_resolution_beta");
-        saveCanvas(canvas_event_energy_2d, picDirectory, "dijet_scatter");
-        saveCanvas(canvas_clustering_quality, picDirectory, "category");
-        // saveCanvas(canvas_track_charge_vs_truth_particle, picDirectory, "track_charge_vs_truth_particle");
-        // saveCanvas(canvas_c_event, picDirectory, "c_event_distribution");
-        saveCanvas(canvas_event_pred_energy_by_track_category, picDirectory, "category_energy");
-        // saveCanvas(canvas_confusion_eval, picDirectory, "confusion_term_evaluation");
+    } else {
+        fileout.cd();
+        render_energy(energy_only ? readout_cache->mode : "");
     }
     fileout.cd();
-    for(const auto& item : pid_clustering_canvases) item.second->Write(item.first.c_str());
-    if(pid_input_files > 0){
-        pid_clustering_diagnostics.writeOverlapHistograms();
-        TNamed definitions("pid_clustering_diagnostics_definitions",
-            Form("PID matrix: per reco cluster, dominant saved truth, unknown truth retained. "
-                 "Success: per known input truth object in five PID classes from prediction; "
-                 "saved t match after beta >= %g; efficiency=edep_match/edep, purity=edep_match/edep_reco. "
-                 "Cluster OK requires efficiency >= %g and purity >= %g. "
-                 "Unmatched and undefined overlap/PID remain in the denominator. "
-                 "Overlap matrices: deposited input energy, including unknown/unclustered, Other bins aggregate omitted IDs; "
-                 "sample limit %d across files. Clustering diagnostics use original definitions, not Cedric.",
-                 beta_threshold, pid_cluster_success_efficiency, pid_cluster_success_purity, pid_overlap_event_limit));
-        definitions.Write();
+    TIter next_object(fileout.GetList());
+    while (auto* object = next_object()) {
+        const bool dependent = pidReadoutDependentHistogram(object->GetName());
+        if (!split_pid || dependent == energy_only) object->Write();
     }
-    if(canvas_pid) canvas_pid->Write("pid_diagnostics");
-    if(canvas_head_regression_pid) canvas_head_regression_pid->Write("regression_heads_pid");
-    if(canvas_head_regression_truth) canvas_head_regression_truth->Write("regression_heads_truth");
-    if(0){
-        compare_cedric->Write(Form("efficiency_purity_cedric"));
-        compare->Write(Form("efficiency_purity"));
-        // compare2d->Write(Form("%s/efficiency_purity_vs_energy%s",suffix.c_str()));
-        // compare_energy->Write(Form("%s/per_energy%s",suffix.c_str()));
-        // compare_energy_normalized->Write(Form("%s/per_energy_norm%s",suffix.c_str()));
-        canvas_energy->Write(Form("energy_truth_vs_pred"));
-        canvas_energy_scan->Write(Form("energy_scan"));
-        canvas_energy_resolution_scan->Write(Form("energy_resolution_scan"));
-        // canvas_beta_energy->Write(Form("beta_vs_energy"));
-        // canvas_beta_ediff->Write(Form("beta_vs_energy_ediff"));
-        // canvas_beta_mcen->Write(Form("beta_vs_energy_mcen"));
-        canvas_truth_phys_energy_regression->Write(Form("truth_phys_category_energy_regression"));
-        canvas_energy_regression_result->Write(Form("energy_regression"));
-        canvas_event_energy_resolution->Write(Form("event_energy_resolution_scan"));
-        canvas_event_energy_sum_by_beta->Write(Form("event_energy_sum_by_beta"));
-        canvas_event_energy_2d->Write(Form("event_energy_truth_vs_pred_2d"));
-        canvas_clustering_quality->Write(Form("reco_clustering_quality"));
-        canvas_track_charge_vs_truth_particle->Write(Form("track_charge_vs_truth_particle"));
-        canvas_c_event->Write(Form("c_event_distribution"));
-        canvas_event_pred_energy_by_track_category->Write(Form("event_pred_energy_sum_by_track_category"));
-        canvas_confusion_eval->Write(Form("confusion_term_evaluation"));
+    fileout.Close();
+    if (!energy_only) {
+        if (paired_pid) {
+            savePairedPidEnergyReadouts(common_staging->path, picDirectory, saving_canvas);
+        } else {
+            jet_resolution_summary.write(picDirectory, saving_canvas);
+        }
     }
-    
-
-    jet_resolution_summary.write(picDirectory, saving_canvas);
-    // Keep a compact, model-specific copy next to the event summary, so the
-    // comparison macro need not reopen all hit trees or the legacy result path.
-    vector<pid_cluster::Row> clustering_rows;
-    for (int ip=0; ip<nParticle; ++ip) {
-        const int particle = !kaon_neutron && ip == 3 ? 5 : ip;
-        pid_cluster::Row original;
-        original.particle = particle;
-        original.efficiency = pid_cluster::histogramMetric(*efficiency[ip]);
-        original.purity = pid_cluster::histogramMetric(*purity[ip]);
-        clustering_rows.push_back(original);
-        pid_cluster::Row cedric;
-        cedric.definition = 1; cedric.particle = particle;
-        cedric.efficiency.numerator = cedric_eff_num[ip];
-        cedric.efficiency.denominator = cedric_eff_den[ip];
-        cedric.efficiency.entries = efficiency_cedric[ip]->GetEntries();
-        cedric.purity.numerator = cedric_pur_num[ip];
-        cedric.purity.denominator = cedric_pur_den[ip];
-        cedric.purity.entries = purity_cedric[ip]->GetEntries();
-        clustering_rows.push_back(cedric);
-    }
-    pid_cluster::write(picDirectory, qq_energy,
-        pandora_mode ? "pandora" : (use_truth_clustering ? "truth_clustering" : "reco"),
-        beta_threshold, clustering_rows, output_path);
-    fileout.Write();
 }
 
 // Public entry point called by the native executable.
@@ -3224,4 +3695,16 @@ void efficiency_purity_check_reco_effpur_contiribution_pid(
     const char* output_directory = nullptr){
     efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
         input_file, pandora_mode, output_directory);
+}
+
+// Internal native subprocess entry; the Python helper stages and publishes
+// both modes together after each pass has successfully completed.
+void efficiency_purity_check_pid_energy_readout(
+    const char* readout_cache, const char* energy_readout, const char* output_directory,
+    const char* image_directory) {
+    if (!readout_cache || !readout_cache[0] || !output_directory || !output_directory[0])
+        throw std::runtime_error("Paired energy pass requires cache and output directory");
+    PidEnergyReadoutCache cache(readout_cache, energy_readout);
+    efficiency_purity_check_reco_effpur_contiribution_w_Cedric(
+        nullptr, false, output_directory, &cache, image_directory);
 }

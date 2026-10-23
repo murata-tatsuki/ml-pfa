@@ -13,6 +13,7 @@
 
 - CMake 3.16+
 - ROOT が `find_package(ROOT CONFIG)` で見つかること（`thisroot.sh` を source したシェルで CMake を実行するのが確実）
+- PID版はメタデータ検証に `nlohmann/json.hpp` を使用します（headerのみの依存）。
 
 ## ビルド（推奨: `make` のみ）
 
@@ -55,6 +56,80 @@ make efficiency_purity_contribution_pid
 `qq_energy`・`use_truth_clustering` 等は引き続きPIDソース内の設定で、
 入力パスや出力先から自動判定しません。変更後は再度 `make` してください。
 相対入力パスを使う場合は従来どおり `macro/` から実行します。
+
+### track 置換あり・なしの保存
+
+PID版は同じクラスタ所属・予測PID・イベントから、次の2方式を保存します。
+
+- `raw_head`：単一trackの荷電clusterも、選択済みGNN energy headを使う。
+- `track_replaced`：予測が荷電種でtrackが正確に1本の場合だけ、カロリメータ入口の測定運動量とPID質量から `sqrt(p^2+m_PID^2)` を使う。
+
+中性・trackなし・複数trackの採用値、クラスタ所属、予測PIDは変えません。画像は形式ごとのディレクトリ内で方式を分けます。efficiency/purity、PID・clustering診断、保存された5つの生headの比較図は共通で、各形式の直下に一度だけ保存します。
+
+```text
+出力先/
+  png/                            pdf/・eps/も同じ構成
+    共通図.png                    efficiency/purity・clustering等
+    raw_head/                     track置換なしのenergy図
+    track_replaced/               track置換ありのenergy図
+  pdf/
+  eps/
+  jet_energy_resolution_summary.root
+  jet_energy_resolution_summary.txt
+```
+
+各energy・clusteringのデータはROOT 1個とtxt 1個にまとめます。ROOTのトップschemaは `pid-analysis-summary-2` です。以下はファイルシステムのディレクトリではなく、単一ROOTファイル内部のグループです。
+
+```text
+jet_energy_resolution_summary.root の内部
+  clustering/                 共通のefficiency/purity集計・定義
+    diagnostics/              共通の詳細ヒストグラム・canvas
+  raw_head/                   置換なしのイベント・JER・定義
+    diagnostics/              置換なしの回帰・dijet等の詳細結果
+  track_replaced/             置換ありのイベント・JER・定義
+    diagnostics/              置換ありの回帰・dijet等の詳細結果
+```
+
+txtも1個とし、`[clustering]`・`[raw_head]`・`[track_replaced]` の節で集計を区別します。共通集計は一度だけ保持し、元の詳細ヒストグラムとcanvasもROOT内部に残します。JERだけのhelper実行では、同じ入力・イベント・beta条件の既存統合ROOTから詳細結果を保持します。
+
+通常のPID解析では、元ROOTを1ファイルずつ開き、同じtreeの行から共通診断と両方式のenergy診断を同時に集計します。energyに依存するヒストグラムを2組持ち、共通のefficiency/purity・PID・clustering診断は1回だけ集計します。全入力ROOTをメモリへ保持する方式ではありません。
+
+測定track energyが保存されたROOTは、保存済み値と生head値から両方式を作ります。旧ROOTに測定運動量がない場合は、読み取り済みの必要な行をファイル単位の一時bridgeへ渡し、保存された入力来歴と元H5の `feature[:,7:10]`・`pid_seed_input_row` の対応をPythonで検証して復元します。この復元のために元ROOTを開き直すことはありません。MC運動量で代用せず、対応を確認できなければエラーになります。
+
+解析終了時は `save_pid_energy_readouts.py` で完成済みの共通・方式別診断を統合し、ROOT・txtと画像を反映します。元の推論ROOT/H5は変更せず、bridgeや統合前のROOTは削除します。Python環境には ROOT・uproot・NumPy・h5py・Awkward が必要です。必要なら `PID_READOUT_PYTHON=/path/to/python` で実行環境を指定します。
+
+既存summaryから両版のJER・イベント応答を統合出力する場合、efficiency/purity解析やGNN推論を繰り返す必要はありません。統合ROOT・従来の採用値summary・従来の方式別summaryを入力にできます。
+
+```bash
+python3 -B save_pid_energy_readouts.py \
+  --summary figures/nnqq2M_fixed_uds_5head_pid/40GeV/reco/jet_energy_resolution_summary.root \
+  --draw
+```
+
+回帰・dijet等のenergy診断も作成する場合は、上記に `--analysis-executable build/efficiency_purity_contribution_pid` を付けます。実行ファイルの `qq_energy` は入力summaryと一致している必要があります。clustering方式はsummaryから取得します。既存の個別ROOT・txtを一括削除する処理は含みません。統合後の入力を優先して読み込みます。
+
+既存モデルの全energy・両clusteringへ追加する例です。旧ROOTからの測定運動量の復元は元H5も読むため、保存済み値を使う通常の作図より時間がかかります。
+
+```bash
+pid_base=figures/nnqq2M_fixed_uds_5head_pid
+for pid_energy in 40 91 200 350 500; do
+  for pid_method in reco truth_clustering; do
+    python3 -B save_pid_energy_readouts.py \
+      --summary "$pid_base/${pid_energy}GeV/$pid_method/jet_energy_resolution_summary.root" \
+      --draw || exit
+  done
+done
+```
+
+multi-energy比較は、既存の5引数に続く第6引数で方式を指定します。既定値は `"both"` で、全energy・reco/truth_clusteringの両版summaryが必要です。
+
+```bash
+root -l -b -q 'plot_jet_energy_resolution_pid.cxx()'
+# 第6引数：both / raw_head / track_replaced / saved
+# saved は従来の親summaryを使う明示的な互換モード
+```
+
+energy比較図22種（event energy ratioの全5energyパネル図をcentral・forward・inclusiveの3種追加）は `comparison/{png,pdf,eps}/{raw_head,track_replaced}/`、共通clustering比較4図は `comparison/{png,pdf,eps}/` に保存します。データは `comparison/jet_energy_resolution_comparison.root` 1個です。ROOT内の `raw_head/`・`track_replaced/` に方式別結果、ROOT直下に共通のclustering比較を保存します。第2引数で出力先を指定した場合も同じ構成です。各energyの統合ROOTを優先し、従来の方式別summary・clustering_summaryも読み込めます。mode定義・beta条件の混在を拒否します。Pandoraは両方式で同じモデル共通参照を使用します。
 
 通常の `make` でも既存版とPID版の両実行ファイルをビルドします。
 PID版の実行ファイル、オブジェクト、依存関係などはすべて `build/` 内に生成されます。

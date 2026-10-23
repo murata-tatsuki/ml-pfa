@@ -21,6 +21,7 @@ struct RatioSample {
     std::array<std::unique_ptr<TH1F>,3> hist;
     Long64_t invalid_energy = 0, invalid_angle = 0;
     std::string path;
+    std::string summary_directory;
     bool present = false;
 };
 using Ratios = std::array<std::array<RatioSample,5>,3>;
@@ -55,6 +56,9 @@ bool loadRatios(RatioSample& result, const Sample& sample, int method, int energ
     TDirectory::TContext context;
     TFile file(result.path.c_str(), "READ");
     if (file.IsZombie()) throw std::runtime_error("Cannot read "+result.path);
+    TDirectory* source = sample.summary_directory.empty() ? &file : file.GetDirectory(sample.summary_directory.c_str());
+    if (!source) throw std::runtime_error("Missing saved-event directory: " + sample.summary_directory + " in " + result.path);
+    result.summary_directory = sample.summary_directory;
     if (sample.source_kind == "pandora_h5_reference") {
         auto* beam = dynamic_cast<TParameter<int>*>(file.Get("beam_energy_GeV"));
         if (named(file,"schema") != "pid-pandora-event-energy-1" || !beam || beam->GetVal() != energy ||
@@ -62,7 +66,7 @@ bool loadRatios(RatioSample& result, const Sample& sample, int method, int energ
             named(file,"truth_definition") != "visible MC event/MC_dijet_energy")
             throw std::runtime_error("Incompatible Pandora event energy cache: "+result.path);
     }
-    auto* events = dynamic_cast<TTree*>(file.Get("events"));
+    auto* events = dynamic_cast<TTree*>(source->Get("events"));
     if (!events) {
         std::cerr << "No events tree (ratio plots skipped): " << result.path << std::endl;
         return false;
@@ -107,6 +111,8 @@ struct RatioFit {
     double mean_error = NAN, sigma_error = NAN;
     bool valid = false;
 };
+using RatioFits = std::array<std::array<std::array<RatioFit,3>,5>,3>;
+
 RatioFit fitRatio(TH1F& hist) {
     RatioFit fit;
     fit.entries = hist.GetEntries();
@@ -126,8 +132,72 @@ RatioFit fitRatio(TH1F& hist) {
     return fit;
 }
 
-void drawRatios(const Samples& samples, TFile& output, const std::string& directory) {
+void drawRatioPanels(const Ratios& ratios, const RatioFits& fits,
+                     TDirectory& output, const std::string& directory) {
+    std::array<std::unique_ptr<TH1F>,3> keys;
+    for (int m=0; m<3; ++m) {
+        keys[m].reset(new TH1F(Form("event_energy_ratio_panel_key_%s",kMethods[m]),"",1,0.,1.));
+        keys[m]->SetDirectory(nullptr);
+        keys[m]->SetLineColor(kRatioColors[m]); keys[m]->SetLineWidth(3);
+    }
+    for (int r=0; r<3; ++r) {
+        const std::string name = std::string("event_energy_ratio_energy_panels_") + kRegions[r];
+        TCanvas canvas(("pid_"+name).c_str(),"Event energy response by beam energy",1800,1100);
+        canvas.Divide(3,2,.002,.002);
+        for (int e=0; e<5; ++e) {
+            auto* pad = static_cast<TPad*>(canvas.cd(e+1)); stylePad(pad,.10);
+            pad->SetGridx(); pad->SetGridy();
+            double ymax = 0.; int available = 0;
+            for (int m=0; m<3; ++m) if (ratios[m][e].present && ratios[m][e].hist[r]->GetEntries()) {
+                ymax = std::max(ymax,double(ratios[m][e].hist[r]->GetMaximum())); ++available;
+            }
+            auto* frame = pad->DrawFrame(.5,0.,1.5,ymax > 0. ? 1.6*ymax : 1.);
+            frame->SetTitle(";E_{reco}^{event} / E_{true,visible}^{event};Event Fraction");
+            styleFrame(frame);
+            frame->GetXaxis()->SetTitleSize(.045); frame->GetYaxis()->SetTitleSize(.045);
+            frame->GetXaxis()->SetLabelSize(.04); frame->GetYaxis()->SetLabelSize(.04);
+            frame->GetYaxis()->SetTitleOffset(1.4);
+            TLatex label; label.SetNDC(); label.SetTextFont(42); label.SetTextSize(.052);
+            label.DrawLatex(.18,.94,Form("#sqrt{s} = %d GeV",kEnergies[e]));
+            if (!available) {
+                label.SetTextSize(.035); label.DrawLatex(.22,.5,"No event energy data");
+                continue;
+            }
+            int line = 0;
+            for (int m=0; m<3; ++m) {
+                const auto& data = ratios[m][e];
+                if (!data.present || !data.hist[r]->GetEntries()) continue;
+                auto* histogram = data.hist[r]->DrawCopy("HIST SAME");
+                histogram->SetStats(0);
+                histogram->SetLineColor(kRatioColors[m]); histogram->SetLineWidth(3);
+                const auto& fit = fits[m][e][r];
+                label.SetTextColor(kRatioColors[m]); label.SetTextSize(.032);
+                label.DrawLatex(.17,.84-.065*line++,fit.valid
+                    ? Form("#sigma/#mu = %.2f%%  (N = %lld)",fit.sigma_over_mean_percent,fit.entries)
+                    : Form("Fit unavailable  (N = %lld)",fit.entries));
+            }
+        }
+        canvas.cd(6);
+        TLegend legend(.08,.58,.95,.84);
+        legend.SetBorderSize(0); legend.SetFillStyle(0);
+        legend.SetTextFont(42); legend.SetTextSize(.05);
+        for (int m=0; m<3; ++m) legend.AddEntry(keys[m].get(),kLabels[m],"l");
+        legend.Draw();
+        TLatex note; note.SetNDC(); note.SetTextFont(42); note.SetTextSize(.045);
+        note.DrawLatex(.08,.93,"Z/#gamma* #rightarrow q#bar{q} (q=u,d,s)");
+        note.DrawLatex(.08,.46,kRegionLabels[r]);
+        note.SetTextSize(.033);
+        note.DrawLatex(.08,.35,"Gaussian fit: 0.9 < E_{reco}/E_{true} < 1.1");
+        note.DrawLatex(.08,.27,"#sigma/#mu shown in matching curve colors");
+        note.DrawLatex(.08,.19,"No neutrino correction");
+        finish(canvas,output,directory,name.c_str());
+    }
+}
+
+void drawRatios(const Samples& samples, TDirectory& output, const std::string& directory) {
+    output.cd();
     Ratios ratios;
+    RatioFits ratio_fits;
     TTree fits("event_energy_ratio_fits","Gaussian fit over [0.9,1.1]; sigma/mu without sqrt(2)");
     RatioFit row;
     fits.Branch("beam_energy_GeV",&row.beam_energy,"beam_energy_GeV/I");
@@ -162,7 +232,9 @@ void drawRatios(const Samples& samples, TFile& output, const std::string& direct
             auto& hist = *data.hist[r];
             hist.SetLineColor(kRatioColors[m]); hist.SetLineWidth(3); hist.Draw("HIST SAME");
             row = fitRatio(hist); row.beam_energy = kEnergies[e]; row.method = kMethods[m]; row.region = kRegions[r];
-            row.source = data.path; row.invalid_energy = data.invalid_energy; row.invalid_angle = data.invalid_angle;
+            row.source = data.path + (data.summary_directory.empty() ? "" : "::" + data.summary_directory);
+            row.invalid_energy = data.invalid_energy; row.invalid_angle = data.invalid_angle;
+            ratio_fits[m][e][r] = row;
             fits.Fill();
             legend.AddEntry(&hist,kLabels[m],"l");
             legend.AddEntry(static_cast<TObject*>(nullptr),row.valid
@@ -177,12 +249,14 @@ void drawRatios(const Samples& samples, TFile& output, const std::string& direct
         label.SetTextSize(.023); label.DrawLatex(.57,.80,"Gaussian fit: 0.9 < E_{reco}/E_{true} < 1.1");
         finish(canvas,output,directory,name.c_str());
     }
+    drawRatioPanels(ratios,ratio_fits,output,directory);
     output.cd(); fits.Write();
 }
 
 struct ClusteringSample {
     bool present = false;
     std::string path, source_kind = "single_energy_summary";
+    std::string summary_directory;
     std::array<std::array<pid_cluster::Row,6>,2> rows;
     std::array<std::array<bool,6>,2> found{};
 };
@@ -219,15 +293,25 @@ bool loadClustering(ClusteringSample& result, const std::string& path, int metho
     TDirectory::TContext context;
     TFile input(path.c_str(),"READ");
     if (input.IsZombie()) throw std::runtime_error("Cannot read "+path);
-    auto* beam = dynamic_cast<TParameter<int>*>(input.Get("beam_energy_GeV"));
-    auto* cut = dynamic_cast<TParameter<double>*>(input.Get("beta_threshold"));
-    if (named(input,"schema") != pid_cluster::kSchema || named(input,"method") != kMethods[method] ||
-        named(input,"original_definition") != pid_cluster::kOriginalDefinition ||
-        named(input,"cedric_definition") != pid_cluster::kCedricDefinition ||
+    TDirectory* summary = &input;
+    if (named(input,"schema") == kAnalysisSchema) {
+        summary = input.GetDirectory("clustering");
+        if (!summary) {
+            std::cerr << "No clustering directory (bar series skipped): " << path << std::endl;
+            return false;
+        }
+        result.summary_directory = "clustering";
+        result.source_kind = "analysis_summary_container";
+    }
+    auto* beam = dynamic_cast<TParameter<int>*>(summary->Get("beam_energy_GeV"));
+    auto* cut = dynamic_cast<TParameter<double>*>(summary->Get("beta_threshold"));
+    if (named(*summary,"schema") != pid_cluster::kSchema || named(*summary,"method") != kMethods[method] ||
+        named(*summary,"original_definition") != pid_cluster::kOriginalDefinition ||
+        named(*summary,"cedric_definition") != pid_cluster::kCedricDefinition ||
         !beam || beam->GetVal() != energy || !cut ||
         (method != 2 && (!std::isfinite(cut->GetVal()) || (std::isfinite(beta) && std::fabs(cut->GetVal()-beta)>1e-12))))
         throw std::runtime_error("Incompatible clustering summary: "+path);
-    auto* tree = dynamic_cast<TTree*>(input.Get("clustering"));
+    auto* tree = dynamic_cast<TTree*>(summary->Get("clustering"));
     if (!tree) throw std::runtime_error("Missing clustering table: "+path);
     pid_cluster::Row row; pid_cluster::bind(*tree,row,false);
     for (Long64_t i=0; i<tree->GetEntries(); ++i) {
@@ -243,7 +327,7 @@ bool loadClustering(ClusteringSample& result, const std::string& path, int metho
 }
 
 void drawClustering(const ClusteringSamples& samples, int method, int definition,
-                    TFile& output, const std::string& directory) {
+                    TDirectory& output, const std::string& directory) {
     const int colors[5] = {kRed+1,kOrange+1,kBlue+1,kGreen+2,kViolet-6};
     const std::string name = std::string("efficiency_purity_bar_")+pid_cluster::kDefinitions[definition]+"_"+kMethods[method];
     bool any = false;

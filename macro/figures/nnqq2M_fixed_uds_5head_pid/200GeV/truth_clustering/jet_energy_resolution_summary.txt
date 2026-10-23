@@ -1,7 +1,30 @@
+# pid-analysis-summary-2 beam_energy_GeV=200 method=truth_clustering
+
+[clustering]
+# original: Unweighted mean of matched t rows: edep>1 GeV, edep_reco>0, edep_match>=0, cond_beta>=beta_threshold; efficiency=edep_match/edep; purity=edep_match/edep_reco; unmatched truth excluded
+# cedric: Exclusive charged/neutral ownership, n_inputs>=2, cluster edep>=0; efficiency=sum W(P,C*)/sum W(P), unmatched truth included; purity=sum W(P,C*)/sum W(C*) for matched truth; calorimeter deposited-energy weights
+definition particle efficiency purity eff_num eff_den pur_num pur_den eff_entries pur_entries
+original electron 1 1 219629 219629 219629 219629 219629 219629
+cedric electron 0.43271452029899737 1 409080.18139277375 945381.22064891015 409080.18139277375 409080.18139277375 723115 152796
+original pion 1 1 1880135 1880135 1880135 1880135 1880135 1880135
+cedric pion 0.9634316918696012 1 11040370.530194899 11459422.21266393 11040370.530194899 11040370.530194899 2686619 2328674
+original photon 1 1 1441423 1441423 1441423 1441423 1441423 1441423
+cedric photon 0.99964863847288077 1 7221951.3762021102 7224489.7839652617 7221951.3762021102 7221951.3762021102 4196166 4049919
+original neutron 1 1 80890 80890 80890 80890 80890 80890
+cedric neutron 0.99410837996126511 1 600657.25044398196 604217.06782854628 600657.25044398196 600657.25044398196 188105 150834
+original K0 1 1 132029 132029 132029 132029 132029 132029
+cedric K0 0.99965710928711593 1 1215726.8420396424 1216143.846470128 1215726.8420396424 1215726.8420396424 173497 170727
+original muon 1 1 39208 39208 39208 39208 39208 39208
+cedric muon 0.58368269171892873 1 65654.651667973027 112483.46507350076 65654.651667973027 65654.651667973027 101306 39648
+
+
+[raw_head]
 # pid-jet-resolution-1 beam_energy_GeV=200 method=truth_clustering
+# energy_readout=raw_head; Predicted PID and clustering fixed; single-track charged clusters use the selected raw GNN head; other saved energies unchanged
 # Pandora upstream thrust: sum_q E_q*abs(pz_q)/|p_q| / sum_q E_q; float32
 # sqrt(2)*RMS90(Ereco_event)/Mean90(Ereco_event)*100; upstream minimum-RMS 90-percent histogram interval
 # no neutrino correction; invalid points are not zero-resolution measurements
+# Overflow counts are retained; RMS90 and its error use in-range histogram entries, matching Pandora; at least 5 in-range entries required
 angle_bin low high entries invalid_entries underflow overflow Mean90 RMS90 resolution_percent error_percent valid
 0 0 0.1 11105 0 0 0 197.362747192 4.33823823929 3.10858821869 0.029498770833 1
 1 0.1 0.2 11513 0 0 0 197.276275635 4.23111629486 3.03315854073 0.0282683763653 1
@@ -18,3 +41,28 @@ angle_bin low high entries invalid_entries underflow overflow Mean90 RMS90 resol
 12 0.97 0.98 2190 0 0 0 199.777313232 8.39712524414 5.94428300858 0.127021551132 1
 -1 0 0.7 91635 0 0 0 197.13343811 4.36024284363 3.12799024582 0.01033319626 1
 -2 0.7 0.98 53517 0 0 0 200.710479736 7.48227071762 5.27203607559 0.0227893795818 1
+
+
+[track_replaced]
+# pid-jet-resolution-1 beam_energy_GeV=200 method=truth_clustering
+# energy_readout=track_replaced; Predicted PID and clustering fixed; exactly one track with predicted charged PID uses sqrt(p_measured^2+m_PID^2) at calorimeter entry; other saved energies unchanged
+# Pandora upstream thrust: sum_q E_q*abs(pz_q)/|p_q| / sum_q E_q; float32
+# sqrt(2)*RMS90(Ereco_event)/Mean90(Ereco_event)*100; upstream minimum-RMS 90-percent histogram interval
+# no neutrino correction; invalid points are not zero-resolution measurements
+# Overflow counts are retained; RMS90 and its error use in-range histogram entries, matching Pandora; at least 5 in-range entries required
+angle_bin low high entries invalid_entries underflow overflow Mean90 RMS90 resolution_percent error_percent valid
+0 0 0.1 11105 0 0 0 198.096832275 4.36203432083 3.11405682564 0.0295506641269 1
+1 0.1 0.2 11513 0 0 0 197.980056763 4.28067970276 3.05778050423 0.0284978486598 1
+2 0.2 0.3 11956 0 0 0 197.867248535 4.21029233932 3.00921559334 0.0275207553059 1
+3 0.3 0.4 12685 0 0 0 197.607757568 4.17301607132 2.98649001122 0.0265164766461 1
+4 0.4 0.5 13718 0 0 0 197.671127319 4.3463344574 3.10953092575 0.0265490803868 1
+5 0.5 0.6 14774 0 0 1 197.707946777 4.42383480072 3.16438817978 0.0260348692536 1
+6 0.6 0.7 15884 0 0 0 198.146881104 4.82789754868 3.44576621056 0.027340464294 1
+7 0.7 0.8 17233 0 0 0 199.395431519 5.79129219055 4.10747814178 0.0312892273068 1
+8 0.8 0.9 19369 0 0 0 202.706512451 8.25638961792 5.76019859314 0.0413888953626 1
+9 0.9 0.925 5179 0 0 0 202.760269165 8.22249221802 5.73502922058 0.0796916261315 1
+10 0.925 0.95 5301 0 0 1 202.514923096 8.53737163544 5.96186494827 0.0818925127387 1
+11 0.95 0.97 4245 0 0 0 201.713989258 8.02413368225 5.62570714951 0.086345218122 1
+12 0.97 0.98 2190 0 0 0 200.32510376 8.45299530029 5.96747016907 0.127517029643 1
+-1 0 0.7 91635 0 0 1 197.844970703 4.39726495743 3.14320445061 0.0103835128248 1
+-2 0.7 0.98 53517 0 0 1 201.313201904 7.53170394897 5.2909784317 0.0228714756668 1

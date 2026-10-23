@@ -33,7 +33,17 @@ static const double kEdges[kBins + 1] = {
 static const char* const kSchema = "pid-jet-resolution-1";
 static const char* const kAngleDefinition = "Pandora upstream thrust: sum_q E_q*abs(pz_q)/|p_q| / sum_q E_q; float32";
 static const char* const kMetricDefinition = "sqrt(2)*RMS90(Ereco_event)/Mean90(Ereco_event)*100; upstream minimum-RMS 90-percent histogram interval";
+static const char* const kOverflowPolicy = "Overflow counts are retained; RMS90 and its error use in-range histogram entries, matching Pandora; at least 5 in-range entries required";
 static const char* const kSummaryName = "jet_energy_resolution_summary.root";
+
+inline const char* readoutDefinition(const std::string& readout) {
+    if (readout == "saved") return "Energy as saved in the inference ROOT";
+    if (readout == "raw_head")
+        return "Predicted PID and clustering fixed; single-track charged clusters use the selected raw GNN head; other saved energies unchanged";
+    if (readout == "track_replaced")
+        return "Predicted PID and clustering fixed; exactly one track with predicted charged PID uses sqrt(p_measured^2+m_PID^2) at calorimeter entry; other saved energies unchanged";
+    throw std::runtime_error("Unsupported energy readout: " + readout);
+}
 
 // Match PfoAnalysis.cc and the H5 event_eval/thrust calculation, including
 // float32 intermediate rounding. This is not an optimized final-state thrust
@@ -86,7 +96,7 @@ inline Point statistics(const TH1F& hist, Long64_t invalid = 0) {
     out.invalid_entries = invalid;
     out.underflow = hist.GetBinContent(0);
     out.overflow = hist.GetBinContent(hist.GetNbinsX()+1);
-    if (out.entries < 5 || invalid || out.underflow || out.overflow) return out;
+    if (out.entries < 5 || invalid || out.underflow) return out;
     const int n = hist.GetNbinsX();
     std::vector<double> counts(n+2, 0.), sumx(n+2, 0.), sumxx(n+2, 0.);
     for (int i = 0; i <= n; ++i) {
@@ -97,6 +107,9 @@ inline Point statistics(const TH1F& hist, Long64_t invalid = 0) {
         sumxx[i+1] = sumxx[i] + float(float(y*x)*x);
     }
     const float total = counts[n+1];
+    // Pandora excludes overflow from both the 90% population and the error.
+    // Keep its count in out, but require enough entries in the actual fit range.
+    if (total < 5.f) return out;
     float best = std::numeric_limits<float>::max(), bestMean = 0.f;
     for (int start = 0; start <= n; ++start) {
         if (counts[start] >= total / 10.) break;
@@ -123,9 +136,12 @@ inline Point statistics(const TH1F& hist, Long64_t invalid = 0) {
     return out;
 }
 
-inline void saveCanvas(TCanvas* canvas, const std::string& directory, const std::string& name) {
+inline void saveCanvas(TCanvas* canvas, const std::string& directory, const std::string& name,
+                       const std::string& readout = "") {
+    if (!readout.empty() && readout != "raw_head" && readout != "track_replaced")
+        throw std::runtime_error("Unknown image energy readout: " + readout);
     for (const char* format : {"png", "pdf", "eps"}) {
-        const std::string dir = directory + "/" + format;
+        const std::string dir = directory + "/" + format + (readout.empty() ? "" : "/" + readout);
         gSystem->mkdir(dir.c_str(), true);
         canvas->SaveAs((dir + "/" + name + "." + format).c_str());
     }
@@ -140,14 +156,17 @@ class Summary {
     };
     int energy_;
     std::string method_;
+    std::string readout_;
     double beta_;
     std::array<std::unique_ptr<TH1F>, kBins+2> hist_;
     std::array<Long64_t, kBins+2> invalid_{};
     std::vector<Event> events_;
     std::vector<Input> inputs_;
 public:
-    Summary(int beam_energy, const std::string& method, double beta)
-        : energy_(beam_energy), method_(method), beta_(beta) {
+    Summary(int beam_energy, const std::string& method, double beta,
+            const std::string& readout = "saved")
+        : energy_(beam_energy), method_(method), readout_(readout), beta_(beta) {
+        readoutDefinition(readout_);
         for (int i = 0; i < kBins+2; ++i) {
             const std::string name = i < kBins ? "energy_angle_" + std::to_string(i)
                 : (i == kBins ? "energy_central" : "energy_forward");
@@ -171,7 +190,8 @@ public:
         if (thrust < .7f) fill(kBins);
         if (thrust > .7f && thrust < .98f) fill(kBins+1);
     }
-    void write(const std::string& directory, bool draw) const {
+    void write(const std::string& directory, bool draw,
+               const std::string& imageDirectory = "", const std::string& imageReadout = "") const {
         TDirectory::TContext context;
         gSystem->mkdir(directory.c_str(), true);
         const std::string path = directory + "/" + kSummaryName;
@@ -181,7 +201,13 @@ public:
         TNamed("method", method_.c_str()).Write();
         TNamed("angle_definition", kAngleDefinition).Write();
         TNamed("metric_definition", kMetricDefinition).Write();
-        TNamed("energy_definition", "Raw saved reco energy; PID=sum(reco/energy_pid); Pandora=sum(reco/pred_edep); no neutrino correction; not Ereco/Etruth").Write();
+        TNamed("overflow_policy", kOverflowPolicy).Write();
+        TNamed("energy_readout", readout_.c_str()).Write();
+        TNamed("energy_readout_definition", readoutDefinition(readout_)).Write();
+        const std::string energy_definition = readout_ == "saved"
+            ? "Raw saved reco energy; PID=sum(reco/energy_pid); Pandora=sum(reco/pred_edep); no neutrino correction; not Ereco/Etruth"
+            : std::string(readoutDefinition(readout_)) + "; event sum; no neutrino correction; not Ereco/Etruth";
+        TNamed("energy_definition", energy_definition.c_str()).Write();
         TNamed("region_definition", "central: thrust<0.7f; forward: 0.7f<thrust<0.98f; angle: Pandora H5 decimal edges through 0.97 and 0.98, lower inclusive/upper exclusive").Write();
         TNamed("selection", "All valid event/MC_dijet_energy events in readable t/reco files; zero energy retained if no reco cluster passes beta cut").Write();
         TParameter<int>("beam_energy_GeV", energy_).Write();
@@ -221,8 +247,10 @@ public:
         std::ofstream text(directory + "/jet_energy_resolution_summary.txt");
         if (!text) throw std::runtime_error("Cannot write resolution summary text");
         text << "# " << kSchema << " beam_energy_GeV=" << energy_ << " method=" << method_ << '\n'
+             << "# energy_readout=" << readout_ << "; " << readoutDefinition(readout_) << '\n'
              << "# " << kAngleDefinition << '\n' << "# " << kMetricDefinition << '\n'
              << "# no neutrino correction; invalid points are not zero-resolution measurements\n"
+             << "# " << kOverflowPolicy << '\n'
              << "angle_bin low high entries invalid_entries underflow overflow Mean90 RMS90 resolution_percent error_percent valid\n"
              << std::setprecision(12);
         TGraphErrors graph;
@@ -254,7 +282,8 @@ public:
             frame->SetTitle(graph.GetTitle());
             graph.SetMarkerStyle(24); graph.SetMarkerColor(kBlue+1); graph.SetLineColor(kBlue+1);
             graph.Draw("P SAME");
-            saveCanvas(&canvas, directory, "jet_energy_resolution_vs_thrust");
+            saveCanvas(&canvas, imageDirectory.empty() ? directory : imageDirectory,
+                       "jet_energy_resolution_vs_thrust", imageReadout);
             canvas.Write("jet_energy_resolution_vs_thrust");
         }
         std::cout << "Saved angular resolution data: " << path << std::endl;

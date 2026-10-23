@@ -215,3 +215,41 @@ truth未対応やgapという理由で追加の削除はせず、学習時の既
 GNN評価でも同じtime/pT条件を適用する必要があり、現時点で評価側へcut条件が自動反映されるわけではない。
 
 過去の検証: `python -m unittest test_timingcut -v`（確認用テストソースは2026-10-17に削除済み）。
+
+
+## 2026-09-29の2headモデルからROOTを生成
+
+`shell/run_roots/2head/` の3本は、clustering＋track/calo energyの2headモデル
+（2026-09-29 120252、epoch 28、PID・detector one-hotなし）を使用する。
+ファイル名の `5head` は既存の呼び出し名として残しているが、実行設定は
+`--energy-heads 2 --no-pid --pid-input-format extended --exclude-gap-hits`。
+回帰出力は学習時どおりSoftplusを維持し、`--clustering-bn-eps 1e-5` で
+clustering head先頭のBatchNormも学習時の設定に戻す。この値はROOT metadataと
+再利用条件に記録する。省略した他モデルの既定設定は変更しない。
+
+epoch 28は、このrunのenergy loss有効化後（epoch 4〜38）のvalidation totalが最小
+（1.863938、epoch 27は1.872739）で、validation calo energy lossも最小（0.2093）。
+根拠は `shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_29_120252_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log`
+のepoch 28（validationは2746〜2770行）。JERが最良のepochという判定ではない。
+
+入力には `timingcut.py` 処理済みのextended H5を渡す。writer内の追加timing cutは行わない。
+入力選別は5headと共通で、gap・無効入力を除外し、truth未対応でも有効な入力は保持する。
+`truth_clustering` では正のtruth IDで所属を先に確定し、その後identity matchingする。
+2headのエネルギー計算は従来どおりで、PID枝や5種エネルギーへの置換は追加しない。
+
+```bash
+cd /home/murata/master
+# INDEX INPUT.h5 GPU（INPUT.h5は実際のtc入力に置き換える）
+bash shell/run_roots/2head/run_root_parallel_5head.sh 0 /path/to/tc/40GeV/INPUT.h5 0
+bash shell/run_roots/2head/run_root_parallel_5head_truth.sh 0 /path/to/tc/40GeV/INPUT.h5 0
+bash shell/run_roots/2head/run_root_parallel_5head_scan.sh 0 /path/to/tc/40GeV/INPUT.h5 0
+```
+
+既定の出力先は `output/energy_regression_1to1/skimmed/tc_nnqq_2M/5D/E_regression/tbeta_td_scan/qmin02_lr5e-4/<energy>/2head/`。
+通常は `tbeta090td050/<input-stem>.root`、truthは `truth_clustering/<input-stem>.root`、
+scanは各 `tbetaXXXtdXXX/<input-stem>.root` に保存する。
+`ROOT_OUTPUT_BASE` で `output/energy_regression_1to1` の部分を変更できる。
+`ROOT_NEND` は先頭から読むイベント数（既定 `-1` は全件）、`ROOT_REPLACE=1` は既存結果の強制再生成。
+既定では入力・checkpoint・処理条件が一致する完了済み出力だけを再利用する。
+8月モデルなど別checkpointの既存ROOTは再利用せず、新しい条件で再生成する。
+以前のROOTを別に保持する場合は `ROOT_OUTPUT_BASE` で新しい保存先を選ぶ。

@@ -1,3 +1,4 @@
+import math
 import re
 
 import torch
@@ -132,7 +133,14 @@ def get_model(
     cluster_energy_tbeta = None,
     cluster_energy_td = None,
     detector_one_hot = False,
+    clustering_bn_eps = None,
 ):
+    if clustering_bn_eps is not None:
+        clustering_bn_eps = float(clustering_bn_eps)
+        if not math.isfinite(clustering_bn_eps) or clustering_bn_eps <= 0:
+            raise ValueError('--clustering-bn-eps must be finite and positive')
+        if jit:
+            raise ValueError('--clustering-bn-eps requires an eager multi-head checkpoint (jit=False)')
     # from torch_cmspepr.gravnet_model import GravnetModel
     from gravnet_model import GravnetModel
     #model = GravnetModelWithNoiseFilter(input_dim=9, output_dim=6, k=50, signal_threshold=.05)
@@ -164,6 +172,8 @@ def get_model(
             raise ValueError("Requested multihead model, but checkpoint does not look like multi-head")
         if model_variant == "legacy" and checkpoint_is_multihead:
             raise ValueError("Requested legacy model, but checkpoint looks like multi-head")
+        if clustering_bn_eps is not None and not use_multihead:
+            raise ValueError('--clustering-bn-eps requires a multi-head checkpoint')
 
         if use_multihead:
             if energy_regression_weight:
@@ -232,6 +242,14 @@ def get_model(
                 model.particle_heads_inference_epoch = particle_config['inference_epoch']
                 model.cluster_energy_coordinate_start = particle_config.get('coordinate_start', 1)
             model.load_state_dict(state_dict)
+            if clustering_bn_eps is not None:
+                # Epsilon is absent from state_dict: change it only on explicit
+                # request, leaving the trunk and every other head unchanged.
+                first_bn = next((layer for layer in model.head_postgn_dense[0].modules()
+                                 if isinstance(layer, nn.BatchNorm1d)), None)
+                if first_bn is None:
+                    raise ValueError('Clustering head has no BatchNorm for --clustering-bn-eps')
+                first_bn.eps = clustering_bn_eps
             model = LegacyCompatibleMultiHeadAdapter(
                 model,
                 use_charge_track_likeness=use_charge_track_likeness,

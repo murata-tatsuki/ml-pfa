@@ -44,10 +44,12 @@ def build_parser():
 
     model = parser.add_argument_group('Trained model and energy/PID readout')
     model.add_argument('--energy-heads', choices=('auto', '2', '5'), default='auto', help='auto detects checkpoint; 2=track/calo, 5=species energy heads')
-    model.add_argument('--pid-readout', choices=('auto', 'legacy', 'none', 'representative'), default='auto', help='auto enables PID when trained; legacy/none disables it')
+    model.add_argument('--pid-readout', choices=('auto', 'legacy', 'none', 'representative'), default='auto', help='auto enables PID when trained; legacy/none disables PID independently of extended input selection')
     model.add_argument('--pid', dest='pid_readout', action='store_const', const='representative', help='Alias for --pid-readout representative')
     model.add_argument('--no-pid', dest='pid_readout', action='store_const', const='legacy', help='Alias for --pid-readout legacy (two energy heads only)')
     model.add_argument('--model-variant', choices=('auto', 'legacy', 'multihead'), default='auto')
+    model.add_argument('--clustering-bn-eps', type=float, default=None,
+                       help='Explicit epsilon for the clustering head first BatchNorm of an eager multi-head model; default keeps the current model definition')
     model.add_argument('--energy-regression', action='store_true', help='Accepted for existing commands; implied by --energy-heads')
     model.add_argument('--energy-regression-cluster', action='store_true', help='Accepted for existing commands; implied by two/five energy heads')
     model.add_argument('-eb', '--energy-branch', action='store_true')
@@ -66,7 +68,7 @@ def build_parser():
     inputs.add_argument('--truth-clustering', action='store_true')
     inputs.add_argument('--exclude-gap-hits', action='store_true')
     inputs.add_argument('--detector-one-hot', action='store_true')
-    inputs.add_argument('--pid-input-format', choices=('auto', 'extended', 'legacy'), default='auto')
+    inputs.add_argument('--pid-input-format', choices=('auto', 'extended', 'legacy'), default='auto', help='Input schema; explicit extended also selects current input/truth processing without PID')
     inputs.add_argument('--pid-detail', choices=('full',), default='full')
     inputs.add_argument('--multi-h5', action='store_true', help='One ROOT per H5, sharing the model')
     inputs.add_argument('--1tomany-clustering', action='store_true', help=argparse.SUPPRESS)
@@ -117,6 +119,8 @@ def _configure_model(args, parser):
     if config and bool(config.get('pid_head')) != has_pid:
         parser.error('Checkpoint PID metadata and trained weights disagree')
     if _is_multihead_state_dict(state):
+        if args.clustering_bn_eps is not None and args.model_variant == 'legacy':
+            parser.error('--clustering-bn-eps requires a multi-head model')
         _, clustering_dim, energy_dims, _ = _infer_multihead_config(state)
         count = len(energy_dims)
         if any(dim != 1 for dim in energy_dims):
@@ -124,6 +128,8 @@ def _configure_model(args, parser):
         if clustering_dim != args.output_dim:
             parser.error(f'Checkpoint clustering output has {clustering_dim} columns, not {args.output_dim}')
     else:
+        if args.clustering_bn_eps is not None:
+            parser.error('--clustering-bn-eps requires a multi-head checkpoint')
         output = state.get('output.4.weight')
         if output is None:
             output = state.get('output.weight')
@@ -163,6 +169,11 @@ def _validate_options(args, parser):
         parser.error('--tbeta must be finite and between zero and one')
     if not math.isfinite(args.td) or args.td <= 0:
         parser.error('--td must be finite and positive')
+    if args.clustering_bn_eps is not None:
+        if not math.isfinite(args.clustering_bn_eps) or args.clustering_bn_eps <= 0:
+            parser.error('--clustering-bn-eps must be finite and positive')
+        if args.pandora or args.energy_branch:
+            parser.error('--clustering-bn-eps requires an eager multi-head GNN, without --pandora or --energy-branch')
     if args.particle_cluster_score_threshold is not None and (
             not math.isfinite(args.particle_cluster_score_threshold)
             or not 0 <= args.particle_cluster_score_threshold <= 1):
@@ -258,9 +269,9 @@ def main(argv=None):
     _validate_options(args, parser)
     _configure_model(args, parser)
     _normalize_inputs(args, parser)
-    if args.pid_readout == 'representative':
-        from root_export.cedric import _run_representative_pid
-        _run_representative_pid(args, args.timingCut, parser)
+    from root_export.cedric import _uses_training_inputs, _run_training_input_model
+    if _uses_training_inputs(args):
+        _run_training_input_model(args, args.timingCut, parser)
     else:
         _run_legacy(args, parser)
 

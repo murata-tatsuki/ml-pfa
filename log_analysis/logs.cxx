@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <numeric>
 #include <cassert>
+#include <cmath>
 
 using namespace std;
 
@@ -23,9 +24,13 @@ int epoch_noLE = -1;    // # of epoch energy regression term is activated   defa
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174900_alpha_tracker_diff_log_perCluster_ranks/rank0.log";
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_08_17_174838_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_05_092726_alpha_diff_log_perCluster_multihead_ranks/rank0.log";
-// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_29_120252_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
-const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_04_162529_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_09_29_120252_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_04_162529_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
 // const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_09_154602_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+
+// 集約
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_19_154730_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
+// const string fileName = "../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_19_183348_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log";
 
 
 //// single particle pre training 
@@ -698,7 +703,14 @@ void logs(){
   int last_epoch_digits[ngrad];
   if(ngrad!=0){
     for(int igrad=0;igrad<ngrad;igrad++){
-      int dig = log10(gradients[nepoch-1][igrad]) > 0 ? log10(gradients[nepoch-1][igrad]) : log10(gradients[nepoch-1][igrad]) - 1;
+      const double gradient = gradients[nepoch-1][igrad];
+      // A zero norm has no decimal order. Keep its values unchanged and
+      // display its history on the lowest-order canvas without log10(0).
+      int dig = grad_min_digit;
+      if (std::isfinite(gradient) && gradient > 0.) {
+        dig = static_cast<int>(std::floor(std::log10(gradient)));
+        dig = std::max(grad_min_digit, std::min(grad_max_digit, dig));
+      }
       // cout << gradients[nepoch-1][igrad] << ", " << dig << endl;
       last_epoch_digits[igrad] = dig;
     }

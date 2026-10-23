@@ -1,0 +1,73 @@
+{
+  "repo": "/data/murata/master",
+  "input_root": "/data/suehara/mldata/pfa/murata/data/tc/tc_fixed_uds_pandoraFixing",
+  "energies": [40, 91, 200, 350, 500],
+  "flavors": ["uu", "dd", "ss"],
+  "methods": ["reco", "truth_clustering"],
+  "tbeta": 0.9,
+  "td": 0.5,
+  "nstart": 0,
+  "nend": -1,
+  "models": [
+    {
+      "name": "2head",
+      "run_id": "2026_09_29_120252",
+      "checkpoint_dir": "checkpoint/energy_regression/ckpts_gravnet_new02_2026_09_29_120252_outputD5_multihead",
+      "input_dim": 7,
+      "output_dim": 5,
+      "writer_args": [
+        "--no-pid", "--pid-input-format", "extended", "--exclude-gap-hits",
+        "--energy-heads", "2", "--momentum", "--momentum-amp",
+        "--model-variant", "multihead", "--clustering-bn-eps", "1e-5"
+      ]
+    },
+    {
+      "name": "5head_pid",
+      "run_id": "2026_10_04_162529",
+      "checkpoint_dir": "checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_04_162529_outputD5_multihead",
+      "input_dim": 7,
+      "output_dim": 5,
+      "writer_args": [
+        "--pid", "--pid-input-format", "extended", "--exclude-gap-hits",
+        "--energy-heads", "5", "--momentum", "--momentum-amp",
+        "--model-variant", "multihead"
+      ]
+    },
+    {
+      "name": "5head_pid_onehot",
+      "run_id": "2026_10_09_154602",
+      "checkpoint_dir": "checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_09_154602_outputD5_multihead",
+      "input_dim": 7,
+      "output_dim": 5,
+      "writer_args": [
+        "--pid", "--pid-input-format", "extended", "--exclude-gap-hits",
+        "--detector-one-hot", "--energy-heads", "5", "--momentum",
+        "--momentum-amp", "--model-variant", "multihead"
+      ]
+    },
+    {
+      "name": "5head_pid_onehot_truth_gather",
+      "run_id": "2026_10_19_154730",
+      "checkpoint_dir": "checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_19_154730_outputD5_multihead",
+      "input_dim": 7,
+      "output_dim": 5,
+      "writer_args": [
+        "--pid", "--pid-input-format", "extended", "--exclude-gap-hits",
+        "--detector-one-hot", "--energy-heads", "5", "--momentum",
+        "--momentum-amp", "--model-variant", "multihead"
+      ]
+    },
+    {
+      "name": "5head_pid_onehot_preicted_gather",
+      "run_id": "2026_10_19_183348",
+      "checkpoint_dir": "checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_19_183348_outputD5_multihead",
+      "input_dim": 7,
+      "output_dim": 5,
+      "writer_args": [
+        "--pid", "--pid-input-format", "extended", "--exclude-gap-hits",
+        "--detector-one-hot", "--energy-heads", "5", "--momentum",
+        "--momentum-amp", "--model-variant", "multihead"
+      ]
+    }
+  ]
+}
