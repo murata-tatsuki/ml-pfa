@@ -16,8 +16,9 @@ import sys
 sys.dont_write_bytecode = True
 from plan_scan import (absolute_path, make_plan, parse_epochs, read_config,
                        require_name, write_plan)
-from scan_common import load_plan, verify_implementation
-from scan_layout import compact_plan
+from scan_common import load_plan
+from scan_layout import EPOCH_LAYOUT, epoch_plan
+from epoch_jobs import freeze_execution, verify_implementation
 
 FILES_PER_FLAVOR = {40: 3, 91: 3, 200: 8, 350: 8, 500: 17}
 DEFAULT_OUTPUT = '/data/suehara/mldata/pfa/murata/output/jer_epoch_scan'
@@ -83,7 +84,17 @@ def report_legacy_results(args, config, request, scan_dir):
 
 
 def verify_request(plan, request):
-    if plan.get('manual_request') != request or plan.get('manual_request_sha256') != digest_request(request):
+    saved = plan.get('manual_request')
+    if not isinstance(saved, dict) or plan.get('manual_request_sha256') != digest_request(saved):
+        raise ValueError('Existing plan has no valid frozen setting.sh request')
+    requested = copy.deepcopy(request)
+    comparable = copy.deepcopy(saved)
+    if plan.get('layout') == EPOCH_LAYOUT:
+        # A new job always contains all selected H5s; legacy shard size has no
+        # effect on the selected events, writer settings or new output identity.
+        requested.pop('files_per_job', None)
+        comparable.pop('files_per_job', None)
+    if comparable != requested:
         raise ValueError('Existing plan has different settings or was not made by setting.sh. '
                          'Choose another --tag/--scan-dir; existing results were not changed.')
     if any(job['server'] != 'local' for job in plan['jobs']):
@@ -104,21 +115,26 @@ def plan_lock(scan_dir):
 
 
 def prepare_plan(args, config, epochs, count, request, scan_dir):
-    plan_path = scan_dir / 'plan.json'
     inspect_only = args.status or args.collect
-    if inspect_only and not plan_path.is_file():
-        raise ValueError(f'No existing plan at {plan_path}; run --plan-only or --dry-run first')
     with plan_lock(scan_dir):
         if scan_dir.is_symlink():
             raise ValueError(f'Refusing a symlink scan directory: {scan_dir}')
-        if scan_dir.exists():
-            if not plan_path.is_file():
-                raise ValueError(f'Scan directory exists without a complete plan: {scan_dir}')
+        plan_path = scan_dir / '_scan' / 'plan.json'
+        legacy_path = scan_dir / 'plan.json'
+        if plan_path.is_file() and legacy_path.is_file():
+            raise ValueError(f'Both new and legacy plans exist under {scan_dir}; finish migration first')
+        if not plan_path.is_file() and legacy_path.is_file():
+            plan_path = legacy_path
+        if plan_path.is_file():
             plan = load_plan(plan_path)
             verify_request(plan, request)
             verify_implementation(plan)
             print(f'[resume] {plan_path}', flush=True)
             return plan_path, plan
+        if inspect_only:
+            raise ValueError(f'No existing plan at {plan_path}; run --plan-only or --dry-run first')
+        if scan_dir.exists():
+            raise ValueError(f'Scan directory exists without a complete plan: {scan_dir}')
         model = config['models'][0]
         if count:
             root = Path(model.get('input_root', config['input_root'])) / f'{args.energy}GeV'
@@ -128,12 +144,23 @@ def prepare_plan(args, config, epochs, count, request, scan_dir):
                     raise ValueError(f'{root}: {flavor} has {available} H5 files, '
                                      f'but files-per-flavor={count} was requested')
         report_legacy_results(args, config, request, scan_dir)
-        plan, filelists = make_plan(config, scan_dir, [{'name': 'local', 'weight': 1.0}],
-                                   epochs, None, count, args.files_per_job)
-        plan, filelists = compact_plan(plan, filelists)
+        management = scan_dir / '_scan'
+        plan, filelists = make_plan(config, management, [{'name': 'local', 'weight': 1.0}],
+                                   epochs, None, count, sys.maxsize)
+        plan, filelists = epoch_plan(plan, scan_dir, filelists)
         plan['manual_request'] = request
         plan['manual_request_sha256'] = digest_request(request)
-        write_plan(scan_dir, plan, filelists)
+        freeze_execution(plan)
+        try:
+            write_plan(management, plan, filelists)
+        except BaseException:
+            # write_plan removes its own newly created metadata directory.
+            # Remove only the empty result parent created by this invocation.
+            try:
+                scan_dir.rmdir()
+            except OSError:
+                pass
+            raise
         print(f'[created] {plan_path}', flush=True)
         return plan_path, plan
 
@@ -146,13 +173,16 @@ def build_parser():
     p.add_argument('--gpus', default='0', help='Local GPU numbers/UUIDs separated by commas')
     p.add_argument('--workers-per-gpu', type=int, default=1,
                    help='Concurrent save_root processes per GPU (setting.sh default: 10)')
+    p.add_argument('--worker-mode', choices=('persistent', 'subprocess'), default='persistent',
+                   help='Reuse writer processes across jobs/epochs (default), or start one process per job')
     p.add_argument('--config', type=Path, default=Path(__file__).with_name('scan_config.json'))
     p.add_argument('--output-base', default=os.environ.get('SCAN_OUTPUT_BASE', DEFAULT_OUTPUT))
     p.add_argument('--scan-dir', help='Optional explicit new/reusable scan directory')
     p.add_argument('--tag', default=os.environ.get('SCAN_TAG') or None,
                    help='Optional named group under output-base; omitted by default')
     p.add_argument('--files-per-flavor', type=int, help='Override energy mapping; 0 means all H5s')
-    p.add_argument('--files-per-job', type=int, default=20)
+    p.add_argument('--files-per-job', type=int, default=20,
+                   help='Legacy shard size; new scans use all selected H5s per epoch/method')
     p.add_argument('--pid-threads', type=int, default=2)
     p.add_argument('--root-chunk-events', type=int, default=10)
     p.add_argument('--pipeline-depth', type=int, default=40)
@@ -194,6 +224,7 @@ def main(argv=None):
     frozen_epochs = sorted({job['epoch'] for job in plan['jobs']})
     print(f"model={args.model} energy={args.energy}GeV gpus={','.join(gpus)} "
           f"workers-per-gpu={args.workers_per_gpu} max-workers={len(gpus) * args.workers_per_gpu} "
+          f"worker-mode={args.worker_mode} "
           f"files-per-flavor={count} H5={len(unique_inputs)} "
           f"epochs={len(frozen_epochs)} ({frozen_epochs[0]}..{frozen_epochs[-1]}) "
           f"jobs={len(plan['jobs'])}", flush=True)
@@ -206,7 +237,8 @@ def main(argv=None):
         if args.allow_incomplete:
             command.append('--allow-incomplete')
     else:
-        command = [sys.executable, '-B', str(package / 'run_parallel.py'), '--plan', str(plan_path),
+        runner = 'run_persistent.py' if args.worker_mode == 'persistent' else 'run_parallel.py'
+        command = [sys.executable, '-B', str(package / runner), '--plan', str(plan_path),
                    '--server', 'local', '--gpus', ','.join(gpus),
                    '--workers-per-gpu', str(args.workers_per_gpu)]
         if args.status:

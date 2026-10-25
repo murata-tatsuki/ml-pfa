@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import collect_jer as core
 from scan_common import load_plan
 from scan_layout import summary_directory
+from epoch_collect import EPOCH_LAYOUT, collect_epoch_group
 
 
 def main(argv=None):
@@ -27,7 +28,7 @@ def main(argv=None):
     parser.add_argument("--allow-incomplete", action="store_true",
                         help="Publish explicitly partial groups; never eligible for ranking")
     parser.add_argument("--output-csv", type=Path,
-                        help="Default SCAN_DIR/metrics.csv; required when filtering models/epochs")
+                        help="Default result directory/metrics.csv; required when filtering models/epochs")
     args = parser.parse_args(argv)
     plan = load_plan(args.plan)
     epochs = core._epoch_selection(args.epochs)
@@ -53,8 +54,11 @@ def main(argv=None):
         print(f"[collect] model={key[0]} run={key[1]} epoch={key[2]} energy={key[3]} method={key[4]}",
               flush=True)
         group = dict(zip(names, key))
-        current = core.collect_group(plan, jobs, args.beta_threshold, args.allow_incomplete,
-                                     output_directory=summary_directory(plan, group))
+        if plan.get("layout") == EPOCH_LAYOUT:
+            current = collect_epoch_group(plan, jobs, args.beta_threshold, args.allow_incomplete)
+        else:
+            current = core.collect_group(plan, jobs, args.beta_threshold, args.allow_incomplete,
+                                         output_directory=summary_directory(plan, group))
         representative = current[0]
         if representative["complete"]:
             comparison = (key[3], key[4])
@@ -63,7 +67,8 @@ def main(argv=None):
                 raise ValueError(f"Evaluation event selection differs across complete groups: {key}")
             selections[comparison] = digest
         rows.extend(current)
-    destination = args.output_csv or Path(plan["scan_dir"]) / "metrics.csv"
+    result_dir = plan["result_dir"] if plan.get("layout") == EPOCH_LAYOUT else plan["scan_dir"]
+    destination = args.output_csv or Path(result_dir) / "metrics.csv"
     fieldnames = list(dict.fromkeys(name for row in rows for name in row))
     with tempfile.TemporaryDirectory(prefix="epoch-scan-metrics-") as temporary:
         staged = Path(temporary) / "metrics.csv"

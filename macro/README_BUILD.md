@@ -221,3 +221,126 @@ c++ -O2 -std=c++14 -I. -o efficiency_purity_contribution \
 cd master/macro
 root -l -b -q 'gSystem->AddIncludePath("-I'$(pwd)'"); .x src/efficiency_purity_check_reco_effpur_contiribution.cxx'
 ```
+
+
+## epochごとのJERを描く
+
+`plot_jer_vs_epoch.cxx` は `epoch_scan` の `metrics.csv` を読み、横軸epoch・縦軸JERの図を作ります。対応する学習ログが見つかれば、lossとの上下段比較・散布図・成分別学習曲線も追加します。推論や元ROOTの再解析は行いません。`valid`・`complete`・`eligible_for_ranking` がすべて真の行を使用し、同じenergy内の入力イベント集合・ファイル数・beta cut・角度範囲が異なる比較や重複行を拒否します。
+
+```bash
+cd /data/murata/master/macro
+root -l -b -q 'plot_jer_vs_epoch.cxx()'
+```
+
+既定入力は `../output/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602/`。直下の `*GeV/metrics.csv` を自動で探します。まだ `--collect` していないenergyはメッセージを出してスキップし、描けるCSVが一つもなければエラーになります。新たに40 GeVなどを集計した後、同じmacroを実行すると追加されたenergyも描きます。
+
+特定のenergyだけ描く場合は、そのdirectoryまたはCSVを指定します。
+
+```bash
+root -l -b -q 'plot_jer_vs_epoch.cxx("../output/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602/200GeV")'
+```
+
+引数は以下の順です。省略または入力・出力の空文字列は既定値を使います。
+
+| 引数 | 既定値・選択肢 |
+| --- | --- |
+| 1: input | モデル/run directory、energy directory、または `metrics.csv` |
+| 2: outputDirectory | `macro/figures/jer_epoch_scan/<model>_<run>/` |
+| 3: readout | `saved` / `raw_head` / `track_replaced`。既定 `saved` |
+| 4: method | `both` / `reco` / `truth_clustering`。既定 `both` |
+| 5: region | `both` / `central` / `forward`。既定 `both` |
+| 6: zoomMax | 拡大図のJER上限 [%]。既定 `15`、`0` は拡大図を作らない |
+| 7: trainingLog | 空または `auto` で `shell/tmp/*<run>*/rank0.log` を自動探索。ファイルを明示可能。`none` でloss図を無効化 |
+| 8: betaStart | β項が有効になる最初のepoch。`-2`（既定）は既知runのみ自動設定、`-1` は不明 |
+| 9: energyStart | energy項が有効になる最初のepoch。既定 `-2`、`-1` は不明 |
+
+例：200 GeVの通常reco・centralだけ、拡大図の上限を10%にする場合：
+
+```bash
+root -l -b -q 'plot_jer_vs_epoch.cxx("../output/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602/200GeV","","saved","reco","central",10)'
+```
+
+既定ではenergyごとにcentral／forwardの2パネル図を保存し、通常recoを実線、truth clusteringを破線で区別します。CSVの `error_percent` を誤差棒として使い、通常recoのscan内最小点に星を付けてepochとJERを凡例・標準出力に表示します。truthのみ選択した場合はtruthの最小点を表示します。これは観測された最小値の表示であり、最終採用epochの自動決定ではありません。
+
+複数energyがある場合は通常recoのenergy重ね描きも作ります（truthのみ指定時はtruthを重ねます）。全体図を常に出し、さらに指定上限までの拡大図を出します。拡大図には上限を超えた点数を表示します。欠けたepochの間は線をつなぎません。
+
+保存形式はPNG・PDFと、全点の `TGraphErrors`・canvas・入力情報を含むROOTです。既定実行で91／200 GeVのCSVがある場合の例：
+
+```text
+macro/figures/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602/
+├── 91GeV/
+│   ├── jer_vs_epoch_91GeV_saved.png       # PDFも同じ場所
+│   ├── jer_vs_epoch_91GeV_saved_zoom.png
+│   ├── jer_loss_vs_epoch_91GeV_saved_zoom.png
+│   ├── jer_vs_validation_loss_91GeV_central_saved_zoom.png
+│   └── jer_vs_energy_loss_91GeV_central_reco_saved_zoom.png
+├── 200GeV/
+│   └── ...                              # 200 GeVの図
+├── jer_vs_epoch_overview_saved.png
+├── jer_vs_epoch_overview_saved_zoom.png
+├── loss_components_vs_epoch_saved.png
+├── energy_loss_components_vs_epoch_saved.png
+├── energy_loss_correlation_overview_saved.png
+├── energy_loss_correlations_saved.csv
+└── jer_vs_epoch_91-200GeV_saved.root
+```
+
+energy別のPNG／PDFは、指定した出力directoryの `<energy>GeV/` 以下へ保存します。energy比較図、共通のloss曲線・相関一覧、まとめROOT・CSVは親directoryへ保存します。単一energyを入力に指定した場合も、画像はそのenergyのsubdirectoryへ保存します。ファイル名は変更しません。
+
+同じ出力directoryで再実行すると対応する図・plot ROOTを更新します。入力CSVや推論ROOTは変更しません。ROOTインタプリタで直接実行でき、`make` やACLiCの `+` は不要です。
+
+
+### lossとの比較
+
+通常の `root -l -b -q 'plot_jer_vs_epoch.cxx()'` で、CSVのrun IDと一致する学習ログを自動探索します。該当ログがなければ既存のJER図だけを作り、複数見つかれば第7引数での明示を求めます。別のrun IDがパスにあるログは拒否します。
+
+特定のログを指定する例です。既存の第1〜6引数はそのまま使用できます。
+
+```bash
+root -l -b -q 'plot_jer_vs_epoch.cxx("../output/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602","","saved","both","both",15,"../shell/tmp/tc_nnqq_2M_timingcut_forcealpha_thetaphi_outputD5_2026_10_09_154602_alpha_tracker_diff_log_perCluster_multihead_ranks/rank0.log")'
+```
+
+追加する図は次のとおりです。すべてPNG・PDFと同じplot ROOTへ保存します。
+
+- **epochの上下段比較**：energy／角度regionごとに上段はtrain／validationの総loss、下段は通常reco／truth clusteringのJERと誤差。両段でepoch範囲を揃え、validation loss最小epochとJER最小epoch、β／energy項の開始位置を縦線で表示します。全体図とJER拡大図を出します。
+- **loss–JER散布図**：energy／regionごとに、横軸をvalidation総loss・`L_E`・`L_V`・`L_beta`・`L_PID`とした5パネルを出します。縦軸はJER（誤差付き）、色はepoch、markerは通常reco／truth clusteringを区別します。全体図とJER拡大図を出します。
+- **成分別学習曲線**：`L_E`・`L_V`・`L_beta`・`L_PID`のtrain／validationを別パネルで表示します。負値もあるため軸は線形です。
+
+現在の既知run `5head_pid_onehot / 2026_10_09_154602` は、β項がepoch 2、energy項がepoch 4から有効です。総loss最小の選択と散布図は、全項が有効なepoch 4以降を対象とし、初期の別の目的関数と混同しません。初期epochも上下段・成分図の曲線には残します。別runには2／4を流用せず、開始位置が不明であることを表示します。確認済みの設定がある場合は第8／9引数で指定できます。総loss最小は表示対象JERと対応するepochの範囲で選ぶため、部分scanでは全学習ログの最小epochと異なる場合があります。
+
+総lossはログの `train loss :`／`Returning` を読み、そのまま使用します。成分の印字百分率や和から再構成しません。`Training epoch N` とCSVのepoch Nを結び、batch途中のlossは使いません。総lossが未完了・非finiteのepochや重複したepochは除外して表示し、欠損成分をゼロ補完しません。欠損epochを線でつながず、散布図にはepochが一致する点だけを使用します。
+
+学習ログの成分値は印字精度（例：小数4桁）を保持し、総lossとCSVのJER／誤差は保存された精度で使用します。lossは混合validation sample全体、JERはenergy別の評価であり、散布図の相関は原因を確定するものではありません。推論ROOTや学習・scanのコード／planには変更を加えません。
+
+代表的な追加ファイルは `91GeV/jer_loss_vs_epoch_91GeV_saved_zoom.png`（上下段）、`91GeV/jer_vs_validation_loss_91GeV_central_saved_zoom.png`（散布図）、`loss_components_vs_epoch_saved_active.png`（全項有効化後の成分）です。PDFも同名で保存し、数値graphと散布点ごとのepochは既存plot ROOTへ追加します。
+
+検証：`root -l -b -q 'plot_jer_vs_epoch.cxx()'` の既定経路に相当する自動ログ探索で、91／200 GeVの全172 epochを描画。独立パースしたloss 1,720値、既存JER 1,376点、散布図6,720点のepoch・loss・JER・誤差が厳密一致しました。validation最小印は全項有効化後のepoch14、通常reco JERの最小印は91 GeV centralのepoch28／forwardのepoch63、200 GeV centralのepoch19／forwardのepoch10と一致。PNG20枚・PDF20枚・ROOTを保存し、入力ログ・CSVは不変でした。確認専用ソース・生成物はタスク専用一時領域で扱い、完了後に削除します。
+
+
+### energy loss内訳とJERの相関
+
+同じ `plot_jer_vs_epoch.cxx()` で、5-headの粒子種別lossを含むログから次の図を追加します。
+
+- **内訳別散布図**：合計`L_E`、荷電`L_E_cond`、中性`L_E_cluster`、`L_E_photon`、`L_E_neutral_hadron`の5パネル。energy・central／forward・通常reco／truth clusteringごとに図を分けます。横軸はvalidation loss、縦軸はJERとCSVの誤差、色はepochです。
+- **相関の一覧図**：5成分×energy／角度regionのSpearman相関を、通常recoとtruthで別パネルに表示します。セル内に相関係数と点数を記載し、色範囲は−1〜1で固定します。
+- **内訳のepoch推移**：合計・荷電・中性のlossを同じy軸で重ね、trainとvalidationを比較します。
+
+各散布図には全有効epochのSpearman相関係数ρと点数Nを表示し、epoch 60以降に3点以上ある場合は、その範囲の相関も表示します。正のρはlossが大きいepochほどJERも大きい傾向を表し、因果関係や係数変更の効果を保証しません。JER拡大図にも全点から計算した同じρを表示し、表示範囲外の点を相関計算から落としません。通常recoとtruthを混ぜて相関を計算しません。
+
+同順位は平均順位で処理し、有限な組が3点未満、またはloss／JERが定数ならρを未定義とします。未定義値は0へ置換しません。既知runは全項有効になるepoch 4以降を使い、それ以外のrunでは既存のactivation設定に従います。欠けたepochやlossは補完しません。
+
+この5-headモデルの`L_E_cond`はcharged hadron＋electron＋muon、`L_E_cluster`はphoton＋neutral hadronの寄与です。種別の値は共通のparticle分母に対する寄与で、各種別内の平均lossではありません。粒子種別lossが保存されていないログでは、内訳の図をスキップして理由を表示します。
+
+出力は既存の `figures/jer_epoch_scan/<model>_<run>/` です。例：
+
+```text
+200GeV/jer_vs_energy_loss_200GeV_central_reco_saved_zoom.png
+200GeV/jer_vs_energy_loss_200GeV_central_truth_clustering_saved_zoom.png
+energy_loss_correlation_overview_saved.png
+```
+
+同名PDFも作成します。ROOTには内訳のloss曲線、散布点、各点のepoch、相関の数値を追加し、`energy_loss_correlations_saved.csv`にはenergy・region・method・成分・epoch範囲・N・ρを保存します。引数でmethod／regionを絞った場合は、その指定を出力名へ付けます。入力CSV、推論ROOT、学習・scanのコードとplanは変更しません。
+
+検証：91／200 GeV・全172 epochについて、内訳loss 1,720値と新散布図6,720点（epoch・loss・JER・誤差）が独立抽出値と一致しました。全有効期間／epoch≥60の相関80件は独立したSciPyの平均順位Spearmanと1e-12以内で一致し、CSV・ROOT TTree・一覧図・full／zoom図の表示を照合しました。既存98 graphの値も不変です。`root -l -b -q 'plot_jer_vs_epoch.cxx()'` の通常経路で既存20種＋新18種のPNG／PDFとROOT・CSVを出力します。確認専用コードと生成物はタスク用一時領域で扱い、完了後に削除します。
+
+保存先変更の確認：通常の描画経路で91／200 GeVそれぞれ32ファイル（PNG16＋PDF16）がenergy subdirectoryへ入り、共通14ファイルは親に保存されることを確認しました。全38 PNGの内容は変更前と一致。既存のenergy別64画像も同じ配置へ移動し、画像内容とまとめROOT・CSVは保持します。

@@ -60,7 +60,7 @@
 #include <sstream>
 #include <stdexcept>
 
-static const string model_condition = "5head_pid_onehot_preicted_gather";  // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
+static const string model_condition = "2head_raw";  // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
 
 
 namespace pid_jer_plot {

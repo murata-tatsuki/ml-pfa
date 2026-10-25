@@ -18,6 +18,10 @@ sys.dont_write_bytecode = True
 import run_server as legacy
 from scan_common import (completed_state, load_plan, state_path,
                          verify_implementation)
+import epoch_jobs
+
+epoch_jobs.install()
+verify_implementation = epoch_jobs.verify_implementation
 
 
 class ParallelRunner(legacy.Runner):

@@ -7,6 +7,7 @@
 
 `setting.sh`先頭の`model / energy / epochs / gpus / workers_per_gpu`を設定します。
 現在の初期値は`5head_pid_onehot / 200 GeV / epoch 0〜19 / GPU 0,1 / 各GPU 10 writer`です。
+`worker_mode`の既定は`persistent`で、同じworkerを複数epochの評価に使います。
 
 ```bash
 cd /data/murata/master/shell/run_roots/epoch_scan
@@ -21,14 +22,37 @@ bash setting.sh --epochs all --energy 200 --gpus 0 --workers-per-gpu 20
 
 `epochs=0:20`は0〜19です。`all`は計画作成時点で保存済みの全checkpointを固定し、再開時には追加しません。
 `-1`はepoch指定に使用できません。
-設定に従ってenergy専用の計画を作成し、このserverで既存`save_root.py --multi-h5`を起動します。
+設定に従ってenergy専用の計画を作成し、このserverで常駐workerを起動します。
 通常実行はforegroundです。長時間動かす場合は使用中のterminal管理方法や`nohup`等を使用してください。
 JER集計は`--collect`による別処理で、ROOT作成中には実行しません。
 
-`workers_per_gpu`は1 GPUで同時に動かす`save_root.py`の数です。GPU `0,1`と`10`なら合計最大20プロセスが動きます。
+`workers_per_gpu`は1 GPUで同時に動かすwriterの数です。GPU `0,1`と`10`なら合計最大20プロセスが動きます。
 以前の`xargs -P10`と同様に複数writerを並行実行し、CPU処理待ちの間も他のwriterがGPUを使えます。
-1プロセスは既定で最大20 H5を順に処理し、空いたworkerへ次のジョブを割り当てます。複数epochも同時に進みます。
+新しい計画では1ジョブが1 epoch・1方式（recoまたはtruth）の全選択H5を処理し、1 ROOTへ直接保存します。
+空いたworkerへ次のジョブを割り当てるため、複数epochも同時に進みます。
 実際の並列数は未完了ジョブ数までです。GPUメモリやCPU使用量に合わせて`--workers-per-gpu`で調整できます。
+
+### epoch間でworkerを再利用する
+
+通常の`bash setting.sh --epochs all`が常駐方式を使用します。各workerはPython・Torch・ROOTの読み込みとCUDA環境の初期化を最初の1回だけ行い、担当ジョブが終わると次のcheckpointへ進みます。
+モデル構造と入力・head等の設定が互換ならモデル本体を再利用し、各checkpointの重みを`strict=True`で読み込みます。互換でない設定へ切り替わる場合はモデルを作り直します。
+重みの読み込みと推論は各checkpointについて実行します。各workerは互いに独立しており、`workers_per_gpu`件まで同時に処理します。
+完了済みジョブは従来と同じ判定でskipし、処理が必要なジョブがあるworkerだけwriter子プロセスを起動します。
+
+既存の`save_root.py`はそのまま残してあり、直接実行する使い方も維持します。
+常駐workerも既存writerの計算・詳細ROOT出力を使います。新しいscanでは複数H5を1 ROOTへ直接保存する専用入口を使用します。
+入力H5はジョブごとに読み込みます。入力のepoch間cacheやJER専用軽量出力は使用しません。
+変更前のplanは、引き続き入力H5ごとにROOTを保存する従来の入口を使います。
+
+「1ジョブごとにwriterを起動する」方式を使う場合:
+
+```bash
+bash setting.sh --epochs all --worker-mode subprocess
+```
+
+`worker_mode=${WORKER_MODE:-persistent}`の変更や`WORKER_MODE=subprocess bash setting.sh`でも選択できます。
+worker方式は評価条件hashや出力先を変更しないため、同じplan・完了済みROOTを使って切り替えられます。
+実行中の旧プロセスは自動で切り替わりません。Ctrl-Cで停止して終了を待ち、通常のコマンドで再開してください。
 
 | energy | 自動files-per-flavor | 固定uds入力のevent数の目安 |
 | --- | ---: | ---: |
@@ -55,27 +79,29 @@ MODEL=5head_pid_onehot ENERGY=200 EPOCHS=all GPUS=0 WORKERS_PER_GPU=20 bash sett
 /data/suehara/mldata/pfa/murata/output/jer_epoch_scan/
   <model>_<run_id>/
     200GeV/
-      plan.json
-      filelists/shard_000.txt
-      logs/local/<job_id>.log
-      state/<job_id>.json
-      roots/
-        epoch_000/
-          reco/dd_001.root
-          truth_clustering/dd_001.root
-        epoch_001/
-          ...
-      summaries/epoch_000/<method>/<readout>/
+      reco/
+        epoch000.root
+        epoch001.root
+      truth/
+        epoch000.root
+        epoch001.root
       metrics.csv
+      _scan/
+        plan.json
+        filelists/inputs.txt
+        logs/local/<job_id>.log
+        state/<job_id>.json
+        summaries/epoch000/<method>/<readout>/
     500GeV/
       ...
 ```
 
 モデル・run・energyはそれぞれ1回だけpathに入ります。`manual`・`default`・`epochs_all_fpf..._<hash>`は付けません。
-入力H5ごとに1 ROOTを作ります。処理はshard単位で分割しますが、ROOTのdirectoryにはshard番号を入れません。
-`plan.json`にはepoch集合、files-per-flavor、入力一覧、checkpoint、推論条件、設定hashを保存します。
-`filelists/`はwriterへ渡す入力一覧、`logs/`は実行ログ、`state/`は完了判定と重複実行防止の管理情報です。
-`summaries/`と`metrics.csv`は`--collect`の実行後に作成します。
+1 epoch・1方式につき1 ROOTです。各ROOTに全flavor・全選択H5を含めます。
+`truth/`はtruth clusteringの結果です。通常の採用判断には`reco/`を使用します。
+`_scan/plan.json`にはepoch集合、files-per-flavor、入力一覧、checkpoint、推論条件、設定hashを保存します。
+`_scan/filelists/`はwriterへ渡す入力一覧、`_scan/logs/`は実行ログ、`_scan/state/`は完了判定と重複実行防止の管理情報です。
+`_scan/summaries/`とenergy直下の`metrics.csv`は`--collect`の実行後に作成します。
 
 `SCAN_OUTPUT_BASE=/data/...`または`--output-base /data/...`で保存先の基点を変更できます。
 `--scan-dir /data/...`を指定すると、そのdirectoryを直接使用します。
@@ -94,7 +120,7 @@ bash setting.sh --epochs all --collect              # 完成したROOTのJER集�
 `--files-per-flavor 0`で自動件数を上書きして全H5を使用できます。
 
 同じ設定で再実行すると、同じdirectoryの計画を再開します。
-GPU番号や`workers_per_gpu`は変更できます。完了済みジョブを再作成しません。
+GPU番号や`workers_per_gpu`、`worker_mode`は変更できます。完了済みジョブを再作成しません。
 並列数等を変更する前に、動いているforeground実行をCtrl-Cで停止して終了を待ってください。
 
 同じ保存先に異なる評価条件を指定すると、上書きや別hash directoryの作成はせずエラーにします。
@@ -104,23 +130,42 @@ GPU番号や`workers_per_gpu`は変更できます。完了済みジョブを再
 
 ### 変更前に作成したscan
 
-変更前の`manual/default/.../epochs_..._<hash>/`にあるplan・ROOT・実行中のジョブは移動しません。
-実行中の旧scanはそのまま継続できます。旧scanを再開・集計する場合は、旧directoryを明示します。
+energy直下に旧`plan.json`がある場合は、自動的に従来方式で再開します。
+実行中の旧scanを新形式へ自動変換しません。稼働中の200 GeVもそのまま継続できます。
+旧planも`--scan-dir`で指定すれば常駐方式で再開できます。
 
 ```bash
-old_scan='/data/suehara/mldata/pfa/murata/output/jer_epoch_scan/manual/default/<model>_<run_id>/200GeV/epochs_all_fpf8_<hash>'
+old_scan='/data/suehara/mldata/pfa/murata/output/jer_epoch_scan/<model>_<run_id>/200GeV'
 bash setting.sh --epochs all --energy 200 --scan-dir "$old_scan"
 bash setting.sh --epochs all --energy 200 --scan-dir "$old_scan" --collect
 ```
 
 `old_scan`には実際のdirectoryを指定してください。モデル・epoch等も旧planと同じ条件にします。
-`--scan-dir`を省略した実行は新しい構造の保存先を使用し、旧ROOTを自動移動・再利用しません。
-新しい保存先で作成を開始する場合は、旧scanの処理を停止してから実行してください。
+古い`manual/default/.../epochs_..._<hash>/`に残るplanは、そのdirectoryを明示してください。
+同じenergy directoryに旧planがあれば、`--scan-dir`を省略しても旧planを再利用します。
+完成済みの分割ROOTを新形式にする場合は、別途結合処理が必要です。ROOTの単純なrenameでは変換できません。
 
-`--workers-per-gpu`、`--files-per-job`、`--pid-threads`、`--pipeline-depth`、`--root-chunk-events`も指定できます。
+完成済み91 GeVを変換する実行例です。GPU推論は行いません。
+
+```bash
+scan='/data/suehara/mldata/pfa/murata/output/jer_epoch_scan/5head_pid_onehot_2026_10_09_154602/91GeV'
+python3 -B migrate_epoch_files.py --scan-dir "$scan" --dry-run
+python3 -B migrate_epoch_files.py --scan-dir "$scan" --workers 2
+```
+
+`--dry-run`は全jobの完了と旧ROOT一覧を確認し、変換予定のファイル数を表示します。
+本実行は各epoch・方式のROOTを結合し、元のイベント・truth energy・各energy readoutが一致することを確認します。
+全出力の検証後に新plan・完了記録・`metrics.csv`を公開し、元の分割ROOTを片付けます。
+結合中は元ROOTと新ROOTが共存するため、新ROOT相当の空き容量を使用します。
+中断した場合は同じ移行コマンドで再開します。進捗は`_scan/migration.json`に保存します。
+移行中のenergyは`setting.sh`から実行せず、移行完了後に通常の`--status`や再開コマンドを使用します。
+未完了・実行中のscanは移行できません。上記は実行方法の例であり、91 GeVの移行完了を示すものではありません。
+
+`--worker-mode`、`--workers-per-gpu`、`--files-per-job`、`--pid-threads`、`--pipeline-depth`、`--root-chunk-events`も指定できます。
+`--files-per-job`は旧planの分割条件です。新形式では全選択H5を1ジョブにまとめるため、この値で分割しません。
 `PYTHON_BIN=/path/to/python`で使用するPythonを指定します。
 `run_scan.sh --model ... --energy ... --epochs ... --gpus ...`による直接指定も可能です。
-直接`run_scan.sh`や`run_parallel.py`を起動する場合の`--workers-per-gpu`既定値は1で、`setting.sh`が既定で10を指定します。
+直接`run_scan.sh`、`run_persistent.py`、`run_parallel.py`を起動する場合の`--workers-per-gpu`既定値は1で、`setting.sh`が既定で10を指定します。
 
 ## ファイル
 
@@ -129,10 +174,16 @@ bash setting.sh --epochs all --energy 200 --scan-dir "$old_scan" --collect
 | `setting.sh` | GPU・energy・model・epoch・並列数の編集用入口 |
 | `run_scan.sh` / `run_setting.py` | 自動FPF選択、単一serverでの計画作成・再開・実行 |
 | `scan_layout.py` | 手動scanのモデル・energy別directory構造を設定 |
+| `epoch_jobs.py` | 新形式の出力・実行を既存runnerへ接続し、旧planの動作を維持 |
+| `epoch_writer.py` / `epoch_root.py` | 全選択H5の直接保存と、既存ROOTのepoch単位結合・検証 |
+| `epoch_collect.py` | epoch単位ROOTの入力対応を検証し、JERを集計 |
+| `migrate_epoch_files.py` | 完成済みの分割ROOTを再推論せずに結合・比較し、新形式へ移行 |
 | `collect_scan.py` | 手動scanの構造に合わせて既存JER集計処理を呼び出す |
 | `scan_config.json` | 対象runとモデル固有の入力・readout設定 |
 | `plan_scan.py` | 従来の汎用planner。checkpoint・入力・server担当を固定 |
-| `run_parallel.py` | 各GPUで複数writerを並列実行し、再開・状態確認 |
+| `run_persistent.py` | 各GPUで複数workerを常駐させ、epoch間で再利用する既定runner |
+| `persistent_worker.py` | 同じPython/CUDA環境と互換モデルを使って既存writer処理を実行 |
+| `run_parallel.py` | 従来方式。ジョブごとにwriterを起動して並列実行 |
 | `run_server.py` | 既存計画と共通処理を維持する従来runner（1 subprocess/GPU） |
 | `collect_jer.py` | 分割ROOTを読み、既存定義のJERとCSVを作成する共通処理 |
 | `scan_common.py` | ハッシュ、状態ファイル、出力確認の共通処理 |
@@ -300,3 +351,12 @@ python3 -B shell/run_roots/epoch_scan/collect_jer.py \
 
 checkpoint選択用の固定評価集合と、最終性能を確認する未使用testは分けて管理します。
 既に繰り返し比較した固定uds sampleは、未使用testとして扱わないでください。
+
+
+## ROOT生成・検証のPyROOT方針
+
+Pythonで新規実装・修正するROOTファイル入出力にはPyROOTを使用します。メタデータ取得、TTree件数・イベント番号の検証、ROOT結合も対象です。ROOT生成のためにuprootを新たな必須依存として追加しません。
+
+`epoch_root.py`のROOT読み書き・出力検証・結合はPyROOTで行います。通常の `setting.sh` によるROOT生成はuprootのインストール不要です。元の `save_root.py` の入口と出力計算は維持します。既存JER集計ツールの依存関係は別で、現在の `--collect` は既存のNumPy／uproot／Awkward等を利用します。
+
+PyROOTへのI/O互換変更に伴い、既存planの `execution_implementation` は `epoch_root.py` のhashだけを更新します。評価入力・checkpoint・physics設定・job ID・完成済みROOT・metricsは維持し、hash検査は省略しません。対応するplanには旧／新hashと理由の監査記録を残します。変更中のscanは停止し、prepare／GPU／job lockを取得してから適用します。

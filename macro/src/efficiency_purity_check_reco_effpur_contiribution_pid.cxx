@@ -85,8 +85,8 @@
 
 using namespace std;
 
-const string model_condition = "5head_pid_onehot_preicted_gather";       // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
-const int qq_energy = 500;
+const string model_condition = "2head_raw";       // 2head     5head_pid    5head_pid_onehot     5head_pid_onehot_preicted_gather     5head_pid_onehot_truth_gather
+const int qq_energy = 350;
 const double c_event_clean_threshold = 0.1;
 const bool use_truth_clustering = true;
 const int cedric_n_min = 2;
