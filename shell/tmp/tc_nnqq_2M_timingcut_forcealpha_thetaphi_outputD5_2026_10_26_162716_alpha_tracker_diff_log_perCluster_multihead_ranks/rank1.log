@@ -1,0 +1,99 @@
+cuda:1
+thetaphi at main: True
+Loading dataset...
+Extended H5: retain valid unknown-truth inputs; supervised loss is masked; exclude_gap_hits=True; detector_one_hot=True
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M_nobrems/train, files=1960, events~=1960000, shuffle_buffer=256, files_per_chunk=32
+Extended H5: retain valid unknown-truth inputs; supervised loss is masked; exclude_gap_hits=True; detector_one_hot=True
+Using ILCStreamingDataset (shuffle_buffer=256, files_per_chunk=32, seed=1001)
+ILCStreamingDataset: path=/data/suehara/mldata/pfa/murata/data/tc/tc_nnqq_2M_nobrems/validation, files=20, events~=20000, shuffle_buffer=256, files_per_chunk=32
+Training dataset size:  1960000
+Validating dataset size:  20000
+Batch size:  128
+Loading multi-head model from checkpoint checkpoint/energy_regression/ckpts_gravnet_new02_2026_10_09_154602_outputD5_multihead/ckpt_25_1.pth.tar
+KNN backend=event-parallel GravNet_layers=4
+restart period :  500
+[rank 1] epoch=0 train_batch=2000/15313 loss=1.462541
+[rank 1] epoch=0 train_batch=4000/15313 loss=1.435477
+[rank 1] epoch=0 train_batch=6000/15313 loss=1.373691
+[rank 1] epoch=0 train_batch=8000/15313 loss=1.440429
+[rank 1] epoch=0 train_batch=10000/15313 loss=1.464754
+[rank 1] epoch=0 train_batch=12000/15313 loss=1.368864
+[rank 1] epoch=0 train_batch=14000/15313 loss=1.469048
+[rank 1] epoch=1 train_batch=2000/15313 loss=1.423538
+[rank 1] epoch=1 train_batch=4000/15313 loss=1.316257
+[rank 1] epoch=1 train_batch=6000/15313 loss=1.417539
+[rank 1] epoch=1 train_batch=8000/15313 loss=1.474799
+[rank 1] epoch=1 train_batch=10000/15313 loss=1.441802
+[rank 1] epoch=1 train_batch=12000/15313 loss=1.447582
+[rank 1] epoch=1 train_batch=14000/15313 loss=1.360425
+[rank 1] epoch=2 train_batch=2000/15313 loss=1.402043
+[rank 1] epoch=2 train_batch=4000/15313 loss=1.411916
+[rank 1] epoch=2 train_batch=6000/15313 loss=1.341098
+[rank 1] epoch=2 train_batch=8000/15313 loss=1.369372
+[rank 1] epoch=2 train_batch=10000/15313 loss=1.408130
+[rank 1] epoch=2 train_batch=12000/15313 loss=1.412969
+[rank 1] epoch=2 train_batch=14000/15313 loss=1.349954
+[rank 1] epoch=3 train_batch=2000/15313 loss=1.354280
+[rank 1] epoch=3 train_batch=4000/15313 loss=1.439832
+[rank 1] epoch=3 train_batch=6000/15313 loss=1.443780
+[rank 1] epoch=3 train_batch=8000/15313 loss=1.363894
+[rank 1] epoch=3 train_batch=10000/15313 loss=1.408646
+[rank 1] epoch=3 train_batch=12000/15313 loss=1.384589
+[rank 1] epoch=3 train_batch=14000/15313 loss=1.335880
+[rank 1] epoch=4 train_batch=2000/15313 loss=1.421457
+[rank 1] epoch=4 train_batch=4000/15313 loss=1.364966
+[rank 1] epoch=4 train_batch=6000/15313 loss=1.351727
+[rank 1] epoch=4 train_batch=8000/15313 loss=1.439307
+[rank 1] epoch=4 train_batch=10000/15313 loss=1.404799
+[rank 1] epoch=4 train_batch=12000/15313 loss=1.387576
+[rank 1] epoch=4 train_batch=14000/15313 loss=1.334305
+[rank 1] epoch=5 train_batch=2000/15313 loss=1.454774
+[rank 1] epoch=5 train_batch=4000/15313 loss=1.402746
+[rank 1] epoch=5 train_batch=6000/15313 loss=1.392504
+[rank 1] epoch=5 train_batch=8000/15313 loss=1.371000
+[rank 1] epoch=5 train_batch=10000/15313 loss=1.476008
+[rank 1] epoch=5 train_batch=12000/15313 loss=1.434534
+[rank 1] epoch=5 train_batch=14000/15313 loss=1.372583
+[rank 1] epoch=6 train_batch=2000/15313 loss=1.438531
+[rank 1] epoch=6 train_batch=4000/15313 loss=1.427641
+[rank 1] epoch=6 train_batch=6000/15313 loss=1.340888
+[rank 1] epoch=6 train_batch=8000/15313 loss=1.313614
+[rank 1] epoch=6 train_batch=10000/15313 loss=1.465016
+[rank 1] epoch=6 train_batch=12000/15313 loss=1.402947
+[rank 1] epoch=6 train_batch=14000/15313 loss=1.344398
+[rank 1] epoch=7 train_batch=2000/15313 loss=1.360743
+[rank 1] epoch=7 train_batch=4000/15313 loss=1.442652
+[rank 1] epoch=7 train_batch=6000/15313 loss=1.349783
+[rank 1] epoch=7 train_batch=8000/15313 loss=1.361762
+[rank 1] epoch=7 train_batch=10000/15313 loss=1.371662
+[rank 1] epoch=7 train_batch=12000/15313 loss=1.429371
+[rank 1] epoch=7 train_batch=14000/15313 loss=1.436315
+[rank 1] epoch=8 train_batch=2000/15313 loss=1.403231
+[rank 1] epoch=8 train_batch=4000/15313 loss=1.439737
+[rank 1] epoch=8 train_batch=6000/15313 loss=1.358376
+[rank 1] epoch=8 train_batch=8000/15313 loss=1.392396
+[rank 1] epoch=8 train_batch=10000/15313 loss=1.363613
+[rank 1] epoch=8 train_batch=12000/15313 loss=1.424251
+[rank 1] epoch=8 train_batch=14000/15313 loss=1.380863
+[rank 1] epoch=9 train_batch=2000/15313 loss=1.377789
+[rank 1] epoch=9 train_batch=4000/15313 loss=1.327569
+[rank 1] epoch=9 train_batch=6000/15313 loss=1.388276
+[rank 1] epoch=9 train_batch=8000/15313 loss=1.418557
+[rank 1] epoch=9 train_batch=10000/15313 loss=1.329058
+[rank 1] epoch=9 train_batch=12000/15313 loss=1.365983
+[rank 1] epoch=9 train_batch=14000/15313 loss=1.386194
+[rank 1] epoch=10 train_batch=2000/15313 loss=1.405404
+[rank 1] epoch=10 train_batch=4000/15313 loss=1.419994
+[rank 1] epoch=10 train_batch=6000/15313 loss=1.441387
+[rank 1] epoch=10 train_batch=8000/15313 loss=1.373208
+[rank 1] epoch=10 train_batch=10000/15313 loss=1.390950
+[rank 1] epoch=10 train_batch=12000/15313 loss=1.338454
+[rank 1] epoch=10 train_batch=14000/15313 loss=1.402487
+[rank 1] epoch=11 train_batch=2000/15313 loss=1.389093
+[rank 1] epoch=11 train_batch=4000/15313 loss=1.428814
+[rank 1] epoch=11 train_batch=6000/15313 loss=1.393377
+[rank 1] epoch=11 train_batch=8000/15313 loss=1.423538
+[rank 1] epoch=11 train_batch=10000/15313 loss=1.323851
+[rank 1] epoch=11 train_batch=12000/15313 loss=1.406501
+[rank 1] epoch=11 train_batch=14000/15313 loss=1.375053

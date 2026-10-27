@@ -25,7 +25,6 @@ import uuid
 import awkward as ak
 import h5py
 import numpy as np
-import uproot
 
 
 SPECIES = ("charged_hadron", "electron", "muon", "photon", "neutral_hadron")
@@ -35,17 +34,16 @@ SUMMARY_NAME = "jet_energy_resolution_summary.root"
 COMPACT_SCHEMA = "pid-analysis-summary-2"
 TEXT_NAME = "jet_energy_resolution_summary.txt"
 MACRO_DIRECTORY = Path(__file__).resolve().parent
+# This module is also loaded with importlib by the epoch-scan collector.
+if str(MACRO_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(MACRO_DIRECTORY))
+import pyroot_io as root_io
+from pyroot_io import (arrays, get_directory, get_tree, has_branch, open_root,
+                       read_json, read_title, read_value, write_tree)
 
 
 def _json_object(root_file, name, required=True):
-    if name not in root_file:
-        if required:
-            raise ValueError(f"{root_file.file_path}: missing {name}")
-        return {}
-    value = json.loads(str(root_file[name]))
-    if not isinstance(value, dict):
-        raise ValueError(f"{name} must contain a JSON object")
-    return value
+    return read_json(root_file, name, required=required)
 
 
 def _source_path(stored, metadata, summary_path):
@@ -62,10 +60,10 @@ def _source_path(stored, metadata, summary_path):
 
 
 def _arrays(tree, names):
-    missing = set(names).difference(tree.keys())
+    missing = {name for name in names if not has_branch(tree, name)}
     if missing:
-        raise ValueError(f"{tree.object_path}: missing branches {sorted(missing)}")
-    return tree.arrays(list(names), library="np")
+        raise ValueError(f"{tree.GetName()}: missing branches {sorted(missing)}")
+    return arrays(tree, names)
 
 
 def _measured_policy(metadata):
@@ -188,7 +186,7 @@ class MeasuredMomentum:
                         raise ValueError(f"{path}: unsupported event payload")
                     key = _event_key(truth, _thrust(flat))
                     self.candidates.setdefault(key, []).append((current, handle, local))
-            self.prediction = _arrays(root_file["prediction"],
+            self.prediction = _arrays(get_tree(root_file, "prediction"),
                 ("event", "cluster", "input_row", "hitid", "trackness"))
             events = self.prediction["event"]
             if np.any(events[1:] < events[:-1]):
@@ -274,14 +272,14 @@ def _totals(events, energies, selected, target_events):
 
 
 def _file_readouts(root_path, saved_metadata, event_rows, beta, source_readout="saved", cluster_sink=None):
-    with uproot.open(root_path) as source:
+    with open_root(root_path) as source:
         metadata = _json_object(source, "particle_eval_metadata")
         if metadata != saved_metadata:
             raise ValueError(f"{root_path}: particle metadata differs from source summary; re-run efficiency/purity analysis")
         names = ("event", "cluster", "energy_pid", "pid", "energy_head", "ntrack_hits", "cond_beta")
-        columns = _arrays(source["reco"], names + tuple("energy_" + name for name in SPECIES))
-        if "cluster_accepted" in source["reco"].keys():
-            columns.update(_arrays(source["reco"], ("cluster_accepted",)))
+        columns = _arrays(get_tree(source, "reco"), names + tuple("energy_" + name for name in SPECIES))
+        if has_branch(get_tree(source, "reco"), "cluster_accepted"):
+            columns.update(_arrays(get_tree(source, "reco"), ("cluster_accepted",)))
         saved = columns["energy_pid"].astype(np.float64)
         heads = columns["energy_head"]
         if (not np.isfinite(saved).all() or (heads < -1).any() or (heads > 4).any() or
@@ -296,7 +294,7 @@ def _file_readouts(root_path, saved_metadata, event_rows, beta, source_readout="
         event_ids = np.array([int(row["event"]) for row in event_rows], dtype=np.int64)
         if len(np.unique(event_ids)) != len(event_ids):
             raise ValueError(f"{root_path}: duplicate summary events")
-        builder = _arrays(source["event"], ("event", "MC_dijet_energy"))
+        builder = _arrays(get_tree(source, "event"), ("event", "MC_dijet_energy"))
         builder_truth = {int(event): float(truth) for event, truth in
                          zip(builder["event"], builder["MC_dijet_energy"])}
         if len(builder_truth) != len(builder["event"]):
@@ -324,7 +322,7 @@ def _file_readouts(root_path, saved_metadata, event_rows, beta, source_readout="
         if eligible.any() and not _measured_policy(metadata):
             if not np.allclose(saved[eligible], raw[eligible], rtol=1e-12, atol=1e-9):
                 raise ValueError(f"{root_path}: adopted energy differs from raw head without an explicit measured-track policy")
-            seed = _arrays(source["reco"], ("pid_seed_input_row",))["pid_seed_input_row"]
+            seed = _arrays(get_tree(source, "reco"), ("pid_seed_input_row",))["pid_seed_input_row"]
             recovery = MeasuredMomentum(source, metadata)
             try:
                 for row in sorted(event_rows, key=lambda item: int(item["event"])):
@@ -454,21 +452,21 @@ def _compatible_container(path, staged):
     if not path.is_file():
         return False
     try:
-        with uproot.open(path) as previous:
-            if previous["schema"].member("fTitle") != COMPACT_SCHEMA:
+        with open_root(path) as previous:
+            if read_title(previous, "schema") != COMPACT_SCHEMA:
                 return False
             for mode in MODES:
-                old = previous[mode]
-                with uproot.open(staged / mode / SUMMARY_NAME) as current:
+                old = get_directory(previous, mode)
+                with open_root(staged / mode / SUMMARY_NAME) as current:
                     for name in ("method", "energy_readout"):
-                        if old[name].member("fTitle") != current[name].member("fTitle"):
+                        if read_title(old, name) != read_title(current, name):
                             return False
                     for name in ("beam_energy_GeV", "beta_threshold"):
-                        if old[name].member("fVal") != current[name].member("fVal"):
+                        if read_value(old, name) != read_value(current, name):
                             return False
                     for table, fields in (("inputs", ("file_index", "path", "metadata", "pid_input")),
                                           ("events", ("file_index", "event", "thrust", "reco_energy", "truth_energy"))):
-                        a, b = _arrays(old[table], fields), _arrays(current[table], fields)
+                        a, b = _arrays(get_tree(old, table), fields), _arrays(get_tree(current, table), fields)
                         for field in fields:
                             equal = (np.array_equal(a[field], b[field], equal_nan=True)
                                      if a[field].dtype.kind in "fc" else np.array_equal(a[field], b[field]))
@@ -517,7 +515,7 @@ def _clustering_text(group):
 def _write_compact_summary(staged, output, source_summary, source_base, common_directory,
                            ROOT, energy, method, beta, preserve_previous=True):
     handles = []
-    def open_root(path, mode="READ"):
+    def _open_handle(path, mode="READ"):
         value = ROOT.TFile.Open(str(path), mode)
         if not value or value.IsZombie():
             raise RuntimeError(f"Cannot open {path}")
@@ -528,9 +526,9 @@ def _write_compact_summary(staged, output, source_summary, source_base, common_d
         if preserve_previous:
             for path in dict.fromkeys((output / SUMMARY_NAME, source_summary)):
                 if _compatible_container(path, staged):
-                    previous = open_root(path)
+                    previous = _open_handle(path)
                     break
-        result = open_root(staged / SUMMARY_NAME, "RECREATE")
+        result = _open_handle(staged / SUMMARY_NAME, "RECREATE")
         result.cd()
         ROOT.TNamed("schema", COMPACT_SCHEMA).Write()
         ROOT.TNamed("method", method).Write()
@@ -539,14 +537,14 @@ def _write_compact_summary(staged, output, source_summary, source_base, common_d
         ROOT.TParameter("double")("beta_threshold", beta).Write()
         common = None
         if common_directory is not None:
-            common = open_root(common_directory / "clustering_summary.root")
+            common = _open_handle(common_directory / "clustering_summary.root")
         elif previous:
             common = previous.GetDirectory("clustering")
         if not common:
             for base in dict.fromkeys((source_base, output)):
                 path = base / "clustering_summary.root"
                 if path.is_file():
-                    common = open_root(path)
+                    common = _open_handle(path)
                     break
         text = [f"# {COMPACT_SCHEMA} beam_energy_GeV={energy} method={method}\n"]
         if common:
@@ -554,19 +552,19 @@ def _write_compact_summary(staged, output, source_summary, source_base, common_d
             common_target = result.mkdir("clustering")
             _copy_directory(common, common_target, ROOT)
             if common_directory is not None:
-                diagnostics = open_root(common_directory / "efficiency_purity_result.root")
+                diagnostics = _open_handle(common_directory / "efficiency_purity_result.root")
                 _validate_group(diagnostics, energy, method, beta, readout="common")
                 _copy_directory(diagnostics, common_target.mkdir("diagnostics"), ROOT)
             text.append(_clustering_text(common))
         else:
             text.append("[clustering]\n# No common clustering table supplied.\n")
         for mode in MODES:
-            source = open_root(staged / mode / SUMMARY_NAME)
+            source = _open_handle(staged / mode / SUMMARY_NAME)
             target = result.mkdir(mode)
             _copy_directory(source, target, ROOT)
             diagnostics_path = staged / mode / "energy_regression_result.root"
             if diagnostics_path.is_file():
-                diagnostics = open_root(diagnostics_path)
+                diagnostics = _open_handle(diagnostics_path)
                 _validate_group(diagnostics, energy, method, beta, readout=mode)
             else:
                 diagnostics = previous.GetDirectory(mode + "/diagnostics") if previous else None
@@ -589,17 +587,17 @@ def _fresh_pair_settings(staged):
         for name in (SUMMARY_NAME, TEXT_NAME, "energy_regression_result.root"):
             if not (directory / name).is_file():
                 raise ValueError(f"Missing fresh {mode} output: {directory / name}")
-        with uproot.open(directory / SUMMARY_NAME) as source:
-            if source["schema"].member("fTitle") != "pid-jet-resolution-1":
+        with open_root(directory / SUMMARY_NAME) as source:
+            if read_title(source, "schema") != "pid-jet-resolution-1":
                 raise ValueError(f"{directory}: unsupported jet-energy summary schema")
-            method = source["method"].member("fTitle")
-            energy = int(source["beam_energy_GeV"].member("fVal"))
-            beta = float(source["beta_threshold"].member("fVal"))
-            if (source["energy_readout"].member("fTitle") != mode or
+            method = read_title(source, "method")
+            energy = int(read_value(source, "beam_energy_GeV"))
+            beta = float(read_value(source, "beta_threshold"))
+            if (read_title(source, "energy_readout") != mode or
                     method == "pandora" or not np.isfinite(beta)):
                 raise ValueError(f"{directory}: incompatible native energy readout")
-            inputs = _arrays(source["inputs"], ("file_index", "path", "metadata", "pid_input"))
-            events = _arrays(source["events"],
+            inputs = _arrays(get_tree(source, "inputs"), ("file_index", "path", "metadata", "pid_input"))
+            events = _arrays(get_tree(source, "events"),
                 ("file_index", "event", "thrust", "reco_energy", "truth_energy"))
         if not len(inputs["file_index"]) or not np.all(inputs["pid_input"]):
             raise ValueError(f"{directory}: paired native summaries require PID inputs")
@@ -617,12 +615,12 @@ def _fresh_pair_settings(staged):
         for value in inputs["metadata"]:
             if not isinstance(json.loads(str(value)), dict):
                 raise ValueError(f"{directory}: input metadata must contain a JSON object")
-        with uproot.open(directory / "energy_regression_result.root") as diagnostics:
+        with open_root(directory / "energy_regression_result.root") as diagnostics:
             for name, expected in (("method", method), ("energy_readout", mode)):
-                if diagnostics[name].member("fTitle") != expected:
+                if read_title(diagnostics, name) != expected:
                     raise ValueError(f"{directory}: incompatible diagnostic {name}")
-            if (int(diagnostics["beam_energy_GeV"].member("fVal")) != energy or
-                    float(diagnostics["beta_threshold"].member("fVal")) != beta):
+            if (int(read_value(diagnostics, "beam_energy_GeV")) != energy or
+                    float(read_value(diagnostics, "beta_threshold")) != beta):
                 raise ValueError(f"{directory}: incompatible diagnostic energy/beta")
         settings = (energy, method, beta)
         if reference is None:
@@ -670,12 +668,12 @@ def recover_measured_bridge(bridge_path, output_path):
     output_path = Path(output_path).expanduser().resolve()
     if output_path == bridge_path:
         raise ValueError("The measured-energy output must differ from its input bridge")
-    with uproot.open(bridge_path) as source:
+    with open_root(bridge_path) as source:
         metadata = _json_object(source, "particle_eval_metadata")
         if _measured_policy(metadata):
             raise ValueError("Native measured-energy recovery is only for historical raw-head ROOTs")
-        rows = _arrays(source["reco"], ("event", "cluster", "pid_seed_input_row", "energy_head"))
-        events = _arrays(source["event"], ("event", "MC_dijet_energy", "thrust"))
+        rows = _arrays(get_tree(source, "reco"), ("event", "cluster", "pid_seed_input_row", "energy_head"))
+        events = _arrays(get_tree(source, "event"), ("event", "MC_dijet_energy", "thrust"))
         for name, values in rows.items():
             if values.dtype.kind not in "iu":
                 raise ValueError(f"Bridge reco/{name} must contain integer values")
@@ -716,13 +714,11 @@ def recover_measured_bridge(bridge_path, output_path):
     os.close(descriptor)
     temporary = Path(temporary)
     try:
-        with uproot.recreate(temporary) as target:
-            tree = target.mktree("track_replacements", dict(event="int32", cluster="int32",
-                                                           track_replaced="float64"))
-            if len(measured):
-                tree.extend(dict(event=rows["event"].astype(np.int32),
-                                 cluster=rows["cluster"].astype(np.int32),
-                                 track_replaced=measured))
+        with open_root(temporary, "RECREATE") as target:
+            write_tree(target, "track_replacements",
+                       dict(event=rows["event"].astype(np.int32),
+                            cluster=rows["cluster"].astype(np.int32),
+                            track_replaced=measured))
         os.replace(temporary, output_path)
     finally:
         temporary.unlink(missing_ok=True)
@@ -733,21 +729,21 @@ def recover_measured_bridge(bridge_path, output_path):
 def save_readouts(summary_path, output_directory=None, draw=False, analysis_executable=None,
                   common_directory=None):
     summary_path = Path(summary_path).expanduser().resolve()
-    with uproot.open(summary_path) as source_file:
-        compact_source = source_file["schema"].member("fTitle") == COMPACT_SCHEMA
-        source = source_file["raw_head"] if compact_source else source_file
-        if source["schema"].member("fTitle") != "pid-jet-resolution-1":
+    with open_root(summary_path) as source_file:
+        compact_source = read_title(source_file, "schema") == COMPACT_SCHEMA
+        source = get_directory(source_file, "raw_head") if compact_source else source_file
+        if read_title(source, "schema") != "pid-jet-resolution-1":
             raise ValueError("Unsupported source jet-energy-summary schema")
-        method = source["method"].member("fTitle")
+        method = read_title(source, "method")
         if method == "pandora":
             raise ValueError("Paired GNN energy readouts do not apply to Pandora")
-        source_readout = source["energy_readout"].member("fTitle") if "energy_readout" in source else "saved"
+        source_readout = read_title(source, "energy_readout") if source.Get("energy_readout") else "saved"
         if source_readout not in ("saved",) + MODES:
             raise ValueError(f"Unsupported source energy readout: {source_readout}")
-        energy = int(source["beam_energy_GeV"].member("fVal"))
-        beta = float(source["beta_threshold"].member("fVal"))
-        inputs = _arrays(source["inputs"], ("file_index", "path", "metadata", "pid_input"))
-        events = _arrays(source["events"], ("file_index", "event", "thrust", "reco_energy", "truth_energy"))
+        energy = int(read_value(source, "beam_energy_GeV"))
+        beta = float(read_value(source, "beta_threshold"))
+        inputs = _arrays(get_tree(source, "inputs"), ("file_index", "path", "metadata", "pid_input"))
+        events = _arrays(get_tree(source, "events"), ("file_index", "event", "thrust", "reco_energy", "truth_energy"))
     if compact_source or source_readout == "saved":
         source_base = summary_path.parent
     elif summary_path.parent.parent.name == "summary":
@@ -779,7 +775,7 @@ def save_readouts(summary_path, output_directory=None, draw=False, analysis_exec
         input_rows = []
         eligible = recovered = 0
         with ExitStack() as stack:
-            cache = stack.enter_context(uproot.recreate(cache_path)) if executable is not None else None
+            cache = stack.enter_context(open_root(cache_path, "RECREATE")) if executable is not None else None
             for position in range(len(inputs["file_index"])):
                 file_index = int(inputs["file_index"][position])
                 metadata_text = str(inputs["metadata"][position])
@@ -788,9 +784,7 @@ def save_readouts(summary_path, output_directory=None, draw=False, analysis_exec
                 indices = np.flatnonzero(events["file_index"] == file_index)
                 rows = [{name: values[index] for name, values in events.items()} for index in indices]
                 def cluster_sink(columns):
-                    tree = cache.mktree(f"readouts_file_{file_index}",
-                                       {name: values.dtype for name, values in columns.items()})
-                    tree.extend(columns)
+                    write_tree(cache, f"readouts_file_{file_index}", columns)
                 result, count, restored = _file_readouts(root_path, metadata, rows, beta,
                     source_readout, cluster_sink if cache is not None else None)
                 input_rows.append((file_index, str(root_path), metadata_text))

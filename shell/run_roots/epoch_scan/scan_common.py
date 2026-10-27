@@ -18,6 +18,7 @@ WRITER_SOURCES = (
     'particle_cluster.py', 'extended_h5.py', 'pandora_eval_data.py',
     'pandora_eval_reconstruction.py', 'sed.py', 'tools/load_awkward.py',
     'scan_fast_root_writer.cxx', 'macro/save_pid_energy_readouts.py',
+    'macro/pyroot_io.py',
     'macro/src/pid_jet_resolution_summary.h',
     'shell/run_roots/epoch_scan/scan_common.py',
     'shell/run_roots/epoch_scan/plan_scan.py',

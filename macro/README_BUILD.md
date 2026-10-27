@@ -96,7 +96,7 @@ txtも1個とし、`[clustering]`・`[raw_head]`・`[track_replaced]` の節で�
 
 測定track energyが保存されたROOTは、保存済み値と生head値から両方式を作ります。旧ROOTに測定運動量がない場合は、読み取り済みの必要な行をファイル単位の一時bridgeへ渡し、保存された入力来歴と元H5の `feature[:,7:10]`・`pid_seed_input_row` の対応をPythonで検証して復元します。この復元のために元ROOTを開き直すことはありません。MC運動量で代用せず、対応を確認できなければエラーになります。
 
-解析終了時は `save_pid_energy_readouts.py` で完成済みの共通・方式別診断を統合し、ROOT・txtと画像を反映します。元の推論ROOT/H5は変更せず、bridgeや統合前のROOTは削除します。Python環境には ROOT・uproot・NumPy・h5py・Awkward が必要です。必要なら `PID_READOUT_PYTHON=/path/to/python` で実行環境を指定します。
+解析終了時は `save_pid_energy_readouts.py` で完成済みの共通・方式別診断を統合し、ROOT・txtと画像を反映します。元の推論ROOT/H5は変更せず、bridgeや統合前のROOTは削除します。Python環境には ROOT（PyROOT）・NumPy・h5py・Awkward が必要です。ROOT入出力は共通`pyroot_io.py`を使用し、uprootは不要です。必要なら `PID_READOUT_PYTHON=/path/to/python` で実行環境を指定します。
 
 既存summaryから両版のJER・イベント応答を統合出力する場合、efficiency/purity解析やGNN推論を繰り返す必要はありません。統合ROOT・従来の採用値summary・従来の方式別summaryを入力にできます。
 

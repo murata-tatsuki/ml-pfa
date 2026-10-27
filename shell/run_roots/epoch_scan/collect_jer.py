@@ -42,7 +42,6 @@ def _dependencies(repo):
     if key not in _DEPS:
         import numpy as np
         import ROOT
-        import uproot
 
         ROOT.gROOT.SetBatch(True)
         ROOT.TH1.AddDirectory(False)
@@ -57,7 +56,7 @@ def _dependencies(repo):
             raise RuntimeError(f"Cannot load JER implementation: {header}")
         from save_root import build_parser
         from root_export.runtime import PHYSICS_OPTIONS
-        _DEPS[key] = (np, ROOT, uproot, helper, build_parser, PHYSICS_OPTIONS)
+        _DEPS[key] = (np, ROOT, helper.root_io, helper, build_parser, PHYSICS_OPTIONS)
     return _DEPS[key]
 
 
@@ -115,8 +114,8 @@ def _settings(job, recorded, deps):
 
 
 def _root_info(path, input_identity, job, plan, deps):
-    np, _, uproot, helper, _, _ = deps
-    with uproot.open(path) as source:
+    np, _, root_io, helper, _, _ = deps
+    with root_io.open_root(path) as source:
         metadata = helper._json_object(source, "save_root_metadata")
         signature = metadata.get("signature", {})
         if signature.get("version") != "cedric-unified-1":
@@ -130,14 +129,14 @@ def _root_info(path, input_identity, job, plan, deps):
         if not implementation or any(plan.get("implementation", {}).get(name) != digest
                                      for name, digest in implementation.items()):
             raise ValueError("ROOT writer source hashes differ from plan")
-        entries = {name: int(source[name].num_entries) for name in TREE_NAMES}
+        entries = {name: int(root_io.get_tree(source, name).GetEntries()) for name in TREE_NAMES}
         if metadata.get("tree_entries") != entries:
             raise ValueError("ROOT trees differ from writer completion identity")
-        builder = helper._arrays(source["event"], ("event", "MC_dijet_energy"))
+        builder = helper._arrays(root_io.get_tree(source, "event"), ("event", "MC_dijet_energy"))
         all_ids = builder["event"].astype(np.int64)
         if len(np.unique(all_ids)) != len(all_ids):
             raise ValueError("Duplicate event IDs in source event tree")
-        jets = helper._arrays(source["jet"], ("event", "n_jets", "jet_p4"))
+        jets = helper._arrays(root_io.get_tree(source, "jet"), ("event", "n_jets", "jet_p4"))
         if len(np.unique(jets["event"])) != len(jets["event"]):
             raise ValueError("Duplicate event IDs in source jet tree")
         allowed_ids = set(map(int, all_ids))
@@ -148,12 +147,12 @@ def _root_info(path, input_identity, job, plan, deps):
                   for event, count, p4 in zip(jets["event"], jets["n_jets"], jets["jet_p4"])}
         valid = np.isfinite(builder["MC_dijet_energy"]) & (builder["MC_dijet_energy"] > 0)
         event_ids, truth = all_ids[valid], builder["MC_dijet_energy"][valid]
-        pid = "energy_pid" in source["reco"].keys()
+        pid = root_io.has_branch(root_io.get_tree(source, "reco"), "energy_pid")
         if pid != (settings["pid_readout"] == "representative"):
             raise ValueError("Saved PID branches disagree with writer settings")
         fields = ("event", "cluster", "cond_beta", "energy_pid") if pid else (
             "event", "cluster", "cond_beta", "pred_edep", "pred_edep_cluster", "ntrack_hits")
-        reco = helper._arrays(source["reco"], fields)
+        reco = helper._arrays(root_io.get_tree(source, "reco"), fields)
         identities = np.rec.fromarrays((reco["event"], reco["cluster"]))
         if len(np.unique(identities)) != len(identities):
             raise ValueError("Duplicate event/cluster IDs in source reco tree")
@@ -195,7 +194,7 @@ def collect_group(plan, jobs, beta_threshold=0.0, allow_incomplete=False,
         raise ValueError("beta threshold must be finite and in [0, 1]")
     _verify_plan_sources(plan)
     deps = _dependencies(plan["repo"])
-    np, ROOT, uproot, helper, _, _ = deps
+    np, ROOT, root_io, helper, _, _ = deps
     group = {name: jobs[0][name] for name in ("model", "run_id", "epoch", "energy", "method")}
     if any(any(job[name] != value for name, value in group.items()) for job in jobs):
         raise ValueError("collect_group requires exactly one model/epoch/energy/method")
@@ -235,7 +234,7 @@ def collect_group(plan, jobs, beta_threshold=0.0, allow_incomplete=False,
                 raise ValueError("Physics settings differ between shards")
             policy_names = ("species", "energy_policy", "single_track_energy", "pid_seed",
                             "particle_cluster_readout", "particle_cluster_config")
-            policy = {key: info["particle"].get(key) for key in policy_names}
+            policy = {key: (info["particle"] or {}).get(key) for key in policy_names}
             if reference_policy is not None and policy != reference_policy:
                 raise ValueError("Energy readout policy differs between shards")
             selected = ~(info["reco"]["cond_beta"] < beta_threshold)
@@ -286,8 +285,8 @@ def collect_group(plan, jobs, beta_threshold=0.0, allow_incomplete=False,
         for mode, summary in summaries.items():
             mode_directory = staging / mode
             summary.write(str(mode_directory), False)
-            with uproot.open(mode_directory / "jet_energy_resolution_summary.root") as source:
-                data = source["resolution"].arrays(library="np")
+            with root_io.open_root(mode_directory / "jet_energy_resolution_summary.root") as source:
+                data = root_io.arrays(root_io.get_tree(source, "resolution"))
                 for index in range(len(data["angle_bin"])):
                     angle_bin = int(data["angle_bin"][index])
                     region = "central" if angle_bin == -1 else "forward" if angle_bin == -2 else "angle"

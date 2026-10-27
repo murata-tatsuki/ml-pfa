@@ -2315,7 +2315,7 @@ def main(argv=None):
         with h5py.File(input_path, 'r') as input_file:
             if input_file.attrs.get('schema_version') == 'pandora-eval-1':
                 parser.error('pandora-eval-1 requires save_root_pandora_eval.py; '
-                             'see PANDORA_EVAL_ANALYSIS.md for the new command and copied macro')
+                             'see docs/PANDORA_EVAL_ANALYSIS.md for the new command and copied macro')
 
     if args.beta_d_scan:
         if args.multi_h5:

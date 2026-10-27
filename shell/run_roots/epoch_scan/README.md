@@ -200,7 +200,7 @@ python3 -B migrate_epoch_files.py --scan-dir "$scan" --workers 2
 
 ## 1. 評価計画を一度だけ作る
 
-各serverで同じPython環境（Torch・ROOT・uproot・Awkward・h5py等を使える環境）を有効にします。
+各serverで同じPython環境（Torch・ROOT（PyROOT）・NumPy・Awkward・h5py等を使える環境）を有効にします。
 計画の作成だけはPython標準ライブラリで動きます。
 
 ```bash
@@ -353,10 +353,10 @@ checkpoint選択用の固定評価集合と、最終性能を確認する未使�
 既に繰り返し比較した固定uds sampleは、未使用testとして扱わないでください。
 
 
-## ROOT生成・検証のPyROOT方針
+## ROOT入出力のPyROOT方針
 
-Pythonで新規実装・修正するROOTファイル入出力にはPyROOTを使用します。メタデータ取得、TTree件数・イベント番号の検証、ROOT結合も対象です。ROOT生成のためにuprootを新たな必須依存として追加しません。
+Pythonで新規実装・修正するROOTファイル入出力にはPyROOTを使用します。メタデータ取得、TTree件数・イベント番号の検証、ROOT結合、JER集計も対象です。
 
-`epoch_root.py`のROOT読み書き・出力検証・結合はPyROOTで行います。通常の `setting.sh` によるROOT生成はuprootのインストール不要です。元の `save_root.py` の入口と出力計算は維持します。既存JER集計ツールの依存関係は別で、現在の `--collect` は既存のNumPy／uproot／Awkward等を利用します。
+`epoch_root.py`のROOT生成・出力検証・結合に加え、`collect_jer.py`、`epoch_collect.py`、`macro/save_pid_energy_readouts.py`の読み書きもPyROOTで行います。解析側の共通I/Oは`macro/pyroot_io.py`を使用します。通常の`setting.sh`によるROOT生成も`--collect`も、ROOT入出力のためのuprootは不要です。NumPy・Awkward・h5pyは既存の数値計算・H5入力用に使用します。元の`save_root.py`の入口と出力計算は維持します。
 
-PyROOTへのI/O互換変更に伴い、既存planの `execution_implementation` は `epoch_root.py` のhashだけを更新します。評価入力・checkpoint・physics設定・job ID・完成済みROOT・metricsは維持し、hash検査は省略しません。対応するplanには旧／新hashと理由の監査記録を残します。変更中のscanは停止し、prepare／GPU／job lockを取得してから適用します。
+PyROOTへのI/O互換変更を既存scanへ反映する場合は、対象コードの旧hashを確認し、planの対応する`implementation`／`execution_implementation`だけを更新します。評価入力・checkpoint・physics設定・job ID・完成済みROOT・metricsは維持し、hash検査は省略しません。対応するplanには旧／新hashと理由の監査記録を残します。実行中のscanには適用せず、全対象scanの完了とprepare／GPU／job lockの取得を確認してから適用します。
